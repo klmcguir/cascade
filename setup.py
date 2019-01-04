@@ -31,9 +31,9 @@ Topic :: Scientific/Engineering
 
 """
 setup(
-    name="drip",
+    name="cascade",
     version="0.0.1",
-    packages=['drip',
+    packages=['cascade',
               ],
     #   scripts = [''],
     #
@@ -51,6 +51,7 @@ setup(
         # 'shapely>=1.2.14',
         'scikit-learn>=0.11',
         'pillow>=2.6.1',
+        'future',
         # 'future>=0.14',
     ],
     scripts=scripts,
