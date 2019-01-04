@@ -1,1 +1,1 @@
-from . import plotting
+from . import plotting, metadata
