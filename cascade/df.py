@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 
-def trigger(mouse, trace_type='dff', start_time=-1, end_time=6)
+def trigger(mouse, trace_type='dff', start_time=-1, end_time=6, verbose=True)
     """ Create a pandas dataframe of all of your triggered traces for a mouse
 
     Parameters:
@@ -58,10 +58,10 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6)
 
         # trigger all trials around stimulus onsets
         run_traces = t2p.cstraces('', start_s=start_time, end_s=end_time, trace_type=trace_type,
-                        cutoff_before_lick_ms=-1, errortrials=-1, baseline=None,
-                        baseline_to_stimulus=True)
+                                  cutoff_before_lick_ms=-1, errortrials=-1, baseline=None,
+                                  baseline_to_stimulus=True)
 
-        # make timestamps 
+        # make timestamps
         timestep = 1/np.round(t2p.d['framerate'])
         timestamps = np.concatenate((np.arange(start_time, 0, timestep),
                                      np.arange(0, end_time, timestep)))
@@ -86,34 +86,17 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6)
                 # append all trials across all runs together in a list
                 trial_list.append(pd.DataFrame({'trace': np.squeeze(run_traces[cell,:,trial])}, index=index))
 
-        # save data in million-trial chunks
-        if len(trial_list) > 1000000:
-
-            # concatenate and save current db
-            trial_df = pd.concat(trial_list, axis=0)
-            save_path = os.path.join(flow.paths.outd, str(runs[0].mouse) + '_df_klg_' + trace_type + '_' + str(chunk) +'.pkl')
-            trial_df.to_pickle(save_path)
-
-            # reset trial_list
-            trial_list = []
-
-            # increase the multiplier
-            chunk = chunk + 1
-
-        # clear your t2p
+        # clear your t2p to save RAM
         run._t2p = None
-        print('Run: ' + str(run) + ': ' + str(len(trial_list)))
-    # concatenate all runs together in final dataframe 
-    # trial_df = pd.concat(trial_list, axis=0)
 
-    # save
-    # save_path = os.path.join(flow.paths.outd, str(runs[0].mouse) + '_df_klg_' + trace_type + '.pkl')
-    # trial_df.to_pickle(save_path)
+        if verbose:
+            print('Run: ' + str(run) + ': ' + str(len(trial_list)))
+        trial_df = pd.concat(trial_list, axis=0)
+        save_path = os.path.join(flow.paths.outd, str(run) + '_df_' + trace_type + '.pkl')
+        trial_df.to_pickle(save_path)
 
-    # concatenate and save final db
-    trial_df = pd.concat(trial_list, axis=0)
-    save_path = os.path.join(flow.paths.outd, str(runs[0].mouse) + '_df_klg_' + trace_type + '_' + str(chunk) +'.pkl')
-    trial_df.to_pickle(save_path)
+        # reset trial_list
+        trial_list = []
 
 
 def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6)
