@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 
-def trigger(mouse, trace_type='dff', start_time=-1, end_time=6, verbose=True)
+def trigger(mouse, trace_type='dff', start_time=-1, end_time=6, verbose=True):
     """ Create a pandas dataframe of all of your triggered traces for a mouse
 
     Parameters:
@@ -99,7 +99,7 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6, verbose=True)
         trial_list = []
 
 
-def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6)
+def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6):
     """ Create a pandas dataframe of all of your trial metadata for a mouse
 
     Parameters:
@@ -192,5 +192,5 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6)
     trial_df = pd.concat(trial_list, axis=0)
 
     # save
-    save_path = os.path.join(flow.paths.outd, str(runs[0].mouse) + '_df_klg_' + trace_type + '_trialmeta.pkl')
+    save_path = os.path.join(flow.paths.outd, str(runs[0].mouse) + '_df_' + trace_type + '_trialmeta.pkl')
     trial_df.to_pickle(save_path)
