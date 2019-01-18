@@ -1,0 +1,22 @@
+Metadata-Version: 1.1
+Name: cascade
+Version: 0.0.1
+Summary: Andermann Lab cortical reactivation analysis
+Home-page: https://www.andermannlab.com/
+Author: Kelly McGuire
+Author-email: kellyleecemcguire@gmail.com
+License: GNU GPLv2
+Description: UNKNOWN
+Keywords: imaging microscopy neuroscience behavior
+Platform: Linux
+Platform: Mac OS-X
+Platform: Windows
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: Unix
+Classifier: Programming Language :: Python
+Classifier: Topic :: Scientific/Engineering

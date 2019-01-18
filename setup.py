@@ -76,7 +76,7 @@ setup(
     # setup_requires=['setuptools_cython'],
     url="https://www.andermannlab.com/",
     platforms=["Linux", "Mac OS-X", "Windows"],
-    ext_modules=[anb, aaode, runclassifier],
+    # ext_modules=[anb, aaode, runclassifier],
     #
     # could also include long_description, download_url, etc.
 )
