@@ -23,6 +23,7 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6, verbose=True):
     runs = flow.metadata.RunSorter.frommeta(mice=[mouse])
 
     trial_list = []
+    count = 1
     for r in range(len(runs)):
 
         run = runs[r]
@@ -89,15 +90,18 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6, verbose=True):
                                          + '_df_' + trace_type + '.pkl')
                 trial_df.to_pickle(save_path)
                 if verbose:
-                    print('Day: ' + str(run.mouse) + '_' + str(run.date) + ': ' + str(len(trial_list)))
+                    print('Day: ' + str(count) + ': ' + str(run.mouse)
+                          + '_' + str(run.date) + ': ' + str(len(trial_list)))
                 trial_list = []
+                count = count + 1
         except IndexError:
             trial_df = pd.concat(trial_list, axis=0)
             save_path = os.path.join(flow.paths.outd, str(run.mouse) + '_' + str(run.date)
                                      + '_df_' + trace_type + '.pkl')
             trial_df.to_pickle(save_path)
             if verbose:
-                print('Day: ' + str(run.mouse) + '_' + str(run.date) + ': ' + str(len(trial_list)))
+                print('Day: ' + str(count) + ': ' + str(run.mouse)
+                      + '_' + str(run.date) + ': ' + str(len(trial_list)))
 
 
 def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6):
