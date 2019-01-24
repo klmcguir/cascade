@@ -1,1 +1,4 @@
-from . import plotting, metadata
+# Folders
+from . import metadata, plotting
+# Files
+from . import df
