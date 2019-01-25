@@ -3,9 +3,11 @@ import os
 import flow
 import numpy as np
 import pandas as pd
+import warnings
 
 
-def trigger(mouse, trace_type='dff', start_time=-1, end_time=6, verbose=True):
+def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
+            downsample=True, verbose=True):
     """ Create a pandas dataframe of all of your triggered traces for a mouse
 
     Parameters:
@@ -20,88 +22,134 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6, verbose=True):
     """
 
     # build your runs object
-    runs = flow.metadata.RunSorter.frommeta(mice=[mouse])
+    dates = flow.metadata.DateSorter.frommeta(mice=[mouse])
 
     trial_list = []
     count = 1
-    for r in range(len(runs)):
+    # loop through all days for a mouse, build and save pandas df
+    for d in dates:
 
-        run = runs[r]
+        # loop through runs on a particular day
+        for run in d.runs():
 
-        # get your t2p object
-        t2p = run.trace2p()
+            # get your t2p object
+            t2p = run.trace2p()
 
-        # get your cell# from xday alignment
-        # use to index along axis=0 in cstraces/run_traces
-        cell_ids = flow.xday._read_crossday_ids(run.mouse, run.date)
-        cell_ids = [int(s) for s in cell_ids]
+            # get your cell# from xday alignment
+            # use to index along axis=0 in cstraces/run_traces
+            cell_ids = flow.xday._read_crossday_ids(run.mouse, run.date)
+            cell_ids = [int(s) for s in cell_ids]
 
-        # get all of your trial variables of interest
-        # use to index along axis=2 in cstraces/run_traces
-        oris = []
-        css = []
-        for trial in t2p.d['condition']:
-            codename = t2p.d['codes'].keys()[t2p.d['codes'].values().index(t2p.d['condition'][trial])]
-            oriname = t2p.d['orientations'][codename]
-            css.append(codename)
-            oris.append(oriname)
+            # get all of your trial variables of interest
+            # use to index along axis=2 in cstraces/run_traces
+            oris = []
+            css = []
+            for trial in t2p.d['condition']:
+                codename = t2p.d['codes'].keys()[t2p.d['codes'].values().index(t2p.d['condition'][trial])]
+                oriname = t2p.d['orientations'][codename]
+                css.append(codename)
+                oris.append(oriname)
 
-        oris = np.array(oris)
+            oris = np.array(oris)
 
-        # trigger all trials around stimulus onsets
-        run_traces = t2p.cstraces('', start_s=start_time, end_s=end_time, trace_type=trace_type,
-                                  cutoff_before_lick_ms=-1, errortrials=-1, baseline=(0, -1),
-                                  baseline_to_stimulus=True)
-        # add downsample option
+            # trigger all trials around stimulus onsets
+            run_traces = t2p.cstraces('', start_s=start_time, end_s=end_time,
+                                      trace_type=trace_type, cutoff_before_lick_ms=-1,
+                                      errortrials=-1, baseline=(0, -1),
+                                      baseline_to_stimulus=True)
 
-        # make timestamps
-        timestep = 1/np.round(t2p.d['framerate'])
-        timestamps = np.concatenate((np.arange(start_time, 0, timestep),
-                                     np.arange(0, end_time, timestep)))
+            # downsample all traces/timestamps to 15Hz if framerate is 31Hz
+            if (t2p.d['framerate'] > 30) and downsample:
 
-        # loop through and append each trial (slice of cstraces)
-    #     print(len([int(trial)] * np.shape(run_traces)[1]))
-        for trial in range(np.shape(run_traces)[2]):
+                # make sure divisible by 2
+                sz = np.shape(run_traces)  # dims: (cells, time, trials)
+                if sz[1] % 2 == 1:
+                    run_traces = run_traces[:, :-1, :]
+                    sz = np.shape(run_traces)
+
+                # downsample
+                ds_traces = np.zeros((sz[0], sz[1]/2, sz[2]))
+                for trial in range(sz[2]):
+                    a = run_traces[:, :, trial].reshape(sz[0], sz[1]/2, 2)
+                    ds_traces[:, :, trial] = np.nanmean(a, axis=2)
+
+                run_traces = ds_traces
+
+            # make timestamps, downsample is necessary
+            timestep = 1/t2p.d['framerate']
+            timestamps = np.arange(start_time, end_time, timestep)
+
+            if (t2p.d['framerate'] > 30) and downsample:
+                timestamps = timestamps[::2][:np.shape(run_traces)[1]]
+
+            # check for missing cells/extra cells on end
+
+            # build matrices to match cell, trial, time variables to traces
+            trial_mat = np.ones(np.shape(run_traces))
+            for trial in range(np.shape(run_traces)[2]):
+                trial_mat[:, :, trial] = trial
+
+            cell_mat = np.ones(np.shape(run_traces))
             for cell in range(np.shape(run_traces)[0]):
-                # to take car of an indexing error from origianl pull don't look beyond known ids
-                if cell >= len(cell_ids):
-                    continue
-                index = pd.MultiIndex.from_arrays([
-                            [run.mouse] * np.shape(run_traces)[1],
-                            [run.date] * np.shape(run_traces)[1],
-                            [run.run] * np.shape(run_traces)[1],
-                            [int(trial)] * np.shape(run_traces)[1],
-                            [cell_ids[cell]] * np.shape(run_traces)[1],
-                            timestamps
-                            ],
-                            names=['mouse', 'date', 'run', 'trial_idx', 'cell_idx', 'timestamp'])
+                cell_mat[cell, :, :] = cell_ids[cell]
 
-                # append all trials across all runs together in a list
-                trial_list.append(pd.DataFrame({'trace': np.squeeze(run_traces[cell, :, trial])}, index=index))
+            time_mat = np.ones(np.shape(run_traces))
+            for timept in range(np.shape(run_traces)[1]):
+                time_mat[:, timept, :] = timestamps[timept]
 
-        # clear your t2p to save RAM
-        run._t2p = None
+            # reshape and build df
 
-        try:
-            run_fut = runs[r+1]
-            if run.date < run_fut.date:
-                trial_df = pd.concat(trial_list, axis=0)
-                save_path = os.path.join(flow.paths.outd, str(run.mouse) + '_' + str(run.date)
-                                         + '_df_' + trace_type + '.pkl')
-                trial_df.to_pickle(save_path)
-                if verbose:
-                    print('Day: ' + str(count) + ': ' + str(run.mouse)
-                          + '_' + str(run.date) + ': ' + str(len(trial_list)))
-                trial_list = []
-                count = count + 1
-        except IndexError:
-            trial_df = pd.concat(trial_list, axis=0)
-            save_path = os.path.join(flow.paths.outd, str(run.mouse) + '_' + str(run.date)
-                                     + '_df_' + trace_type + '.pkl')
-            trial_df.to_pickle(save_path)
-            if verbose:
-                print('Day: ' + str(count) + ': ' + str(run.mouse)
-                      + '_' + str(run.date) + ': ' + str(len(trial_list)))
+            # loop through and append each trial (slice of cstraces)
+            for trial in range(np.shape(run_traces)[2]):
+                for cell in range(np.shape(run_traces)[0]):
+                    # to take care of an indexing error from original pull
+                    # or signals creation/fabrication, don't look beyond
+                    # known ids
+                    if cell >= len(cell_ids):
+                        if trial == range(np.shape(run_traces)[2])[0]:
+                            warnings.warn('You have more cell traces than ' +
+                                          'cell_idx: skipping extra cells.')
+                        break
+
+                    index = pd.MultiIndex.from_arrays([
+                                [run.mouse] * np.shape(run_traces)[1],
+                                [run.date] * np.shape(run_traces)[1],
+                                [run.run] * np.shape(run_traces)[1],
+                                [int(trial)] * np.shape(run_traces)[1],
+                                [cell_ids[cell]] * np.shape(run_traces)[1],
+                                timestamps
+                                ],
+                                names=['mouse', 'date', 'run', 'trial_idx',
+                                       'cell_idx', 'timestamp'])
+
+                    # append all trials across all runs together in a list
+                    trial_list.append(pd.DataFrame({'trace': np.squeeze(run_traces[cell, :, trial])}, index=index))
+
+            # clear your t2p to save RAM
+            run._t2p = None
+
+        # create folder structure if needed
+        save_dir = os.path.join(flow.paths.outd, str(mouse))
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        save_dir = os.path.join(save_dir, 'dfs ' + str(trace_type))
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+
+        # concatenate and save df for the day
+        trial_df = pd.concat(trial_list, axis=0)
+        save_path = os.path.join(save_dir, str(d.mouse) + '_' + str(d.date)
+                                 + '_df_' + trace_type + '.pkl')
+        trial_df.to_pickle(save_path)
+
+        # print output so you don't go crazy waiting
+        if verbose:
+            print('Day: ' + str(count) + ': ' + str(d.mouse)
+                  + '_' + str(d.date) + ': ' + str(len(trial_list)))
+            count = count + 1
+
+        # reset trial list before starting new day
+        trial_list = []
 
 
 def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6):

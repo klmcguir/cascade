@@ -10,7 +10,7 @@ from .. import df
 
 def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
                 day_line=True, run_line=False, match_clim=True,
-                vmin=None, vmax=None):
+                vmin=None, vmax=None, verbose=False):
     """ Create heatmap of each cell aligned across time.
 
     Parameters:
@@ -101,7 +101,7 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
         toplot = dff.pivot_table(index=['date', 'run','trial_idx','orientation'],
                                 columns='timestamp', values='trace')
         g = sns.FacetGrid(toplot.reset_index('orientation'), col='orientation',
-                          height=6, sharey=False, dropna=False)
+                          height=8, sharey=False, dropna=False)
         g.map_dataframe(_myheatmap, vmax=vmax, vmin=vmin, center=0, xticklabels=31, cmap=cmap)
         g.fig.suptitle('Cell ' + str(cell_idx), x=0.98)
 
@@ -121,7 +121,7 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
 
             # get metadata for this orientation/set of trials
             meta = dff.loc[dff['orientation'] == oris[count], ['condition',
-                          'ensure', 'quinine', 'firstlick', 'run_type']]
+                           'ensure', 'quinine', 'firstlick', 'run_type']]
             meta = meta.reset_index()
             meta = meta.drop_duplicates()
             ensure = np.array(meta['ensure'])
@@ -145,7 +145,7 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
                     cs_line_color = colors[cs_colors[cs]]
                     cs_y = np.where(css == cs)[0]
                     cs_y = [cs_y[0]-0.5, cs_y[-1]+0.5]
-                    ax.plot((5, 5), cs_y, color=cs_line_color, ls='-',
+                    ax.plot((3, 3), cs_y, color=cs_line_color, ls='-',
                             lw=15, alpha=0.8, solid_capstyle='butt')
 
             # find days where learning or reversal start
@@ -159,7 +159,7 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
                     day_y = np.where(days == day)[0]
                     day_y = [day_y[0]-0.5, day_y[-1]+0.5]
                     day_bar_color = day_colors[sorted(day_colors.keys())[count_d%2]]
-                    ax.plot((9, 9), day_y, color=day_bar_color, ls='-',
+                    ax.plot((6, 6), day_y, color=day_bar_color, ls='-',
                             lw=6, alpha=0.4, solid_capstyle='butt')
                     count_d = count_d + 1
 
@@ -195,22 +195,22 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
             for l in range(len(quinine)):
                 if np.isfinite(quinine[l]):
                     x = [quinine[l], quinine[l]]
-                    y = [l-.25, l+.25]
-                    ax.plot(x, y, color='#0fffc3', ls='-', lw=2.5)
+                    y = [l, l]
+                    ax.plot(x, y, color='#0fffc3', ls='', marker='.', markersize=2)
 
             # plot ensure
             for l in range(len(ensure)):
                 if np.isfinite(ensure[l]):
                     x = [ensure[l], ensure[l]]
-                    y = [l-.25, l+.25]
-                    ax.plot(x, y, color='#ffb30f', ls='-', lw=2.5)
+                    y = [l, l]
+                    ax.plot(x, y, color='#ffb30f', ls='', marker='.', markersize=2)
 
             # plot licks
             for l in range(len(firstlick)):
                 if np.isfinite(firstlick[l]):
                     x = [firstlick[l], firstlick[l]]
-                    y = [l-.25, l+.25]
-                    ax.plot(x, y, color='#7237f2', ls='-', lw=2.5)
+                    y = [l, l]
+                    ax.plot(x, y, color='#7237f2', ls='', marker='.', markersize=2)
 
             # reset ylabels
             if y_lim[0] < 100:
@@ -287,14 +287,19 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
                 ax.collections[0].set_clim(vmax=cmax, vmin=cmin)
                 ax.collections[0].set_cmap(ccmap)
 
-        # save figures into folder
+        # save figures into folder structure
         save_dir = os.path.join(flow.paths.graphd, str(mouse))
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        save_dir = os.path.join(save_dir, 'heatmaps ' + str(trace_type))
         if not os.path.isdir(save_dir):
             os.mkdir(save_dir)
         path = os.path.join(save_dir, str(mouse) + '_cell_' + str(cell_idx) + '_' + trace_type + '.png')
         print('Cell: ' + str(cell_idx) + ': done.')
         g.savefig(path)
-        plt.close()
+
+        if not verbose:
+            plt.close()
 
 
 def _myheatmap(data, **kwargs):
