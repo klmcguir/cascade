@@ -82,7 +82,10 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
             if (t2p.d['framerate'] > 30) and downsample:
                 timestamps = timestamps[::2][:np.shape(run_traces)[1]]
 
-            # check for missing cells/extra cells on end
+            # check that you don't have extra cells
+            if len(cell_ids) != np.shape(run_traces)[0]:
+                run_traces = run_traces[range(0,len(cell_ids)), :, :]
+                warnings.warn(str(run) + ': You have more cell traces than cell_idx: skipping extra cells.')
 
             # build matrices to match cell, trial, time variables to traces
             trial_mat = np.ones(np.shape(run_traces))
@@ -98,34 +101,22 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
                 time_mat[:, timept, :] = timestamps[timept]
 
             # reshape and build df
+            vec_sz = run_traces.size
+            index = pd.MultiIndex.from_arrays([
+                [run.mouse] * vec_sz,
+                [run.date] * vec_sz,
+                [run.run] * vec_sz,
+                trial_mat.reshape(vec_sz),
+                cell_mat.reshape(vec_sz),
+                time_mat.reshape(vec_sz)
+                ],
+                names=['mouse', 'date', 'run', 'trial_idx',
+                       'cell_idx', 'timestamp'])
 
-            # loop through and append each trial (slice of cstraces)
-            for trial in range(np.shape(run_traces)[2]):
-                for cell in range(np.shape(run_traces)[0]):
-                    # to take care of an indexing error from original pull
-                    # or signals creation/fabrication, don't look beyond
-                    # known ids
-                    if cell >= len(cell_ids):
-                        if trial == range(np.shape(run_traces)[2])[0]:
-                            warnings.warn('You have more cell traces than ' +
-                                          'cell_idx: skipping extra cells.')
-                        break
+            # append all runs across a day together in a list
+            trial_list.append(pd.DataFrame({'trace': run_traces.reshape(vec_sz)}, index=index))
 
-                    index = pd.MultiIndex.from_arrays([
-                                [run.mouse] * np.shape(run_traces)[1],
-                                [run.date] * np.shape(run_traces)[1],
-                                [run.run] * np.shape(run_traces)[1],
-                                [int(trial)] * np.shape(run_traces)[1],
-                                [cell_ids[cell]] * np.shape(run_traces)[1],
-                                timestamps
-                                ],
-                                names=['mouse', 'date', 'run', 'trial_idx',
-                                       'cell_idx', 'timestamp'])
-
-                    # append all trials across all runs together in a list
-                    trial_list.append(pd.DataFrame({'trace': np.squeeze(run_traces[cell, :, trial])}, index=index))
-
-            # clear your t2p to save RAM
+            # clear your t2p to save memory
             run._t2p = None
 
         # create folder structure if needed
@@ -152,7 +143,8 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
         trial_list = []
 
 
-def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6):
+def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
+              downsample=True, verbose=True):
     """ Create a pandas dataframe of all of your trial metadata for a mouse
 
     Parameters:
@@ -240,21 +232,25 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6):
     #     offsets = all_offsets - all_onsets + (np.abs(start_time)*np.round(t2p.d['framerate']))
     #     offsets = offsets.flatten()
 
-        # get ensure relative to triggered data
+        # get ensure/ensure/firstlick relative to triggered data
         ensure = t2p.ensure()
         ensure = ensure.astype('float')
         ensure[ensure == 0] = np.nan
         ensure = ensure - all_onsets + (np.abs(start_time)*np.round(t2p.d['framerate']))
 
-        # get quinine relative to triggered data
         quinine = t2p.quinine()
         quinine = quinine.astype('float')
         quinine[quinine == 0] = np.nan
         quinine = quinine - all_onsets + (np.abs(start_time)*np.round(t2p.d['framerate']))
 
-        # get firstlick for trial
         firstlick = t2p.firstlick('')[trial_idx]
         firstlick = firstlick + (np.abs(start_time)*np.round(t2p.d['framerate']))
+
+        # downsample all timestamps to 15Hz if framerate is 31Hz
+        if (t2p.d['framerate'] > 30) and downsample:
+            ensure = ensure/2
+            quinine = quinine/2
+            firstlick = firstlick/2
 
         # create your index out of relevant variables
         index = pd.MultiIndex.from_arrays([
