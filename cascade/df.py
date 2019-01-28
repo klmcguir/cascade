@@ -40,18 +40,6 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
             cell_ids = flow.xday._read_crossday_ids(run.mouse, run.date)
             cell_ids = [int(s) for s in cell_ids]
 
-            # get all of your trial variables of interest
-            # use to index along axis=2 in cstraces/run_traces
-            oris = []
-            css = []
-            for trial in t2p.d['condition']:
-                codename = t2p.d['codes'].keys()[t2p.d['codes'].values().index(t2p.d['condition'][trial])]
-                oriname = t2p.d['orientations'][codename]
-                css.append(codename)
-                oris.append(oriname)
-
-            oris = np.array(oris)
-
             # trigger all trials around stimulus onsets
             run_traces = t2p.cstraces('', start_s=start_time, end_s=end_time,
                                       trace_type=trace_type, cutoff_before_lick_ms=-1,
@@ -178,26 +166,36 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
                         baseline_to_stimulus=True)
         trial_idx = range(np.shape(run_traces)[2])
 
-        # get your runtype and relevant tags
-        run_type = run.run_type
-        run_type = [run_type]*len(trial_idx)
-
-        # get hunger state for all trials, consider hungry if not sated
+        # get your learning-state
+        run_tags = [str(s) for s in run.tags]
         run_tags = run.tags
-        hunger = ['hungry' for s in range(len(run_tags)) if run_tags[s] == 'hungry']
-        if hunger == []:
-            hunger = ['hungry' for s in range(len(run_tags)) if run_tags[s] != 'sated']
-        hunger = np.unique(hunger)[0]
+        if 'naive' in run_tags:
+            learning_state = 'naive'
+        elif 'learning' in run_tags:
+            learning_state = 'learning'
+        elif 'reversal1' in run_tags:
+            learning_state = 'reversal1'
+        elif 'reversal2' in run_tags:
+            learning_state = 'reversal2'
+        learning_state = [learning_state]*len(trial_idx)
+
+        # get hunger-state for all trials, consider hungry if not sated
+        if 'sated' in run_tags:
+            hunger = 'sated'
+        else:
+            hunger = 'hungry'
         hunger = [hunger]*len(trial_idx)
 
-        # get relevant trial-distinguising tags excluding kelly, hunger state, and run_type
-        tags = [run_tags[s] for s in range(len(run_tags)) if run_tags[s] != hunger[0]
+        # get relevant trial-distinguising tags excluding kelly, hunger-state, learning-state
+        tags = [str(run_tags[s]) for s in range(len(run_tags)) if run_tags[s] != hunger[0]
+                and run_tags[s] != learning_state[0]
                 and run_tags[s] != 'kelly'
-                and run_tags[s] != run_type[0]]
+                and run_tags[s] != 'learning_start'
+                and run_tags[s] != 'reversal1_start'
+                and run_tags[s] != 'reversal2_start']
         if tags == []:  # define as "standard" if the run is not another option
             tags = ['standard']
-        tags = tags[0]
-        tags = [tags]*len(trial_idx)
+        tags = [tags[0]]*len(trial_idx)
 
         # get trialerror ensureing you don't include runthrough at end of trials
         trialerror = np.array(t2p.d['trialerror'][trial_idx])
@@ -263,7 +261,7 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
 
         data = {'orientation':  oris, 'condition': css,
                 'trialerror': trialerror, 'hunger': hunger,
-                'run_type': run_type, 'tag': tags,
+                'learning_state': learning_state, 'tag': tags,
                 'firstlick': firstlick, 'ensure': ensure,
                 'quinine': quinine, 'speed': speed}
 
@@ -272,13 +270,19 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
 
         # clear your t2p to save RAM
         run._t2p = None
-        print('Run: ' + str(run) + ': ' + str(len(trial_list)))
+        if verbose:
+            print('Run: ' + str(run) + ': ' + str(len(trial_list)))
 
     # concatenate all runs together in final dataframe
     trial_df = pd.concat(trial_list, axis=0)
 
-    # save
-    save_path = os.path.join(flow.paths.outd, str(runs[0].mouse) + '_df_' + trace_type + '_trialmeta.pkl')
+    # create folder structure if needed
+    save_dir = os.path.join(flow.paths.outd, str(mouse))
+    if not os.path.isdir(save_dir):
+        os.mkdir(save_dir)
+
+    # save (trace_type should be irrelevant for metadata)
+    save_path = os.path.join(save_dir, str(runs[0].mouse) + '_df_trialmeta.pkl')
     trial_df.to_pickle(save_path)
 
 
@@ -479,11 +483,14 @@ def singlecell(mouse, trace_type, cell_idx, xmap=None):
     # correct cell_idx (1 indexed) for use indexing (0 indexed)
     cell_num = int(cell_idx - 1)
 
+    # assign folder structure for loading
+    save_dir = os.path.join(flow.paths.outd, str(mouse), 'dfs ' + str(trace_type))
+
     # load all dfs into list that contain the cell of interest
     cell_xday = []
     for d in np.where(xmap[cell_num, :] == 1)[0]:
 
-        path = os.path.join(flow.paths.outd, str(days[d].mouse) + '_'
+        path = os.path.join(save_dir, str(days[d].mouse) + '_'
                             + str(days[d].date) + '_df_' + trace_type + '.pkl')
         dft = pd.read_pickle(path)
 

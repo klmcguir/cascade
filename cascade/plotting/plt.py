@@ -10,7 +10,7 @@ from .. import df
 
 def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
                 day_line=True, run_line=False, match_clim=True,
-                vmin=None, vmax=None, verbose=False):
+                vmin=None, vmax=None, smooth=True, verbose=False):
     """ Create heatmap of each cell aligned across time.
 
     Parameters:
@@ -59,11 +59,12 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
     cmap = sns.diverging_palette(220, 10, as_cmap=True)
 
     # load metadata
-    meta_path = os.path.join(flow.paths.outd, mouse + '_df_' + trace_type + '_trialmeta.pkl')
+    save_dir = os.path.join(flow.paths.outd, str(mouse))
+    meta_path = os.path.join(save_dir, str(mouse) + '_df_trialmeta.pkl')
     dfm = pd.read_pickle(meta_path)
 
     # create a binary map of every day a cell is present
-    xmap = df.get_xdaymap('OA27')
+    xmap = df.get_xdaymap(mouse)
 
     # set up range conditonal on input
     if cell_id is None:
@@ -89,10 +90,14 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
         # merge on filtered trials
         dff = pd.merge(dft, dfm, on=['mouse', 'date', 'run', 'trial_idx'], how='inner')
 
+        # smooth signal with rolling 3 unit window
+        if smooth:
+            dff['trace'] = dff['trace'].rolling(3).mean()
+
         # get timestamp info for plotting lines
-        times = dff['timestamp']
-        zero_sec = np.where(np.unique(times) >= 0)[0][0]
-        three_sec = np.where(np.unique(times) >= 3)[0][0]
+        times = np.unique(dff['timestamp'])
+        zero_sec = np.where(times <= 0)[0][-1]
+        three_sec = np.where(times <= 3)[0][-1]
 
         # oris
         oris = np.array([0, 135, 270])
@@ -121,14 +126,14 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
 
             # get metadata for this orientation/set of trials
             meta = dff.loc[dff['orientation'] == oris[count], ['condition',
-                           'ensure', 'quinine', 'firstlick', 'run_type']]
+                           'ensure', 'quinine', 'firstlick', 'learning_state']]
             meta = meta.reset_index()
             meta = meta.drop_duplicates()
             ensure = np.array(meta['ensure'])
             quinine = np.array(meta['quinine'])
             firstlick = np.array(meta['firstlick'])
             css = meta['condition']
-            run_type = meta['run_type']
+            learning_state = meta['learning_state']
 
             ori_inds = np.array(toplot.index.get_level_values('orientation'))
             ori_inds = ori_inds == oris[count]
@@ -140,12 +145,12 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
 
             # plot cs color bar/line
             if cs_bar:
-                css[run_type == 'naive'] = 'naive'
+                css[learning_state == 'naive'] = 'naive'
                 for cs in np.unique(css):
                     cs_line_color = colors[cs_colors[cs]]
                     cs_y = np.where(css == cs)[0]
                     cs_y = [cs_y[0]-0.5, cs_y[-1]+0.5]
-                    ax.plot((3, 3), cs_y, color=cs_line_color, ls='-',
+                    ax.plot((2, 2), cs_y, color=cs_line_color, ls='-',
                             lw=15, alpha=0.8, solid_capstyle='butt')
 
             # find days where learning or reversal start
@@ -159,7 +164,7 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
                     day_y = np.where(days == day)[0]
                     day_y = [day_y[0]-0.5, day_y[-1]+0.5]
                     day_bar_color = day_colors[sorted(day_colors.keys())[count_d%2]]
-                    ax.plot((6, 6), day_y, color=day_bar_color, ls='-',
+                    ax.plot((3.5, 3.5), day_y, color=day_bar_color, ls='-',
                             lw=6, alpha=0.4, solid_capstyle='butt')
                     count_d = count_d + 1
 
@@ -212,7 +217,7 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
                     y = [l, l]
                     ax.plot(x, y, color='#7237f2', ls='', marker='.', markersize=2)
 
-            # reset ylabels
+            # reset yticklabels
             if y_lim[0] < 100:
                 step = 10
             elif y_lim[0] < 200:
@@ -274,6 +279,14 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
             ax.set_yticks(base_yticks)
             ax.set_yticklabels(base_ylabels)
 
+            # reset xticklabels
+            xticklabels = np.array([-1, 0, 1, 2, 3, 4, 5, 6])
+            xticklabels = xticklabels[(xticklabels > times[0]) & (xticklabels < times[-1])]
+            xticks = [np.where(times <= s)[0][-1] for s in xticklabels]
+            ax.set_xticks(xticks)
+            ax.set_xticklabels(xticklabels, rotation='horizontal')
+
+            # update count through loops
             count = count + 1
 
         # match vmin and max across plots (using cmax to choose cmap and cmin)
