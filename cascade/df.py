@@ -200,15 +200,14 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
         # get trialerror ensuring you don't include runthrough at end of trials
         trialerror = np.array(t2p.d['trialerror'][trial_idx])
 
-        # get cs and orientation infor for each trial
+        # get cs and orientation info for each trial
         oris = []
         css = []
         for trial in t2p.d['condition'][trial_idx]:
-            # get cs and ori
-            codename = t2p.d['codes'].keys()[t2p.d['codes'].values().index(trial)]
-            oriname = t2p.d['orientations'][codename]
-            css.append(codename)
-            oris.append(oriname)
+            for k, v in t2p.d['codes'].items():
+                if v == trial:
+                    css.append(k)
+                    oris.append(t2p.d['orientations'][k])
 
         # get mean running speed for time stim is on screen
         all_onsets = t2p.csonsets()
