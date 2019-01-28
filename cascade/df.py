@@ -197,7 +197,7 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
             tags = ['standard']
         tags = [tags[0]]*len(trial_idx)
 
-        # get trialerror ensureing you don't include runthrough at end of trials
+        # get trialerror ensuring you don't include runthrough at end of trials
         trialerror = np.array(t2p.d['trialerror'][trial_idx])
 
         # get cs and orientation infor for each trial
