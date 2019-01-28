@@ -56,9 +56,9 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
                     sz = np.shape(run_traces)
 
                 # downsample
-                ds_traces = np.zeros((sz[0], sz[1]/2, sz[2]))
+                ds_traces = np.zeros((sz[0], int(sz[1]/2), sz[2]))
                 for trial in range(sz[2]):
-                    a = run_traces[:, :, trial].reshape(sz[0], sz[1]/2, 2)
+                    a = run_traces[:, :, trial].reshape(sz[0], int(sz[1]/2), 2)
                     ds_traces[:, :, trial] = np.nanmean(a, axis=2)
 
                 run_traces = ds_traces
@@ -204,10 +204,13 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
         oris = []
         css = []
         for trial in t2p.d['condition'][trial_idx]:
-            for k, v in t2p.d['codes'].items():
-                if v == trial:
-                    css.append(k)
-                    oris.append(t2p.d['orientations'][k])
+            try:  # python 3
+                codename = list(t2p.d['codes'].keys())[list(t2p.d['codes'].values()).index(trial)]
+            except:  # python 2
+                codename = t2p.d['codes'].keys()[t2p.d['codes'].values().index(trial)]
+            oriname = t2p.d['orientations'][codename]
+            css.append(codename)
+            oris.append(oriname)
 
         # get mean running speed for time stim is on screen
         all_onsets = t2p.csonsets()
