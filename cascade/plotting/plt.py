@@ -90,6 +90,11 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
         # merge on filtered trials
         dff = pd.merge(dft, dfm, on=['mouse', 'date', 'run', 'trial_idx'], how='inner')
 
+        # check that df is not empty, skip dfs that filtering empties
+        if dff.empty:
+            print('Cell: ' + str(cell_idx) + ': skipped: empty dataframe after merge.')
+            continue
+
         # smooth signal with rolling 3 unit window
         if smooth:
             dff['trace'] = dff['trace'].rolling(3).mean()
@@ -149,7 +154,7 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
                 for cs in np.unique(css):
                     cs_line_color = colors[cs_colors[cs]]
                     cs_y = np.where(css == cs)[0]
-                    cs_y = [cs_y[0]-0.5, cs_y[-1]+0.5]
+                    cs_y = [cs_y[0], cs_y[-1]+1]
                     ax.plot((2, 2), cs_y, color=cs_line_color, ls='-',
                             lw=15, alpha=0.8, solid_capstyle='butt')
 
@@ -162,7 +167,7 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
                 count_d = 0
                 for day in np.unique(days):
                     day_y = np.where(days == day)[0]
-                    day_y = [day_y[0]-0.5, day_y[-1]+0.5]
+                    day_y = [day_y[0], day_y[-1]+1]
                     day_bar_color = day_colors[sorted(day_colors.keys())[count_d%2]]
                     ax.plot((3.5, 3.5), day_y, color=day_bar_color, ls='-',
                             lw=6, alpha=0.4, solid_capstyle='butt')
@@ -179,7 +184,7 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
                 days = np.diff(days)
                 day_ind = np.where(days > 0)[0]
                 for y in day_ind:
-                    day_y = [y, y]
+                    day_y = [y+1, y+1]
                     ax.plot(x_lim, day_y, color='#8e8e8e', ls='-', lw=1, alpha=0.8)
 
             # plot lines between runs
@@ -189,7 +194,7 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
                 runs = np.diff(runs)
                 run_ind = np.where(runs > 0)[0]
                 for y in run_ind:
-                    run_y = [y, y]
+                    run_y = [y+1, y+1]
                     ax.plot(x_lim, run_y, color='#bababa', ls='-', lw=1,  alpha=0.8)
 
             # plot onset/offest lines
@@ -200,21 +205,21 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
             for l in range(len(quinine)):
                 if np.isfinite(quinine[l]):
                     x = [quinine[l], quinine[l]]
-                    y = [l, l]
+                    y = [l+0.5, l+0.5]
                     ax.plot(x, y, color='#0fffc3', ls='', marker='.', markersize=2)
 
             # plot ensure
             for l in range(len(ensure)):
                 if np.isfinite(ensure[l]):
                     x = [ensure[l], ensure[l]]
-                    y = [l, l]
+                    y = [l+0.5, l+0.5]
                     ax.plot(x, y, color='#ffb30f', ls='', marker='.', markersize=2)
 
             # plot licks
             for l in range(len(firstlick)):
                 if np.isfinite(firstlick[l]):
                     x = [firstlick[l], firstlick[l]]
-                    y = [l, l]
+                    y = [l+0.5, l+0.5]
                     ax.plot(x, y, color='#7237f2', ls='', marker='.', markersize=2)
 
             # reset yticklabels
