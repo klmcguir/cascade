@@ -25,9 +25,8 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
     dates = flow.metadata.DateSorter.frommeta(mice=[mouse])
 
     trial_list = []
-    count = 1
     # loop through all days for a mouse, build and save pandas df
-    for d in dates:
+    for count, d in enumerate(dates):
 
         # loop through runs on a particular day
         for run in d.runs():
@@ -43,7 +42,7 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
             # trigger all trials around stimulus onsets
             run_traces = t2p.cstraces('', start_s=start_time, end_s=end_time,
                                       trace_type=trace_type, cutoff_before_lick_ms=-1,
-                                      errortrials=-1, baseline=(0, -1),
+                                      errortrials=-1, baseline=(-1, 0),
                                       baseline_to_stimulus=True)
 
             # downsample all traces/timestamps to 15Hz if framerate is 31Hz
@@ -123,9 +122,8 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
 
         # print output so you don't go crazy waiting
         if verbose:
-            print('Day: ' + str(count) + ': ' + str(d.mouse)
+            print('Day: ' + str(count+1) + ': ' + str(d.mouse)
                   + '_' + str(d.date) + ': ' + str(len(trial_list)))
-            count = count + 1
 
         # reset trial list before starting new day
         trial_list = []
@@ -149,11 +147,6 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
 
     runs = flow.metadata.RunSorter.frommeta(mice=[mouse])
 
-    # triggering parameters
-    start_time = start_time
-    end_time = end_time
-    trace_type = trace_type
-
     trial_list = []
     for run in runs:
 
@@ -162,7 +155,7 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
 
         # trigger all trials around stimulus onsets to get trial number
         run_traces = t2p.cstraces('', start_s=start_time, end_s=end_time, trace_type=trace_type,
-                        cutoff_before_lick_ms=-1, errortrials=-1, baseline=(0, -1),
+                        cutoff_before_lick_ms=-1, errortrials=-1, baseline=(-1, 0),
                         baseline_to_stimulus=True)
         trial_idx = range(np.shape(run_traces)[2])
 
@@ -201,16 +194,9 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
         trialerror = np.array(t2p.d['trialerror'][trial_idx])
 
         # get cs and orientation info for each trial
-        oris = []
-        css = []
-        for trial in t2p.d['condition'][trial_idx]:
-            try:  # python 3
-                codename = list(t2p.d['codes'].keys())[list(t2p.d['codes'].values()).index(trial)]
-            except:  # python 2
-                codename = t2p.d['codes'].keys()[t2p.d['codes'].values().index(trial)]
-            oriname = t2p.d['orientations'][codename]
-            css.append(codename)
-            oris.append(oriname)
+        lookup = {v: k for k, v in t2p.d['codes'].items()}  # invert dict
+        css = [lookup[s] for s in t2p.d['condition'][trial_idx]]
+        oris = [t2p.d['orientations'][lookup[s]] for s in t2p.d['condition'][trial_idx]]
 
         # get mean running speed for time stim is on screen
         all_onsets = t2p.csonsets()
@@ -286,6 +272,88 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
     # save (trace_type should be irrelevant for metadata)
     save_path = os.path.join(save_dir, str(runs[0].mouse) + '_df_trialmeta.pkl')
     trial_df.to_pickle(save_path)
+
+
+def get_xdaymap(mouse):
+    """Build crossday binary map to use for efficient loading/indexing.
+
+    Parameters
+    ----------
+    mouse : mouse str
+
+    Returns
+    -------
+    ndarray
+        ncells x ndays - 0 and 1
+    """
+
+    # get all days for a mouse
+    days = flow.metadata.DateSorter.frommeta(mice=[mouse])
+
+    # check all cell ids and build a list for looping over ids
+    cell_mat = []
+    cell_vec = []
+    for day in days:
+        cell_ids = flow.xday._read_crossday_ids(day.mouse, day.date)
+        cell_ids = [int(s) for s in cell_ids]
+        cell_mat.append(cell_ids)
+        cell_vec.extend(cell_ids)
+    all_cells = np.unique(cell_vec)
+
+    # loop over ids and check if a cell exists for a given day
+    cell_map = np.zeros((len(all_cells), len(days)))
+    for day_num in range(len(days)):
+        for cell_num in range(len(all_cells)):
+            if np.isin(all_cells[cell_num], cell_mat[day_num]):
+                cell_map[cell_num, day_num] = 1
+
+    return cell_map
+
+
+def singlecell(mouse, trace_type, cell_idx, xmap=None):
+    """Build df for a single cell loading/indexing efficiently.
+
+    Parameters
+    ----------
+    mouse : str, mouse
+    trace_type : str, {'dff', 'zscore', 'deconvolved'}
+    cell_idx : int, one-indexed
+    xmap : ndarray, xdaymap, can be passed optionally to prevent build
+
+    Returns
+    -------
+    pandas df
+        df of all traces over all days for a cell
+    """
+
+    # get all days for mouse
+    days = flow.metadata.DateSorter.frommeta(mice=[mouse])
+
+    # build crossday binary map to use for efficient loading/indexing.
+    if xmap is None:
+        xmap = get_xdaymap(mouse)
+
+    # correct cell_idx (1 indexed) for use indexing (0 indexed)
+    cell_num = int(cell_idx - 1)
+
+    # assign folder structure for loading
+    save_dir = os.path.join(flow.paths.outd, str(mouse), 'dfs ' + str(trace_type))
+
+    # load all dfs into list that contain the cell of interest
+    cell_xday = []
+    for d in np.where(xmap[cell_num, :] == 1)[0]:
+
+        path = os.path.join(save_dir, str(days[d].mouse) + '_'
+                            + str(days[d].date) + '_df_' + trace_type + '.pkl')
+        dft = pd.read_pickle(path)
+
+        cell_indexer = dft.index.get_level_values('cell_idx') == cell_idx
+        dft = dft.loc[cell_indexer, :]
+        cell_xday.append(dft)
+
+    dft = pd.concat(cell_xday)
+
+    return dft
 
 
 def trialbhv(mouse, start_time=-1, end_time=6, verbose=True):
@@ -421,85 +489,3 @@ def behaviortraces(t2p, cs, start_s=-1, end_s=6, trace_type='speed',
                     out[:, :end-start, i] = trace[:, start:end]
 
     return out
-
-
-def get_xdaymap(mouse):
-    """Build crossday binary map to use for efficient loading/indexing.
-
-    Parameters
-    ----------
-    mouse : mouse str
-
-    Returns
-    -------
-    ndarray
-        ncells x ndays - 0 and 1
-    """
-
-    # get all days for a mouse
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse])
-
-    # check all cell ids and build a list for looping over ids
-    cell_mat = []
-    cell_vec = []
-    for day in days:
-        cell_ids = flow.xday._read_crossday_ids(day.mouse, day.date)
-        cell_ids = [int(s) for s in cell_ids]
-        cell_mat.append(cell_ids)
-        cell_vec.extend(cell_ids)
-    all_cells = np.unique(cell_vec)
-
-    # loop over ids and check if a cell exists for a given day
-    cell_map = np.zeros((len(all_cells), len(days)))
-    for day_num in range(len(days)):
-        for cell_num in range(len(all_cells)):
-            if np.isin(all_cells[cell_num], cell_mat[day_num]):
-                cell_map[cell_num, day_num] = 1
-
-    return cell_map
-
-
-def singlecell(mouse, trace_type, cell_idx, xmap=None):
-    """Build df for a single cell loading/indexing efficiently.
-
-    Parameters
-    ----------
-    mouse : str, mouse
-    trace_type : str, {'dff', 'zscore', 'deconvolved'}
-    cell_idx : int, one-indexed
-    xmap : ndarray, xdaymap, can be passed optionally to prevent build
-
-    Returns
-    -------
-    pandas df
-        df of all traces over all days for a cell
-    """
-
-    # get all days for mouse
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse])
-
-    # build crossday binary map to use for efficient loading/indexing.
-    if xmap is None:
-        xmap = get_xdaymap(mouse)
-
-    # correct cell_idx (1 indexed) for use indexing (0 indexed)
-    cell_num = int(cell_idx - 1)
-
-    # assign folder structure for loading
-    save_dir = os.path.join(flow.paths.outd, str(mouse), 'dfs ' + str(trace_type))
-
-    # load all dfs into list that contain the cell of interest
-    cell_xday = []
-    for d in np.where(xmap[cell_num, :] == 1)[0]:
-
-        path = os.path.join(save_dir, str(days[d].mouse) + '_'
-                            + str(days[d].date) + '_df_' + trace_type + '.pkl')
-        dft = pd.read_pickle(path)
-
-        cell_indexer = dft.index.get_level_values('cell_idx') == cell_idx
-        dft = dft.loc[cell_indexer, :]
-        cell_xday.append(dft)
-
-    dft = pd.concat(cell_xday)
-
-    return dft

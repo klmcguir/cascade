@@ -1,4 +1,4 @@
-"""Experimental metadata."""
+"""Experimental json metadata."""
 import os
 import flow
 
@@ -99,7 +99,7 @@ def dircreate(mouse, overwrite=False, update=False):
             # pick run_type based on tags
             all_tags = [run_tag1, run_tag2, date_tags]
             tag_flag = [False for s in range(len(all_tags)) if all_tags[s] == 'sated'
-                        or all_tags[s] == 'naive'
+                        # or all_tags[s] == 'naive'
                         or all_tags[s] == 'orientation_mapping'
                         or all_tags[s] == 'contrast'
                         or all_tags[s] == 'disengaged'
@@ -114,7 +114,8 @@ def dircreate(mouse, overwrite=False, update=False):
 
 
 def dirupdate_training(mouse, update=True):
-    """ Update existing json metadata to add tags or runtypes.
+    """ Update existing json metadata to add tags or runtypes to match
+    Arthur's and Jeff's data.
     """
 
     # get all runs for an existing mouse

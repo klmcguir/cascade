@@ -1,11 +1,15 @@
-"""Functions for plotting dataframes."""
+"""Functions for plotting dataframes and tca decomp."""
 import os
 import flow
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+import tensortools as tt
 import seaborn as sns
 import pandas as pd
+from copy import deepcopy
 from .. import df
+from .. import tca
 
 
 def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
@@ -317,6 +321,334 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
         g.savefig(path)
 
         if not verbose:
+            plt.close()
+
+
+def pairdaytcaqc(mouse, trace_type='zscore', verbose=False):
+    """ Plot similarity and error plots for TCA decomposition ensembles."""
+
+    # plotting options for the unconstrained and nonnegative models.
+    plot_options = {
+      'cp_als': {
+        'line_kw': {
+          'color': 'green',
+          'label': 'cp_als',
+        },
+        'scatter_kw': {
+          'color': 'green',
+          'alpha': 0.5,
+        },
+      },
+      'ncp_hals': {
+        'line_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+          'label': 'ncp_hals',
+        },
+        'scatter_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+        },
+      },
+      'ncp_bcd': {
+        'line_kw': {
+          'color': 'red',
+          'alpha': 0.5,
+          'label': 'ncp_bcd',
+        },
+        'scatter_kw': {
+          'color': 'red',
+          'alpha': 0.5,
+        },
+      },
+    }
+
+    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+
+    for c, day1 in enumerate(days, 0):
+        try:
+            day2 = days[c+1]
+        except IndexError:
+            print('done.')
+            break
+
+        # create folder structure if needed
+        # load
+        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
+        if not os.path.isdir(out_dir):
+            os.mkdir(out_dir)
+        load_dir = os.path.join(out_dir, 'tensors paired ' + str(trace_type))
+        if not os.path.isdir(load_dir):
+            os.mkdir(load_dir)
+        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
+                         + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
+        # save
+        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
+        if not os.path.isdir(ana_dir):
+            os.mkdir(ana_dir)
+        save_dir = os.path.join(ana_dir, 'tensors paired ' + str(trace_type))
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        save_dir = os.path.join(save_dir, 'qc')
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        error_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
+                         + '_' + str(day2.date) + '_objective.png')
+        sim_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
+                         + '_' + str(day2.date) + '_similarity.png')
+
+        # load your data
+        ensemble = np.load(tensor_path)
+        ensemble = ensemble.item()
+
+        # plot error and similarity plots across rank number
+        plt.figure()
+        for m in ensemble:
+            tt.plot_objective(ensemble[m], **plot_options[m])  # ax=ax[0])
+        plt.legend()
+        plt.title('Objective Function')
+        plt.savefig(error_path)
+        if verbose:
+            plt.show()
+        plt.clf()
+
+        for m in ensemble:
+            tt.plot_similarity(ensemble[m], **plot_options[m])  # ax=ax[1])
+        plt.legend()
+        plt.title('Iteration Similarity')
+        plt.savefig(sim_path)
+        if verbose:
+            plt.show()
+        plt.close()
+
+
+def pairdaytcaqcsummary(mouse, trace_type='zscore', method='ncp_bcd', verbose=False):
+    """ Plot similarity and error plots for TCA decomposition ensembles."""
+
+    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+
+    cmap = sns.color_palette('hls', n_colors=len(days))
+
+    # create figure and axes
+    buffer = 5
+    right_pad = 5
+
+    fig0 = plt.figure(figsize=(10, 8))
+    gs0 = GridSpec(100, 100, figure=fig0, left=0.05, right=.95, top=.95, bottom=0.05)
+    ax0 = fig0.add_subplot(gs0[10:90-buffer, :90-right_pad])
+
+    fig1 = plt.figure(figsize=(10, 8))
+    gs1 = GridSpec(100, 100, figure=fig1, left=0.05, right=.95, top=.95, bottom=0.05)
+    ax1 = fig1.add_subplot(gs1[10:90-buffer, :90-right_pad])
+
+    # plt.figure()
+    for c, day1 in enumerate(days, 0):
+        try:
+            day2 = days[c+1]
+        except IndexError:
+            print('done.')
+            break
+
+        # create folder structure if needed
+        # load paths
+        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
+        if not os.path.isdir(out_dir):
+            os.mkdir(out_dir)
+        load_dir = os.path.join(out_dir, 'tensors paired ' + str(trace_type))
+        if not os.path.isdir(load_dir):
+            os.mkdir(load_dir)
+        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
+                                   + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
+        # save paths
+        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
+        if not os.path.isdir(ana_dir):
+            os.mkdir(ana_dir)
+        save_dir = os.path.join(ana_dir, 'tensors paired ' + str(trace_type))
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        save_dir = os.path.join(save_dir, 'qc')
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        error_path = os.path.join(save_dir, str(day1.mouse) + '_summary_objective.png')
+        sim_path = os.path.join(save_dir, str(day1.mouse) + '_summary_similarity.png')
+
+        # plotting options for the unconstrained and nonnegative models.
+        plot_options = {
+          'cp_als': {
+            'line_kw': {
+              'color': cmap[c],
+              'label': 'pair ' + str(c),
+            },
+            'scatter_kw': {
+              'color': cmap[c],
+              'alpha': 0.5,
+            },
+          },
+          'ncp_hals': {
+            'line_kw': {
+              'color': cmap[c],
+              'alpha': 0.5,
+              'label': 'pair ' + str(c),
+            },
+            'scatter_kw': {
+              'color': cmap[c],
+              'alpha': 0.5,
+            },
+          },
+          'ncp_bcd': {
+            'line_kw': {
+              'color': cmap[c],
+              'alpha': 0.5,
+              'label': 'pair ' + str(c),
+            },
+            'scatter_kw': {
+              'color': cmap[c],
+              'alpha': 0.5,
+            },
+          },
+        }
+
+        # load your data
+        ensemble = np.load(tensor_path)
+        ensemble = ensemble.item()
+
+        # plot error and similarity plots across rank number
+        tt.plot_objective(ensemble[method], **plot_options[method], ax=ax0)
+        tt.plot_similarity(ensemble[method], **plot_options[method], ax=ax1)
+
+    # add legend, title
+    ax0.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+    ax0.set_title('Objective Function: ' + str(method) + ', ' + mouse)
+    ax1.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+    ax1.set_title('Iteration Similarity: ' + str(method) + ', ' + mouse)
+
+    # save figs
+    fig0.savefig(error_path, bbox_inches='tight')
+    fig1.savefig(sim_path, bbox_inches='tight')
+
+    if verbose:
+        fig0.show()
+        fig1.show()
+
+
+def pairdaytcafactors(mouse, trace_type='zscore', method='ncp_bcd', verbose=False):
+    """
+    Plot factors for TCA decomposition ensembles.
+    """
+
+    # plotting options for the unconstrained and nonnegative models.
+    plot_options = {
+      'cp_als': {
+        'line_kw': {
+          'color': 'red',
+          'label': 'cp_als',
+        },
+        'scatter_kw': {
+          'color': 'green',
+          'alpha': 0.5,
+        },
+        'bar_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+        },
+      },
+      'ncp_hals': {
+        'line_kw': {
+          'color': 'red',
+          'label': 'ncp_hals',
+        },
+        'scatter_kw': {
+          'color': 'green',
+          'alpha': 0.5,
+        },
+        'bar_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+        },
+      },
+      'ncp_bcd': {
+        'line_kw': {
+          'color': 'red',
+          'label': 'ncp_bcd',
+        },
+        'scatter_kw': {
+          'color': 'green',
+          'alpha': 0.5,
+        },
+        'bar_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+        },
+      },
+    }
+
+    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+
+    for c, day1 in enumerate(days, 0):
+        try:
+            day2 = days[c+1]
+        except IndexError:
+            print('done.')
+            break
+
+        # create folder structure if needed
+        # load
+        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
+        if not os.path.isdir(out_dir):
+            os.mkdir(out_dir)
+        load_dir = os.path.join(out_dir, 'tensors paired ' + str(trace_type))
+        if not os.path.isdir(load_dir):
+            os.mkdir(load_dir)
+        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
+                         + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
+        # save
+        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
+        if not os.path.isdir(ana_dir):
+            os.mkdir(ana_dir)
+        save_dir = os.path.join(ana_dir, 'tensors paired ' + str(trace_type))
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        save_dir = os.path.join(save_dir, 'factors')
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+
+        # load your data
+        ensemble = np.load(tensor_path)
+        ensemble = ensemble.item()
+
+
+        # make necessary dirs
+        date_dir = os.path.join(save_dir, str(day1.date) + '_' + str(day2.date) + ' ' + method)
+        if not os.path.isdir(date_dir):
+            os.mkdir(date_dir)
+
+        # sort neuron factors by component they belong to most
+        sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
+
+        for r in sort_ensemble.results:
+
+            fig = tt.plot_factors(sort_ensemble.results[r][0].factors, plots=['bar', 'line', 'scatter'],
+                            axes=None,
+                            scatter_kw=plot_options[method]['scatter_kw'],
+                            line_kw=plot_options[method]['line_kw'],
+                            bar_kw=plot_options[method]['bar_kw'])
+
+            ax = fig[0].axes
+            ax[0].set_title('Neuron factors')
+            ax[1].set_title('Temporal factors')
+            ax[2].set_title('Trial factors')
+
+            count = 1
+            for k in range(0, len(ax)):
+                if np.mod(k+1, 3) == 1:
+                    ax[k].set_ylabel('Component #' + str(count), rotation=0,
+                                     labelpad=45, verticalalignment='center', fontstyle='oblique')
+                    count = count + 1
+
+            # Show plots.
+            plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + '.png'), bbox_inches='tight')
+            if verbose:
+                plt.show()
             plt.close()
 
 
