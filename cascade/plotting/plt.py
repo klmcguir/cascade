@@ -531,6 +531,100 @@ def pairdaytcaqcsummary(mouse, trace_type='zscore', method='ncp_bcd', verbose=Fa
         fig1.show()
 
 
+def pairdaytcavarsummary(mouse, trace_type='zscore', method='ncp_bcd', verbose=False):
+
+    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+
+    cmap = sns.color_palette(sns.cubehelix_palette(len(days)))
+#     cmap = sns.color_palette('hls', n_colors=len(days))
+#     dmap = sns.hls_palette(len(days), l=.3, s=.8)
+
+    # create figure and axes
+    buffer = 5
+    right_pad = 5
+    fig = plt.figure(figsize=(10,8))
+    gs = GridSpec(100, 100, figure=fig, left=0.05, right=.95, top=.95, bottom=0.05)
+    ax = fig.add_subplot(gs[10:90-buffer, :90-right_pad])
+
+    for c, day1 in enumerate(days, 0):
+        try:
+            day2 = days[c+1]
+        except IndexError:
+            print('done.')
+            break
+
+        # create folder structure if needed
+        # load dirs
+        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
+        if not os.path.isdir(out_dir):
+            os.mkdir(out_dir)
+        load_dir = os.path.join(out_dir, 'tensors paired ' + str(trace_type))
+        if not os.path.isdir(load_dir):
+            os.mkdir(load_dir)
+        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
+                         + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
+        input_tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
+                         + '_' + str(day2.date) + '_pair_tensor_' + str(trace_type) + '.npy')
+
+        # save dirs
+        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
+        if not os.path.isdir(ana_dir):
+            os.mkdir(ana_dir)
+        save_dir = os.path.join(ana_dir, 'tensors paired ' + str(trace_type))
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        save_dir = os.path.join(save_dir, 'qc')
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        var_path = os.path.join(save_dir, str(day1.mouse) + '_summary_variance_cubehelix.png')
+
+        # load your data
+        ensemble = np.load(tensor_path)
+        ensemble = ensemble.item()
+        V = ensemble[method]
+        X = np.load(input_tensor_path)
+
+        # get reconstruction error as variance explained
+        var, var_s, x, x_s = [], [], [], []
+        for r in V.results:
+            bU = V.results[r][0].factors.full()
+            var.append((np.var(X) - np.var(X - bU)) / np.var(X))
+            x.append(r)
+            for it in range(0, len(V.results[r])):
+                U = V.results[r][it].factors.full()
+                var_s.extend([(np.var(X) - np.var(X - U)) / np.var(X)])
+                x_s.extend([r])
+
+        # mean response of neuron across trials
+        mU = np.mean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
+        var_mean = (np.var(X) - np.var(X - mU)) / np.var(X)
+
+        # smoothed response of neuron across time
+        smU = np.convolve(X.reshape((X.size)), np.ones(5, dtype=np.float64)/5, 'same').reshape(np.shape(X))
+        var_smooth = (np.var(X) - np.var(X - smU)) / np.var(X)
+
+        # plot
+        R = np.max([r for r in V.results.keys()])
+        ax.scatter(x_s, var_s, color=cmap[c], alpha=0.5)
+        ax.scatter([R+2], var_mean, color=cmap[c], alpha=0.5)
+        ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
+        ax.plot(x, var, label=('pair ' + str(c)), color=cmap[c])
+        ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c])
+        ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
+
+    # add labels/titles
+    x_labels = [str(R) for R in V.results]
+    x_labels.extend(['', 'mean\n cell\n response', '', 'smooth\n response\n (0.3s)'])
+    ax.set_xticks(range(1, len(V.results) + 5))
+    ax.set_xticklabels(x_labels)
+    ax.set_xlabel('model rank')
+    ax.set_ylabel('fractional variance explained')
+    ax.set_title('Variance Explained: ' + str(method) + ', ' + mouse)
+    ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+
+    fig.savefig(var_path, bbox_inches='tight')
+
+
 def pairdaytcafactors(mouse, trace_type='zscore', method='ncp_bcd', verbose=False):
     """
     Plot factors for TCA decomposition ensembles.
