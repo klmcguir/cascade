@@ -94,6 +94,7 @@ def singledaytca(mouse, tags=None,
         else:
             d1_ids_bool = np.array(d1_drive) > drive_threshold
             d1_sorter = np.argsort(d1_ids[d1_ids_bool])
+        ids = d1_ids[d1_ids_bool][d1_sorter]
 
         # TODO add in additional filter for being able to check for quality of xday alignment
 
@@ -160,7 +161,7 @@ def singledaytca(mouse, tags=None,
             output_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
                                               + '_single_decomp_' + str(trace_type) + '.npy')
             pair_meta.to_pickle(meta_path)
-            np.save(input_tensor_path, tensor)
+            np.save(input_tensor_path, tensor, ids)
 
             # run TCA - iterate over different fitting methods
             ensemble = {}
@@ -290,6 +291,9 @@ def pairdaytca(mouse, tags=None,
         d1_sorter = np.argsort(d1_ids[d1_ids_bool])
         d2_sorter = np.argsort(d2_ids[d2_ids_bool])
 
+        # list of ids for pair of days
+        ids = d1_ids[d1_ids_bool][d1_sorter]
+
         # check that the sort worked
         if np.nansum(np.sort(d1_ids[d1_ids_bool]) - np.sort(d2_ids[d2_ids_bool])) != 0:
             print('Error: cell IDs were not matched between days: ' + str(day1) + ', ' + str(day2))
@@ -399,7 +403,7 @@ def pairdaytca(mouse, tags=None,
             output_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
                              + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
             pair_meta.to_pickle(meta_path)
-            np.save(input_tensor_path, tensor)
+            np.save(input_tensor_path, tensor, ids)
 
             # run TCA - iterate over different fitting methods
             ensemble = {}

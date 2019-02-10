@@ -12,10 +12,11 @@ from .. import df
 from .. import tca
 
 
-def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
+def xday_heatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
                 day_line=True, run_line=False, match_clim=True,
                 vmin=None, vmax=None, smooth=True, verbose=False):
-    """ Create heatmap of each cell aligned across time.
+    """
+    Create heatmap of each cell aligned across time.
 
     Parameters:
     -----------
@@ -25,8 +26,9 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
     day_bar : logical; add checkerboard to match days on cs bar
     day_line : logical; add a lines between days
     run_line : logical; ddd lines between runs
+
     Returns:
-    ________
+    --------
     Saves figures to .../analysis folder
     """
 
@@ -324,8 +326,19 @@ def xdayheatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True
             plt.close()
 
 
-def pairdaytcaqc(mouse, trace_type='zscore', verbose=False):
-    """ Plot similarity and error plots for TCA decomposition ensembles."""
+def pairday_tca_qc(mouse, trace_type='zscore', verbose=False):
+    """
+    Plot similarity and error plots for TCA decomposition ensembles.
+
+    Parameters:
+    -----------
+    mouse : str; mouse name
+    trace_type : str; dff, zscore, deconvolved
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../qc
+    """
 
     # plotting options for the unconstrained and nonnegative models.
     plot_options = {
@@ -422,8 +435,21 @@ def pairdaytcaqc(mouse, trace_type='zscore', verbose=False):
         plt.close()
 
 
-def pairdaytcaqcsummary(mouse, trace_type='zscore', method='ncp_bcd', verbose=False):
-    """ Plot similarity and error plots for TCA decomposition ensembles."""
+def pairday_tca_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', verbose=False):
+    """
+    Plot similarity and objective (measure of reconstruction error) plots
+    across all days for TCA decomposition ensembles.
+
+    Parameters:
+    -----------
+    mouse : str; mouse name
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../qc
+    """
 
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
 
@@ -531,18 +557,30 @@ def pairdaytcaqcsummary(mouse, trace_type='zscore', method='ncp_bcd', verbose=Fa
         fig1.show()
 
 
-def pairdaytcavarsummary(mouse, trace_type='zscore', method='ncp_bcd', verbose=False):
+def pairday_tca_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', verbose=False):
+    """
+    Plot reconstruction error as variance explained across all days for
+    TCA decomposition ensembles.
+
+    Parameters:
+    -----------
+    mouse : str; mouse name
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../qc
+    """
 
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
 
     cmap = sns.color_palette(sns.cubehelix_palette(len(days)))
-#     cmap = sns.color_palette('hls', n_colors=len(days))
-#     dmap = sns.hls_palette(len(days), l=.3, s=.8)
 
     # create figure and axes
     buffer = 5
     right_pad = 5
-    fig = plt.figure(figsize=(10,8))
+    fig = plt.figure(figsize=(10, 8))
     gs = GridSpec(100, 100, figure=fig, left=0.05, right=.95, top=.95, bottom=0.05)
     ax = fig.add_subplot(gs[10:90-buffer, :90-right_pad])
 
@@ -625,9 +663,20 @@ def pairdaytcavarsummary(mouse, trace_type='zscore', method='ncp_bcd', verbose=F
     fig.savefig(var_path, bbox_inches='tight')
 
 
-def pairdaytcafactors(mouse, trace_type='zscore', method='ncp_bcd', verbose=False):
+def pairday_tca_factors(mouse, trace_type='zscore', method='ncp_bcd', verbose=False):
     """
-    Plot factors for TCA decomposition ensembles.
+    Plot TCA factors for all days and ranks/componenets for
+    TCA decomposition ensembles.
+
+    Parameters:
+    -----------
+    mouse : str; mouse name
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../factors
     """
 
     # plotting options for the unconstrained and nonnegative models.
@@ -744,6 +793,159 @@ def pairdaytcafactors(mouse, trace_type='zscore', method='ncp_bcd', verbose=Fals
             if verbose:
                 plt.show()
             plt.close()
+
+
+def pairday_tca_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', ve_min=0.05):
+    """
+    Plot TCA reconstruction error as variance explianed per cell
+    for TCA decomposition. Create folder of variance explained per cell
+    swarm plots. Calculate summary plots of 'fraction of maximum variance
+    explained' per cell by rank for all cells given a certain (ve_min) threshold
+    for maximum variance explained
+
+    Parameters:
+    -----------
+    mouse : str; mouse name
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+    ve_min: float; minimum variance explained for best rank per cell
+                   to be included in summary of fraction of maximum variance
+                   explained
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder/ .../qc
+                                             .../variance explained per cell
+
+    """
+
+    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+
+    ve, ve_max, ve_frac, rank_num, day_num, cell_num = [], [], [], [], [], []
+    for c, day1 in enumerate(days, 0):
+        try:
+            day2 = days[c+1]
+        except IndexError:
+            print('done.')
+            break
+
+        # get dirs for loading
+        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
+        load_dir = os.path.join(out_dir, 'tensors paired ' + str(trace_type))
+        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
+                         + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
+        input_tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
+                         + '_' + str(day2.date) + '_pair_tensor_' + str(trace_type) + '.npy')
+
+        # load your data
+        ensemble = np.load(tensor_path)
+        ensemble = ensemble.item()
+        V = ensemble[method]
+        X = np.load(input_tensor_path)
+
+        # get reconstruction error as variance explained per cell
+        for cell in range(0, np.shape(X)[0]):
+            rank_ve_vec = []
+            rank_vec = []
+            for r in V.results:
+                U = V.results[r][0].factors.full()
+                Usub = X - U
+                rank_ve = (np.var(X[cell, :, :]) - np.var(Usub[cell, :, :])) / np.var(X[cell, :, :])
+                rank_ve_vec.append(rank_ve)
+                rank_vec.append(r)
+            max_ve = np.max(rank_ve_vec)
+            ve.extend(rank_ve_vec)
+            ve_max.extend([max_ve for s in rank_ve_vec])
+            ve_frac.extend(rank_ve_vec / max_ve)
+            rank_num.extend(rank_vec)
+            day_num.extend([c+1 for s in rank_ve_vec])
+            cell_num.extend([cell for s in rank_ve_vec])
+
+    # build pd dataframe of all variance measures
+    index = pd.MultiIndex.from_arrays([
+    day_num,
+    rank_num,
+    ve,
+    ve_max,
+    ve_frac,
+    cell_num,
+    ],
+    names=['day', 'rank', 'variance_explained', 'max_ve', 'frac_ve', 'cell'])
+    df = pd.DataFrame(index=index)
+    df = df.reset_index()
+
+    # make a rainbow colormap, HUSL space but does not circle back on itself
+    cmap = sns.color_palette('hls', int(np.ceil(1.5*np.unique(df['rank'])[-1])))
+    cmap = cmap[0:np.unique(df['rank'])[-1]]
+
+    # Part 1
+    # slice df, only look at cells with a max variance >5%
+    sliced_df2 = df.loc[(df['day']) & (df['max_ve'] >= ve_min), :]
+
+    # CDF plot
+    fig1 = plt.figure(figsize=(15,9))
+    for i in np.unique(sliced_df2['rank']):
+        input_ve = sliced_df2.loc[(sliced_df2['rank'] == i),'frac_ve']
+        ax = sns.distplot(input_ve, kde_kws={'cumulative': True, 'lw': 2, 'color': cmap[i-1], 'label': str(i)}, hist=False)
+        lg = ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+        lg.set_title('rank')
+        ax.set_title(mouse + ', Fraction of maximum variance explained per cell, CDF')
+        ax.set_xlabel('Fraction of maximum variance explained')
+
+    # swarm plot
+    fig2 =plt.figure(figsize=(18,6))
+    ax2 = sns.violinplot(x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=3, alpha=1, inner=None, palette=cmap)
+    ax2.set_title(mouse + ', Fraction of maximum variance explained per cell, violin')
+    ax2.set_ylabel('Fraction of maximum variance explained')
+
+    # swarm plot
+    fig3 = plt.figure(figsize=(18,6))
+    ax3 = sns.swarmplot(x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=2, alpha=1, palette=cmap)
+    ax3.set_title(mouse + ', Fraction of maximum variance explained per cell, swarm')
+    ax3.set_ylabel('Fraction of maximum variance explained')
+
+    # set up saving paths/dir
+    analysis_dir = os.path.join(flow.paths.graphd, mouse)
+    if not os.path.isdir(analysis_dir): os.mkdir(analysis_dir)
+    save_dir = os.path.join(analysis_dir, 'tensors paired ' + trace_type, 'qc')
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    save_file_base = mouse + '_pairday_frac_max_var_expl_' + trace_type
+
+    # save
+    fig1.savefig(os.path.join(save_dir, save_file_base + '_CDF.png'), bbox_inches='tight')
+    fig2.savefig(os.path.join(save_dir, save_file_base + '_violin.png'), bbox_inches='tight')
+    fig3.savefig(os.path.join(save_dir, save_file_base + '_swarm.png'), bbox_inches='tight')
+
+    # Part 2
+    # plot sorted per "cell" varienace explained (approximate, this is by unique max_ve not cells per se)
+    # set up saving paths/dir
+    save_dir = os.path.join(save_dir, 'variance explained per cell')
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    save_file_base = mouse + '_pairday_var_expl_' + trace_type
+
+    for d in np.unique(df['day']):
+
+        sliced_df = df.loc[(df['day'] == d),:]
+
+        # make a rainbow colormap, HUSL space but does not circle back on itself
+        cmap = sns.color_palette('hls', int(np.ceil(1.5*np.unique(df['rank'])[-1])))
+        cmap = cmap[0:np.unique(df['rank'])[-1]]
+
+        fig0 = plt.figure(figsize=(20, 6))
+        ax0 = sns.swarmplot(x=sliced_df['max_ve'], y=sliced_df['variance_explained'],
+                            hue=sliced_df['rank'], palette=cmap)
+        lg = ax0.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+        lg.set_title('rank')
+        ax0.set_xlabel('cell count')
+        x_lim = ax0.get_xlim()
+        ticks = ax0.get_xticks()
+        new_ticks = [t for t in ticks[10::10]]
+        ax0.set_xticks(new_ticks)
+        ax0.set_xticklabels(np.arange(10, len(ticks), 10))
+        ax0.set_title(mouse + ', Variance explained per cell, day ' + str(d))
+
+        fig0.savefig(os.path.join(save_dir, save_file_base + '_day_' + str(d) + '.png'), bbox_inches='tight')
+        plt.close()
 
 
 def _myheatmap(data, **kwargs):
