@@ -425,8 +425,8 @@ def _sortfactors(my_method):
 
     Input
     -------
-    Tensortools ensemble method. (set of multiple initializations of TCA)
-        i.e., _sortfactors(ensemble['mcp_bcd'])
+    Tensortools ensemble with method. (set of multiple initializations of TCA)
+        i.e., _sortfactors(ensemble['ncp_bcd'])
 
     Returns
     -------
