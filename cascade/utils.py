@@ -1,9 +1,10 @@
-"""Functions general calculations and data management."""
+"""Functions for general calculations and data management."""
 import flow
+import pool
 import numpy as np
 
 
-def getcstraces(run, cs='', trace_type='zscore_iti', start_s=-1, end_s=6,
+def getcstraces(run, cs='', trace_type='zscore_iti', start_time=-1, end_time=6,
                 downsample=True, nan_artifacts=True, thresh=8,
                 warp=False):
     """
@@ -38,23 +39,23 @@ def getcstraces(run, cs='', trace_type='zscore_iti', start_s=-1, end_s=6,
     # trigger all trials around stimulus onsets
     if warp:
         run_traces = t2p.warpcstraces(cs, start_s=start_time, end_s=end_time,
-                              trace_type='dff', cutoff_before_lick_ms=-1,
-                              errortrials=-1, baseline=(-1, 0),
-                              baseline_to_stimulus=True)
+                                      trace_type='dff', cutoff_before_lick_ms=-1,
+                                      errortrials=-1, baseline=(-1, 0),
+                                      move_outcome_to=4, baseline_to_stimulus=True)
     else:
         run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
-                              trace_type='dff', cutoff_before_lick_ms=-1,
-                              errortrials=-1, baseline=(-1, 0),
-                              baseline_to_stimulus=True)
+                                  trace_type='dff', cutoff_before_lick_ms=-1,
+                                  errortrials=-1, baseline=(-1, 0),
+                                  baseline_to_stimulus=True)
 
     # z-score
     if 'zscore' in trace_type:
-        if tracetype == 'zscore':
+        if trace_type == 'zscore':
             mu = pool.calc.zscore.mu(date, nan_artifacts=nan_artifacts,
                                      thresh=thresh)
             sigma = pool.calc.zscore.sigma(date, nan_artifacts=nan_artifacts,
                                            thresh=thresh)
-        elif tracetype == 'zscore_iti':
+        elif trace_type == 'zscore_iti':
             mu = pool.calc.zscore.iti_mu(date, nan_artifacts=nan_artifacts)
             sigma = pool.calc.zscore.iti_sigma(date, nan_artifacts=nan_artifacts)
         sz = np.shape(run_traces)  # dims: (cells, time, trials)
@@ -70,7 +71,7 @@ def getcstraces(run, cs='', trace_type='zscore_iti', start_s=-1, end_s=6,
         nanpad[np.abs(run_traces) > thresh] = 1
         for cell in range(sz[0]):
             nanpad[cell, :] = np.convolve(nanpad[cell, :], np.ones(3), mode='same')
-        run_traces[noise != 0] = np.nan
+        run_traces[nanpad != 0] = np.nan
         run_traces = run_traces.reshape((sz[0], sz[1], sz[2]))
 
     # downsample all traces/timestamps to 15Hz if framerate is 31Hz

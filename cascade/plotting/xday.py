@@ -4,10 +4,8 @@ import flow
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-import tensortools as tt
 import seaborn as sns
 import pandas as pd
-from copy import deepcopy
 from .. import df
 from .. import tca
 
