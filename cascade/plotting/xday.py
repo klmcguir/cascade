@@ -1,4 +1,4 @@
-"""Functions for plotting dataframes and tca decomp."""
+"""Functions for plotting xday dataframes."""
 import os
 import flow
 import numpy as np
