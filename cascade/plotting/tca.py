@@ -12,7 +12,7 @@ from .. import df
 from .. import tca
 
 
-def pairday_qc(mouse, trace_type='zscore', verbose=False):
+def pairday_qc(mouse, trace_type='zscore', cs='', warp=False, verbose=False):
     """
     Plot similarity and error plots for TCA decomposition ensembles.
 
@@ -72,25 +72,24 @@ def pairday_qc(mouse, trace_type='zscore', verbose=False):
             break
 
         # create folder structure if needed
+        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
+        warp_tag = '' if warp is False else ' warp'
+        folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
+
         # load
         out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir):
-            os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, 'tensors paired ' + str(trace_type))
-        if not os.path.isdir(load_dir):
-            os.mkdir(load_dir)
+        if not os.path.isdir(out_dir): os.mkdir(out_dir)
+        load_dir = os.path.join(out_dir, folder_name)
+        if not os.path.isdir(load_dir): os.mkdir(load_dir)
         tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
                          + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
         # save
         ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir):
-            os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, 'tensors paired ' + str(trace_type))
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
+        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
+        save_dir = os.path.join(ana_dir, folder_name)
+        if not os.path.isdir(save_dir): os.mkdir(save_dir)
         save_dir = os.path.join(save_dir, 'qc')
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
+        if not os.path.isdir(save_dir): os.mkdir(save_dir)
         error_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
                          + '_' + str(day2.date) + '_objective.png')
         sim_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
@@ -121,7 +120,7 @@ def pairday_qc(mouse, trace_type='zscore', verbose=False):
         plt.close()
 
 
-def pairday_factors(mouse, trace_type='zscore', method='ncp_bcd', verbose=False):
+def pairday_factors(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, verbose=False):
     """
     Plot TCA factors for all days and ranks/componenets for
     TCA decomposition ensembles.
@@ -193,25 +192,24 @@ def pairday_factors(mouse, trace_type='zscore', method='ncp_bcd', verbose=False)
             break
 
         # create folder structure if needed
+        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
+        warp_tag = '' if warp is False else ' warp'
+        folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
+
         # load
         out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir):
-            os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, 'tensors paired ' + str(trace_type))
-        if not os.path.isdir(load_dir):
-            os.mkdir(load_dir)
+        if not os.path.isdir(out_dir): os.mkdir(out_dir)
+        load_dir = os.path.join(out_dir, folder_name)
+        if not os.path.isdir(load_dir): os.mkdir(load_dir)
         tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
                          + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
         # save
         ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir):
-            os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, 'tensors paired ' + str(trace_type))
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
+        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
+        save_dir = os.path.join(ana_dir, folder_name)
+        if not os.path.isdir(save_dir): os.mkdir(save_dir)
         save_dir = os.path.join(save_dir, 'factors')
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
+        if not os.path.isdir(save_dir): os.mkdir(save_dir)
 
         # load your data
         ensemble = np.load(tensor_path)
@@ -253,7 +251,267 @@ def pairday_factors(mouse, trace_type='zscore', method='ncp_bcd', verbose=False)
             plt.close()
 
 
-def pairday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', verbose=False):
+def pairday_factors_annotated(mouse='OA27', trace_type='zscore_iti', method='ncp_bcd',
+                              cs='', warp=False, extra_col=4, alpha=0.6, plot_running=True,
+                              verbose=False):
+
+    """
+    Plot TCA factors with trial metadata annotations for all days
+    and ranks/componenets for TCA decomposition ensembles.
+
+    Parameters:
+    -----------
+    mouse : str
+        Mouse name.
+    trace_type : str
+        dff, zscore, zscore_iti, zscore_day, deconvolved
+    method : str
+        TCA fit method from tensortools
+    cs : str
+        Cs stimuli to include, plus/minus/neutral, 0/135/270, etc. '' empty
+        includes all stimuli
+    warp : bool
+        Use traces with time-warped outcome.
+    extra_col : int
+        Number of columns to add to the original three factor columns
+    alpha : float
+        Value between 0 and 1 for transparency of markers
+    plot_running : bool
+        Include trace of scaled (to plot max) average running speed during trial
+    verbose : bool
+        Show plots as they are made.
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../factors annotated
+    """
+
+    # plotting options for the unconstrained and nonnegative models.
+    plot_options = {
+      'cp_als': {
+        'line_kw': {
+          'color': 'red',
+          'label': 'cp_als',
+        },
+        'scatter_kw': {
+          'color': 'green',
+          'alpha': 0.5,
+        },
+        'bar_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+        },
+      },
+      'ncp_hals': {
+        'line_kw': {
+          'color': 'red',
+          'label': 'ncp_hals',
+        },
+        'scatter_kw': {
+          'color': 'green',
+          'alpha': 0.5,
+        },
+        'bar_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+        },
+      },
+      'ncp_bcd': {
+        'line_kw': {
+          'color': 'red',
+          'label': 'ncp_bcd',
+        },
+        'scatter_kw': {
+          'color': 'green',
+          'alpha': 0.5,
+        },
+        'bar_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+        },
+      },
+    }
+
+    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+
+    for c, day1 in enumerate(days, 0):
+        try:
+            day2 = days[c+1]
+        except IndexError:
+            print('done.')
+            break
+
+        # create folder structure if needed
+        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
+        warp_tag = '' if warp is False else ' warp'
+        folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
+
+        # load
+        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
+        if not os.path.isdir(out_dir): os.mkdir(out_dir)
+        load_dir = os.path.join(out_dir, folder_name)
+        if not os.path.isdir(load_dir): os.mkdir(load_dir)
+        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
+                         + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
+        meta_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
+                     + '_' + str(day2.date) + '_df_pair_meta.pkl')
+        # save
+        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
+        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
+        save_dir = os.path.join(ana_dir, folder_name)
+        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        save_dir = os.path.join(save_dir, 'factors annotated')
+        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+
+        # load your data
+        ensemble = np.load(tensor_path)
+        ensemble = ensemble.item()
+        meta = pd.read_pickle(meta_path)
+        orientation = meta['orientation']
+        trial_num = np.arange(0, len(orientation))
+        condition = meta['condition']
+        trialerror = meta['trialerror']
+        hunger = meta['hunger']
+        speed = meta['speed']
+
+        # make necessary dirs
+        date_dir = os.path.join(save_dir, str(day1.date) + '_' + str(day2.date) + ' ' + method)
+        if not os.path.isdir(date_dir):
+            os.mkdir(date_dir)
+
+        # sort neuron factors by component they belong to most
+        sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
+
+        for r in sort_ensemble.results:
+
+            U = sort_ensemble.results[r][0].factors
+
+            fig, axes = plt.subplots(U.rank, U.ndim + extra_col, figsize=(9 + extra_col, U.rank))
+            figt = tt.plot_factors(U, plots=['bar', 'line', 'scatter'],
+                            axes=None,
+                            fig=fig,
+                            scatter_kw=plot_options[method]['scatter_kw'],
+                            line_kw=plot_options[method]['line_kw'],
+                            bar_kw=plot_options[method]['bar_kw'])
+            ax = figt[0].axes
+            ax[0].set_title('Neuron factors')
+            ax[1].set_title('Temporal factors')
+            ax[2].set_title('Trial factors')
+
+            # reshape for easier indexing
+            ax = np.array(ax).reshape((U.rank, -1))
+
+            for col in range(3, 3+extra_col):
+                for i in range(U.rank):
+
+                    # get axis values
+                    y_lim = ax[i, 2].get_ylim()
+                    x_lim = ax[i, 2].get_xlim()
+                    y_ticks = ax[i, 2].get_yticks()
+                    y_tickl = ax[i, 2].get_yticklabels()
+                    x_ticks = ax[i, 2].get_xticks()
+                    x_tickl = ax[i, 2].get_xticklabels()
+
+                    # running
+                    if plot_running:
+                        scale_by = np.nanmax(speed)/y_lim[1]
+                        if not np.isnan(scale_by):
+                            ax[i, col].plot(np.array(speed.tolist())/scale_by, color=[1, 0.1, 0.6, 0.2])
+                            # , label='speed')
+
+                    # Orientation - main variable to plot
+                    if col == 3:
+                        ori_vals = [0, 135, 270]
+                        color_vals = [[0.28, 0.68, 0.93, alpha], [0.84, 0.12, 0.13, alpha],
+                                      [0.46, 0.85, 0.47, alpha]]
+                        for k in range(0, 3):
+                            ax[i, col].plot(trial_num[orientation==ori_vals[k]],
+                                            U.factors[2][orientation==ori_vals[k], i], 'o',
+                                            label=str(ori_vals[k]), color=color_vals[k], markersize=2)
+                        if i == 0:
+                            ax[i, col].set_title('Orientation')
+                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                              borderaxespad=2.5)
+                    elif col == 4:
+                        cs_vals = ['plus', 'minus', 'neutral']
+                        cs_labels = ['plus', 'minus', 'neutral']
+                        color_vals = [[0.46, 0.85, 0.47, alpha], [0.84, 0.12, 0.13, alpha],
+                                      [0.28, 0.68, 0.93, alpha]];
+                        col = 4
+                        for k in range(0,3):
+                            ax[i, col].plot(trial_num[condition==cs_vals[k]],
+                                                           U.factors[2][condition==cs_vals[k], i], 'o',
+                                                           label=str(cs_labels[k]), color=color_vals[k], markersize=2)
+                        if i == 0:
+                            ax[i, col].set_title('Condition')
+                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                              borderaxespad=2.5)
+                    elif col == 5:
+                        trialerror_vals = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+                        trialerror_labels = ['hit',
+                                             'miss',
+                                             'neutral correct reject',
+                                             'neutral false alarm',
+                                             'minus correct reject',
+                                             'minus false alarm',
+                                             'blank correct reject',
+                                             'blank false alarm',
+                                             'pav early licking',
+                                             'pav late licking',]
+                        for k in trialerror_vals:
+                            ax[i, col].plot(trial_num[trialerror==trialerror_vals[k]],
+                                            U.factors[2][trialerror==trialerror_vals[k], i], 'o',
+                                            label=str(trialerror_labels[k]), alpha=0.8, markersize=2)
+                        if i == 0:
+                            ax[i, col].set_title('Trialerror')
+                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                              borderaxespad=2.5)
+
+                    elif col == 6:
+                        h_vals = ['hungry', 'sated', 'disengaged']
+                        h_labels = ['hungry', 'sated', 'disengaged']
+                        color_vals = [[1, 0.6, 0.3, alpha], [0.7, 0.9, 0.4, alpha],
+                                      [0.6, 0.5, 0.6, alpha], [0.0, 0.9, 0.4, alpha]]
+                        for k in range(0,3):
+                            ax[i, col].plot(trial_num[hunger==h_vals[k]],
+                                            U.factors[2][hunger==h_vals[k], i], 'o',
+                                            label=str(h_labels[k]), color=color_vals[k], markersize=2)
+                        if i == 0:
+                            ax[i, col].set_title('State')
+                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                              borderaxespad=2.5)
+
+                    # set axes labels
+                    ax[i, col].set_yticks(y_ticks)
+                    ax[i, col].set_yticklabels(y_tickl)
+                    ax[i, col].set_ylim(y_lim)
+                    ax[i, col].set_xlim(x_lim)
+
+                    # format axes
+                    ax[i, col].locator_params(nbins=4)
+                    ax[i, col].spines['top'].set_visible(False)
+                    ax[i, col].spines['right'].set_visible(False)
+                    ax[i, col].xaxis.set_tick_params(direction='out')
+                    ax[i, col].yaxis.set_tick_params(direction='out')
+                    ax[i, col].yaxis.set_ticks_position('left')
+                    ax[i, col].xaxis.set_ticks_position('bottom')
+
+                    # remove xticks on all but bottom row
+                    if i + 1 != U.rank:
+                        plt.setp(ax[i, col].get_xticklabels(), visible=False)
+
+                    if col == 3:
+                        ax[i, 0].set_ylabel('Component #' + str(i+1), rotation=0,
+                          labelpad=45, verticalalignment='center', fontstyle='oblique')
+
+            plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + '.png'),
+                                     bbox_inches='tight')
+            if verbose:
+                plt.show()
+            plt.close()
+
+
+def pairday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, verbose=False):
     """
     Plot similarity and objective (measure of reconstruction error) plots
     across all days for TCA decomposition ensembles.
@@ -294,25 +552,24 @@ def pairday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', verbose=Fal
             break
 
         # create folder structure if needed
+        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
+        warp_tag = '' if warp is False else ' warp'
+        folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
+
         # load paths
         out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir):
-            os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, 'tensors paired ' + str(trace_type))
-        if not os.path.isdir(load_dir):
-            os.mkdir(load_dir)
+        if not os.path.isdir(out_dir): os.mkdir(out_dir)
+        load_dir = os.path.join(out_dir, folder_name)
+        if not os.path.isdir(load_dir): os.mkdir(load_dir)
         tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
                                    + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
         # save paths
         ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir):
-            os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, 'tensors paired ' + str(trace_type))
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
+        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
+        save_dir = os.path.join(ana_dir, folder_name)
+        if not os.path.isdir(save_dir): os.mkdir(save_dir)
         save_dir = os.path.join(save_dir, 'qc')
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
+        if not os.path.isdir(save_dir): os.mkdir(save_dir)
         error_path = os.path.join(save_dir, str(day1.mouse) + '_summary_objective.png')
         sim_path = os.path.join(save_dir, str(day1.mouse) + '_summary_similarity.png')
 
@@ -375,7 +632,7 @@ def pairday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', verbose=Fal
         fig1.show()
 
 
-def pairday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', verbose=False):
+def pairday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, verbose=False):
     """
     Plot reconstruction error as variance explained across all days for
     TCA decomposition ensembles.
@@ -410,13 +667,15 @@ def pairday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', verbose=
             break
 
         # create folder structure if needed
+        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
+        warp_tag = '' if warp is False else ' warp'
+        folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
+
         # load dirs
         out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir):
-            os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, 'tensors paired ' + str(trace_type))
-        if not os.path.isdir(load_dir):
-            os.mkdir(load_dir)
+        if not os.path.isdir(out_dir): os.mkdir(out_dir)
+        load_dir = os.path.join(out_dir, folder_name)
+        if not os.path.isdir(load_dir): os.mkdir(load_dir)
         tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
                          + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
         input_tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
@@ -424,14 +683,11 @@ def pairday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', verbose=
 
         # save dirs
         ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir):
-            os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, 'tensors paired ' + str(trace_type))
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
+        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
+        save_dir = os.path.join(ana_dir, folder_name)
+        if not os.path.isdir(save_dir): os.mkdir(save_dir)
         save_dir = os.path.join(save_dir, 'qc')
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
+        if not os.path.isdir(save_dir): os.mkdir(save_dir)
         var_path = os.path.join(save_dir, str(day1.mouse) + '_summary_variance_cubehelix.png')
 
         # load your data
@@ -481,7 +737,7 @@ def pairday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', verbose=
     fig.savefig(var_path, bbox_inches='tight')
 
 
-def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', ve_min=0.05):
+def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='', warp=False, ve_min=0.05):
     """
     Plot TCA reconstruction error as variance explianed per cell
     for TCA decomposition. Create folder of variance explained per cell
@@ -507,6 +763,11 @@ def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', ve_min=0
 
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
 
+    # create folder structure if needed
+    cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
+    warp_tag = '' if warp is False else ' warp'
+    folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
+
     ve, ve_max, ve_frac, rank_num, day_num, cell_num = [], [], [], [], [], []
     for c, day1 in enumerate(days, 0):
         try:
@@ -517,7 +778,9 @@ def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', ve_min=0
 
         # get dirs for loading
         out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        load_dir = os.path.join(out_dir, 'tensors paired ' + str(trace_type))
+        if not os.path.isdir(out_dir): os.mkdir(out_dir)
+        load_dir = os.path.join(out_dir, folder_name)
+        if not os.path.isdir(load_dir): os.mkdir(load_dir)
         tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
                          + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
         input_tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
@@ -591,9 +854,11 @@ def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', ve_min=0
     ax3.set_ylabel('Fraction of maximum variance explained')
 
     # set up saving paths/dir
-    analysis_dir = os.path.join(flow.paths.graphd, mouse)
-    if not os.path.isdir(analysis_dir): os.mkdir(analysis_dir)
-    save_dir = os.path.join(analysis_dir, 'tensors paired ' + trace_type, 'qc')
+    ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
+    if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
+    save_dir = os.path.join(ana_dir, folder_name)
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    save_dir = os.path.join(save_dir, 'qc')
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     save_file_base = mouse + '_pairday_frac_max_var_expl_' + trace_type
 

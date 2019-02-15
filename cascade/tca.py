@@ -5,29 +5,37 @@ import flow
 import pool
 import pandas as pd
 import os
+from . import utils
 from copy import deepcopy
 
 
-def singledaytca(mouse, tags=None,
+def singleday_tca(mouse, tags=None,
 
-                 # TCA params
-                 rank=20,
-                 method=('ncp_bcd',),
-                 replicates=3,
-                 fit_options=dict(tol=1e-4),
+                  # TCA params
+                  rank=20,
+                  method=('ncp_bcd',),
+                  replicates=3,
+                  fit_options=dict(tol=1e-4),
 
-                 # tensor params
-                 trace_type='zscore',
-                 downsample=True,
-                 start_time=-1,
-                 end_time=6,
-                 verbose=True,
+                  # tensor params
+                  trace_type='zscore_iti',
+                  cs='',
+                  downsample=True,
+                  start_time=-1,
+                  end_time=6,
+                  clean_artifacts='interp',
+                  thresh=20,
+                  warp=False,
+                  smooth=True,
+                  smooth_win=5,
+                  verbose=True,
 
-                 # filtering params
-                 exclude_tags=['disengaged', 'orientation_mapping', 'contrast', 'retinotopy'],
-                 drive_css=['0', '135', '270'],
-                 drive_threshold=15,
-                 driven_only=True):
+                  # filtering params
+                  exclude_tags=['disengaged', 'orientation_mapping', 'contrast', 'retinotopy'],
+                  driven=True,
+                  drive_css=['0', '135', '270'],
+                  drive_threshold=15):
+
     """
     Perform tensor component analysis (TCA) on for a single day.
 
@@ -72,11 +80,11 @@ def singledaytca(mouse, tags=None,
         # breaking when only pavs are shown
         if driven:
             d1_drive = []
-            for cs in drive_css:
+            for dcs in drive_css:
                 try:
-                    d1_drive.append(pool.calc.driven.trial(day1, cs))
+                    d1_drive.append(pool.calc.driven.trial(day1, dcs))
                 except KeyError:
-                    print(str(day1) + ' requested ' + cs +
+                    print(str(day1) + ' requested ' + dcs +
                           ': no match to what was shown (probably pav only).')
             d1_drive = np.max(d1_drive, axis=0)
             # account for rare cases where lost xday ids are final id (making _ids
@@ -92,7 +100,7 @@ def singledaytca(mouse, tags=None,
             d1_drive_ids = d1_ids[np.array(d1_drive) > drive_threshold]
             d1_sorter = np.argsort(d1_ids[d1_ids_bool])
         else:
-            d1_ids_bool = np.array(d1_drive) > drive_threshold
+            d1_ids_bool = np.ones(np.shape(d1_ids)) > 0
             d1_sorter = np.argsort(d1_ids[d1_ids_bool])
         ids = d1_ids[d1_ids_bool][d1_sorter]
 
@@ -111,23 +119,11 @@ def singledaytca(mouse, tags=None,
             for run in d1_runs:
                 t2p = run.trace2p()
                 # trigger all trials around stimulus onsets
-                run_traces = t2p.cstraces('', start_s=start_time, end_s=end_time,
-                                          trace_type=trace_type, cutoff_before_lick_ms=-1,
-                                          errortrials=-1, baseline=(-1, 0),
-                                          baseline_to_stimulus=True)
-                # downsample all traces/timestamps to 15Hz if framerate is 31Hz
-                if (t2p.d['framerate'] > 30) and downsample:
-                    # make sure divisible by 2
-                    sz = np.shape(run_traces)  # dims: (cells, time, trials)
-                    if sz[1] % 2 == 1:
-                        run_traces = run_traces[:, :-1, :]
-                        sz = np.shape(run_traces)
-                    # downsample
-                    ds_traces = np.zeros((sz[0], sz[1]//2, sz[2]))
-                    for trial in range(sz[2]):
-                        a = run_traces[:, :, trial].reshape(sz[0], sz[1]//2, 2)
-                        ds_traces[:, :, trial] = np.nanmean(a, axis=2)
-                    run_traces = ds_traces
+                run_traces = utils.getcstraces(run, cs=cs, trace_type=trace_type,
+                                         start_time=start_time, end_time=end_time,
+                                         downsample=True, clean_artifacts=clean_artifacts,
+                                         thresh=thresh, warp=warp, smooth=smooth,
+                                         smooth_win=smooth_win)
                 # filter and sort
                 run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
                 # get matched trial metadata/variables
@@ -140,18 +136,19 @@ def singledaytca(mouse, tags=None,
                 d1_meta.append(dfr.loc[pd.IndexSlice[:, :, :, keep_inds], :])
 
             # concatenate matched cells across trials 3rd dim (aka, 2)
-            d1_tensor = np.concatenate(d1_tensor_list, axis=2)
+            tensor = np.concatenate(d1_tensor_list, axis=2)
 
             # concatenate all trial metadata in pd dataframe
-            pair_meta = pd.concat(d1_meta, axis=0)
+            meta = pd.concat(d1_meta, axis=0)
 
-            # create folder structure if needed
+            # create folder structure and save dir
+            cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
+            warp_tag = '' if warp is False else ' warp'
+            folder_name = 'tensors single ' + str(trace_type) + cs_tag + warp_tag
             save_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-            if not os.path.isdir(save_dir):
-                os.mkdir(save_dir)
-            save_dir = os.path.join(save_dir, 'tensors single ' + str(trace_type))
-            if not os.path.isdir(save_dir):
-                os.mkdir(save_dir)
+            if not os.path.isdir(save_dir): os.mkdir(save_dir)
+            save_dir = os.path.join(save_dir, folder_name)
+            if not os.path.isdir(save_dir): os.mkdir(save_dir)
 
             # concatenate and save df for the day
             meta_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
@@ -160,7 +157,7 @@ def singledaytca(mouse, tags=None,
                                              + '_single_tensor_' + str(trace_type) + '.npy')
             output_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
                                               + '_single_decomp_' + str(trace_type) + '.npy')
-            pair_meta.to_pickle(meta_path)
+            meta.to_pickle(meta_path)
             np.save(input_tensor_path, tensor, ids)
 
             # run TCA - iterate over different fitting methods
@@ -176,25 +173,32 @@ def singledaytca(mouse, tags=None,
                       str(day1.date) + ': done.')
 
 
-def pairdaytca(mouse, tags=None,
+def pairday_tca(mouse, tags=None,
 
-               # TCA params
-               rank=20,
-               method=('ncp_bcd',),
-               replicates=3,
-               fit_options=dict(tol=1e-4),
+                # TCA params
+                rank=20,
+                method=('ncp_bcd',),
+                replicates=3,
+                fit_options=dict(tol=1e-4),
 
-               # tensor params
-               trace_type='zscore',
-               downsample=True,
-               start_time=-1,
-               end_time=6,
-               verbose=True,
+                # tensor params
+                trace_type='zscore_iti',
+                cs='',
+                downsample=True,
+                start_time=-1,
+                end_time=6,
+                clean_artifacts='interp',
+                thresh=20,
+                warp=False,
+                smooth=True,
+                smooth_win=5,
+                verbose=True,
 
-               # filtering params
-               exclude_tags=['disengaged', 'orientation_mapping', 'contrast', 'retinotopy'],
-               drive_css=['0', '135', '270'],
-               drive_threshold=15):
+                # filtering params
+                exclude_tags=['disengaged', 'orientation_mapping', 'contrast', 'retinotopy'],
+                driven=True,
+                drive_css=['0', '135', '270'],
+                drive_threshold=15):
     """
     Perform tensor component analysis (TCA) on data aligned
     across pairs of days.
@@ -242,55 +246,56 @@ def pairdaytca(mouse, tags=None,
         d2_ids = flow.xday._read_crossday_ids(day2.mouse, day2.date)
         d2_ids = np.array([int(s) for s in d2_ids])
 
-        # filter cells based on visual/trial drive across all cs
-    #     d1_drive = np.max([pool.calc.driven.trial(day1, cs) for cs in drive_css], axis=0)
-    #     d2_drive = np.max([pool.calc.driven.trial(day2, cs) for cs in drive_css], axis=0)
-
         # filter cells based on visual/trial drive across all cs, prevent
         # breaking when only pavs are shown
-        d1_drive = []
-        d2_drive = []
-        for cs in drive_css:
-            try:
-                d1_drive.append(pool.calc.driven.trial(day1, cs))
-            except KeyError:
-                print(str(day1) + ' requested ' + cs +
-                      ': no match to what was shown (probably pav only).')
-            try:
-                d2_drive.append(pool.calc.driven.trial(day2, cs))
-            except KeyError:
-                print(str(day2) + ' requested ' + cs +
-                      ': no match to what was shown (probably pav only).')
-        d1_drive = np.max(d1_drive, axis=0)
-        d2_drive = np.max(d2_drive, axis=0)
+        if driven:
+            d1_drive = []
+            d2_drive = []
+            for dcs in drive_css:
+                try:
+                    d1_drive.append(pool.calc.driven.trial(day1, dcs))
+                except KeyError:
+                    print(str(day1) + ' requested ' + dcs +
+                          ': no match to what was shown (probably pav only).')
+                try:
+                    d2_drive.append(pool.calc.driven.trial(day2, dcs))
+                except KeyError:
+                    print(str(day2) + ' requested ' + dcs +
+                          ': no match to what was shown (probably pav only).')
+            d1_drive = np.max(d1_drive, axis=0)
+            d2_drive = np.max(d2_drive, axis=0)
 
-        # account for rare cases where lost xday ids are final id (making _ids
-        # 1 shorter than _drive). Add a fake id to the end and force drive to
-        # be false for that id
-        if len(d1_drive) > len(d1_ids):
-            print('Warning: ' + str(day1) + ': _ids was ' +
-                  str(len(d1_drive)-len(d1_ids)) +
-                  ' shorter than _drive: added pseudo-id.')
-            d1_drive[-1] = 0
-            d1_ids = np.concatenate((d1_ids, np.array([-1])))
-        if len(d2_drive) > len(d2_ids):
-            print('Warning: ' + str(day2) + ': _ids was ' +
-                  str(len(d2_drive)-len(d2_ids)) +
-                  ' shorter than _drive: added pseudo-id.')
-            d2_drive[-1] = 0
-            d2_ids = np.concatenate((d2_ids, np.array([-2])))
+            # account for rare cases where lost xday ids are final id (making _ids
+            # 1 shorter than _drive). Add a fake id to the end and force drive to
+            # be false for that id
+            if len(d1_drive) > len(d1_ids):
+                print('Warning: ' + str(day1) + ': _ids was ' +
+                      str(len(d1_drive)-len(d1_ids)) +
+                      ' shorter than _drive: added pseudo-id.')
+                d1_drive[-1] = 0
+                d1_ids = np.concatenate((d1_ids, np.array([-1])))
+            if len(d2_drive) > len(d2_ids):
+                print('Warning: ' + str(day2) + ': _ids was ' +
+                      str(len(d2_drive)-len(d2_ids)) +
+                      ' shorter than _drive: added pseudo-id.')
+                d2_drive[-1] = 0
+                d2_ids = np.concatenate((d2_ids, np.array([-2])))
 
-        d1_drive_ids = d1_ids[np.array(d1_drive) > drive_threshold]
-        d2_drive_ids = d2_ids[np.array(d2_drive) > drive_threshold]
-        all_driven_ids = np.concatenate((d1_drive_ids, d2_drive_ids), axis=0)
-        d1_d2_drive = np.isin(d2_ids, all_driven_ids)
-        d2_d1_drive = np.isin(d1_ids, all_driven_ids)
-        # get all d1_ids that are present d2 and driven d1 or d2, (same for d2_ids)
-        d1_ids_bool = np.isin(d1_ids, d2_ids[d1_d2_drive])
-        d2_ids_bool = np.isin(d2_ids, d1_ids[d2_d1_drive])
-        d1_sorter = np.argsort(d1_ids[d1_ids_bool])
-        d2_sorter = np.argsort(d2_ids[d2_ids_bool])
-
+            d1_drive_ids = d1_ids[np.array(d1_drive) > drive_threshold]
+            d2_drive_ids = d2_ids[np.array(d2_drive) > drive_threshold]
+            all_driven_ids = np.concatenate((d1_drive_ids, d2_drive_ids), axis=0)
+            d1_d2_drive = np.isin(d2_ids, all_driven_ids)
+            d2_d1_drive = np.isin(d1_ids, all_driven_ids)
+            # get all d1_ids that are present d2 and driven d1 or d2, (same for d2_ids)
+            d1_ids_bool = np.isin(d1_ids, d2_ids[d1_d2_drive])
+            d2_ids_bool = np.isin(d2_ids, d1_ids[d2_d1_drive])
+            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
+            d2_sorter = np.argsort(d2_ids[d2_ids_bool])
+        else:
+            d1_ids_bool = np.isin(d1_ids, d2_ids)
+            d2_ids_bool = np.isin(d2_ids, d1_ids)
+            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
+            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
         # list of ids for pair of days
         ids = d1_ids[d1_ids_bool][d1_sorter]
 
@@ -318,23 +323,12 @@ def pairdaytca(mouse, tags=None,
             for run in d1_runs:
                 t2p = run.trace2p()
                 # trigger all trials around stimulus onsets
-                run_traces = t2p.cstraces('', start_s=start_time, end_s=end_time,
-                                          trace_type=trace_type, cutoff_before_lick_ms=-1,
-                                          errortrials=-1, baseline=(-1, 0),
-                                          baseline_to_stimulus=True)
-                # downsample all traces/timestamps to 15Hz if framerate is 31Hz
-                if (t2p.d['framerate'] > 30) and downsample:
-                    # make sure divisible by 2
-                    sz = np.shape(run_traces)  # dims: (cells, time, trials)
-                    if sz[1] % 2 == 1:
-                        run_traces = run_traces[:, :-1, :]
-                        sz = np.shape(run_traces)
-                    # downsample
-                    ds_traces = np.zeros((sz[0], sz[1]//2, sz[2]))
-                    for trial in range(sz[2]):
-                        a = run_traces[:, :, trial].reshape(sz[0], sz[1]//2, 2)
-                        ds_traces[:, :, trial] = np.nanmean(a, axis=2)
-                    run_traces = ds_traces
+                run_traces = utils.getcstraces(run, cs=cs, trace_type=trace_type,
+                                         start_time=start_time, end_time=end_time,
+                                         downsample=True, clean_artifacts=clean_artifacts,
+                                         thresh=thresh, warp=warp, smooth=smooth,
+                                         smooth_win=smooth_win)
+
                 # filter and sort
                 run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
                 # get matched trial metadata/variables
@@ -350,23 +344,11 @@ def pairdaytca(mouse, tags=None,
             for run in d2_runs:
                 t2p = run.trace2p()
                 # trigger all trials around stimulus onsets
-                run_traces = t2p.cstraces('', start_s=start_time, end_s=end_time,
-                                          trace_type=trace_type, cutoff_before_lick_ms=-1,
-                                          errortrials=-1, baseline=(-1, 0),
-                                          baseline_to_stimulus=True)
-                # downsample all traces/timestamps to 15Hz if framerate is 31Hz
-                if (t2p.d['framerate'] > 30) and downsample:
-                    # make sure divisible by 2
-                    sz = np.shape(run_traces)  # dims: (cells, time, trials)
-                    if sz[1] % 2 == 1:
-                        run_traces = run_traces[:, :-1, :]
-                        sz = np.shape(run_traces)
-                    # downsample
-                    ds_traces = np.zeros((sz[0], sz[1]//2, sz[2]))
-                    for trial in range(sz[2]):
-                        a = run_traces[:, :, trial].reshape(sz[0], sz[1]//2, 2)
-                        ds_traces[:, :, trial] = np.nanmean(a, axis=2)
-                    run_traces = ds_traces
+                run_traces = utils.getcstraces(run, cs=cs, trace_type=trace_type,
+                                         start_time=start_time, end_time=end_time,
+                                         downsample=True, clean_artifacts=clean_artifacts,
+                                         thresh=thresh, warp=warp, smooth=smooth,
+                                         smooth_win=smooth_win)
                 # filter and sort
                 run_traces = run_traces[d2_ids_bool, :, :][d2_sorter, :, :]
                 # get matched trial metadata/variables
@@ -387,13 +369,14 @@ def pairdaytca(mouse, tags=None,
             d1_meta.extend(d2_meta)
             pair_meta = pd.concat(d1_meta, axis=0)
 
-            # create folder structure if needed
+            # create folder structure and save dir
+            cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
+            warp_tag = '' if warp is False else ' warp'
+            folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
             save_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-            if not os.path.isdir(save_dir):
-                os.mkdir(save_dir)
-            save_dir = os.path.join(save_dir, 'tensors paired ' + str(trace_type))
-            if not os.path.isdir(save_dir):
-                os.mkdir(save_dir)
+            if not os.path.isdir(save_dir): os.mkdir(save_dir)
+            save_dir = os.path.join(save_dir, folder_name)
+            if not os.path.isdir(save_dir): os.mkdir(save_dir)
 
             # concatenate and save df for the day
             meta_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)

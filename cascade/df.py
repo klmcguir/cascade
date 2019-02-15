@@ -7,7 +7,7 @@ import warnings
 
 
 def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
-            downsample=True, verbose=True):
+            downsample=True, warp=True, verbose=True):
     """ Create a pandas dataframe of all of your triggered traces for a mouse
 
     Parameters:
