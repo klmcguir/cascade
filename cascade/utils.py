@@ -48,7 +48,8 @@ def getcstraces(run, cs='', trace_type='zscore_iti', start_time=-1, end_time=6,
     """
 
     t2p = run.trace2p()
-    date = flow.metadata.sorters.Date(mouse=run.mouse, date=run.date)
+    date = run.parent
+    date.set_subset(run.cells)
 
     # z-score
     if 'zscore' in trace_type.lower():

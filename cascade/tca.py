@@ -496,6 +496,8 @@ def _trialmetafromrun(RunSorter, trace_type='dff', start_time=-1, end_time=6,
         learning_state = 'reversal1'
     elif 'reversal2' in run_tags:
         learning_state = 'reversal2'
+    else:
+        learning_state = np.nan
     learning_state = [learning_state]*len(trial_idx)
 
     # get hunger-state for all trials, consider hungry if not sated
@@ -522,11 +524,20 @@ def _trialmetafromrun(RunSorter, trace_type='dff', start_time=-1, end_time=6,
     # get cs and orientation info for each trial
     lookup = {v: k for k, v in t2p.d['codes'].items()}  # invert dict
     css = [lookup[s] for s in t2p.d['condition'][trial_idx]]
-    oris = [t2p.d['orientations'][lookup[s]] for s in t2p.d['condition'][trial_idx]]
+    try:
+        oris = [t2p.d['orientations'][lookup[s]] for s in t2p.d['condition'][trial_idx]]
+    except KeyError:
+        oris = [np.nan for s in t2p.d['condition'][trial_idx]]
 
     # get mean running speed for time stim is on screen
+    # use first 3 secodns after onset if there is not offset
     all_onsets = t2p.csonsets()
-    all_offsets = t2p.d['offsets'][0:len(all_onsets)]
+    try:
+        all_offsets = t2p.d['offsets'][0:len(all_onsets)]
+    except KeyError:
+        all_offsets = all_onsets + (np.round(t2p.d['framerate'])*3)
+        if all_offsets[-1] > t2p.nframes:
+            all_offsets[-1] = t2p.nframes
     if t2p.d['running'].size > 0:
         speed_vec = t2p.speed()
         speed_vec = speed_vec.astype('float')
