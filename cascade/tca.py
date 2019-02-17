@@ -2,10 +2,12 @@
 import tensortools as tt
 import numpy as np
 import flow
+from flow.misc import wordhash
 import pool
 import pandas as pd
 import os
 from . import utils
+from . import paths
 from copy import deepcopy
 
 
@@ -64,6 +66,15 @@ def singleday_tca(mouse, tags=None,
     -------
 
     """
+
+    pars = {'tags': tags, 'rank': rank, 'method': method,
+            'replicates': replicates, 'fit_options': fit_options,
+            'trace_type': trace_type, 'cs': cs, 'downsample': downsample,
+            'start_time': start_time, 'end_time': end_time,
+            'clean_artifacts': clean_artifacts, 'thresh': thresh,
+            'warp': warp, 'smooth': smooth, 'smooth_win': smooth_win,
+            'exclude_tags': exclude_tags, 'driven': driven,
+            'drive_css': drive_css, 'drive_threshold': drive_threshold}
 
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=tags)
 
@@ -142,21 +153,17 @@ def singleday_tca(mouse, tags=None,
             meta = pd.concat(d1_meta, axis=0)
 
             # create folder structure and save dir
-            cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
-            warp_tag = '' if warp is False else ' warp'
-            folder_name = 'tensors single ' + str(trace_type) + cs_tag + warp_tag
-            save_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-            if not os.path.isdir(save_dir): os.mkdir(save_dir)
-            save_dir = os.path.join(save_dir, folder_name)
-            if not os.path.isdir(save_dir): os.mkdir(save_dir)
+            save_dir = paths.tca_path(mouse, 'single', pars=pars)
 
             # concatenate and save df for the day
-            meta_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
-                                     + '_df_single_meta.pkl')
-            input_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
-                                             + '_single_tensor_' + str(trace_type) + '.npy')
-            output_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
-                                              + '_single_decomp_' + str(trace_type) + '.npy')
+            meta_path = os.path.join(save_dir, str(day1.mouse) + '_'
+                                     + str(day1.date) + '_df_single_meta.pkl')
+            input_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_'
+                                             + str(day1.date) + '_single_tensor_'
+                                             + str(trace_type) + '.npy')
+            output_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_'
+                                              + str(day1.date) + '_single_decomp_'
+                                              + str(trace_type) + '.npy')
             meta.to_pickle(meta_path)
             np.save(input_tensor_path, tensor, ids)
 
@@ -228,6 +235,15 @@ def pairday_tca(mouse, tags=None,
     -------
 
     """
+
+    pars = {'tags': tags, 'rank': rank, 'method': method,
+            'replicates': replicates, 'fit_options': fit_options,
+            'trace_type': trace_type, 'cs': cs, 'downsample': downsample,
+            'start_time': start_time, 'end_time': end_time,
+            'clean_artifacts': clean_artifacts, 'thresh': thresh,
+            'warp': warp, 'smooth': smooth, 'smooth_win': smooth_win,
+            'exclude_tags': exclude_tags, 'driven': driven,
+            'drive_css': drive_css, 'drive_threshold': drive_threshold}
 
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=tags)
 
@@ -370,13 +386,7 @@ def pairday_tca(mouse, tags=None,
             pair_meta = pd.concat(d1_meta, axis=0)
 
             # create folder structure and save dir
-            cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
-            warp_tag = '' if warp is False else ' warp'
-            folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
-            save_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-            if not os.path.isdir(save_dir): os.mkdir(save_dir)
-            save_dir = os.path.join(save_dir, folder_name)
-            if not os.path.isdir(save_dir): os.mkdir(save_dir)
+            save_dir = paths.tca_path(mouse, 'pair', pars=pars)
 
             # concatenate and save df for the day
             meta_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
