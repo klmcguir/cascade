@@ -10,6 +10,7 @@ import pandas as pd
 from copy import deepcopy
 from .. import df
 from .. import tca
+from .. import paths
 
 
 """
@@ -18,25 +19,25 @@ from .. import tca
 
 
 def pairday_shortlist(mouse, trace_type='zscore', method='ncp_bcd', cs='',
-                      warp=False, verbose=False):
+                      warp=False, word=None, verbose=False):
 
     pairday_varex_summary(mouse, trace_type=trace_type, method=method, cs=cs,
-                          warp=warp, verbose=verbose)
+                          warp=warp, word=None, verbose=verbose)
     pairday_factors_annotated(mouse, trace_type=trace_type, method=method,
-                              cs=cs, warp=warp, verbose=verbose)
+                              cs=cs, warp=warp, word=None, verbose=verbose)
     pairday_varex_percell(mouse, method=method, trace_type=trace_type, cs=cs,
-                          warp=warp, ve_min=0.05)
+                          warp=warp, ve_min=0.05, word=None)
 
 
 def singleday_shortlist(mouse, trace_type='zscore', method='ncp_bcd', cs='',
                         warp=False, verbose=False):
 
     singleday_varex_summary(mouse, trace_type=trace_type, method=method, cs=cs,
-                            warp=warp, verbose=verbose)
+                            warp=warp, word=None, verbose=verbose)
     singleday_factors_annotated(mouse, trace_type=trace_type, method=method,
-                                cs=cs, warp=warp, verbose=verbose)
+                                cs=cs, warp=warp, word=None, verbose=verbose)
     singleday_varex_percell(mouse, method=method, trace_type=trace_type, cs=cs,
-                            warp=warp, ve_min=0.05)
+                            warp=warp, ve_min=0.05, word=None)
 
 
 """
@@ -44,7 +45,7 @@ def singleday_shortlist(mouse, trace_type='zscore', method='ncp_bcd', cs='',
 """
 
 
-def pairday_qc(mouse, trace_type='zscore', cs='', warp=False, verbose=False):
+def pairday_qc(mouse, trace_type='zscore', cs='', warp=False, word=None, verbose=False):
     """
     Plot similarity and error plots for TCA decomposition ensembles.
 
@@ -57,6 +58,8 @@ def pairday_qc(mouse, trace_type='zscore', cs='', warp=False, verbose=False):
     --------
     Saves figures to .../analysis folder  .../qc
     """
+
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
     # plotting options for the unconstrained and nonnegative models.
     plot_options = {
@@ -103,25 +106,14 @@ def pairday_qc(mouse, trace_type='zscore', cs='', warp=False, verbose=False):
             print('done.')
             break
 
-        # create folder structure if needed
-        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
-        warp_tag = '' if warp is False else ' warp'
-        folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
-
         # load
-        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir): os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, folder_name)
-        if not os.path.isdir(load_dir): os.mkdir(load_dir)
+        load_dir = paths.tca_path(mouse, 'pair', pars=pars, word=word)
         tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
                          + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
         if not os.path.isfile(tensor_path): continue
 
         # save
-        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, folder_name)
-        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        save_dir = paths.tca_plots(mouse, 'pair', pars=pars, word=word)
         save_dir = os.path.join(save_dir, 'qc')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
         error_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
@@ -154,7 +146,7 @@ def pairday_qc(mouse, trace_type='zscore', cs='', warp=False, verbose=False):
         plt.close()
 
 
-def pairday_factors(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, verbose=False):
+def pairday_factors(mouse, trace_type='zscore', cs='', warp=False, word=None, verbose=False):
     """
     Plot TCA factors for all days and ranks/componenets for
     TCA decomposition ensembles.
@@ -169,6 +161,8 @@ def pairday_factors(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=Fa
     --------
     Saves figures to .../analysis folder  .../factors
     """
+
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
     # plotting options for the unconstrained and nonnegative models.
     plot_options = {
@@ -225,25 +219,16 @@ def pairday_factors(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=Fa
             print('done.')
             break
 
-        # create folder structure if needed
-        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
-        warp_tag = '' if warp is False else ' warp'
-        folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
-
         # load
-        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir): os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, folder_name)
-        if not os.path.isdir(load_dir): os.mkdir(load_dir)
-        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
-                         + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
+        load_dir = paths.tca_path(mouse, 'pair', pars=pars, word=word)
+        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_'
+                                   + str(day1.date) + '_' + str(day2.date)
+                                   + '_pair_decomp_' + str(trace_type)
+                                   + '.npy')
         if not os.path.isfile(tensor_path): continue
 
         # save
-        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, folder_name)
-        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        save_dir = paths.tca_plots(mouse, 'pair', pars=pars, word=word)
         save_dir = os.path.join(save_dir, 'factors')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
 
@@ -262,7 +247,8 @@ def pairday_factors(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=Fa
 
         for r in sort_ensemble.results:
 
-            fig = tt.plot_factors(sort_ensemble.results[r][0].factors, plots=['bar', 'line', 'scatter'],
+            fig = tt.plot_factors(sort_ensemble.results[r][0].factors,
+                            plots=['bar', 'line', 'scatter'],
                             axes=None,
                             scatter_kw=plot_options[method]['scatter_kw'],
                             line_kw=plot_options[method]['line_kw'],
@@ -287,8 +273,9 @@ def pairday_factors(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=Fa
             plt.close()
 
 
-def pairday_factors_annotated(mouse='OA27', trace_type='zscore_iti', method='ncp_bcd',
-                              cs='', warp=False, extra_col=4, alpha=0.6, plot_running=True,
+def pairday_factors_annotated(mouse, trace_type='zscore_iti', cs='',
+                              warp=False, word=None, method='ncp_bcd',
+                              extra_col=4, alpha=0.6, plot_running=True,
                               verbose=False):
 
     """
@@ -322,6 +309,8 @@ def pairday_factors_annotated(mouse='OA27', trace_type='zscore_iti', method='ncp
     Saves figures to .../analysis folder  .../factors annotated
     """
 
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+
     # plotting options for the unconstrained and nonnegative models.
     plot_options = {
       'cp_als': {
@@ -377,30 +366,25 @@ def pairday_factors_annotated(mouse='OA27', trace_type='zscore_iti', method='ncp
             print('done.')
             break
 
-        # create folder structure if needed
-        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
-        warp_tag = '' if warp is False else ' warp'
-        folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
-
-        # load
-        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir): os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, folder_name)
-        if not os.path.isdir(load_dir): os.mkdir(load_dir)
-        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
-                         + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
-        meta_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
-                     + '_' + str(day2.date) + '_df_pair_meta.pkl')
+        # load dirs
+        load_dir = paths.tca_path(mouse, 'pair', pars=pars, word=word)
+        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_'
+                                   + str(day1.date) + '_' + str(day2.date)
+                                   + '_pair_decomp_' + str(trace_type)
+                                   + '.npy')
+        meta_path = os.path.join(load_dir, str(day1.mouse) + '_' +
+                                 str(day1.date) + '_' + str(day2.date)
+                                 + '_df_pair_meta.pkl')
         if not os.path.isfile(tensor_path): continue
         if not os.path.isfile(meta_path): continue
 
-        # save
-        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, folder_name)
-        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        # save dirs
+        save_dir = paths.tca_plots(mouse, 'pair', pars=pars, word=word)
         save_dir = os.path.join(save_dir, 'factors annotated')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        date_dir = os.path.join(save_dir, str(day1.date) + '_' + str(day2.date)
+                                + ' ' + method)
+        if not os.path.isdir(date_dir): os.mkdir(date_dir)
 
         # load your data
         ensemble = np.load(tensor_path)
@@ -413,11 +397,6 @@ def pairday_factors_annotated(mouse='OA27', trace_type='zscore_iti', method='ncp
         hunger = meta['hunger']
         speed = meta['speed']
 
-        # make necessary dirs
-        date_dir = os.path.join(save_dir, str(day1.date) + '_' + str(day2.date) + ' ' + method)
-        if not os.path.isdir(date_dir):
-            os.mkdir(date_dir)
-
         # sort neuron factors by component they belong to most
         sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
 
@@ -425,13 +404,14 @@ def pairday_factors_annotated(mouse='OA27', trace_type='zscore_iti', method='ncp
 
             U = sort_ensemble.results[r][0].factors
 
-            fig, axes = plt.subplots(U.rank, U.ndim + extra_col, figsize=(9 + extra_col, U.rank))
+            fig, axes = plt.subplots(U.rank, U.ndim + extra_col,
+                                     figsize=(9 + extra_col, U.rank))
             figt = tt.plot_factors(U, plots=['bar', 'line', 'scatter'],
-                            axes=None,
-                            fig=fig,
-                            scatter_kw=plot_options[method]['scatter_kw'],
-                            line_kw=plot_options[method]['line_kw'],
-                            bar_kw=plot_options[method]['bar_kw'])
+                                   axes=None,
+                                   fig=fig,
+                                   scatter_kw=plot_options[method]['scatter_kw'],
+                                   line_kw=plot_options[method]['line_kw'],
+                                   bar_kw=plot_options[method]['bar_kw'])
             ax = figt[0].axes
             ax[0].set_title('Neuron factors')
             ax[1].set_title('Temporal factors')
@@ -550,7 +530,7 @@ def pairday_factors_annotated(mouse='OA27', trace_type='zscore_iti', method='ncp
             plt.close()
 
 
-def pairday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, verbose=False):
+def pairday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, word=None, verbose=False):
     """
     Plot similarity and objective (measure of reconstruction error) plots
     across all days for TCA decomposition ensembles.
@@ -565,6 +545,8 @@ def pairday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp
     --------
     Saves figures to .../analysis folder  .../qc
     """
+
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
 
@@ -590,25 +572,16 @@ def pairday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp
             print('done.')
             break
 
-        # create folder structure if needed
-        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
-        warp_tag = '' if warp is False else ' warp'
-        folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
-
-        # load paths
-        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir): os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, folder_name)
-        if not os.path.isdir(load_dir): os.mkdir(load_dir)
-        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
-                                   + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
+        # load dirs
+        load_dir = paths.tca_path(mouse, 'pair', pars=pars, word=word)
+        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_'
+                                   + str(day1.date) + '_' + str(day2.date)
+                                   + '_pair_decomp_' + str(trace_type)
+                                   + '.npy')
         if not os.path.isfile(tensor_path): continue
 
-        # save paths
-        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, folder_name)
-        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        # save dirs
+        save_dir = paths.tca_plots(mouse, 'pair', pars=pars, word=word)
         save_dir = os.path.join(save_dir, 'qc')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
         error_path = os.path.join(save_dir, str(day1.mouse) + '_summary_objective.png')
@@ -689,6 +662,8 @@ def pairday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', w
     Saves figures to .../analysis folder  .../qc
     """
 
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
 
     cmap = sns.color_palette(sns.cubehelix_palette(len(days)))
@@ -707,31 +682,25 @@ def pairday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', w
             print('done.')
             break
 
-        # create folder structure if needed
-        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
-        warp_tag = '' if warp is False else ' warp'
-        folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
-
         # load dirs
-        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir): os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, folder_name)
-        if not os.path.isdir(load_dir): os.mkdir(load_dir)
-        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
-                         + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
-        input_tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
-                         + '_' + str(day2.date) + '_pair_tensor_' + str(trace_type) + '.npy')
+        load_dir = paths.tca_path(mouse, 'pair', pars=pars, word=word)
+        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_'
+                                   + str(day1.date) + '_' + str(day2.date)
+                                   + '_pair_decomp_' + str(trace_type)
+                                   + '.npy')
+        input_tensor_path = os.path.join(load_dir, str(day1.mouse) + '_'
+                                         + str(day1.date) + '_' + str(day2.date)
+                                         + '_pair_tensor_' + str(trace_type)
+                                         + '.npy')
         if not os.path.isfile(tensor_path): continue
         if not os.path.isfile(input_tensor_path): continue
 
         # save dirs
-        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, folder_name)
-        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        save_dir = paths.tca_plots(mouse, 'pair', pars=pars, word=word)
         save_dir = os.path.join(save_dir, 'qc')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
-        var_path = os.path.join(save_dir, str(day1.mouse) + '_summary_variance_cubehelix.png')
+        var_path = os.path.join(save_dir, str(day1.mouse)
+                                + '_summary_variance_cubehelix.png')
 
         # load your data
         ensemble = np.load(tensor_path)
@@ -780,7 +749,7 @@ def pairday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', w
     fig.savefig(var_path, bbox_inches='tight')
 
 
-def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='', warp=False, ve_min=0.05):
+def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='', warp=False, word=None, ve_min=0.05):
     """
     Plot TCA reconstruction error as variance explianed per cell
     for TCA decomposition. Create folder of variance explained per cell
@@ -804,12 +773,9 @@ def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='', w
 
     """
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
-    # create folder structure if needed
-    cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
-    warp_tag = '' if warp is False else ' warp'
-    folder_name = 'tensors paired ' + str(trace_type) + cs_tag + warp_tag
+    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
 
     ve, ve_max, ve_frac, rank_num, day_num, cell_num = [], [], [], [], [], []
     for c, day1 in enumerate(days, 0):
@@ -820,14 +786,15 @@ def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='', w
             break
 
         # get dirs for loading
-        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir): os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, folder_name)
-        if not os.path.isdir(load_dir): os.mkdir(load_dir)
-        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
-                         + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
-        input_tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
-                         + '_' + str(day2.date) + '_pair_tensor_' + str(trace_type) + '.npy')
+        load_dir = paths.tca_path(mouse, 'pair', pars=pars, word=word)
+        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_'
+                                   + str(day1.date) + '_' + str(day2.date)
+                                   + '_pair_decomp_' + str(trace_type)
+                                   + '.npy')
+        input_tensor_path = os.path.join(load_dir, str(day1.mouse) + '_'
+                                         + str(day1.date) + '_' + str(day2.date)
+                                         + '_pair_tensor_' + str(trace_type)
+                                         + '.npy')
         if not os.path.isfile(tensor_path): continue
         if not os.path.isfile(input_tensor_path): continue
 
@@ -899,10 +866,7 @@ def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='', w
     ax3.set_ylabel('Fraction of maximum variance explained')
 
     # set up saving paths/dir
-    ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-    if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
-    save_dir = os.path.join(ana_dir, folder_name)
-    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    save_dir = paths.tca_plots(mouse, 'pair', pars=pars, word=word)
     save_dir = os.path.join(save_dir, 'qc')
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     save_file_base = mouse + '_pairday_frac_max_var_expl_' + trace_type
@@ -950,7 +914,7 @@ def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='', w
 """
 
 
-def singleday_qc(mouse, trace_type='zscore', cs='', warp=False, verbose=False):
+def singleday_qc(mouse, trace_type='zscore', cs='', warp=False, word=None, verbose=False):
     """
     Plot similarity and error plots for TCA decomposition ensembles.
 
@@ -1000,29 +964,20 @@ def singleday_qc(mouse, trace_type='zscore', cs='', warp=False, verbose=False):
       },
     }
 
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
 
     for day1 in days:
 
-        # create folder structure if needed
-        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
-        warp_tag = '' if warp is False else ' warp'
-        folder_name = 'tensors single ' + str(trace_type) + cs_tag + warp_tag
-
-        # load
-        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir): os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, folder_name)
-        if not os.path.isdir(load_dir): os.mkdir(load_dir)
+        # load dir
+        load_dir = paths.tca_path(mouse, 'pair', pars=pars, word=word)
         tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
                                    + '_single_decomp_' + str(trace_type) + '.npy')
         if not os.path.isfile(tensor_path): continue
 
-        # save
-        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, folder_name)
-        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        # save dir
+        save_dir = paths.tca_plots(mouse, 'single', pars=pars, word=word)
         save_dir = os.path.join(save_dir, 'qc')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
         error_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
@@ -1055,7 +1010,7 @@ def singleday_qc(mouse, trace_type='zscore', cs='', warp=False, verbose=False):
         plt.close()
 
 
-def singleday_factors(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, verbose=False):
+def singleday_factors(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, word=None, verbose=False):
     """
     Plot TCA factors for all days and ranks/componenets for
     TCA decomposition ensembles.
@@ -1117,41 +1072,28 @@ def singleday_factors(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=
       },
     }
 
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
 
     for day1 in days:
 
-        # create folder structure if needed
-        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
-        warp_tag = '' if warp is False else ' warp'
-        folder_name = 'tensors single ' + str(trace_type) + cs_tag + warp_tag
-
-        # load
-        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir): os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, folder_name)
-        if not os.path.isdir(load_dir): os.mkdir(load_dir)
+        # load dir
+        load_dir = paths.tca_path(mouse, 'single', pars=pars, word=word)
         tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
                                    + '_single_decomp_' + str(trace_type) + '.npy')
         if not os.path.isfile(tensor_path): continue
 
-        # save
-        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, folder_name)
-        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        # save dir
+        save_dir = paths.tca_plots(mouse, 'single', pars=pars, word=word)
         save_dir = os.path.join(save_dir, 'factors')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        date_dir = os.path.join(save_dir, str(day1.date) + ' ' + method)
+        if not os.path.isdir(date_dir): os.mkdir(date_dir)
 
         # load your data
         ensemble = np.load(tensor_path)
         ensemble = ensemble.item()
-
-
-        # make necessary dirs
-        date_dir = os.path.join(save_dir, str(day1.date) + ' ' + method)
-        if not os.path.isdir(date_dir):
-            os.mkdir(date_dir)
 
         # sort neuron factors by component they belong to most
         sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
@@ -1183,9 +1125,10 @@ def singleday_factors(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=
             plt.close()
 
 
-def singleday_factors_annotated(mouse='OA27', trace_type='zscore_iti', method='ncp_bcd',
-                              cs='', warp=False, extra_col=4, alpha=0.6, plot_running=True,
-                              verbose=False):
+def singleday_factors_annotated(mouse='OA27', trace_type='zscore_iti',
+                                method='ncp_bcd', cs='', warp=False, word=None,
+                                extra_col=4, alpha=0.6, plot_running=True,
+                                verbose=False):
 
     """
     Plot TCA factors with trial metadata annotations for all days
@@ -1264,20 +1207,14 @@ def singleday_factors_annotated(mouse='OA27', trace_type='zscore_iti', method='n
       },
     }
 
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
 
     for day1 in days:
 
-        # create folder structure if needed
-        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
-        warp_tag = '' if warp is False else ' warp'
-        folder_name = 'tensors single ' + str(trace_type) + cs_tag + warp_tag
-
-        # load
-        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir): os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, folder_name)
-        if not os.path.isdir(load_dir): os.mkdir(load_dir)
+        # load dir
+        load_dir = paths.tca_path(mouse, 'single', pars=pars, word=word)
         tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
                                    + '_single_decomp_' + str(trace_type) + '.npy')
         meta_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
@@ -1285,13 +1222,12 @@ def singleday_factors_annotated(mouse='OA27', trace_type='zscore_iti', method='n
         if not os.path.isfile(tensor_path): continue
         if not os.path.isfile(meta_path): continue
 
-        # save
-        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, folder_name)
-        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        # save dir
+        save_dir = paths.tca_plots(mouse, 'single', pars=pars, word=word)
         save_dir = os.path.join(save_dir, 'factors annotated')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        date_dir = os.path.join(save_dir, str(day1.date) + ' ' + method)
+        if not os.path.isdir(date_dir): os.mkdir(date_dir)
 
         # load your data
         ensemble = np.load(tensor_path)
@@ -1303,11 +1239,6 @@ def singleday_factors_annotated(mouse='OA27', trace_type='zscore_iti', method='n
         trialerror = meta['trialerror']
         hunger = meta['hunger']
         speed = meta['speed']
-
-        # make necessary dirs
-        date_dir = os.path.join(save_dir, str(day1.date) + ' ' + method)
-        if not os.path.isdir(date_dir):
-            os.mkdir(date_dir)
 
         # sort neuron factors by component they belong to most
         sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
@@ -1441,7 +1372,7 @@ def singleday_factors_annotated(mouse='OA27', trace_type='zscore_iti', method='n
             plt.close()
 
 
-def singleday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, verbose=False):
+def singleday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, word=None, verbose=False):
     """
     Plot similarity and objective (measure of reconstruction error) plots
     across all days for TCA decomposition ensembles.
@@ -1456,6 +1387,7 @@ def singleday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', wa
     --------
     Saves figures to .../analysis folder  .../qc
     """
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
 
@@ -1476,25 +1408,14 @@ def singleday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', wa
     # plt.figure()
     for c, day1 in enumerate(days, 0):
 
-        # create folder structure if needed
-        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
-        warp_tag = '' if warp is False else ' warp'
-        folder_name = 'tensors single ' + str(trace_type) + cs_tag + warp_tag
-
         # load paths
-        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir): os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, folder_name)
-        if not os.path.isdir(load_dir): os.mkdir(load_dir)
+        load_dir = paths.tca_path(mouse, 'single', pars=pars, word=word)
         tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
                                    + '_single_decomp_' + str(trace_type) + '.npy')
         if not os.path.isfile(tensor_path): continue
 
         # save paths
-        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, folder_name)
-        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        save_dir = paths.tca_plots(mouse, 'single', pars=pars, word=word)
         save_dir = os.path.join(save_dir, 'qc')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
         error_path = os.path.join(save_dir, str(day1.mouse) + '_summary_objective.png')
@@ -1559,7 +1480,7 @@ def singleday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', wa
         fig1.show()
 
 
-def singleday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, verbose=False):
+def singleday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, word=None, verbose=False):
     """
     Plot reconstruction error as variance explained across all days for
     TCA decomposition ensembles.
@@ -1575,6 +1496,8 @@ def singleday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='',
     Saves figures to .../analysis folder  .../qc
     """
 
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
 
     cmap = sns.color_palette(sns.cubehelix_palette(len(days)))
@@ -1588,16 +1511,8 @@ def singleday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='',
 
     for c, day1 in enumerate(days, 0):
 
-        # create folder structure if needed
-        cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
-        warp_tag = '' if warp is False else ' warp'
-        folder_name = 'tensors single ' + str(trace_type) + cs_tag + warp_tag
-
         # load dirs
-        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir): os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, folder_name)
-        if not os.path.isdir(load_dir): os.mkdir(load_dir)
+        load_dir = paths.tca_path(mouse, 'single', pars=pars, word=word)
         tensor_path = os.path.join(load_dir, str(day1.mouse) + '_'
                                    + str(day1.date) + '_single_decomp_'
                                    + str(trace_type) + '.npy')
@@ -1608,10 +1523,7 @@ def singleday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='',
         if not os.path.isfile(input_tensor_path): continue
 
         # save dirs
-        ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-        if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
-        save_dir = os.path.join(ana_dir, folder_name)
-        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        save_dir = paths.tca_plots(mouse, 'single', pars=pars, word=word)
         save_dir = os.path.join(save_dir, 'qc')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
         var_path = os.path.join(save_dir, str(day1.mouse) + '_summary_variance_cubehelix.png')
@@ -1663,7 +1575,7 @@ def singleday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='',
     fig.savefig(var_path, bbox_inches='tight')
 
 
-def singleday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='', warp=False, ve_min=0.05):
+def singleday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='', warp=False, word=None, ve_min=0.05):
     """
     Plot TCA reconstruction error as variance explianed per cell
     for TCA decomposition. Create folder of variance explained per cell
@@ -1686,6 +1598,8 @@ def singleday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='',
                                              .../variance explained per cell
 
     """
+
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
 
