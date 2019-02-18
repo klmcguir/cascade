@@ -160,7 +160,6 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
         trial_idx = range(np.shape(run_traces)[2])
 
         # get your learning-state
-        run_tags = [str(s) for s in run.tags]
         run_tags = run.tags
         if 'naive' in run_tags:
             learning_state = 'naive'
