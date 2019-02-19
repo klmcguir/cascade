@@ -113,3 +113,53 @@ def tca_plots(mouse, grouping, pars=None, word=None):
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
 
     return save_dir
+
+
+def df_path(mouse, pars=None, word=None):
+    """
+    Create directory for dataframes. Hash trace parameters and save
+    into directory as a .txt file.
+
+    Parameters
+    ----------
+    mouse : str
+        Mouse.
+    pars : dict
+        Dict of all parameters for TCA.
+    word : str
+        Word created by hashing pars. For loading pars can be
+        truncated to include only cs, warp, trace_type, AND
+        the pars word entered here.
+
+    Returns
+    -------
+    save_dir : str
+        Path of df with specific parameters.
+    """
+
+    # get word
+    if pars and not word:
+        pars_word = flow.misc.wordhash.word(pars)
+        print('Trace parameters hashed for df: ' + pars_word)
+    elif pars and word:
+        pars_word = word
+    else:
+        print('ERROR: Neither pars or word were passed to df_path.')
+        return
+
+    # create folder structure and save dir
+    trace_tag = '-' + pars['trace_type']
+    pars_tag = '-' + pars_word
+    folder_name = 'dfs-' + trace_tag + pars_tag
+    save_dir = os.path.join(flow.paths.outd, mouse)
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    save_dir = os.path.join(save_dir, folder_name)
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+
+    # save your parameters into a text file
+    pars_path = os.path.join(save_dir, 'df_trace_params.txt')
+    if pars and not word:
+        with open(pars_path, 'w') as file:
+            file.write(json.dumps(pars))
+
+    return save_dir
