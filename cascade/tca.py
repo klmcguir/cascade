@@ -17,7 +17,7 @@ def singleday_tca(mouse, tags=None,
                   rank=20,
                   method=('ncp_bcd',),
                   replicates=3,
-                  fit_options=dict(tol=1e-4),
+                  fit_options=None,
 
                   # tensor params
                   trace_type='zscore_iti',
@@ -33,9 +33,9 @@ def singleday_tca(mouse, tags=None,
                   verbose=True,
 
                   # filtering params
-                  exclude_tags=['disengaged', 'orientation_mapping', 'contrast', 'retinotopy'],
+                  exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy'),
                   driven=True,
-                  drive_css=['0', '135', '270'],
+                  drive_css=('0', '135', '270'),
                   drive_threshold=15):
 
     """
@@ -67,6 +67,9 @@ def singleday_tca(mouse, tags=None,
 
     """
 
+    # create folder structure and save dir
+    if fit_options is None:
+        fit_options = {'tol': 0.0001, 'max_iter': 500, 'verbose': False}
     pars = {'tags': tags, 'rank': rank, 'method': method,
             'replicates': replicates, 'fit_options': fit_options,
             'trace_type': trace_type, 'cs': cs, 'downsample': downsample,
@@ -75,6 +78,7 @@ def singleday_tca(mouse, tags=None,
             'warp': warp, 'smooth': smooth, 'smooth_win': smooth_win,
             'exclude_tags': exclude_tags, 'driven': driven,
             'drive_css': drive_css, 'drive_threshold': drive_threshold}
+    save_dir = paths.tca_path(mouse, 'single', pars=pars)
 
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=tags)
 
@@ -139,21 +143,27 @@ def singleday_tca(mouse, tags=None,
                 run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
                 # get matched trial metadata/variables
                 dfr = _trialmetafromrun(run)
-                # drop trials with nans and add to list
+                # subselect metadata if you are only running certain cs
+                if cs != '':
+                    if cs == 'plus' or cs == 'minus' or cs == 'neutral':
+                        dfr = dfr.loc[(dfr['condition'].isin([cs])), :]
+                    elif cs == '0' or cs == '135' or cs == '270':
+                        dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
+                    else:
+                        print('ERROR: cs called - "' + cs + '" - is not\
+                              a valid option.')
+                # drop trials with nans and add to lists
                 keep = np.sum(np.sum(np.isnan(run_traces), axis=0, keepdims=True),
                               axis=1, keepdims=True).flatten() == 0
-                keep_inds = np.where(keep == True)[0]
+                dfr = dfr.iloc[keep, :]
                 d1_tensor_list.append(run_traces[:, :, keep])
-                d1_meta.append(dfr.loc[pd.IndexSlice[:, :, :, keep_inds], :])
+                d1_meta.append(dfr)
 
             # concatenate matched cells across trials 3rd dim (aka, 2)
             tensor = np.concatenate(d1_tensor_list, axis=2)
 
             # concatenate all trial metadata in pd dataframe
             meta = pd.concat(d1_meta, axis=0)
-
-            # create folder structure and save dir
-            save_dir = paths.tca_path(mouse, 'single', pars=pars)
 
             # concatenate and save df for the day
             meta_path = os.path.join(save_dir, str(day1.mouse) + '_'
@@ -170,7 +180,8 @@ def singleday_tca(mouse, tags=None,
             # run TCA - iterate over different fitting methods
             ensemble = {}
             for m in method:
-                ensemble[m] = tt.Ensemble(fit_method=m, fit_options=fit_options)
+                ensemble[m] = tt.Ensemble(
+                    fit_method=m, fit_options=deepcopy(fit_options))
                 ensemble[m].fit(tensor, ranks=range(1, rank+1), replicates=replicates, verbose=False)
             np.save(output_tensor_path, ensemble)
 
@@ -186,7 +197,7 @@ def pairday_tca(mouse, tags=None,
                 rank=20,
                 method=('ncp_bcd',),
                 replicates=3,
-                fit_options=dict(tol=1e-4),
+                fit_options=None,
 
                 # tensor params
                 trace_type='zscore_iti',
@@ -202,9 +213,9 @@ def pairday_tca(mouse, tags=None,
                 verbose=True,
 
                 # filtering params
-                exclude_tags=['disengaged', 'orientation_mapping', 'contrast', 'retinotopy'],
+                exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy'),
                 driven=True,
-                drive_css=['0', '135', '270'],
+                drive_css=('0', '135', '270'),
                 drive_threshold=15):
     """
     Perform tensor component analysis (TCA) on data aligned
@@ -236,6 +247,9 @@ def pairday_tca(mouse, tags=None,
 
     """
 
+    # create folder structure and save dir
+    if fit_options is None:
+        fit_options = {'tol': 0.0001, 'max_iter': 500, 'verbose': False}
     pars = {'tags': tags, 'rank': rank, 'method': method,
             'replicates': replicates, 'fit_options': fit_options,
             'trace_type': trace_type, 'cs': cs, 'downsample': downsample,
@@ -244,6 +258,7 @@ def pairday_tca(mouse, tags=None,
             'warp': warp, 'smooth': smooth, 'smooth_win': smooth_win,
             'exclude_tags': exclude_tags, 'driven': driven,
             'drive_css': drive_css, 'drive_threshold': drive_threshold}
+    save_dir = paths.tca_path(mouse, 'pair', pars=pars)
 
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=tags)
 
@@ -349,12 +364,21 @@ def pairday_tca(mouse, tags=None,
                 run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
                 # get matched trial metadata/variables
                 dfr = _trialmetafromrun(run)
-                # drop trials with nans and add to list
+                # subselect metadata if you are only running certain cs
+                if cs != '':
+                    if cs == 'plus' or cs == 'minus' or cs == 'neutral':
+                        dfr = dfr.loc[(dfr['condition'].isin([cs])), :]
+                    elif cs == '0' or cs == '135' or cs == '270':
+                        dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
+                    else:
+                        print('ERROR: cs called - "' + cs + '" - is not\
+                              a valid option.')
+                # drop trials with nans and add to lists
                 keep = np.sum(np.sum(np.isnan(run_traces), axis=0, keepdims=True),
                               axis=1, keepdims=True).flatten() == 0
-                keep_inds = np.where(keep == True)[0]
+                dfr = dfr.iloc[keep, :]
                 d1_tensor_list.append(run_traces[:, :, keep])
-                d1_meta.append(dfr.loc[pd.IndexSlice[:, :, :, keep_inds], :])
+                d1_meta.append(dfr)
 
             # day 2
             for run in d2_runs:
@@ -369,12 +393,21 @@ def pairday_tca(mouse, tags=None,
                 run_traces = run_traces[d2_ids_bool, :, :][d2_sorter, :, :]
                 # get matched trial metadata/variables
                 dfr = _trialmetafromrun(run)
-                # drop trials with nans and add to list
+                # subselect metadata if you are only running certain cs
+                if cs != '':
+                    if cs == 'plus' or cs == 'minus' or cs == 'neutral':
+                        dfr = dfr.loc[(dfr['condition'].isin([cs])), :]
+                    elif cs == '0' or cs == '135' or cs == '270':
+                        dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
+                    else:
+                        print('ERROR: cs called - "' + cs + '" - is not\
+                              a valid option.')
+                # drop trials with nans and add to lists
                 keep = np.sum(np.sum(np.isnan(run_traces), axis=0, keepdims=True),
                               axis=1, keepdims=True).flatten() == 0
-                keep_inds = np.where(keep == True)[0]
+                dfr = dfr.iloc[keep, :]
                 d2_tensor_list.append(run_traces[:, :, keep])
-                d2_meta.append(dfr.loc[pd.IndexSlice[:, :, :, keep_inds], :])
+                d2_meta.append(dfr)
 
             # concatenate matched cells across trials 3rd dim (aka, 2)
             d1_tensor = np.concatenate(d1_tensor_list, axis=2)
@@ -384,9 +417,6 @@ def pairday_tca(mouse, tags=None,
             # concatenate all trial metadata in pd dataframe
             d1_meta.extend(d2_meta)
             pair_meta = pd.concat(d1_meta, axis=0)
-
-            # create folder structure and save dir
-            save_dir = paths.tca_path(mouse, 'pair', pars=pars)
 
             # concatenate and save df for the day
             meta_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
@@ -401,7 +431,8 @@ def pairday_tca(mouse, tags=None,
             # run TCA - iterate over different fitting methods
             ensemble = {}
             for m in method:
-                ensemble[m] = tt.Ensemble(fit_method=m, fit_options=fit_options)
+                ensemble[m] = tt.Ensemble(
+                    fit_method=m, fit_options=deepcopy(fit_options))
                 ensemble[m].fit(tensor, ranks=range(1, rank+1), replicates=replicates, verbose=False)
             np.save(output_tensor_path, ensemble)
 
@@ -476,15 +507,15 @@ def _sortfactors(my_method):
     return my_method, my_rank_sorts
 
 
-def _trialmetafromrun(RunSorter, trace_type='dff', start_time=-1, end_time=6,
+def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
                       downsample=True, verbose=True):
     """
-    Create pandas dataframe of trial metadata from RunSorter.
+    Create pandas dataframe of trial metadata from run.
 
     """
 
     # get t2p object
-    t2p = RunSorter.trace2p()
+    t2p = run.trace2p()
 
     # get the number of trials in your run
     try:
@@ -497,7 +528,7 @@ def _trialmetafromrun(RunSorter, trace_type='dff', start_time=-1, end_time=6,
         trial_idx = range(np.shape(run_traces)[2])
 
     # get your learning-state
-    run_tags = [str(s) for s in RunSorter.tags]
+    run_tags = [str(s) for s in run.tags]
     if 'naive' in run_tags:
         learning_state = 'naive'
     elif 'learning' in run_tags:
@@ -583,9 +614,9 @@ def _trialmetafromrun(RunSorter, trace_type='dff', start_time=-1, end_time=6,
 
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays([
-                [RunSorter.mouse]*len(trial_idx),
-                [RunSorter.date]*len(trial_idx),
-                [RunSorter.run]*len(trial_idx),
+                [run.mouse]*len(trial_idx),
+                [run.date]*len(trial_idx),
+                [run.run]*len(trial_idx),
                 trial_idx
                 ],
                 names=['mouse', 'date', 'run', 'trial_idx'])
