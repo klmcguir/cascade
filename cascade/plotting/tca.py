@@ -22,22 +22,22 @@ def pairday_shortlist(mouse, trace_type='zscore', method='ncp_bcd', cs='',
                       warp=False, word=None, verbose=False):
 
     pairday_varex_summary(mouse, trace_type=trace_type, method=method, cs=cs,
-                          warp=warp, word=None, verbose=verbose)
+                          warp=warp, word=word, verbose=verbose)
     pairday_factors_annotated(mouse, trace_type=trace_type, method=method,
-                              cs=cs, warp=warp, word=None, verbose=verbose)
+                              cs=cs, warp=warp, word=word, verbose=verbose)
     pairday_varex_percell(mouse, method=method, trace_type=trace_type, cs=cs,
-                          warp=warp, ve_min=0.05, word=None)
+                          warp=warp, ve_min=0.05, word=word)
 
 
 def singleday_shortlist(mouse, trace_type='zscore', method='ncp_bcd', cs='',
-                        warp=False, verbose=False):
+                        warp=False, word=None, verbose=False):
 
     singleday_varex_summary(mouse, trace_type=trace_type, method=method, cs=cs,
-                            warp=warp, word=None, verbose=verbose)
+                            warp=warp, word=word, verbose=verbose)
     singleday_factors_annotated(mouse, trace_type=trace_type, method=method,
-                                cs=cs, warp=warp, word=None, verbose=verbose)
+                                cs=cs, warp=warp, word=word, verbose=verbose)
     singleday_varex_percell(mouse, method=method, trace_type=trace_type, cs=cs,
-                            warp=warp, ve_min=0.05, word=None)
+                            warp=warp, ve_min=0.05, word=word)
 
 
 """
@@ -1612,13 +1612,11 @@ def singleday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='',
     for c, day1 in enumerate(days, 0):
 
         # get dirs for loading
-        out_dir = os.path.join(flow.paths.outd, str(day1.mouse))
-        if not os.path.isdir(out_dir): os.mkdir(out_dir)
-        load_dir = os.path.join(out_dir, folder_name)
+        load_dir = paths.tca_path(mouse, 'single', pars=pars, word=word)
         if not os.path.isdir(load_dir): os.mkdir(load_dir)
         tensor_path = os.path.join(load_dir, str(day1.mouse) + '_'
                                    + str(day1.date) + '_single_decomp_'
-                                  + str(trace_type) + '.npy')
+                                   + str(trace_type) + '.npy')
         input_tensor_path = os.path.join(load_dir, str(day1.mouse) + '_'
                                          + str(day1.date) + '_single_tensor_'
                                          + str(trace_type) + '.npy')
@@ -1693,10 +1691,7 @@ def singleday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='',
     ax3.set_ylabel('Fraction of maximum variance explained')
 
     # set up saving paths/dir
-    ana_dir = os.path.join(flow.paths.graphd, str(day1.mouse))
-    if not os.path.isdir(ana_dir): os.mkdir(ana_dir)
-    save_dir = os.path.join(ana_dir, folder_name)
-    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    save_dir = paths.tca_plots(mouse, 'single', pars=pars, word=word)
     save_dir = os.path.join(save_dir, 'qc')
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     save_file_base = mouse + '_singleday_frac_max_var_expl_' + trace_type
