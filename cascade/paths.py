@@ -150,7 +150,7 @@ def df_path(mouse, pars=None, word=None):
     # create folder structure and save dir
     trace_tag = '-' + pars['trace_type']
     pars_tag = '-' + pars_word
-    folder_name = 'dfs-' + trace_tag + pars_tag
+    folder_name = 'dfs' + trace_tag + pars_tag
     save_dir = os.path.join(flow.paths.outd, mouse)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     save_dir = os.path.join(save_dir, folder_name)
