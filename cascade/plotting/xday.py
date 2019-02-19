@@ -8,11 +8,12 @@ import seaborn as sns
 import pandas as pd
 from .. import df
 from .. import tca
+from .. import paths
 
 
 def heatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
             day_line=True, run_line=False, match_clim=True,
-            vmin=None, vmax=None, smooth=True, verbose=False):
+            vmin=None, vmax=None, smooth=False, word=None, verbose=False):
     """
     Create heatmap of each cell aligned across time.
 
@@ -80,19 +81,23 @@ def heatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
     for cell_idx in cell_range:
 
         # create single cell df
-        dft = df.singlecell(mouse, trace_type, cell_idx, xmap=xmap)
+        dft = df.singlecell(mouse, trace_type, cell_idx, xmap=xmap, word=word)
         dft = dft.reset_index(level=['cell_idx', 'timestamp'])
 
         # filter metadata trials before merging
-        trial_indexer = (((dfm.orientation == 0) | (dfm.orientation == 135) | (dfm.orientation == 270))
-                         & ((dfm.tag == 'standard') | (dfm.tag == 'learning_start') | (dfm.tag == 'reversal1_start')
-                         | (dfm.tag == 'reversal2_start'))
-                         & ((dfm.condition == 'plus') | (dfm.condition == 'minus') | (dfm.condition == 'neutral'))
-                         & (dfm.hunger == 'hungry'))
+        trial_indexer = (
+            ((dfm.orientation == 0) | (dfm.orientation == 135)
+             | (dfm.orientation == 270)) &
+            ((dfm.tag == 'standard') | (dfm.tag == 'learning_start')
+             | (dfm.tag == 'reversal1_start') | (dfm.tag == 'reversal2_start')) &
+            ((dfm.condition == 'plus') | (dfm.condition == 'minus')
+             | (dfm.condition == 'neutral')) &
+            (dfm.hunger == 'hungry'))
         dfm = dfm.loc[trial_indexer, :]
 
         # merge on filtered trials
-        dff = pd.merge(dft, dfm, on=['mouse', 'date', 'run', 'trial_idx'], how='inner')
+        dff = pd.merge(dft, dfm, on=['mouse', 'date', 'run', 'trial_idx'],
+                       how='inner')
 
         # check that df is not empty, skip dfs that filtering empties
         if dff.empty:
@@ -112,11 +117,15 @@ def heatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
         oris = np.array([0, 135, 270])
 
         # plot main figure
-        toplot = dff.pivot_table(index=['date', 'run','trial_idx','orientation'],
-                                columns='timestamp', values='trace')
-        g = sns.FacetGrid(toplot.reset_index('orientation'), col='orientation',
-                          height=8, sharey=False, dropna=False)
-        g.map_dataframe(_myheatmap, vmax=vmax, vmin=vmin, center=0, xticklabels=31, cmap=cmap)
+        toplot = dff.pivot_table(
+            index=['date', 'run', 'trial_idx', 'orientation'],
+            columns='timestamp', values='trace')
+        g = sns.FacetGrid(
+            toplot.reset_index('orientation'), col='orientation',
+            height=8, aspect=1, sharey=False, dropna=False)
+        g.map_dataframe(
+            _myheatmap, vmax=vmax, vmin=vmin, center=0,
+            xticklabels=31, cmap=cmap)
         g.fig.suptitle('Cell ' + str(cell_idx), x=0.98)
 
         # loop through axes and plot relevant metadata on top
@@ -128,9 +137,9 @@ def heatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
 
             # match vmin and max across plots (first check values)
             if match_clim and vmax is None:
-                vmin, vmax = ax.collections[0].get_clim()
-                cmin.append(vmin)
-                cmax.append(vmax)
+                _vmin, _vmax = ax.collections[0].get_clim()
+                cmin.append(_vmin)
+                cmax.append(_vmax)
                 ccmap.append(ax.collections[0].get_cmap())
 
             # get metadata for this orientation/set of trials
@@ -205,26 +214,35 @@ def heatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
             ax.plot((zero_sec, zero_sec), y_lim, color='#8e8e8e', ls='-', lw=2, alpha=0.8)
             ax.plot((three_sec, three_sec), y_lim, color='#8e8e8e', ls='-', lw=2, alpha=0.8)
 
+            # if you allow caxis to scale automatically, add alpha to ticks
+            if not vmin and not vmax:
+                tick_alpha = 0.5
+            else:
+                tick_alpha = 1
+
             # plot quinine
             for l in range(len(quinine)):
                 if np.isfinite(quinine[l]):
                     x = [quinine[l], quinine[l]]
                     y = [l+0.5, l+0.5]
-                    ax.plot(x, y, color='#0fffc3', ls='', marker='.', markersize=2)
+                    ax.plot(x, y, color='#0fffc3', ls='',
+                            marker='.', markersize=2, alpha=tick_alpha)
 
             # plot ensure
             for l in range(len(ensure)):
                 if np.isfinite(ensure[l]):
                     x = [ensure[l], ensure[l]]
                     y = [l+0.5, l+0.5]
-                    ax.plot(x, y, color='#ffb30f', ls='', marker='.', markersize=2)
+                    ax.plot(x, y, color='#ffb30f', ls='',
+                            marker='.', markersize=2, alpha=tick_alpha)
 
             # plot licks
             for l in range(len(firstlick)):
                 if np.isfinite(firstlick[l]):
                     x = [firstlick[l], firstlick[l]]
                     y = [l+0.5, l+0.5]
-                    ax.plot(x, y, color='#7237f2', ls='', marker='.', markersize=2)
+                    ax.plot(x, y, color='#7237f2', ls='',
+                            marker='.', markersize=2, alpha=tick_alpha)
 
             # reset yticklabels
             if y_lim[0] < 100:
@@ -299,10 +317,11 @@ def heatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
             count = count + 1
 
         # match vmin and max across plots (using cmax to choose cmap and cmin)
+        scale_by = 0.7
         if match_clim and vmax is None:
             max_ind = np.nanargmax(cmax)
-            cmin = cmin[max_ind]
-            cmax = cmax[max_ind]
+            cmin = cmin[max_ind]*scale_by
+            cmax = cmax[max_ind]*scale_by
             ccmap = ccmap[max_ind]
 
             for ax in g.axes[0]:
@@ -310,12 +329,8 @@ def heatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
                 ax.collections[0].set_cmap(ccmap)
 
         # save figures into folder structure
-        save_dir = os.path.join(flow.paths.graphd, str(mouse))
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
-        save_dir = os.path.join(save_dir, 'heatmaps ' + str(trace_type))
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
+        save_dir = paths.df_plots(mouse, pars={'trace_type': trace_type},
+                                  word=word)
         path = os.path.join(save_dir, str(mouse) + '_cell_' + str(cell_idx) + '_' + trace_type + '.png')
         print('Cell: ' + str(cell_idx) + ': done.')
         g.savefig(path)
