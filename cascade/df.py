@@ -4,22 +4,57 @@ import flow
 import numpy as np
 import pandas as pd
 import warnings
+from . import utils
+from . import paths
 
 
-def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
-            downsample=True, warp=True, verbose=True):
-    """ Create a pandas dataframe of all of your triggered traces for a mouse
+def trigger(mouse, trace_type='zscore_iti', cs='', downsample=True,
+            start_time=-1, end_time=6, clean_artifacts='interp',
+            thresh=20, warp=False, smooth=True, smooth_win=5,
+            verbose=True):
+    """
+    Create a pandas dataframe of all of your triggered traces for a mouse.
 
     Parameters:
     -----------
-    trace_type : str; dff, zscore, deconvolved
-    start_time : int; in seconds relative to stim onsets, -1 is default
-    end_time   : int; in seconds relative to stim onsets, 6 is default
+    mouse : str
+        Mouse name.
+    cs : str
+        Type of CS. e.g., plus, minus, neutral, 0, 135, 270, ...
+    trace_type : str
+        dff, zscore, zscore_iti, deconvolved
+    downsample : bool
+        Downsample from 31 to 15 Hz sampling rate
+    clean_artifacts : str
+        nan, interp; Remove huge artifacts in dff traces by interpolating
+        or adding in nan values
+        Note: setting either value here will cause zscoring to nan artifacts
+        before calculating mu/sigma
+    thresh : int
+        Threshold for removing artifacts
+    warp : bool
+        Warp the outcome to a particular time point using interpolation.
+        Calls flow.Trace2P.warpcstraces()
+    smooth : bool
+        Smooth your signal by convolution
+    smooth_win : int
+        Window in sampling points over which to smooth
+    smooth_win_dec : int
+        Window in sampling points over which to smooth deconvolved data
+        Note: this step follows downsampling so window should probably be
+        smaller than that for smoothing z-score.
 
     Returns:
-    ________
-    Pandas dataframe of all triggered traces and saves to .../output folder
+    --------
+    Pandas dataframe of all triggered traces and saves to .../output folder.
     """
+
+    # create dir with hashed parameters
+    pars = {'trace_type': trace_type, 'cs': cs, 'downsample': downsample,
+            'start_time': start_time, 'end_time': end_time,
+            'clean_artifacts': clean_artifacts, 'thresh': thresh,
+            'warp': warp, 'smooth': smooth, 'smooth_win': smooth_win}
+    save_dir = paths.df_path(mouse, pars=pars)
 
     # build your runs object
     dates = flow.metadata.DateSorter.frommeta(mice=[mouse])
@@ -40,27 +75,11 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
             cell_ids = [int(s) for s in cell_ids]
 
             # trigger all trials around stimulus onsets
-            run_traces = t2p.cstraces('', start_s=start_time, end_s=end_time,
-                                      trace_type=trace_type, cutoff_before_lick_ms=-1,
-                                      errortrials=-1, baseline=(-1, 0),
-                                      baseline_to_stimulus=True)
-
-            # downsample all traces/timestamps to 15Hz if framerate is 31Hz
-            if (t2p.d['framerate'] > 30) and downsample:
-
-                # make sure divisible by 2
-                sz = np.shape(run_traces)  # dims: (cells, time, trials)
-                if sz[1] % 2 == 1:
-                    run_traces = run_traces[:, :-1, :]
-                    sz = np.shape(run_traces)
-
-                # downsample
-                ds_traces = np.zeros((sz[0], int(sz[1]/2), sz[2]))
-                for trial in range(sz[2]):
-                    a = run_traces[:, :, trial].reshape(sz[0], int(sz[1]/2), 2)
-                    ds_traces[:, :, trial] = np.nanmean(a, axis=2)
-
-                run_traces = ds_traces
+            run_traces = utils.getcstraces(run, cs=cs, trace_type=trace_type,
+                                     start_time=start_time, end_time=end_time,
+                                     downsample=True, clean_artifacts=clean_artifacts,
+                                     thresh=thresh, warp=warp, smooth=smooth,
+                                     smooth_win=smooth_win)
 
             # make timestamps, downsample is necessary
             timestep = 1/t2p.d['framerate']
@@ -106,14 +125,6 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
             # clear your t2p to save memory
             run._t2p = None
 
-        # create folder structure if needed
-        save_dir = os.path.join(flow.paths.outd, str(mouse))
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
-        save_dir = os.path.join(save_dir, 'dfs ' + str(trace_type))
-        if not os.path.isdir(save_dir):
-            os.mkdir(save_dir)
-
         # concatenate and save df for the day
         trial_df = pd.concat(trial_list, axis=0)
         save_path = os.path.join(save_dir, str(d.mouse) + '_' + str(d.date)
@@ -129,21 +140,28 @@ def trigger(mouse, trace_type='dff', start_time=-1, end_time=6,
         trial_list = []
 
 
-def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
-              downsample=True, verbose=True):
-    """ Create a pandas dataframe of all of your trial metadata for a mouse
+def trialmeta(mouse, downsample=True, verbose=True):
+    """
+    Create a pandas dataframe of all of your trial metadata
+    for a mouse.
 
     Parameters:
     -----------
-    trace_type : str, must match trigger params
-    start_time : int, must match trigger params
-    end_time   : int, must match trigger params
+    mouse : str
+        Mouse name.
+    downsample : bool
+        Downsample from 30 to 15 Hz. Must match trigger
+        params.
 
     Returns:
-    ________
-    Pandas dataframe of all trial metadata and saves to .../output folder
+    --------
+    Pandas dataframe of all trial metadata saved
+    to .../output folder.
 
     """
+
+    # time before stimulus in triggered data, relative to onset
+    start_time = -1
 
     runs = flow.metadata.RunSorter.frommeta(mice=[mouse])
 
@@ -153,11 +171,16 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
         # get your t2p object
         t2p = run.trace2p()
 
-        # trigger all trials around stimulus onsets to get trial number
-        run_traces = t2p.cstraces('', start_s=start_time, end_s=end_time, trace_type=trace_type,
-                        cutoff_before_lick_ms=-1, errortrials=-1, baseline=(-1, 0),
-                        baseline_to_stimulus=True)
-        trial_idx = range(np.shape(run_traces)[2])
+        # get the number of trials in your run
+        try:
+            trial_idx = range(t2p.ntrials)
+        except:
+            run_traces = t2p.cstraces(
+                '', start_s=-1, end_s=6,
+                trace_type='dff', cutoff_before_lick_ms=-1,
+                errortrials=-1, baseline=(-1, 0),
+                baseline_to_stimulus=True)
+            trial_idx = range(np.shape(run_traces)[2])
 
         # get your learning-state
         run_tags = run.tags
@@ -198,6 +221,7 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
         oris = [t2p.d['orientations'][lookup[s]] for s in t2p.d['condition'][trial_idx]]
 
         # get mean running speed for time stim is on screen
+        # TODO offset may be hardcoded from write_simpcell
         all_onsets = t2p.csonsets()
         all_offsets = t2p.d['offsets'][0:len(all_onsets)]
         if t2p.d['running'].size > 0:
@@ -274,14 +298,16 @@ def trialmeta(mouse, trace_type='dff', start_time=-1, end_time=6,
 
 
 def get_xdaymap(mouse):
-    """Build crossday binary map to use for efficient loading/indexing.
+    """
+    Build crossday binary map to use for efficient loading/indexing.
 
-    Parameters
+    Parameters:
     ----------
-    mouse : mouse str
+    mouse : str
+        Mouse name.
 
-    Returns
-    -------
+    Returns:
+    --------
     ndarray
         ncells x ndays - 0 and 1
     """
@@ -309,18 +335,22 @@ def get_xdaymap(mouse):
     return cell_map
 
 
-def singlecell(mouse, trace_type, cell_idx, xmap=None):
+def singlecell(mouse, trace_type, cell_idx, xmap=None, word=None):
     """Build df for a single cell loading/indexing efficiently.
 
-    Parameters
-    ----------
-    mouse : str, mouse
-    trace_type : str, {'dff', 'zscore', 'deconvolved'}
-    cell_idx : int, one-indexed
-    xmap : ndarray, xdaymap, can be passed optionally to prevent build
+    Parameters:
+    -----------
+    mouse : str
+        Mouse name.
+    trace_type : str
+         {'dff', 'zscore', 'deconvolved'}
+    cell_idx : int
+        one-indexed
+    xmap : ndarray
+        xdaymap, can be passed optionally to prevent build
 
-    Returns
-    -------
+    Returns:
+    --------
     pandas df
         df of all traces over all days for a cell
     """
@@ -336,7 +366,10 @@ def singlecell(mouse, trace_type, cell_idx, xmap=None):
     cell_num = int(cell_idx - 1)
 
     # assign folder structure for loading
-    save_dir = os.path.join(flow.paths.outd, str(mouse), 'dfs ' + str(trace_type))
+    if word:
+        word_tag = '-' + word
+    save_dir = os.path.join(flow.paths.outd, str(mouse),
+                            'dfs-' + str(trace_type) + word_tag)
 
     # load all dfs into list that contain the cell of interest
     cell_xday = []
@@ -420,7 +453,7 @@ def trialbhv(mouse, start_time=-1, end_time=6, verbose=True):
 
 
 def behaviortraces(t2p, cs, start_s=-1, end_s=6, trace_type='speed',
-                       cutoff_before_lick_ms=-1, errortrials=-1):
+                   cutoff_before_lick_ms=-1, errortrials=-1):
     """Return the triggered traces for a particular behavior with flexibility.
 
     Parameters
