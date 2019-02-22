@@ -20,7 +20,7 @@ def singleday_tca(mouse, tags=None,
                   fit_options=None,
 
                   # tensor params
-                  trace_type='zscore_iti',
+                  trace_type='zscore_day',
                   cs='',
                   downsample=True,
                   start_time=-1,
@@ -200,12 +200,12 @@ def pairday_tca(mouse, tags=None,
                 fit_options=None,
 
                 # tensor params
-                trace_type='zscore_iti',
+                trace_type='zscore_day',
                 cs='',
                 downsample=True,
                 start_time=-1,
                 end_time=6,
-                clean_artifacts='interp',
+                clean_artifacts=None,
                 thresh=20,
                 warp=False,
                 smooth=True,
