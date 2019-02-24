@@ -273,10 +273,10 @@ def pairday_factors(mouse, trace_type='zscore', cs='', warp=False, word=None, ve
             plt.close()
 
 
-def pairday_factors_annotated(mouse, trace_type='zscore_iti', cs='',
+def pairday_factors_annotated(mouse, trace_type='zscore_day', cs='',
                               warp=False, word=None, method='ncp_bcd',
                               extra_col=4, alpha=0.6, plot_running=True,
-                              verbose=False):
+                              filetype='pdf', verbose=False):
 
     """
     Plot TCA factors with trial metadata annotations for all days
@@ -396,6 +396,10 @@ def pairday_factors_annotated(mouse, trace_type='zscore_iti', cs='',
         trialerror = meta['trialerror']
         hunger = meta['hunger']
         speed = meta['speed']
+
+        # merge hunger and tag info for plotting hunger
+        tags = meta['tag']
+        hunger[tags == 'disengaged'] = 'disengaged'
 
         # sort neuron factors by component they belong to most
         sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
@@ -523,7 +527,13 @@ def pairday_factors_annotated(mouse, trace_type='zscore_iti', cs='',
                         ax[i, 0].set_ylabel('Component #' + str(i+1), rotation=0,
                           labelpad=45, verticalalignment='center', fontstyle='oblique')
 
-            plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + '.png'),
+            if filetype.lower() == 'pdf':
+                suffix = '.pdf'
+            elif filetype.lower() == 'eps':
+                suffix = '.eps'
+            else:
+                suffix = '.png'
+            plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + suffix),
                                      bbox_inches='tight')
             if verbose:
                 plt.show()
@@ -1125,10 +1135,10 @@ def singleday_factors(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=
             plt.close()
 
 
-def singleday_factors_annotated(mouse='OA27', trace_type='zscore_iti',
+def singleday_factors_annotated(mouse, trace_type='zscore_day',
                                 method='ncp_bcd', cs='', warp=False, word=None,
                                 extra_col=4, alpha=0.6, plot_running=True,
-                                verbose=False):
+                                filetype='pdf', verbose=False):
 
     """
     Plot TCA factors with trial metadata annotations for all days
@@ -1240,6 +1250,10 @@ def singleday_factors_annotated(mouse='OA27', trace_type='zscore_iti',
         hunger = meta['hunger']
         speed = meta['speed']
 
+        # merge hunger and tag info for plotting hunger
+        tags = meta['tag']
+        hunger[tags == 'disengaged'] = 'disengaged'
+
         # sort neuron factors by component they belong to most
         sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
 
@@ -1286,8 +1300,8 @@ def singleday_factors_annotated(mouse='OA27', trace_type='zscore_iti',
                         color_vals = [[0.28, 0.68, 0.93, alpha], [0.84, 0.12, 0.13, alpha],
                                       [0.46, 0.85, 0.47, alpha]]
                         for k in range(0, 3):
-                            ax[i, col].plot(trial_num[orientation==ori_vals[k]],
-                                            U.factors[2][orientation==ori_vals[k], i], 'o',
+                            ax[i, col].plot(trial_num[orientation == ori_vals[k]],
+                                            U.factors[2][orientation == ori_vals[k], i], 'o',
                                             label=str(ori_vals[k]), color=color_vals[k], markersize=2)
                         if i == 0:
                             ax[i, col].set_title('Orientation')
@@ -1297,12 +1311,12 @@ def singleday_factors_annotated(mouse='OA27', trace_type='zscore_iti',
                         cs_vals = ['plus', 'minus', 'neutral']
                         cs_labels = ['plus', 'minus', 'neutral']
                         color_vals = [[0.46, 0.85, 0.47, alpha], [0.84, 0.12, 0.13, alpha],
-                                      [0.28, 0.68, 0.93, alpha]];
+                                      [0.28, 0.68, 0.93, alpha]]
                         col = 4
-                        for k in range(0,3):
-                            ax[i, col].plot(trial_num[condition==cs_vals[k]],
-                                                           U.factors[2][condition==cs_vals[k], i], 'o',
-                                                           label=str(cs_labels[k]), color=color_vals[k], markersize=2)
+                        for k in range(0, 3):
+                            ax[i, col].plot(trial_num[condition == cs_vals[k]],
+                                            U.factors[2][condition == cs_vals[k], i], 'o',
+                                            label=str(cs_labels[k]), color=color_vals[k], markersize=2)
                         if i == 0:
                             ax[i, col].set_title('Condition')
                             ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
@@ -1320,12 +1334,12 @@ def singleday_factors_annotated(mouse='OA27', trace_type='zscore_iti',
                                              'pav early licking',
                                              'pav late licking',]
                         for k in trialerror_vals:
-                            ax[i, col].plot(trial_num[trialerror==trialerror_vals[k]],
-                                            U.factors[2][trialerror==trialerror_vals[k], i], 'o',
+                            ax[i, col].plot(trial_num[trialerror == trialerror_vals[k]],
+                                            U.factors[2][trialerror == trialerror_vals[k], i], 'o',
                                             label=str(trialerror_labels[k]), alpha=0.8, markersize=2)
                         if i == 0:
                             ax[i, col].set_title('Trialerror')
-                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
+                            ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                               borderaxespad=2.5)
 
                     elif col == 6:
@@ -1333,13 +1347,13 @@ def singleday_factors_annotated(mouse='OA27', trace_type='zscore_iti',
                         h_labels = ['hungry', 'sated', 'disengaged']
                         color_vals = [[1, 0.6, 0.3, alpha], [0.7, 0.9, 0.4, alpha],
                                       [0.6, 0.5, 0.6, alpha], [0.0, 0.9, 0.4, alpha]]
-                        for k in range(0,3):
-                            ax[i, col].plot(trial_num[hunger==h_vals[k]],
-                                            U.factors[2][hunger==h_vals[k], i], 'o',
+                        for k in range(0, 3):
+                            ax[i, col].plot(trial_num[hunger == h_vals[k]],
+                                            U.factors[2][hunger == h_vals[k], i], 'o',
                                             label=str(h_labels[k]), color=color_vals[k], markersize=2)
                         if i == 0:
                             ax[i, col].set_title('State')
-                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
+                            ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                               borderaxespad=2.5)
 
                     # set axes labels
@@ -1363,9 +1377,16 @@ def singleday_factors_annotated(mouse='OA27', trace_type='zscore_iti',
 
                     if col == 3:
                         ax[i, 0].set_ylabel('Component #' + str(i+1), rotation=0,
-                          labelpad=45, verticalalignment='center', fontstyle='oblique')
+                                            labelpad=45, verticalalignment='center',
+                                            fontstyle='oblique')
 
-            plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + '.png'),
+            if filetype.lower() == 'pdf':
+                suffix = '.pdf'
+            elif filetype.lower() == 'eps':
+                suffix = '.eps'
+            else:
+                suffix = '.png'
+            plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + suffix),
                                      bbox_inches='tight')
             if verbose:
                 plt.show()
