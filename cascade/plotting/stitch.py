@@ -142,6 +142,7 @@ def plot_neuro_similarity_matrices(
         plt.savefig(save_path)
         plt.close()
 
+
 def plot_tempo_similarity_matrices(
         mouse,
         rank_num=10,
