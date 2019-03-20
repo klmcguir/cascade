@@ -34,6 +34,7 @@ def singleday_tca(mouse, tags=None,
 
                   # filtering params
                   exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy', 'sated'),
+                  exclude_conds=('blank', 'blank_reward', 'pavlovian'),
                   driven=True,
                   drive_css=('0', '135', '270'),
                   drive_threshold=15):
@@ -44,7 +45,7 @@ def singleday_tca(mouse, tags=None,
     Algortitms from https://github.com/ahwillia/tensortools.
 
     Parameters
-    -------
+    ----------
     methods, tuple of str
         'cp_als', fits CP Decomposition using Alternating
             Least Squares (ALS).
@@ -76,8 +77,9 @@ def singleday_tca(mouse, tags=None,
             'start_time': start_time, 'end_time': end_time,
             'clean_artifacts': clean_artifacts, 'thresh': thresh,
             'warp': warp, 'smooth': smooth, 'smooth_win': smooth_win,
-            'exclude_tags': exclude_tags, 'driven': driven,
-            'drive_css': drive_css, 'drive_threshold': drive_threshold}
+            'exclude_tags': exclude_tags, 'exclude_conds': exclude_conds,
+            'driven': driven, 'drive_css': drive_css,
+            'drive_threshold': drive_threshold}
     save_dir = paths.tca_path(mouse, 'single', pars=pars)
 
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=tags)
@@ -152,6 +154,11 @@ def singleday_tca(mouse, tags=None,
                     else:
                         print('ERROR: cs called - "' + cs + '" - is not\
                               a valid option.')
+
+                # subselect metadata to remove certain condtions
+                if len(exclude_conds) > 0:
+                    dfr = dfr.loc[(~dfr['condition'].isin([exclude_conds])), :]
+
                 # drop trials with nans and add to lists
                 keep = np.sum(np.sum(np.isnan(run_traces), axis=0, keepdims=True),
                               axis=1, keepdims=True).flatten() == 0
@@ -218,6 +225,7 @@ def pairday_tca(mouse, tags=None,
 
                 # filtering params
                 exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy', 'sated'),
+                exclude_conds=('blank', 'blank_reward', 'pavlovian'),
                 driven=True,
                 drive_css=('0', '135', '270'),
                 drive_threshold=15):
@@ -260,8 +268,9 @@ def pairday_tca(mouse, tags=None,
             'start_time': start_time, 'end_time': end_time,
             'clean_artifacts': clean_artifacts, 'thresh': thresh,
             'warp': warp, 'smooth': smooth, 'smooth_win': smooth_win,
-            'exclude_tags': exclude_tags, 'driven': driven,
-            'drive_css': drive_css, 'drive_threshold': drive_threshold}
+            'exclude_tags': exclude_tags, 'exclude_conds': exclude_conds,
+            'driven': driven, 'drive_css': drive_css,
+            'drive_threshold': drive_threshold}
     save_dir = paths.tca_path(mouse, 'pair', pars=pars)
 
     days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=tags)
@@ -377,6 +386,9 @@ def pairday_tca(mouse, tags=None,
                     else:
                         print('ERROR: cs called - "' + cs + '" - is not\
                               a valid option.')
+                # subselect metadata to remove certain conditions
+                if len(exclude_conds) > 0:
+                    dfr = dfr.loc[(~dfr['condition'].isin([exclude_conds])), :]
                 # drop trials with nans and add to lists
                 keep = np.sum(np.sum(np.isnan(run_traces), axis=0, keepdims=True),
                               axis=1, keepdims=True).flatten() == 0
