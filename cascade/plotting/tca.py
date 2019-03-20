@@ -18,8 +18,14 @@ from .. import paths
 """
 
 
-def pairday_shortlist(mouse, trace_type='zscore', method='ncp_bcd', cs='',
-                      warp=False, word=None, verbose=False):
+def pairday_shortlist(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_bcd',
+        cs='',
+        warp=False,
+        word=None,
+        verbose=False):
 
     pairday_varex_summary(mouse, trace_type=trace_type, method=method, cs=cs,
                           warp=warp, word=word, verbose=verbose)
@@ -29,8 +35,14 @@ def pairday_shortlist(mouse, trace_type='zscore', method='ncp_bcd', cs='',
                           warp=warp, ve_min=0.05, word=word)
 
 
-def singleday_shortlist(mouse, trace_type='zscore', method='ncp_bcd', cs='',
-                        warp=False, word=None, verbose=False):
+def singleday_shortlist(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_bcd',
+        cs='',
+        warp=False,
+        word=None,
+        verbose=False):
 
     singleday_varex_summary(mouse, trace_type=trace_type, method=method, cs=cs,
                             warp=warp, word=word, verbose=verbose)
@@ -45,7 +57,13 @@ def singleday_shortlist(mouse, trace_type='zscore', method='ncp_bcd', cs='',
 """
 
 
-def pairday_qc(mouse, trace_type='zscore', cs='', warp=False, word=None, verbose=False):
+def pairday_qc(
+        mouse,
+        trace_type='zscore',
+        cs='',
+        warp=False,
+        word=None,
+        verbose=False):
     """
     Plot similarity and error plots for TCA decomposition ensembles.
 
@@ -117,9 +135,9 @@ def pairday_qc(mouse, trace_type='zscore', cs='', warp=False, word=None, verbose
         save_dir = os.path.join(save_dir, 'qc')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
         error_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
-                         + '_' + str(day2.date) + '_objective.png')
+                         + '_' + str(day2.date) + '_objective.pdf')
         sim_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
-                         + '_' + str(day2.date) + '_similarity.png')
+                         + '_' + str(day2.date) + '_similarity.pdf')
 
         # load your data
         ensemble = np.load(tensor_path)
@@ -146,7 +164,13 @@ def pairday_qc(mouse, trace_type='zscore', cs='', warp=False, word=None, verbose
         plt.close()
 
 
-def pairday_factors(mouse, trace_type='zscore', cs='', warp=False, word=None, verbose=False):
+def pairday_factors(
+        mouse,
+        trace_type='zscore',
+        cs='',
+        warp=False,
+        word=None,
+        verbose=False):
     """
     Plot TCA factors for all days and ranks/componenets for
     TCA decomposition ensembles.
@@ -273,10 +297,19 @@ def pairday_factors(mouse, trace_type='zscore', cs='', warp=False, word=None, ve
             plt.close()
 
 
-def pairday_factors_annotated(mouse, trace_type='zscore_day', cs='',
-                              warp=False, word=None, method='ncp_bcd',
-                              extra_col=4, alpha=0.6, plot_running=True,
-                              filetype='pdf', verbose=False):
+def pairday_factors_annotated(
+        mouse,
+        trace_type='zscore_day',
+        cs='',
+        warp=False,
+        word=None,
+        method='ncp_bcd',
+        extra_col=4,
+        alpha=0.6,
+        plot_running=True,
+        scale_y=False,
+        filetype='pdf',
+        verbose=False):
 
     """
     Plot TCA factors with trial metadata annotations for all days
@@ -394,7 +427,7 @@ def pairday_factors_annotated(mouse, trace_type='zscore_day', cs='',
         trial_num = np.arange(0, len(orientation))
         condition = meta['condition']
         trialerror = meta['trialerror']
-        hunger = meta['hunger']
+        hunger = deepcopy(meta['hunger'])
         speed = meta['speed']
 
         # merge hunger and tag info for plotting hunger
@@ -423,6 +456,27 @@ def pairday_factors_annotated(mouse, trace_type='zscore_day', cs='',
 
             # reshape for easier indexing
             ax = np.array(ax).reshape((U.rank, -1))
+
+            # rescale the y-axis for trials
+            if scale_y:
+                for i in range(U.rank):
+                    y_lim = np.array(ax[i, 2].get_ylim())*0.8
+                    y_ticks = ax[i, 2].get_yticks()
+                    y_ticks[-1] = y_lim[-1]
+                    y_ticks = np.round(y_ticks, 2)
+                    # y_tickl = [str(y) for y in y_ticks]
+                    ax[i, 2].set_ylim(y_lim)
+                    ax[i, 2].set_yticks(y_ticks)
+                    ax[i, 2].set_yticklabels(y_ticks)
+
+            # add a line for stim onset and offset
+            # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
+            for i in range(U.rank):
+                y_lim = ax[i, 1].get_ylim()
+                ons = 15.5*1
+                offs = ons+15.5*3
+                ax[i, 1].plot([ons, ons], y_lim, ':k')
+                ax[i, 1].plot([offs, offs], y_lim, ':k')
 
             for col in range(3, 3+extra_col):
                 for i in range(U.rank):
@@ -540,7 +594,14 @@ def pairday_factors_annotated(mouse, trace_type='zscore_day', cs='',
             plt.close()
 
 
-def pairday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, word=None, verbose=False):
+def pairday_qc_summary(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_bcd',
+        cs='',
+        warp=False,
+        word=None,
+        verbose=False):
     """
     Plot similarity and objective (measure of reconstruction error) plots
     across all days for TCA decomposition ensembles.
@@ -594,8 +655,8 @@ def pairday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp
         save_dir = paths.tca_plots(mouse, 'pair', pars=pars, word=word)
         save_dir = os.path.join(save_dir, 'qc')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
-        error_path = os.path.join(save_dir, str(day1.mouse) + '_summary_objective.png')
-        sim_path = os.path.join(save_dir, str(day1.mouse) + '_summary_similarity.png')
+        error_path = os.path.join(save_dir, str(day1.mouse) + '_summary_objective.pdf')
+        sim_path = os.path.join(save_dir, str(day1.mouse) + '_summary_similarity.pdf')
 
         # plotting options for the unconstrained and nonnegative models.
         plot_options = {
@@ -656,7 +717,13 @@ def pairday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp
         fig1.show()
 
 
-def pairday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, verbose=False):
+def pairday_varex_summary(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_bcd',
+        cs='',
+        warp=False,
+        verbose=False):
     """
     Plot reconstruction error as variance explained across all days for
     TCA decomposition ensembles.
@@ -710,7 +777,7 @@ def pairday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', w
         save_dir = os.path.join(save_dir, 'qc')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
         var_path = os.path.join(save_dir, str(day1.mouse)
-                                + '_summary_variance_cubehelix.png')
+                                + '_summary_variance_cubehelix.pdf')
 
         # load your data
         ensemble = np.load(tensor_path)
@@ -759,7 +826,14 @@ def pairday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', w
     fig.savefig(var_path, bbox_inches='tight')
 
 
-def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='', warp=False, word=None, ve_min=0.05):
+def pairday_varex_percell(
+        mouse,
+        method='ncp_bcd',
+        trace_type='zscore_day',
+        cs='',
+        warp=False,
+        word=None,
+        ve_min=0.05):
     """
     Plot TCA reconstruction error as variance explianed per cell
     for TCA decomposition. Create folder of variance explained per cell
@@ -882,9 +956,9 @@ def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='', w
     save_file_base = mouse + '_pairday_frac_max_var_expl_' + trace_type
 
     # save
-    fig1.savefig(os.path.join(save_dir, save_file_base + '_CDF.png'), bbox_inches='tight')
-    fig2.savefig(os.path.join(save_dir, save_file_base + '_violin.png'), bbox_inches='tight')
-    fig3.savefig(os.path.join(save_dir, save_file_base + '_swarm.png'), bbox_inches='tight')
+    fig1.savefig(os.path.join(save_dir, save_file_base + '_CDF.pdf'), bbox_inches='tight')
+    fig2.savefig(os.path.join(save_dir, save_file_base + '_violin.pdf'), bbox_inches='tight')
+    fig3.savefig(os.path.join(save_dir, save_file_base + '_swarm.pdf'), bbox_inches='tight')
 
     # Part 2
     # plot sorted per "cell" varienace explained (approximate, this is by unique max_ve not cells per se)
@@ -924,7 +998,13 @@ def pairday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='', w
 """
 
 
-def singleday_qc(mouse, trace_type='zscore', cs='', warp=False, word=None, verbose=False):
+def singleday_qc(
+        mouse,
+        trace_type='zscore_day',
+        cs='',
+        warp=False,
+        word=None,
+        verbose=False):
     """
     Plot similarity and error plots for TCA decomposition ensembles.
 
@@ -991,9 +1071,9 @@ def singleday_qc(mouse, trace_type='zscore', cs='', warp=False, word=None, verbo
         save_dir = os.path.join(save_dir, 'qc')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
         error_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
-                                  + '_objective.png')
+                                  + '_objective.pdf')
         sim_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
-                                + '_similarity.png')
+                                + '_similarity.pdf')
 
         # load your data
         ensemble = np.load(tensor_path)
@@ -1020,7 +1100,14 @@ def singleday_qc(mouse, trace_type='zscore', cs='', warp=False, word=None, verbo
         plt.close()
 
 
-def singleday_factors(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, word=None, verbose=False):
+def singleday_factors(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_bcd',
+        cs='',
+        warp=False,
+        word=None,
+        verbose=False):
     """
     Plot TCA factors for all days and ranks/componenets for
     TCA decomposition ensembles.
@@ -1135,10 +1222,19 @@ def singleday_factors(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=
             plt.close()
 
 
-def singleday_factors_annotated(mouse, trace_type='zscore_day',
-                                method='ncp_bcd', cs='', warp=False, word=None,
-                                extra_col=4, alpha=0.6, plot_running=True,
-                                filetype='pdf', verbose=False):
+def singleday_factors_annotated(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_bcd',
+        cs='',
+        warp=False,
+        word=None,
+        extra_col=4,
+        alpha=0.6,
+        plot_running=True,
+        filetype='pdf',
+        scale_y=False,
+        verbose=False):
 
     """
     Plot TCA factors with trial metadata annotations for all days
@@ -1234,7 +1330,11 @@ def singleday_factors_annotated(mouse, trace_type='zscore_day',
 
         # save dir
         save_dir = paths.tca_plots(mouse, 'single', pars=pars, word=word)
-        save_dir = os.path.join(save_dir, 'factors annotated')
+        if scale_y:
+            save_tag = ' scaled-y'
+        else:
+            save_tag = ''
+        save_dir = os.path.join(save_dir, 'factors annotated' + save_tag)
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
         date_dir = os.path.join(save_dir, str(day1.date) + ' ' + method)
         if not os.path.isdir(date_dir): os.mkdir(date_dir)
@@ -1247,7 +1347,7 @@ def singleday_factors_annotated(mouse, trace_type='zscore_day',
         trial_num = np.arange(0, len(orientation))
         condition = meta['condition']
         trialerror = meta['trialerror']
-        hunger = meta['hunger']
+        hunger = deepcopy(meta['hunger'])
         speed = meta['speed']
 
         # merge hunger and tag info for plotting hunger
@@ -1275,6 +1375,27 @@ def singleday_factors_annotated(mouse, trace_type='zscore_day',
 
             # reshape for easier indexing
             ax = np.array(ax).reshape((U.rank, -1))
+
+            # rescale the y-axis for trials
+            if scale_y:
+                for i in range(U.rank):
+                    y_lim = np.array(ax[i, 2].get_ylim())*0.8
+                    y_ticks = ax[i, 2].get_yticks()
+                    y_ticks[-1] = y_lim[-1]
+                    y_ticks = np.round(y_ticks, 2)
+                    # y_tickl = [str(y) for y in y_ticks]
+                    ax[i, 2].set_ylim(y_lim)
+                    ax[i, 2].set_yticks(y_ticks)
+                    ax[i, 2].set_yticklabels(y_ticks)
+
+            # add a line for stim onset and offset
+            # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
+            for i in range(U.rank):
+                y_lim = ax[i, 1].get_ylim()
+                ons = 15.5*1
+                offs = ons+15.5*3
+                ax[i, 1].plot([ons, ons], y_lim, ':k')
+                ax[i, 1].plot([offs, offs], y_lim, ':k')
 
             for col in range(3, 3+extra_col):
                 for i in range(U.rank):
@@ -1393,7 +1514,14 @@ def singleday_factors_annotated(mouse, trace_type='zscore_day',
             plt.close()
 
 
-def singleday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, word=None, verbose=False):
+def singleday_qc_summary(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_bcd',
+        cs='',
+        warp=False,
+        word=None,
+        verbose=False):
     """
     Plot similarity and objective (measure of reconstruction error) plots
     across all days for TCA decomposition ensembles.
@@ -1439,8 +1567,8 @@ def singleday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', wa
         save_dir = paths.tca_plots(mouse, 'single', pars=pars, word=word)
         save_dir = os.path.join(save_dir, 'qc')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
-        error_path = os.path.join(save_dir, str(day1.mouse) + '_summary_objective.png')
-        sim_path = os.path.join(save_dir, str(day1.mouse) + '_summary_similarity.png')
+        error_path = os.path.join(save_dir, str(day1.mouse) + '_summary_objective.pdf')
+        sim_path = os.path.join(save_dir, str(day1.mouse) + '_summary_similarity.pdf')
 
         # plotting options for the unconstrained and nonnegative models.
         plot_options = {
@@ -1501,7 +1629,14 @@ def singleday_qc_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', wa
         fig1.show()
 
 
-def singleday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='', warp=False, word=None, verbose=False):
+def singleday_varex_summary(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_bcd',
+        cs='',
+        warp=False,
+        word=None,
+        verbose=False):
     """
     Plot reconstruction error as variance explained across all days for
     TCA decomposition ensembles.
@@ -1547,7 +1682,7 @@ def singleday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='',
         save_dir = paths.tca_plots(mouse, 'single', pars=pars, word=word)
         save_dir = os.path.join(save_dir, 'qc')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
-        var_path = os.path.join(save_dir, str(day1.mouse) + '_summary_variance_cubehelix.png')
+        var_path = os.path.join(save_dir, str(day1.mouse) + '_summary_variance_cubehelix.pdf')
 
         # load your data
         ensemble = np.load(tensor_path)
@@ -1596,7 +1731,15 @@ def singleday_varex_summary(mouse, trace_type='zscore', method='ncp_bcd', cs='',
     fig.savefig(var_path, bbox_inches='tight')
 
 
-def singleday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='', warp=False, word=None, ve_min=0.05):
+def singleday_varex_percell(
+        mouse,
+        method='ncp_bcd',
+        trace_type='zscore_day',
+        cs='',
+        warp=False,
+        word=None,
+        ve_min=0.05,
+        filetype='pdf'):
     """
     Plot TCA reconstruction error as variance explianed per cell
     for TCA decomposition. Create folder of variance explained per cell
@@ -1718,8 +1861,14 @@ def singleday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='',
     save_file_base = mouse + '_singleday_frac_max_var_expl_' + trace_type
 
     # save
-    fig1.savefig(os.path.join(save_dir, save_file_base + '_CDF.png'), bbox_inches='tight')
-    fig2.savefig(os.path.join(save_dir, save_file_base + '_violin.png'), bbox_inches='tight')
+    if filetype.lower() == 'pdf':
+        suffix = '.pdf'
+    elif filetype.lower() == 'eps':
+        suffix = '.eps'
+    else:
+        suffix = '.png'
+    fig1.savefig(os.path.join(save_dir, save_file_base + '_CDF' + suffix), bbox_inches='tight')
+    fig2.savefig(os.path.join(save_dir, save_file_base + '_violin' + suffix), bbox_inches='tight')
     fig3.savefig(os.path.join(save_dir, save_file_base + '_swarm.png'), bbox_inches='tight')
 
     # Part 2
@@ -1751,5 +1900,5 @@ def singleday_varex_percell(mouse, method='ncp_bcd', trace_type='zscore', cs='',
         ax0.set_title(mouse + ', Variance explained per cell, day ' + str(d))
 
         fig0.savefig(os.path.join(save_dir, save_file_base + '_day_' + str(d)
-                     + '.png'), bbox_inches='tight')
+                     + suffix), bbox_inches='tight')
         plt.close()
