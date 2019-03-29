@@ -798,7 +798,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         oris = [np.nan for s in t2p.d['condition'][trial_idx]]
 
     # get mean running speed for time stim is on screen
-    # use first 3 secodns after onset if there is not offset
+    # use first 3 seconds after onset if there is no offset
     all_onsets = t2p.csonsets()
     try:
         all_offsets = t2p.d['offsets'][0:len(all_onsets)]
@@ -818,6 +818,20 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         speed = np.array(speed)
     else:
         speed = np.full(len(trial_idx), np.nan)
+    # get mean brainmotion for time stim is on screen
+    # use first 3 seconds after onset if there is no offset
+    if t2p.d['brainmotion'].size > 0:
+        xy_vec = t2p.d['brainmotion']
+        xy_vec = xy_vec.astype('float')
+        brainmotion = []
+        for s in trial_idx:
+            try:
+                brainmotion.append(np.nanmean(xy_vec[all_onsets[s]:all_offsets[s]]))
+            except:
+                brainmotion.append(np.nan)
+        brainmotion = np.array(speed)
+    else:
+        brainmotion = np.full(len(trial_idx), np.nan)
 
     # get ensure/ensure/firstlick relative to triggered data
     ensure = t2p.ensure()
@@ -852,7 +866,8 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
             'trialerror': trialerror, 'hunger': hunger,
             'learning_state': learning_state, 'tag': tags,
             'firstlick': firstlick, 'ensure': ensure,
-            'quinine': quinine, 'speed': speed}
+            'quinine': quinine, 'speed': speed,
+            'brainmotion': brainmotion}
 
     dfr = pd.DataFrame(data, index=index)
 
