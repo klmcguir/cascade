@@ -223,7 +223,12 @@ def trialmeta(mouse, downsample=True, verbose=True):
         # get mean running speed for time stim is on screen
         # TODO offset may be hardcoded from write_simpcell
         all_onsets = t2p.csonsets()
-        all_offsets = t2p.d['offsets'][0:len(all_onsets)]
+        try:
+            all_offsets = t2p.d['offsets'][0:len(all_onsets)]
+        except KeyError:
+            all_offsets = all_onsets + (np.round(t2p.d['framerate'])*3)
+        if all_offsets[-1] > t2p.nframes:
+            all_offsets[-1] = t2p.nframes
         if t2p.d['running'].size > 0:
             speed_vec = t2p.speed()
             speed_vec = speed_vec.astype('float')
@@ -236,10 +241,20 @@ def trialmeta(mouse, downsample=True, verbose=True):
             speed = np.array(speed)
         else:
             speed = np.full(len(trial_idx), np.nan)
-
-        # get offset relative to triggered data
-    #     offsets = all_offsets - all_onsets + (np.abs(start_time)*np.round(t2p.d['framerate']))
-    #     offsets = offsets.flatten()
+        # get mean brainmotion for time stim is on screen
+        # use first 3 seconds after onset if there is no offset
+        if t2p.d['brainmotion'].size > 0:
+            xy_vec = t2p.d['brainmotion']
+            xy_vec = xy_vec.astype('float')
+            brainmotion = []
+            for s in trial_idx:
+                try:
+                    brainmotion.append(np.nanmean(xy_vec[all_onsets[s]:all_offsets[s]]))
+                except:
+                    brainmotion.append(np.nan)
+            brainmotion = np.array(speed)
+        else:
+            brainmotion = np.full(len(trial_idx), np.nan)
 
         # get ensure/ensure/firstlick relative to triggered data
         ensure = t2p.ensure()
@@ -274,7 +289,8 @@ def trialmeta(mouse, downsample=True, verbose=True):
                 'trialerror': trialerror, 'hunger': hunger,
                 'learning_state': learning_state, 'tag': tags,
                 'firstlick': firstlick, 'ensure': ensure,
-                'quinine': quinine, 'speed': speed}
+                'quinine': quinine, 'speed': speed
+                'brainmotion': brainmotion}
 
         # append all trials across all runs together into a list
         trial_list.append(pd.DataFrame(data, index=index))
