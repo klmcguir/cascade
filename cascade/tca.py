@@ -812,9 +812,9 @@ def groupday_tca(
         for day1 in days:
             dprime.append(pool.calc.performance.dprime(day1))
         if up_or_down.lower() == 'up':
-            days = days[np.array(dprime) > dprime_threshold]
+            days = [d for c, d in enumerate(days) if dprime[c] > dprime_threshold]
         elif up_or_down.lower() == 'down':
-            days = days[np.array(dprime) <= dprime_threshold]
+            days = [d for c, d in enumerate(days) if dprime[c] <= dprime_threshold]
 
     # preallocate for looping over a group of days/runs
     meta_list = []
@@ -911,6 +911,10 @@ def groupday_tca(
             celln_all_trials = tensor_list[i][c, :, :]
             group_tensor[(id_union == k), :, trial_start:trial_end] = celln_all_trials
         trial_start += np.shape(tensor_list[i])[2]
+
+    # just so you have a clue how big the tensor is
+    print('Tensor decomp about to begin: tensor shape = '
+          + str(np.shape(group_tensor)))
 
     # concatenate and save df for the day
     meta_path = os.path.join(save_dir, str(day1.mouse) + '_'
