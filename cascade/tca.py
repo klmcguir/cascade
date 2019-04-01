@@ -83,16 +83,13 @@ def singleday_tca(
             'drive_threshold': drive_threshold}
     save_dir = paths.tca_path(mouse, 'single', pars=pars)
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=tags)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=tags)
 
     for c, day1 in enumerate(days, 0):
 
         # get cell_ids
         d1_ids = flow.xday._read_crossday_ids(day1.mouse, day1.date)
         d1_ids = np.array([int(s) for s in d1_ids])
-
-        # filter cells based on visual/trial drive across all cs
-    #     d1_drive = np.max([pool.calc.driven.trial(day1, cs) for cs in drive_css], axis=0)
 
         # filter cells based on visual/trial drive across all cs, prevent
         # breaking when only pavs are shown
@@ -276,7 +273,7 @@ def pairday_tca(
             'drive_threshold': drive_threshold}
     save_dir = paths.tca_path(mouse, 'pair', pars=pars)
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=tags)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=tags)
 
     for c, day1 in enumerate(days, 0):
 
@@ -534,7 +531,7 @@ def pairday_tca_2(
             'drive_css': drive_css, 'drive_threshold': drive_threshold}
     save_dir = paths.tca_path(mouse, 'pair', pars=pars)
 
-    days = flow.metadata.DatePairSorter.frommeta(mice=[mouse], day_distance=(0, 7))
+    days = flow.DatePairSorter.frommeta(mice=[mouse], day_distance=(0, 7))
 
     for c, (day1, day2) in enumerate(days):
 
@@ -807,7 +804,7 @@ def groupday_tca(
     save_dir = paths.tca_path(mouse, 'group', pars=pars, group_pars=group_pars)
 
     # get DateSorter object
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=tags)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=tags)
 
     # filter DateSorter object if you are filtering on dprime
     if use_dprime:

@@ -266,7 +266,7 @@ def heatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
             date_yticks = []
             date_label = []
 
-            date_rel = flow.metadata.DateSorter.frommeta(mice=[mouse])
+            date_rel = flow.DateSorter.frommeta(mice=[mouse])
             date_rel = [s.date for s in date_rel]
 
             for day in np.unique(dates):

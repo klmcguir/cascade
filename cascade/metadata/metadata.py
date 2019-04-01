@@ -13,7 +13,7 @@ def dircreate(mouse, overwrite=False, update=False):
         mouse = raw_input('Enter mouse name: ')
 
     # add mouse metadata
-    flow.add_mouse(mouse, tags=['kelly'], overwrite=overwrite, update=update)
+    flow.metadata.add_mouse(mouse, tags=['kelly'], overwrite=overwrite, update=update)
 
     data_dir = '/Users/kelly_mcguire/Documents/Data/data'
     mouse_dir = os.path.join(data_dir, mouse)
@@ -62,7 +62,7 @@ def dircreate(mouse, overwrite=False, update=False):
             date_tags = 'reversal2'
 
         # add date to metadata
-        flow.add_date(mouse, int(i), tags=[date_tags],
+        flow.metadata.add_date(mouse, int(i), tags=[date_tags],
                                photometry=None, overwrite=overwrite, update=update)
 
         # loop through adding runs and getting tags for days
@@ -109,7 +109,7 @@ def dircreate(mouse, overwrite=False, update=False):
             else:
                 run_type = 'other'
 
-            flow.add_run(mouse, int(i), int(k), run_type, tags=[run_tag1, run_tag2],
+            flow.metadata.add_run(mouse, int(i), int(k), run_type, tags=[run_tag1, run_tag2],
                                   overwrite=overwrite, update=update)
 
 
@@ -138,9 +138,9 @@ def dirupdate_training(mouse, update=True):
         # add current run_type to tags and make update run_type
         if not tag_flag and not type_flag:
             run_type = 'training'
-            flow.add_run(run.mouse, run.date, run.run, run_type,
+            flow.metadata.add_run(run.mouse, run.date, run.run, run_type,
                                   tags=[run.run_type], overwrite=False, update=update)
         else:
             run_type = 'other'
-            flow.add_run(run.mouse, run.date, run.run, run_type,
+            flow.metadata.add_run(run.mouse, run.date, run.run, run_type,
                                   tags=[run.run_type], overwrite=False, update=update)

@@ -170,7 +170,7 @@ def groupday_factors_annotated(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     for day1 in days:
 
@@ -433,7 +433,7 @@ def pairday_qc(
       },
     }
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     for c, day1 in enumerate(days, 0):
         try:
@@ -552,7 +552,7 @@ def pairday_factors(
       },
     }
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     for c, day1 in enumerate(days, 0):
         try:
@@ -708,7 +708,7 @@ def pairday_factors_annotated(
       },
     }
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     for c, day1 in enumerate(days, 0):
         try:
@@ -937,7 +937,7 @@ def pairday_qc_summary(
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     cmap = sns.color_palette('hls', n_colors=len(days))
 
@@ -1059,7 +1059,7 @@ def pairday_varex_summary(
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     cmap = sns.color_palette(sns.cubehelix_palette(len(days)))
 
@@ -1177,7 +1177,7 @@ def pairday_varex_percell(
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     ve, ve_max, ve_frac, rank_num, day_num, cell_num = [], [], [], [], [], []
     for c, day1 in enumerate(days, 0):
@@ -1374,7 +1374,7 @@ def singleday_qc(
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     for day1 in days:
 
@@ -1489,7 +1489,7 @@ def singleday_factors(
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     for day1 in days:
 
@@ -1633,7 +1633,7 @@ def singleday_factors_annotated(
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     for day1 in days:
 
@@ -1856,7 +1856,7 @@ def singleday_qc_summary(
     """
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     cmap = sns.color_palette('hls', n_colors=len(days))
 
@@ -1972,7 +1972,7 @@ def singleday_varex_summary(
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     cmap = sns.color_palette(sns.cubehelix_palette(len(days)))
 
@@ -2083,7 +2083,7 @@ def singleday_varex_percell(
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     # create folder structure if needed
     cs_tag = '' if len(cs) == 0 else ' ' + str(cs)

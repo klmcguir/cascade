@@ -58,7 +58,7 @@ def factor_squid(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
     # create datesorter
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     conds_by_day = []
     oris_by_day = []
@@ -377,7 +377,7 @@ def tri_factor_similarity(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
     # create datesorter
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     conds_by_day = []
     oris_by_day = []
@@ -653,7 +653,7 @@ def neuron_similarity(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
     # create datesorter
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
 
     conds_by_day = []
     trialerr_by_day = []

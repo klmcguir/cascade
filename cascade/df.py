@@ -57,7 +57,7 @@ def trigger(mouse, trace_type='zscore_day', cs='', downsample=True,
     save_dir = paths.df_path(mouse, pars=pars)
 
     # build your runs object
-    dates = flow.metadata.DateSorter.frommeta(mice=[mouse])
+    dates = flow.DateSorter.frommeta(mice=[mouse])
 
     trial_list = []
     # loop through all days for a mouse, build and save pandas df
@@ -163,7 +163,7 @@ def trialmeta(mouse, downsample=True, verbose=True):
     # time before stimulus in triggered data, relative to onset
     start_time = -1
 
-    runs = flow.metadata.RunSorter.frommeta(mice=[mouse])
+    runs = flow.RunSorter.frommeta(mice=[mouse])
 
     trial_list = []
     for run in runs:
@@ -329,7 +329,7 @@ def get_xdaymap(mouse):
     """
 
     # get all days for a mouse
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse])
+    days = flow.DateSorter.frommeta(mice=[mouse])
 
     # check all cell ids and build a list for looping over ids
     cell_mat = []
@@ -372,7 +372,7 @@ def singlecell(mouse, trace_type, cell_idx, xmap=None, word=None):
     """
 
     # get all days for mouse
-    days = flow.metadata.DateSorter.frommeta(mice=[mouse])
+    days = flow.DateSorter.frommeta(mice=[mouse])
 
     # build crossday binary map to use for efficient loading/indexing.
     if xmap is None:
@@ -419,7 +419,7 @@ def trialbhv(mouse, start_time=-1, end_time=6, verbose=True):
     """
 
     # build your runs object
-    runs = flow.metadata.RunSorter.frommeta(mice=[mouse])
+    runs = flow.RunSorter.frommeta(mice=[mouse])
 
     trial_list = []
     for r in range(len(runs)):
