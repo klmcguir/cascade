@@ -11,34 +11,35 @@ from . import paths
 from copy import deepcopy
 
 
-def singleday_tca(mouse, tags=None,
+def singleday_tca(
+        mouse,
+        tags=None,
 
-                  # TCA params
-                  rank=20,
-                  method=('ncp_bcd',),
-                  replicates=3,
-                  fit_options=None,
+        # TCA params
+        rank=20,
+        method=('ncp_bcd',),
+        replicates=3,
+        fit_options=None,
 
-                  # tensor params
-                  trace_type='zscore_day',
-                  cs='',
-                  downsample=True,
-                  start_time=-1,
-                  end_time=6,
-                  clean_artifacts=None,
-                  thresh=20,
-                  warp=False,
-                  smooth=True,
-                  smooth_win=5,
-                  verbose=True,
+        # tensor params
+        trace_type='zscore_day',
+        cs='',
+        downsample=True,
+        start_time=-1,
+        end_time=6,
+        clean_artifacts=None,
+        thresh=20,
+        warp=False,
+        smooth=True,
+        smooth_win=5,
+        verbose=True,
 
-                  # filtering params
-                  exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy', 'sated'),
-                  exclude_conds=('blank', 'blank_reward', 'pavlovian'),
-                  driven=True,
-                  drive_css=('0', '135', '270'),
-                  drive_threshold=15):
-
+        # filtering params
+        exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy', 'sated'),
+        exclude_conds=('blank', 'blank_reward', 'pavlovian'),
+        driven=True,
+        drive_css=('0', '135', '270'),
+        drive_threshold=15):
     """
     Perform tensor component analysis (TCA) on for a single day.
 
@@ -202,33 +203,35 @@ def singleday_tca(mouse, tags=None,
                       str(day1.date) + ': done.')
 
 
-def pairday_tca(mouse, tags=None,
+def pairday_tca(
+        mouse,
+        tags=None,
 
-                # TCA params
-                rank=20,
-                method=('ncp_bcd',),
-                replicates=3,
-                fit_options=None,
+        # TCA params
+        rank=20,
+        method=('ncp_bcd',),
+        replicates=3,
+        fit_options=None,
 
-                # tensor params
-                trace_type='zscore_day',
-                cs='',
-                downsample=True,
-                start_time=-1,
-                end_time=6,
-                clean_artifacts=None,
-                thresh=20,
-                warp=False,
-                smooth=True,
-                smooth_win=5,
-                verbose=True,
+        # tensor params
+        trace_type='zscore_day',
+        cs='',
+        downsample=True,
+        start_time=-1,
+        end_time=6,
+        clean_artifacts=None,
+        thresh=20,
+        warp=False,
+        smooth=True,
+        smooth_win=5,
+        verbose=True,
 
-                # filtering params
-                exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy', 'sated'),
-                exclude_conds=('blank', 'blank_reward', 'pavlovian'),
-                driven=True,
-                drive_css=('0', '135', '270'),
-                drive_threshold=15):
+        # filtering params
+        exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy', 'sated'),
+        exclude_conds=('blank', 'blank_reward', 'pavlovian'),
+        driven=True,
+        drive_css=('0', '135', '270'),
+        drive_threshold=15):
     """
     Perform tensor component analysis (TCA) on data aligned
     across pairs of days.
@@ -461,32 +464,33 @@ def pairday_tca(mouse, tags=None,
                       str(day1.date) + ', ' + str(day2.date) + ': done.')
 
 
-def pairday_tca_2(mouse, tags=None,
+def pairday_tca_2(
+        mouse, tags=None,
 
-                # TCA params
-                rank=20,
-                method=('ncp_bcd',),
-                replicates=3,
-                fit_options=None,
+        # TCA params
+        rank=20,
+        method=('ncp_bcd',),
+        replicates=3,
+        fit_options=None,
 
-                # tensor params
-                trace_type='zscore_day',
-                cs='',
-                downsample=True,
-                start_time=-1,
-                end_time=6,
-                clean_artifacts=None,
-                thresh=20,
-                warp=False,
-                smooth=True,
-                smooth_win=5,
-                verbose=True,
+        # tensor params
+        trace_type='zscore_day',
+        cs='',
+        downsample=True,
+        start_time=-1,
+        end_time=6,
+        clean_artifacts=None,
+        thresh=20,
+        warp=False,
+        smooth=True,
+        smooth_win=5,
+        verbose=True,
 
-                # filtering params
-                exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy', 'sated'),
-                driven=True,
-                drive_css=('0', '135', '270'),
-                drive_threshold=15):
+        # filtering params
+        exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy', 'sated'),
+        driven=True,
+        drive_css=('0', '135', '270'),
+        drive_threshold=15):
     """
     Perform tensor component analysis (TCA) on data aligned
     across pairs of days. Uses PairDaySorter.
@@ -669,6 +673,303 @@ def pairday_tca_2(mouse, tags=None,
                       str(day1.date) + ', ' + str(day2.date) + ': done.')
 
 
+def groupday_tca(
+        mouse,
+        tags=None,
+
+        # TCA params
+        rank=20,
+        method=('ncp_bcd',),
+        replicates=3,
+        fit_options=None,
+
+        # grouping params
+        group_by=None,
+        up_or_down='up',
+        use_dprime=False,
+        dprime_threshold=2,
+
+        # tensor params
+        trace_type='zscore_day',
+        cs='',
+        downsample=True,
+        start_time=-1,
+        end_time=6,
+        clean_artifacts=None,
+        thresh=20,
+        warp=False,
+        smooth=True,
+        smooth_win=5,
+        verbose=True,
+
+        # filtering params
+        exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy', 'sated'),
+        exclude_conds=('blank', 'blank_reward', 'pavlovian'),
+        driven=True,
+        drive_css=('0', '135', '270'),
+        drive_threshold=15):
+
+    """
+    Perform tensor component analysis (TCA) on data aligned
+    across a group of days. Builds one large tensor.
+
+    Algortitms from https://github.com/ahwillia/tensortools.
+
+    Parameters
+    -------
+    methods, tuple of str
+        'cp_als', fits CP Decomposition using Alternating
+            Least Squares (ALS).
+        'ncp_bcd', fits nonnegative CP Decomposition using
+            the Block Coordinate Descent (BCD) Method.
+        'ncp_hals', fits nonnegtaive CP Decomposition using
+            the Hierarcial Alternating Least Squares
+            (HALS) Method.
+        'mcp_als', fits CP Decomposition with missing data using
+            Alternating Least Squares (ALS).
+
+    rank, int
+        number of components you wish to fit
+
+    replicates, int
+        number of initializations/iterations fitting for each rank
+
+    Returns
+    -------
+
+    """
+
+    # set grouping parameters
+    if group_by.lower() == 'naive':
+        tags = 'naive'
+        use_dprime = False
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated', 'learning_start')
+
+    elif group_by.lower() == 'high_dprime_learning':
+        use_dprime = True
+        up_or_down = 'up'
+        tags = 'learning'
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated', 'reversal1_start')
+
+    elif group_by.lower() == 'low_dprime_leanring':
+        use_dprime = True
+        up_or_down = 'down'
+        tags = 'learning'
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated')
+
+    elif group_by.lower() == 'high_dprime_reversal1':
+        use_dprime = True
+        up_or_down = 'up'
+        tags = 'reversal1'
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated', 'reversal2_start')
+
+    elif group_by.lower() == 'low_dprime_reversal1':
+        use_dprime = True
+        up_or_down = 'down'
+        tags = 'reversal1'
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated')
+
+    elif group_by.lower() == 'high_dprime_reversal2':
+        use_dprime = True
+        up_or_down = 'up'
+        tags = 'reversal2'
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated')
+
+    elif group_by.lower() == 'low_dprime_reversal2':
+        use_dprime = True
+        up_or_down = 'down'
+        tags = 'reversal2'
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated')
+    else:
+        print('Using input parameters without modification by group_by=...')
+
+    # create folder structure and save dir
+    if fit_options is None:
+        fit_options = {'tol': 0.0001, 'max_iter': 500, 'verbose': False}
+    pars = {'tags': tags, 'rank': rank, 'method': method,
+            'replicates': replicates, 'fit_options': fit_options,
+            'trace_type': trace_type, 'cs': cs, 'downsample': downsample,
+            'start_time': start_time, 'end_time': end_time,
+            'clean_artifacts': clean_artifacts, 'thresh': thresh,
+            'warp': warp, 'smooth': smooth, 'smooth_win': smooth_win,
+            'exclude_tags': exclude_tags, 'exclude_conds': exclude_conds,
+            'driven': driven, 'drive_css': drive_css,
+            'drive_threshold': drive_threshold}
+    group_pars = {'group_by': group_by, 'up_or_down': up_or_down,
+                  'use_dprime': use_dprime, 'dprime_threshold': dprime_threshold}
+    save_dir = paths.tca_path(mouse, 'group', pars=pars, group_pars=group_pars)
+
+    # get DateSorter object
+    days = flow.metadata.DateSorter.frommeta(mice=[mouse], tags=tags)
+
+    # filter DateSorter object if you are filtering on dprime
+    if use_dprime:
+        dprime = []
+        for day1 in days:
+            dprime.append(pool.calc.performance.dprime(day1))
+        if up_or_down.lower() == 'up':
+            days = days[np.array(dprime) > dprime_threshold]
+        elif up_or_down.lower() == 'down':
+            days = days[np.array(dprime) <= dprime_threshold]
+
+    # preallocate for looping over a group of days/runs
+    meta_list = []
+    tensor_list = []
+    id_list = []
+    for c, day1 in enumerate(days, 0):
+
+        # get cell_ids
+        d1_ids = flow.xday._read_crossday_ids(day1.mouse, day1.date)
+        d1_ids = np.array([int(s) for s in d1_ids])
+
+        # filter cells based on visual/trial drive across all cs, prevent
+        # breaking when only pavs are shown
+        if driven:
+            good_ids = _group_drive_ids(days, drive_css, drive_threshold)
+            d1_ids_bool = np.isin(d1_ids, good_ids)
+            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
+        else:
+            d1_ids_bool = np.ones(np.shape(d1_ids)) > 0
+            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
+        ids = d1_ids[d1_ids_bool][d1_sorter]
+
+        # TODO add in additional filter for being able to check for quality of xday alignment
+
+        # get all runs for both days
+        d1_runs = day1.runs()
+
+        # filter for only runs without certain tags
+        d1_runs = [run for run in d1_runs if not any(np.isin(run.tags, exclude_tags))]
+
+        # build tensors for all correct runs and trials after filtering
+        if d1_runs:
+            d1_tensor_list = []
+            d1_meta = []
+            for run in d1_runs:
+                t2p = run.trace2p()
+                # trigger all trials around stimulus onsets
+                run_traces = utils.getcstraces(run, cs=cs, trace_type=trace_type,
+                                         start_time=start_time, end_time=end_time,
+                                         downsample=True, clean_artifacts=clean_artifacts,
+                                         thresh=thresh, warp=warp, smooth=smooth,
+                                         smooth_win=smooth_win)
+                # filter and sort
+                run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
+                # get matched trial metadata/variables
+                dfr = _trialmetafromrun(run)
+                # subselect metadata if you are only running certain cs
+                if cs != '':
+                    if cs == 'plus' or cs == 'minus' or cs == 'neutral':
+                        dfr = dfr.loc[(dfr['condition'].isin([cs])), :]
+                    elif cs == '0' or cs == '135' or cs == '270':
+                        dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
+                    else:
+                        print('ERROR: cs called - "' + cs + '" - is not\
+                              a valid option.')
+
+                # subselect metadata to remove certain condtions
+                if len(exclude_conds) > 0:
+                    dfr = dfr.loc[(~dfr['condition'].isin([exclude_conds])), :]
+
+                # drop trials with nans and add to lists
+                keep = np.sum(np.sum(np.isnan(run_traces), axis=0, keepdims=True),
+                              axis=1, keepdims=True).flatten() == 0
+                dfr = dfr.iloc[keep, :]
+                d1_tensor_list.append(run_traces[:, :, keep])
+                d1_meta.append(dfr)
+
+            # concatenate matched cells across trials 3rd dim (aka, 2)
+            tensor = np.concatenate(d1_tensor_list, axis=2)
+
+            # concatenate all trial metadata in pd dataframe
+            meta = pd.concat(d1_meta, axis=0)
+
+            meta_list.append(meta)
+            tensor_list.append(tensor)
+            id_list.append(ids)
+
+    # get total trial number across all days/runs
+    meta = pd.concat(meta_list, axis=0)
+    trial_num = len(meta.reset_index()['trial_idx'])
+
+    # get union of ids. Use these for indexing and splicing tensors together
+    id_union = np.unique(np.concatenate(id_list, axis=0))
+    cell_num = len(id_union)
+
+    # build a single large tensor leaving zeros where cell is not found
+    trial_start = 0
+    trial_end = 0
+    group_tensor = np.zeros((cell_num, np.shape(tensor_list[0])[1], trial_num))
+    # group_tensor[:] = np.nan
+    for i in range(len(tensor_list)):
+        trial_end += np.shape(tensor_list[i])[2]
+        for c, k in enumerate(id_list[i]):
+            celln_all_trials = tensor_list[i][c, :, :]
+            group_tensor[(id_union == k), :, trial_start:trial_end] = celln_all_trials
+        trial_start += np.shape(tensor_list[i])[2]
+
+    # concatenate and save df for the day
+    meta_path = os.path.join(save_dir, str(day1.mouse) + '_'
+                             + str(day1.date) + '_df_group_meta.pkl')
+    input_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_'
+                                     + str(day1.date) + '_group_tensor_'
+                                     + str(trace_type) + '.npy')
+    input_ids_path = os.path.join(save_dir, str(day1.mouse) + '_'
+                                  + str(day1.date) + '_group_ids_'
+                                  + str(trace_type) + '.npy')
+    output_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_'
+                                      + str(day1.date) + '_group_decomp_'
+                                      + str(trace_type) + '.npy')
+    meta.to_pickle(meta_path)
+    np.save(input_tensor_path, group_tensor)
+    np.save(input_ids_path, id_union)
+
+    # run TCA - iterate over different fitting methods
+    ensemble = {}
+    for m in method:
+        ensemble[m] = tt.Ensemble(
+            fit_method=m, fit_options=deepcopy(fit_options))
+        ensemble[m].fit(tensor, ranks=range(1, rank+1), replicates=replicates, verbose=False)
+    np.save(output_tensor_path, ensemble)
+
+    # print output so you don't go crazy waiting
+    if verbose:
+        print(str(day1.mouse) + ': group_by=' + str(group_by) + ': done.')
+
+
+def _group_drive_ids(days, drive_css, drive_threshold):
+    """
+    Get an array of all unique ids driven on any day for a given DaySorter.
+    """
+
+    good_ids = []
+    for day1 in days:
+        # get cell_ids
+        d1_ids = flow.xday._read_crossday_ids(day1.mouse, day1.date)
+        d1_ids = np.array([int(s) for s in d1_ids])
+        # filter cells based on visual/trial drive across all cs
+        d1_drive = []
+        for dcs in drive_css:
+            try:
+                d1_drive.append(pool.calc.driven.trial(day1, dcs))
+            except KeyError:
+                print(str(day1) + ' requested ' + dcs +
+                      ': no match to what was shown (probably pav only).')
+        d1_drive = np.max(d1_drive, axis=0)
+        d1_ids_bool = np.array(d1_drive) > drive_threshold
+        d1_drive_ids = d1_ids[np.array(d1_drive) > drive_threshold]
+        good_ids.extend(d1_drive_ids)
+
+    return np.unique(good_ids)
+
+
 def _sortfactors(my_method):
     """
     Sort a set of neuron factors by which factor they contribute
@@ -732,6 +1033,111 @@ def _sortfactors(my_method):
             my_method.results[k][i].factors[0] = sorted_factors
 
     return my_method, my_rank_sorts
+
+
+def _triggerfromrun(run, trace_type='zscore_day', cs='', downsample=True,
+            start_time=-1, end_time=6, clean_artifacts='interp',
+            thresh=20, warp=False, smooth=True, smooth_win=5,
+            verbose=True):
+    """
+    Create a pandas dataframe of all of your triggered traces for a mouse.
+
+    Parameters:
+    -----------
+    mouse : str
+        Mouse name.
+    cs : str
+        Type of CS. e.g., plus, minus, neutral, 0, 135, 270, ...
+    trace_type : str
+        dff, zscore, zscore_iti, deconvolved
+    downsample : bool
+        Downsample from 31 to 15 Hz sampling rate
+    clean_artifacts : str
+        nan, interp; Remove huge artifacts in dff traces by interpolating
+        or adding in nan values
+        Note: setting either value here will cause zscoring to nan artifacts
+        before calculating mu/sigma
+    thresh : int
+        Threshold for removing artifacts
+    warp : bool
+        Warp the outcome to a particular time point using interpolation.
+        Calls flow.Trace2P.warpcstraces()
+    smooth : bool
+        Smooth your signal by convolution
+    smooth_win : int
+        Window in sampling points over which to smooth
+    smooth_win_dec : int
+        Window in sampling points over which to smooth deconvolved data
+        Note: this step follows downsampling so window should probably be
+        smaller than that for smoothing z-score.
+
+    Returns:
+    --------
+    Pandas dataframe of all triggered traces and saves to .../output folder.
+    """
+
+    # get t2p object
+    t2p = run.trace2p()
+
+    trial_list = []
+
+    # get your t2p object
+    t2p = run.trace2p()
+
+    # get your cell# from xday alignment
+    # use to index along axis=0 in cstraces/run_traces
+    cell_ids = flow.xday._read_crossday_ids(run.mouse, run.date)
+    cell_ids = [int(s) for s in cell_ids]
+
+    # trigger all trials around stimulus onsets
+    run_traces = utils.getcstraces(run, cs=cs, trace_type=trace_type,
+                             start_time=start_time, end_time=end_time,
+                             downsample=True, clean_artifacts=clean_artifacts,
+                             thresh=thresh, warp=warp, smooth=smooth,
+                             smooth_win=smooth_win)
+
+    # make timestamps, downsample is necessary
+    timestep = 1/t2p.d['framerate']
+    timestamps = np.arange(start_time, end_time, timestep)
+
+    if (t2p.d['framerate'] > 30) and downsample:
+        timestamps = timestamps[::2][:np.shape(run_traces)[1]]
+
+    # check that you don't have extra cells
+    if len(cell_ids) != np.shape(run_traces)[0]:
+        run_traces = run_traces[range(0,len(cell_ids)), :, :]
+        warnings.warn(str(run) + ': You have more cell traces than cell_idx: skipping extra cells.')
+
+    # build matrices to match cell, trial, time variables to traces
+    trial_mat = np.ones(np.shape(run_traces))
+    for trial in range(np.shape(run_traces)[2]):
+        trial_mat[:, :, trial] = trial
+
+    cell_mat = np.ones(np.shape(run_traces))
+    for cell in range(np.shape(run_traces)[0]):
+        cell_mat[cell, :, :] = cell_ids[cell]
+
+    time_mat = np.ones(np.shape(run_traces))
+    for timept in range(np.shape(run_traces)[1]):
+        time_mat[:, timept, :] = timestamps[timept]
+
+    # reshape and build df
+    vec_sz = run_traces.size
+    index = pd.MultiIndex.from_arrays([
+        [run.mouse] * vec_sz,
+        [run.date] * vec_sz,
+        [run.run] * vec_sz,
+        trial_mat.reshape(vec_sz),
+        cell_mat.reshape(vec_sz),
+        time_mat.reshape(vec_sz)
+        ],
+        names=['mouse', 'date', 'run', 'trial_idx',
+               'cell_idx', 'timestamp'])
+
+    # append all runs across a day together in a list
+    df = pd.DataFrame({'trace': run_traces.reshape(vec_sz)}, index=index)
+
+    return df
 
 
 def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,

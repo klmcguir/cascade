@@ -4,7 +4,7 @@ import json
 import flow
 
 
-def tca_path(mouse, grouping, pars=None, word=None):
+def tca_path(mouse, grouping, pars=None, word=None, group_pars=None):
     """
     Create directory for TCA. Hash TCA parameters and save
     into TCA directory as a .txt file.
@@ -29,7 +29,9 @@ def tca_path(mouse, grouping, pars=None, word=None):
         Path of TCA with specific parameters.
     """
     # check inputs
-    if 'single' != grouping and 'pair' != grouping:
+    if ('single' != grouping and
+        'pair' != grouping and
+        'group' != grouping):
         print('Unacceptable grouping: try: single or pair.')
         return
 
@@ -43,13 +45,19 @@ def tca_path(mouse, grouping, pars=None, word=None):
         print('ERROR: Neither pars or word were passed to tca_path.')
         return
 
+    # check for grouping params
+    if group_pars:
+        group_tag = '' if group_pars['group_by'] is None else '-' + group_pars['group_by']
+    else:
+        group_tag = ''
+
     # create folder structure and save dir
     cs_tag = '' if len(pars['cs']) == 0 else '-' + str(pars['cs'])
     warp_tag = '' if pars['warp'] is False else '-warp'
     trace_tag = '-' + pars['trace_type']
     pars_tag = '-' + pars_word
     tca_tag = 'tensors-' + grouping
-    folder_name = tca_tag + trace_tag + cs_tag + warp_tag + pars_tag
+    folder_name = tca_tag + trace_tag + cs_tag + warp_tag + group_tag + pars_tag
     save_dir = os.path.join(flow.paths.outd, mouse)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     save_dir = os.path.join(save_dir, folder_name)
@@ -64,7 +72,7 @@ def tca_path(mouse, grouping, pars=None, word=None):
     return save_dir
 
 
-def tca_plots(mouse, grouping, pars=None, word=None):
+def tca_plots(mouse, grouping, pars=None, word=None, group_pars=None):
     """
     Create directory for TCA plots. Hash TCA parameters and save
     into TCA directory as a .txt file.
@@ -89,7 +97,9 @@ def tca_plots(mouse, grouping, pars=None, word=None):
         Path of TCA with specific parameters.
     """
     # check inputs
-    if 'single' != grouping and 'pair' != grouping:
+    if ('single' != grouping and
+        'pair' != grouping and
+        'group' != grouping):
         print('Unacceptable grouping: try: single or pair.')
         return
 
@@ -100,13 +110,19 @@ def tca_plots(mouse, grouping, pars=None, word=None):
         print('ERROR: Word was not passed to tca_plots.')
         return
 
+    # check for grouping params
+    if group_pars:
+        group_tag = '' if group_pars['group_by'] is None else '-' + group_pars['group_by']
+    else:
+        group_tag = ''
+
     # create folder structure and save dir
     cs_tag = '' if len(pars['cs']) == 0 else '-' + str(pars['cs'])
     warp_tag = '' if pars['warp'] is False else '-warp'
     trace_tag = '-' + pars['trace_type']
     pars_tag = '-' + pars_word
     tca_tag = 'tensors-' + grouping
-    folder_name = tca_tag + trace_tag + cs_tag + warp_tag + pars_tag
+    folder_name = tca_tag + trace_tag + cs_tag + warp_tag + group_tag + pars_tag
     save_dir = os.path.join(flow.paths.graphd, mouse)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     save_dir = os.path.join(save_dir, folder_name)

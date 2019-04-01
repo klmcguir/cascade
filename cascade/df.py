@@ -8,7 +8,7 @@ from . import utils
 from . import paths
 
 
-def trigger(mouse, trace_type='zscore_iti', cs='', downsample=True,
+def trigger(mouse, trace_type='zscore_day', cs='', downsample=True,
             start_time=-1, end_time=6, clean_artifacts='interp',
             thresh=20, warp=False, smooth=True, smooth_win=5,
             verbose=True):
@@ -289,7 +289,7 @@ def trialmeta(mouse, downsample=True, verbose=True):
                 'trialerror': trialerror, 'hunger': hunger,
                 'learning_state': learning_state, 'tag': tags,
                 'firstlick': firstlick, 'ensure': ensure,
-                'quinine': quinine, 'speed': speed
+                'quinine': quinine, 'speed': speed,
                 'brainmotion': brainmotion}
 
         # append all trials across all runs together into a list
@@ -405,7 +405,7 @@ def singlecell(mouse, trace_type, cell_idx, xmap=None, word=None):
 
 
 def trialbhv(mouse, start_time=-1, end_time=6, verbose=True):
-    """ Create a pandas dataframe of all of your triggered behvaior traces for a mouse
+    """ Create a pandas dataframe of all of your triggered behavior traces for a mouse
 
     Parameters:
     -----------

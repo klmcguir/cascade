@@ -42,6 +42,11 @@ def plot_matched_factors(
             mouse, rank_num=rank_num, match_by=match_by,
             trace_type=trace_type, method=method,
             cs=cs, warp=warp, word=word)
+    elif match_by == 'polr' or match_by == 'munkres':
+        out = stch.factor_squid(
+            mouse, rank_num=rank_num, match_by=match_by,
+            trace_type=trace_type, method=method,
+            cs=cs, warp=warp, word=word)
     else:
         out = stch.neuron_similarity(
             mouse, rank_num=rank_num, match_by=match_by,
@@ -53,6 +58,8 @@ def plot_matched_factors(
     # set up saving dir
     save_dir = paths.tca_plots(mouse, 'single', pars=pars, word=word)
     save_dir = os.path.join(save_dir, 'factor stitching')
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    save_dir = os.path.join(save_dir, 'rank ' + str(rank_num))
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     save_dir2 = os.path.join(save_dir, 'matched temporal factors')
     if not os.path.isdir(save_dir2): os.mkdir(save_dir2)
@@ -93,15 +100,19 @@ def plot_matched_factors(
 
     # plot sim matrices without rerunning matching algo
     if plot_sim_mats:
-        _plot_neuro_similarity_matrices(out, mouse, rank_num,
-                                        match_by, pars, word)
-        _plot_tempo_similarity_matrices(out, mouse, rank_num,
-                                        match_by, pars, word)
-        _plot_tuning_similarity_matrices(out, mouse, rank_num,
+        if len(out['neuro_sim']) != 0:
+            _plot_neuro_similarity_matrices(out, mouse, rank_num,
+                                            match_by, pars, word)
+        if len(out['tempo_sim']) != 0:
+            _plot_tempo_similarity_matrices(out, mouse, rank_num,
                                          match_by, pars, word)
+        if len(out['ttuning_sim']) != 0:
+            _plot_tuning_similarity_matrices(out, mouse, rank_num,
+                                             match_by, pars, word)
         if match_by == 'tri_sim' or match_by == 'tri_sim_prob':
-            _plot_tri_similarity_matrices(out, mouse, rank_num,
-                                          match_by, pars, word)
+            if len(out['tri_sim']) != 0:
+                _plot_tri_similarity_matrices(out, mouse, rank_num,
+                                              match_by, pars, word)
 
 
 def plot_neuro_similarity_matrices(
