@@ -181,7 +181,7 @@ def df_path(mouse, pars=None, word=None):
     return save_dir
 
 
-def df_plots(mouse, pars=None, word=None):
+def df_plots(mouse, pars=None, word=None, plot_type='heatmap'):
     """
     Create directory for plotting xday dfs. Hash trace parameters and save
     into directory as a .txt file.
@@ -216,7 +216,10 @@ def df_plots(mouse, pars=None, word=None):
     # create folder structure and save dir
     trace_tag = '-' + pars['trace_type']
     pars_tag = '-' + pars_word
-    folder_name = 'heatmaps' + trace_tag + pars_tag
+    if plot_type.lower() == 'heatmap':
+        folder_name = 'heatmaps' + trace_tag + pars_tag
+    elif plot_type.lower() == 'traces':
+        folder_name = 'traces' + trace_tag + pars_tag
     save_dir = os.path.join(flow.paths.graphd, mouse)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     save_dir = os.path.join(save_dir, folder_name)

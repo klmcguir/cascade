@@ -170,203 +170,201 @@ def groupday_factors_annotated(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
-    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
+    # load dir
+    load_dir = paths.tca_path(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    tensor_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by)
+        + '_group_decomp_' + str(trace_type) + '.npy')
+    meta_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by)
+        + '_df_group_meta.pkl')
 
-    for day1 in days:
+    # save dir
+    save_dir = paths.tca_plots(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    if scale_y:
+        save_tag = ' scaled-y'
+    else:
+        save_tag = ''
+    save_dir = os.path.join(save_dir, 'factors annotated' + save_tag)
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    date_dir = os.path.join(save_dir, str(group_by) + ' ' + method)
+    if not os.path.isdir(date_dir): os.mkdir(date_dir)
 
-        # load dir
-        load_dir = paths.tca_path(mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
-                                   + '_group_decomp_' + str(trace_type) + '.npy')
-        meta_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
-                                 + '_df_group_meta.pkl')
-        if not os.path.isfile(tensor_path): continue
-        if not os.path.isfile(meta_path): continue
+    # load your data
+    ensemble = np.load(tensor_path)
+    ensemble = ensemble.item()
+    meta = pd.read_pickle(meta_path)
+    orientation = meta['orientation']
+    trial_num = np.arange(0, len(orientation))
+    condition = meta['condition']
+    trialerror = meta['trialerror']
+    hunger = deepcopy(meta['hunger'])
+    speed = meta['speed']
 
-        # save dir
-        save_dir = paths.tca_plots(mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    # merge hunger and tag info for plotting hunger
+    tags = meta['tag']
+    hunger[tags == 'disengaged'] = 'disengaged'
+
+    # sort neuron factors by component they belong to most
+    sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
+
+    for r in sort_ensemble.results:
+
+        U = sort_ensemble.results[r][0].factors
+
+        fig, axes = plt.subplots(U.rank, U.ndim + extra_col, figsize=(9 + extra_col, U.rank))
+        figt = tt.plot_factors(U, plots=['bar', 'line', 'scatter'],
+                        axes=None,
+                        fig=fig,
+                        scatter_kw=plot_options[method]['scatter_kw'],
+                        line_kw=plot_options[method]['line_kw'],
+                        bar_kw=plot_options[method]['bar_kw'])
+        ax = figt[0].axes
+        ax[0].set_title('Neuron factors')
+        ax[1].set_title('Temporal factors')
+        ax[2].set_title('Trial factors')
+
+        # reshape for easier indexing
+        ax = np.array(ax).reshape((U.rank, -1))
+
+        # rescale the y-axis for trials
         if scale_y:
-            save_tag = ' scaled-y'
-        else:
-            save_tag = ''
-        save_dir = os.path.join(save_dir, 'factors annotated' + save_tag)
-        if not os.path.isdir(save_dir): os.mkdir(save_dir)
-        date_dir = os.path.join(save_dir, str(day1.date) + ' ' + method)
-        if not os.path.isdir(date_dir): os.mkdir(date_dir)
-
-        # load your data
-        ensemble = np.load(tensor_path)
-        ensemble = ensemble.item()
-        meta = pd.read_pickle(meta_path)
-        orientation = meta['orientation']
-        trial_num = np.arange(0, len(orientation))
-        condition = meta['condition']
-        trialerror = meta['trialerror']
-        hunger = deepcopy(meta['hunger'])
-        speed = meta['speed']
-
-        # merge hunger and tag info for plotting hunger
-        tags = meta['tag']
-        hunger[tags == 'disengaged'] = 'disengaged'
-
-        # sort neuron factors by component they belong to most
-        sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
-
-        for r in sort_ensemble.results:
-
-            U = sort_ensemble.results[r][0].factors
-
-            fig, axes = plt.subplots(U.rank, U.ndim + extra_col, figsize=(9 + extra_col, U.rank))
-            figt = tt.plot_factors(U, plots=['bar', 'line', 'scatter'],
-                            axes=None,
-                            fig=fig,
-                            scatter_kw=plot_options[method]['scatter_kw'],
-                            line_kw=plot_options[method]['line_kw'],
-                            bar_kw=plot_options[method]['bar_kw'])
-            ax = figt[0].axes
-            ax[0].set_title('Neuron factors')
-            ax[1].set_title('Temporal factors')
-            ax[2].set_title('Trial factors')
-
-            # reshape for easier indexing
-            ax = np.array(ax).reshape((U.rank, -1))
-
-            # rescale the y-axis for trials
-            if scale_y:
-                for i in range(U.rank):
-                    y_lim = np.array(ax[i, 2].get_ylim())*0.8
-                    y_ticks = ax[i, 2].get_yticks()
-                    y_ticks[-1] = y_lim[-1]
-                    y_ticks = np.round(y_ticks, 2)
-                    # y_tickl = [str(y) for y in y_ticks]
-                    ax[i, 2].set_ylim(y_lim)
-                    ax[i, 2].set_yticks(y_ticks)
-                    ax[i, 2].set_yticklabels(y_ticks)
-
-            # add a line for stim onset and offset
-            # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
             for i in range(U.rank):
-                y_lim = ax[i, 1].get_ylim()
-                ons = 15.5*1
-                offs = ons+15.5*3
-                ax[i, 1].plot([ons, ons], y_lim, ':k')
-                ax[i, 1].plot([offs, offs], y_lim, ':k')
+                y_lim = np.array(ax[i, 2].get_ylim())*0.8
+                y_ticks = ax[i, 2].get_yticks()
+                y_ticks[-1] = y_lim[-1]
+                y_ticks = np.round(y_ticks, 2)
+                # y_tickl = [str(y) for y in y_ticks]
+                ax[i, 2].set_ylim(y_lim)
+                ax[i, 2].set_yticks(y_ticks)
+                ax[i, 2].set_yticklabels(y_ticks)
 
-            for col in range(3, 3+extra_col):
-                for i in range(U.rank):
+        # add a line for stim onset and offset
+        # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
+        for i in range(U.rank):
+            y_lim = ax[i, 1].get_ylim()
+            ons = 15.5*1
+            offs = ons+15.5*3
+            ax[i, 1].plot([ons, ons], y_lim, ':k')
+            ax[i, 1].plot([offs, offs], y_lim, ':k')
 
-                    # get axis values
-                    y_lim = ax[i, 2].get_ylim()
-                    x_lim = ax[i, 2].get_xlim()
-                    y_ticks = ax[i, 2].get_yticks()
-                    y_tickl = ax[i, 2].get_yticklabels()
-                    x_ticks = ax[i, 2].get_xticks()
-                    x_tickl = ax[i, 2].get_xticklabels()
+        for col in range(3, 3+extra_col):
+            for i in range(U.rank):
 
-                    # running
-                    if plot_running:
-                        scale_by = np.nanmax(speed)/y_lim[1]
-                        if not np.isnan(scale_by):
-                            ax[i, col].plot(np.array(speed.tolist())/scale_by, color=[1, 0.1, 0.6, 0.2])
-                            # , label='speed')
+                # get axis values
+                y_lim = ax[i, 2].get_ylim()
+                x_lim = ax[i, 2].get_xlim()
+                y_ticks = ax[i, 2].get_yticks()
+                y_tickl = ax[i, 2].get_yticklabels()
+                x_ticks = ax[i, 2].get_xticks()
+                x_tickl = ax[i, 2].get_xticklabels()
 
-                    # Orientation - main variable to plot
-                    if col == 3:
-                        ori_vals = [0, 135, 270]
-                        color_vals = [[0.28, 0.68, 0.93, alpha], [0.84, 0.12, 0.13, alpha],
-                                      [0.46, 0.85, 0.47, alpha]]
-                        for k in range(0, 3):
-                            ax[i, col].plot(trial_num[orientation == ori_vals[k]],
-                                            U.factors[2][orientation == ori_vals[k], i], 'o',
-                                            label=str(ori_vals[k]), color=color_vals[k], markersize=2)
-                        if i == 0:
-                            ax[i, col].set_title('Orientation')
-                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
-                                              borderaxespad=2.5)
-                    elif col == 4:
-                        cs_vals = ['plus', 'minus', 'neutral']
-                        cs_labels = ['plus', 'minus', 'neutral']
-                        color_vals = [[0.46, 0.85, 0.47, alpha], [0.84, 0.12, 0.13, alpha],
-                                      [0.28, 0.68, 0.93, alpha]]
-                        col = 4
-                        for k in range(0, 3):
-                            ax[i, col].plot(trial_num[condition == cs_vals[k]],
-                                            U.factors[2][condition == cs_vals[k], i], 'o',
-                                            label=str(cs_labels[k]), color=color_vals[k], markersize=2)
-                        if i == 0:
-                            ax[i, col].set_title('Condition')
-                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
-                                              borderaxespad=2.5)
-                    elif col == 5:
-                        trialerror_vals = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-                        trialerror_labels = ['hit',
-                                             'miss',
-                                             'neutral correct reject',
-                                             'neutral false alarm',
-                                             'minus correct reject',
-                                             'minus false alarm',
-                                             'blank correct reject',
-                                             'blank false alarm',
-                                             'pav early licking',
-                                             'pav late licking',]
-                        for k in trialerror_vals:
-                            ax[i, col].plot(trial_num[trialerror == trialerror_vals[k]],
-                                            U.factors[2][trialerror == trialerror_vals[k], i], 'o',
-                                            label=str(trialerror_labels[k]), alpha=0.8, markersize=2)
-                        if i == 0:
-                            ax[i, col].set_title('Trialerror')
-                            ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
-                                              borderaxespad=2.5)
+                # running
+                if plot_running:
+                    scale_by = np.nanmax(speed)/y_lim[1]
+                    if not np.isnan(scale_by):
+                        ax[i, col].plot(np.array(speed.tolist())/scale_by, color=[1, 0.1, 0.6, 0.2])
+                        # , label='speed')
 
-                    elif col == 6:
-                        h_vals = ['hungry', 'sated', 'disengaged']
-                        h_labels = ['hungry', 'sated', 'disengaged']
-                        color_vals = [[1, 0.6, 0.3, alpha], [0.7, 0.9, 0.4, alpha],
-                                      [0.6, 0.5, 0.6, alpha], [0.0, 0.9, 0.4, alpha]]
-                        for k in range(0, 3):
-                            ax[i, col].plot(trial_num[hunger == h_vals[k]],
-                                            U.factors[2][hunger == h_vals[k], i], 'o',
-                                            label=str(h_labels[k]), color=color_vals[k], markersize=2)
-                        if i == 0:
-                            ax[i, col].set_title('State')
-                            ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
-                                              borderaxespad=2.5)
+                # Orientation - main variable to plot
+                if col == 3:
+                    ori_vals = [0, 135, 270]
+                    color_vals = [[0.28, 0.68, 0.93, alpha], [0.84, 0.12, 0.13, alpha],
+                                  [0.46, 0.85, 0.47, alpha]]
+                    for k in range(0, 3):
+                        ax[i, col].plot(trial_num[orientation == ori_vals[k]],
+                                        U.factors[2][orientation == ori_vals[k], i], 'o',
+                                        label=str(ori_vals[k]), color=color_vals[k], markersize=2)
+                    if i == 0:
+                        ax[i, col].set_title('Orientation')
+                        ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                          borderaxespad=2.5)
+                elif col == 4:
+                    cs_vals = ['plus', 'minus', 'neutral']
+                    cs_labels = ['plus', 'minus', 'neutral']
+                    color_vals = [[0.46, 0.85, 0.47, alpha], [0.84, 0.12, 0.13, alpha],
+                                  [0.28, 0.68, 0.93, alpha]]
+                    col = 4
+                    for k in range(0, 3):
+                        ax[i, col].plot(trial_num[condition == cs_vals[k]],
+                                        U.factors[2][condition == cs_vals[k], i], 'o',
+                                        label=str(cs_labels[k]), color=color_vals[k], markersize=2)
+                    if i == 0:
+                        ax[i, col].set_title('Condition')
+                        ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                          borderaxespad=2.5)
+                elif col == 5:
+                    trialerror_vals = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+                    trialerror_labels = ['hit',
+                                         'miss',
+                                         'neutral correct reject',
+                                         'neutral false alarm',
+                                         'minus correct reject',
+                                         'minus false alarm',
+                                         'blank correct reject',
+                                         'blank false alarm',
+                                         'pav early licking',
+                                         'pav late licking',]
+                    for k in trialerror_vals:
+                        ax[i, col].plot(trial_num[trialerror == trialerror_vals[k]],
+                                        U.factors[2][trialerror == trialerror_vals[k], i], 'o',
+                                        label=str(trialerror_labels[k]), alpha=0.8, markersize=2)
+                    if i == 0:
+                        ax[i, col].set_title('Trialerror')
+                        ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
+                                          borderaxespad=2.5)
 
-                    # set axes labels
-                    ax[i, col].set_yticks(y_ticks)
-                    ax[i, col].set_yticklabels(y_tickl)
-                    ax[i, col].set_ylim(y_lim)
-                    ax[i, col].set_xlim(x_lim)
+                elif col == 6:
+                    h_vals = ['hungry', 'sated', 'disengaged']
+                    h_labels = ['hungry', 'sated', 'disengaged']
+                    color_vals = [[1, 0.6, 0.3, alpha], [0.7, 0.9, 0.4, alpha],
+                                  [0.6, 0.5, 0.6, alpha], [0.0, 0.9, 0.4, alpha]]
+                    for k in range(0, 3):
+                        ax[i, col].plot(trial_num[hunger == h_vals[k]],
+                                        U.factors[2][hunger == h_vals[k], i], 'o',
+                                        label=str(h_labels[k]), color=color_vals[k], markersize=2)
+                    if i == 0:
+                        ax[i, col].set_title('State')
+                        ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
+                                          borderaxespad=2.5)
 
-                    # format axes
-                    ax[i, col].locator_params(nbins=4)
-                    ax[i, col].spines['top'].set_visible(False)
-                    ax[i, col].spines['right'].set_visible(False)
-                    ax[i, col].xaxis.set_tick_params(direction='out')
-                    ax[i, col].yaxis.set_tick_params(direction='out')
-                    ax[i, col].yaxis.set_ticks_position('left')
-                    ax[i, col].xaxis.set_ticks_position('bottom')
+                # set axes labels
+                ax[i, col].set_yticks(y_ticks)
+                ax[i, col].set_yticklabels(y_tickl)
+                ax[i, col].set_ylim(y_lim)
+                ax[i, col].set_xlim(x_lim)
 
-                    # remove xticks on all but bottom row
-                    if i + 1 != U.rank:
-                        plt.setp(ax[i, col].get_xticklabels(), visible=False)
+                # format axes
+                ax[i, col].locator_params(nbins=4)
+                ax[i, col].spines['top'].set_visible(False)
+                ax[i, col].spines['right'].set_visible(False)
+                ax[i, col].xaxis.set_tick_params(direction='out')
+                ax[i, col].yaxis.set_tick_params(direction='out')
+                ax[i, col].yaxis.set_ticks_position('left')
+                ax[i, col].xaxis.set_ticks_position('bottom')
 
-                    if col == 3:
-                        ax[i, 0].set_ylabel('Component #' + str(i+1), rotation=0,
-                                            labelpad=45, verticalalignment='center',
-                                            fontstyle='oblique')
+                # remove xticks on all but bottom row
+                if i + 1 != U.rank:
+                    plt.setp(ax[i, col].get_xticklabels(), visible=False)
 
-            if filetype.lower() == 'pdf':
-                suffix = '.pdf'
-            elif filetype.lower() == 'eps':
-                suffix = '.eps'
-            else:
-                suffix = '.png'
-            plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + suffix),
-                                     bbox_inches='tight')
-            if verbose:
-                plt.show()
-            plt.close()
+                if col == 3:
+                    ax[i, 0].set_ylabel('Component #' + str(i+1), rotation=0,
+                                        labelpad=45, verticalalignment='center',
+                                        fontstyle='oblique')
+
+        if filetype.lower() == 'pdf':
+            suffix = '.pdf'
+        elif filetype.lower() == 'eps':
+            suffix = '.eps'
+        else:
+            suffix = '.png'
+        plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + suffix),
+                                 bbox_inches='tight')
+        if verbose:
+            plt.show()
+        plt.close()
 
 
 

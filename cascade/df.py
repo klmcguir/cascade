@@ -9,7 +9,7 @@ from . import paths
 
 
 def trigger(mouse, trace_type='zscore_day', cs='', downsample=True,
-            start_time=-1, end_time=6, clean_artifacts='interp',
+            start_time=-1, end_time=6, clean_artifacts=None,
             thresh=20, warp=False, smooth=True, smooth_win=5,
             verbose=True):
     """

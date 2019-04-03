@@ -784,6 +784,17 @@ def groupday_tca(
         tags = 'reversal2'
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated')
+
+    elif group_by.lower() == 'naive_vs_high_dprime':
+        use_dprime = True
+        up_or_down = 'up'
+        tags = None
+        days = flow.DateSorter.frommeta(mice=[mouse], tags='naive')
+        days.extend(flow.DateSorter.frommeta(mice=[mouse], tags='learning'))
+        dates = set(days)
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated', 'learning_start',
+                        'reversal1_start')
     else:
         print('Using input parameters without modification by group_by=...')
 
@@ -804,13 +815,23 @@ def groupday_tca(
     save_dir = paths.tca_path(mouse, 'group', pars=pars, group_pars=group_pars)
 
     # get DateSorter object
-    days = flow.DateSorter.frommeta(mice=[mouse], tags=tags)
+    if group_by.lower() == 'naive_vs_high_dprime':
+        days = flow.DateSorter(dates=dates)
+    else:
+        days = flow.DateSorter.frommeta(mice=[mouse], tags=tags)
 
     # filter DateSorter object if you are filtering on dprime
     if use_dprime:
         dprime = []
         for day1 in days:
-            dprime.append(pool.calc.performance.dprime(day1))
+            # for comparison with naive make sure dprime keeps naive days
+            if np.isin('naive', day1.tags):
+                if up_or_down.lower() == 'up':
+                    dprime.append(np.inf)
+                else:
+                    dprime.append(-np.inf)
+            else:
+                dprime.append(pool.calc.performance.dprime(day1))
         if up_or_down.lower() == 'up':
             days = [d for c, d in enumerate(days) if dprime[c] > dprime_threshold]
         elif up_or_down.lower() == 'down':
@@ -918,15 +939,15 @@ def groupday_tca(
 
     # concatenate and save df for the day
     meta_path = os.path.join(save_dir, str(day1.mouse) + '_'
-                             + str(day1.date) + '_df_group_meta.pkl')
+                             + str(group_by) + '_df_group_meta.pkl')
     input_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_'
-                                     + str(day1.date) + '_group_tensor_'
+                                     + str(group_by) + '_group_tensor_'
                                      + str(trace_type) + '.npy')
     input_ids_path = os.path.join(save_dir, str(day1.mouse) + '_'
-                                  + str(day1.date) + '_group_ids_'
+                                  + str(group_by) + '_group_ids_'
                                   + str(trace_type) + '.npy')
     output_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_'
-                                      + str(day1.date) + '_group_decomp_'
+                                      + str(group_by) + '_group_decomp_'
                                       + str(trace_type) + '.npy')
     meta.to_pickle(meta_path)
     np.save(input_tensor_path, group_tensor)
@@ -937,7 +958,7 @@ def groupday_tca(
     for m in method:
         ensemble[m] = tt.Ensemble(
             fit_method=m, fit_options=deepcopy(fit_options))
-        ensemble[m].fit(tensor, ranks=range(1, rank+1), replicates=replicates, verbose=False)
+        ensemble[m].fit(group_tensor, ranks=range(1, rank+1), replicates=replicates, verbose=False)
     np.save(output_tensor_path, ensemble)
 
     # print output so you don't go crazy waiting
@@ -945,7 +966,7 @@ def groupday_tca(
         print(str(day1.mouse) + ': group_by=' + str(group_by) + ': done.')
 
 
-def _group_drive_ids(days, drive_css, drive_threshold):
+def _group_drive_ids(days, drive_css, drive_threshold, drive_type='trial'):
     """
     Get an array of all unique ids driven on any day for a given DaySorter.
     """
@@ -959,9 +980,17 @@ def _group_drive_ids(days, drive_css, drive_threshold):
         d1_drive = []
         for dcs in drive_css:
             try:
-                d1_drive.append(pool.calc.driven.trial(day1, dcs))
+                if drive_type.lower() == 'trial':
+                    d1_drive.append(
+                        pool.calc.driven.trial(day1, dcs))
+                elif drive_type.lower() == 'visual':
+                    d1_drive.append(
+                        pool.calc.driven.visually(day1, dcs))
+                elif drive_type.lower() == 'inhib':
+                        d1_drive.append(
+                            pool.calc.driven.visually_inhib(day1, dcs))
             except KeyError:
-                print(str(day1) + ' requested ' + dcs +
+                print(str(day1) + ' requested ' + dcs + ' ' + drive_type +
                       ': no match to what was shown (probably pav only).')
         d1_drive = np.max(d1_drive, axis=0)
         d1_ids_bool = np.array(d1_drive) > drive_threshold

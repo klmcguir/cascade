@@ -11,6 +11,201 @@ from .. import tca
 from .. import paths
 
 
+def mean_response(
+        mouse,
+        tags=None,
+
+        # drive params
+        drive_type='trial',
+
+        # trace params
+        trace_type='zscore_day',
+        word=None,
+        drive_threshold=15,  # usually 15
+        drive_css=('0', '135', '270'),
+        smooth=True,
+
+        verbose=True):
+    """
+    Create heatmap of each cell's mean response to each
+    simulus aligned across time.
+
+    Parameters:
+    -----------
+    mouse : str
+        mouse name
+    drive_type : str
+        trial, visual, inbibition
+    tags : [str]
+        list of metadata tags
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder
+    """
+
+    # use seaborn defaults for matplotlib
+    sns.set()
+
+    # get drive across all days
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=tags)
+    all_driven_trial = tca._group_drive_ids(
+        days, drive_css, drive_threshold, drive_type='trial')
+    all_driven_vis = tca._group_drive_ids(
+        days, drive_css, drive_threshold, drive_type='visual')
+    all_driven_inhib = tca._group_drive_ids(
+        days, drive_css, drive_threshold, drive_type='inhib')
+    drivers = {'trial': all_driven_trial,
+               'visual': all_driven_vis,
+               'inhibition': all_driven_inhib}
+
+    # load metadata
+    load_dir = os.path.join(flow.paths.outd, str(mouse))
+    meta_path = os.path.join(load_dir, str(mouse) + '_df_trialmeta.pkl')
+    dfm = pd.read_pickle(meta_path)
+    xmap = df.get_xdaymap(mouse)
+
+    # oris
+    oris = np.array([0, 135, 270])
+
+    for cell_idx in drivers[drive_type]:
+        dft = df.singlecell(mouse, trace_type, cell_idx, xmap=xmap, word=word)
+        dft = dft.reset_index(level=['cell_idx', 'timestamp'])
+
+        # filter metadata trials before merging
+        trial_indexer = (
+            ((dfm.orientation == 0) | (dfm.orientation == 135)
+             | (dfm.orientation == 270)) &
+            ((dfm.tag == 'standard') | (dfm.tag == 'learning_start')
+             | (dfm.tag == 'reversal1_start') | (dfm.tag == 'reversal2_start')) &
+            ((dfm.condition == 'plus') | (dfm.condition == 'minus')
+             | (dfm.condition == 'neutral')) &
+            (dfm.hunger == 'hungry'))
+        dfm = dfm.loc[trial_indexer, :]
+
+        # merge on filtered trials
+        dff = pd.merge(dft, dfm, on=['mouse', 'date', 'run', 'trial_idx'],
+                       how='inner')
+
+        # smooth signal with rolling 3 unit window
+        if smooth:
+            dff['trace'] = dff['trace'].rolling(3).mean()
+
+        # get timestamp info for plotting lines
+        times = np.unique(dff['timestamp'])
+        zero_sec = np.where(times <= 0)[0][-1]
+        three_sec = np.where(times <= 3)[0][-1]
+
+        # get pivot table for slicing
+        toplot = dff.pivot_table(
+            index=['date', 'run', 'trial_idx', 'orientation', 'learning_state'],
+            columns='timestamp', values='trace')
+
+        # create mean response per day per orientation for each cell
+        mean_list = []
+        for d in np.unique(toplot.reset_index()['date']):
+            for o in oris:
+                indexer = (np.where((toplot.reset_index()['orientation'] == o)
+                           & (toplot.reset_index()['date'] == d))[0])
+                mean_list.append(
+                    toplot.iloc[indexer, :].mean(level=['date', 'orientation',
+                                                        'learning_state']))
+        mean_df = pd.concat(mean_list, axis=0)
+
+        # PLOTTING
+
+        # subplot params
+        rows = 1
+        cols = 3
+
+        # get plot with most lines for figure legend
+        count = []
+        for col in range(cols):
+            count.append(
+                np.nansum(mean_df.reset_index()['orientation'] == oris[col]))
+        legend_ind = np.argmax(count)
+        color_ind = np.array(
+            [np.where(np.unique(mean_df.reset_index()['date']) == i)[0][0]
+                for i in mean_df.reset_index()['date']])
+
+        # colormap
+        day_num = len(np.unique(mean_df.reset_index()['date']))
+        a = sns.color_palette("Greys", int(np.ceil(day_num*1.5)))[-day_num:]
+        b = sns.color_palette("Greens", day_num)
+        c = sns.color_palette("Reds", day_num)
+        d = sns.color_palette("Purples", day_num)
+        colors = {'naive': a, 'learning': b, 'reversal1': c, 'reversal2': d}
+
+        # preallocate for legend
+        labels = []
+
+        # get driven tag for title
+        ttag = 'trial, ' if np.isin(cell_idx, all_driven_trial) else ''
+        vtag = 'visually, ' if np.isin(cell_idx, all_driven_vis) else ''
+        itag = 'inhibition' if np.isin(cell_idx, all_driven_inhib) else ''
+        title_tage = ttag + vtag + itag
+
+        # plot responses for each orientation on each day
+        fig, axes = plt.subplots(rows, cols, figsize=(16, 4))
+        fig.suptitle('Cell #' + str(cell_idx) + ' - driven: '
+                     + title_tage, fontsize=16, y=1.05, weight='bold')
+        for col in range(cols):
+            indexer = np.where(
+                mean_df.reset_index()['orientation'] == oris[col])[0]
+            traces = mean_df.iloc[indexer, :].values
+            dates = mean_df.reset_index()['date'].iloc[indexer]
+            state = mean_df.reset_index()['learning_state'].iloc[indexer]
+            c_ind = color_ind[indexer]
+            axes[col].set_title('Orientation = ' + str(oris[col]))
+            if col == 0:
+                axes[col].set_ylabel(r'$\Delta$' + 'F/F (z-score)')
+            axes[col].set_xlabel('Time from stimulus onset (sec)')
+            for l in range(np.shape(traces)[0]):
+                axes[col].plot(
+                    times, traces[l, :], color=colors[state.iloc[l]][c_ind[l]],
+                    label=(str(dates.iloc[l]) + '-' + state.iloc[l]))
+                if col == legend_ind:
+                    labels.append(str(dates.iloc[l]) + '-' + state.iloc[l])
+            if col == legend_ind:
+                axes
+        axes[-1].legend(
+            axes[-1].lines, labels, loc='upper left',
+            bbox_to_anchor=(1.02, 1.03), title='Days')
+
+        # match y-limits
+        ys = []
+        for col in range(cols):
+            ys.extend(axes[col].get_ylim())
+        maxy = np.max(ys)
+        miny = np.min(ys)
+        for col in range(cols):
+            axes[col].set_ylim((miny, maxy))
+
+        # add a line for stim onset and offset
+        # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
+        for col in range(cols):
+            y_lim = axes[col].get_ylim()
+            ons = 0
+            offs = 3
+            axes[col].plot([ons, ons], y_lim, ':k')
+            axes[col].plot([offs, offs], y_lim, ':k')
+
+        # save
+        save_dir = paths.df_plots(
+            mouse, pars={'trace_type': trace_type},
+            word=word, plot_type='traces')
+        save_dir = os.path.join(save_dir, 'driven ' + drive_type
+                                + ' ' + str(drive_threshold))
+        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        path = os.path.join(
+            save_dir, str(mouse) + '_cell_' + str(cell_idx) + '_'
+            + trace_type + '_' + drive_type + str(drive_threshold) + '.pdf')
+        plt.savefig(path, bbox_inches='tight')
+        plt.close()
+        if verbose:
+            print('Cell: ' + str(cell_idx) + ': done.')
+
+
 def heatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
             day_line=True, run_line=False, match_clim=True,
             vmin=None, vmax=None, smooth=False, word=None, verbose=False):
