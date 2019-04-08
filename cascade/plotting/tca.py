@@ -2,6 +2,7 @@
 import os
 import flow
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import tensortools as tt
@@ -121,6 +122,9 @@ def groupday_factors_annotated(
     Saves figures to .../analysis folder  .../factors annotated
     """
 
+    # use matplotlib plotting defaults
+    mpl.rcParams.update(mpl.rcParamsDefault)
+
     # plotting options for the unconstrained and nonnegative models.
     plot_options = {
       'cp_als': {
@@ -202,6 +206,16 @@ def groupday_factors_annotated(
     trialerror = meta['trialerror']
     hunger = deepcopy(meta['hunger'])
     speed = meta['speed']
+    dates = meta.reset_index()['date']
+    learning_state = meta['learning_state']
+
+    # calculate change indices for days and reversal/learning
+    udays = {d: c for c, d in enumerate(np.unique(dates))}
+    ndays = np.diff([udays[i] for i in dates])
+    day_x = np.where(ndays)[0] + 0.5
+    ustate = {d: c for c, d in enumerate(np.unique(learning_state))}
+    nstate = np.diff([ustate[i] for i in learning_state])
+    lstate_x = np.where(nstate)[0] + 0.5
 
     # merge hunger and tag info for plotting hunger
     tags = meta['tag']
@@ -281,6 +295,7 @@ def groupday_factors_annotated(
                         ax[i, col].set_title('Orientation')
                         ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
                                           borderaxespad=2.5)
+                # Condition - main variable to plot
                 elif col == 4:
                     cs_vals = ['plus', 'minus', 'neutral']
                     cs_labels = ['plus', 'minus', 'neutral']
@@ -295,6 +310,7 @@ def groupday_factors_annotated(
                         ax[i, col].set_title('Condition')
                         ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
                                           borderaxespad=2.5)
+                # Trial error - main variable to plot
                 elif col == 5:
                     trialerror_vals = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
                     trialerror_labels = ['hit',
@@ -306,7 +322,7 @@ def groupday_factors_annotated(
                                          'blank correct reject',
                                          'blank false alarm',
                                          'pav early licking',
-                                         'pav late licking',]
+                                         'pav late licking']
                     for k in trialerror_vals:
                         ax[i, col].plot(trial_num[trialerror == trialerror_vals[k]],
                                         U.factors[2][trialerror == trialerror_vals[k], i], 'o',
@@ -315,7 +331,7 @@ def groupday_factors_annotated(
                         ax[i, col].set_title('Trialerror')
                         ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                           borderaxespad=2.5)
-
+                # State - main variable to plot
                 elif col == 6:
                     h_vals = ['hungry', 'sated', 'disengaged']
                     h_labels = ['hungry', 'sated', 'disengaged']
@@ -329,6 +345,22 @@ def groupday_factors_annotated(
                         ax[i, col].set_title('State')
                         ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                           borderaxespad=2.5)
+
+                # plot days, reversal, or learning lines if there are any
+                if col >= 2:
+                    y_lim = ax[i, col].get_ylim()
+                    if len(day_x) > 0:
+                        for k in day_x:
+                            ax[i, col].plot(
+                                [k, k], y_lim, color='#969696', linewidth=1)
+                    if len(lstate_x) > 0:
+                        ls_vals = ['naive', 'learning', 'reversal1']
+                        ls_colors = ['#66bd63', '#d73027', '#a50026']
+                        for k in lstate_x:
+                            ls = learning_state[int(k-0.5)]
+                            ax[i, col].plot(
+                                [k, k], y_lim, color=ls_colors[ls_vals.index(ls)],
+                                linewidth=1.5)
 
                 # set axes labels
                 ax[i, col].set_yticks(y_ticks)
@@ -659,6 +691,9 @@ def pairday_factors_annotated(
     """
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+
+    # use matplotlib plotting defaults
+    mpl.rcParams.update(mpl.rcParamsDefault)
 
     # plotting options for the unconstrained and nonnegative models.
     plot_options = {
