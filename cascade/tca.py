@@ -43,7 +43,7 @@ def singleday_tca(
     """
     Perform tensor component analysis (TCA) on for a single day.
 
-    Algortitms from https://github.com/ahwillia/tensortools.
+    Algorithms from https://github.com/ahwillia/tensortools.
 
     Parameters
     ----------
@@ -52,8 +52,8 @@ def singleday_tca(
             Least Squares (ALS).
         'ncp_bcd', fits nonnegative CP Decomposition using
             the Block Coordinate Descent (BCD) Method.
-        'ncp_hals', fits nonnegtaive CP Decomposition using
-            the Hierarcial Alternating Least Squares
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchal Alternating Least Squares
             (HALS) Method.
         'mcp_als', fits CP Decomposition with missing data using
             Alternating Least Squares (ALS).
@@ -233,7 +233,7 @@ def pairday_tca(
     Perform tensor component analysis (TCA) on data aligned
     across pairs of days.
 
-    Algortitms from https://github.com/ahwillia/tensortools.
+    Algorithms from https://github.com/ahwillia/tensortools.
 
     Parameters
     -------
@@ -242,8 +242,8 @@ def pairday_tca(
             Least Squares (ALS).
         'ncp_bcd', fits nonnegative CP Decomposition using
             the Block Coordinate Descent (BCD) Method.
-        'ncp_hals', fits nonnegtaive CP Decomposition using
-            the Hierarcial Alternating Least Squares
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
             (HALS) Method.
         'mcp_als', fits CP Decomposition with missing data using
             Alternating Least Squares (ALS).
@@ -492,7 +492,7 @@ def pairday_tca_2(
     Perform tensor component analysis (TCA) on data aligned
     across pairs of days. Uses PairDaySorter.
 
-    Algortitms from https://github.com/ahwillia/tensortools.
+    Algorithms from https://github.com/ahwillia/tensortools.
 
     Parameters
     -------
@@ -501,8 +501,8 @@ def pairday_tca_2(
             Least Squares (ALS).
         'ncp_bcd', fits nonnegative CP Decomposition using
             the Block Coordinate Descent (BCD) Method.
-        'ncp_hals', fits nonnegtaive CP Decomposition using
-            the Hierarcial Alternating Least Squares
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
             (HALS) Method.
         'mcp_als', fits CP Decomposition with missing data using
             Alternating Least Squares (ALS).
@@ -710,7 +710,7 @@ def groupday_tca(
     Perform tensor component analysis (TCA) on data aligned
     across a group of days. Builds one large tensor.
 
-    Algortitms from https://github.com/ahwillia/tensortools.
+    Algorithms from https://github.com/ahwillia/tensortools.
 
     Parameters
     -------
@@ -719,8 +719,8 @@ def groupday_tca(
             Least Squares (ALS).
         'ncp_bcd', fits nonnegative CP Decomposition using
             the Block Coordinate Descent (BCD) Method.
-        'ncp_hals', fits nonnegtaive CP Decomposition using
-            the Hierarcial Alternating Least Squares
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
             (HALS) Method.
         'mcp_als', fits CP Decomposition with missing data using
             Alternating Least Squares (ALS).
@@ -740,7 +740,9 @@ def groupday_tca(
     if group_by.lower() == 'naive':
         tags = 'naive'
         use_dprime = False
-        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+        print(
+            'Warning: orientation mapping runs added to naive trials for TCA.')
+        exclude_tags = ('disengaged', 'contrast',
                         'retinotopy', 'sated', 'learning_start')
 
     elif group_by.lower() == 'high_dprime_learning':
@@ -750,7 +752,7 @@ def groupday_tca(
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'reversal1_start')
 
-    elif group_by.lower() == 'low_dprime_leanring':
+    elif group_by.lower() == 'low_dprime_leanrning':
         use_dprime = True
         up_or_down = 'down'
         tags = 'learning'
@@ -795,6 +797,16 @@ def groupday_tca(
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start',
                         'reversal1_start')
+    elif group_by.lower() == 'l_vs_r1':  # high dprime
+        use_dprime = True
+        up_or_down = 'up'
+        tags = None
+        days = flow.DateSorter.frommeta(mice=[mouse], tags='learning')
+        days.extend(flow.DateSorter.frommeta(mice=[mouse], tags='reversal1'))
+        dates = set(days)
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated', 'learning_start',
+                        'reversal1_start')
     else:
         print('Using input parameters without modification by group_by=...')
 
@@ -811,11 +823,12 @@ def groupday_tca(
             'driven': driven, 'drive_css': drive_css,
             'drive_threshold': drive_threshold}
     group_pars = {'group_by': group_by, 'up_or_down': up_or_down,
-                  'use_dprime': use_dprime, 'dprime_threshold': dprime_threshold}
+                  'use_dprime': use_dprime,
+                  'dprime_threshold': dprime_threshold}
     save_dir = paths.tca_path(mouse, 'group', pars=pars, group_pars=group_pars)
 
     # get DateSorter object
-    if group_by.lower() == 'naive_vs_high_dprime':
+    if np.isin(group_by.lower(), ['naive_vs_high_dprime', 'l_vs_r1']):
         days = flow.DateSorter(dates=dates)
     else:
         days = flow.DateSorter.frommeta(mice=[mouse], tags=tags)
@@ -833,9 +846,11 @@ def groupday_tca(
             else:
                 dprime.append(pool.calc.performance.dprime(day1))
         if up_or_down.lower() == 'up':
-            days = [d for c, d in enumerate(days) if dprime[c] > dprime_threshold]
+            days = [d for c, d in enumerate(days) if dprime[c]
+                    > dprime_threshold]
         elif up_or_down.lower() == 'down':
-            days = [d for c, d in enumerate(days) if dprime[c] <= dprime_threshold]
+            days = [d for c, d in enumerate(days) if dprime[c]
+                    <= dprime_threshold]
 
     # preallocate for looping over a group of days/runs
     meta_list = []
@@ -864,7 +879,8 @@ def groupday_tca(
         d1_runs = day1.runs()
 
         # filter for only runs without certain tags
-        d1_runs = [run for run in d1_runs if not any(np.isin(run.tags, exclude_tags))]
+        d1_runs = [run for run in d1_runs if not
+                   any(np.isin(run.tags, exclude_tags))]
 
         # build tensors for all correct runs and trials after filtering
         if d1_runs:
@@ -873,11 +889,12 @@ def groupday_tca(
             for run in d1_runs:
                 t2p = run.trace2p()
                 # trigger all trials around stimulus onsets
-                run_traces = utils.getcstraces(run, cs=cs, trace_type=trace_type,
-                                         start_time=start_time, end_time=end_time,
-                                         downsample=True, clean_artifacts=clean_artifacts,
-                                         thresh=thresh, warp=warp, smooth=smooth,
-                                         smooth_win=smooth_win)
+                run_traces = utils.getcstraces(
+                    run, cs=cs, trace_type=trace_type,
+                    start_time=start_time, end_time=end_time,
+                    downsample=True, clean_artifacts=clean_artifacts,
+                    thresh=thresh, warp=warp, smooth=smooth,
+                    smooth_win=smooth_win)
                 # filter and sort
                 run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
                 # get matched trial metadata/variables
@@ -892,12 +909,13 @@ def groupday_tca(
                         print('ERROR: cs called - "' + cs + '" - is not\
                               a valid option.')
 
-                # subselect metadata to remove certain condtions
+                # subselect metadata to remove certain conditions
                 if len(exclude_conds) > 0:
                     dfr = dfr.loc[(~dfr['condition'].isin([exclude_conds])), :]
 
                 # drop trials with nans and add to lists
-                keep = np.sum(np.sum(np.isnan(run_traces), axis=0, keepdims=True),
+                keep = np.sum(np.sum(np.isnan(run_traces), axis=0,
+                              keepdims=True),
                               axis=1, keepdims=True).flatten() == 0
                 dfr = dfr.iloc[keep, :]
                 d1_tensor_list.append(run_traces[:, :, keep])
@@ -925,7 +943,7 @@ def groupday_tca(
     trial_start = 0
     trial_end = 0
     group_tensor = np.zeros((cell_num, np.shape(tensor_list[0])[1], trial_num))
-    # group_tensor[:] = np.nan
+    group_tensor[:] = np.nan
     for i in range(len(tensor_list)):
         trial_end += np.shape(tensor_list[i])[2]
         for c, k in enumerate(id_list[i]):
@@ -954,12 +972,26 @@ def groupday_tca(
     np.save(input_ids_path, id_union)
 
     # run TCA - iterate over different fitting methods
-    ensemble = {}
-    for m in method:
-        ensemble[m] = tt.Ensemble(
-            fit_method=m, fit_options=deepcopy(fit_options))
-        ensemble[m].fit(group_tensor, ranks=range(1, rank+1), replicates=replicates, verbose=False)
-    np.save(output_tensor_path, ensemble)
+    if np.isin('mcp_als', method):
+        mask = np.ones((cell_num, np.shape(tensor_list[0])[1], trial_num))
+        mask[np.isnan(group_tensor)] = 0
+        group_tensor[np.isnan(group_tensor)] = 0
+        ensemble = {}
+        results = {}
+        for m in method:
+            for r in range(1, rank+1):
+                results[r] = tt.mcp_als(group_tensor, r, mask, **fit_options)
+            ensemble[m] = results
+        np.save(output_tensor_path, ensemble)
+    else:
+        ensemble = {}
+        group_tensor[np.isnan(group_tensor)] = 0
+        for m in method:
+            ensemble[m] = tt.Ensemble(
+                fit_method=m, fit_options=deepcopy(fit_options))
+            ensemble[m].fit(group_tensor, ranks=range(1, rank+1),
+                            replicates=replicates, verbose=False)
+        np.save(output_tensor_path, ensemble)
 
     # print output so you don't go crazy waiting
     if verbose:
@@ -1013,7 +1045,7 @@ def _sortfactors(my_method):
     Returns
     -------
     my_method, copy of tensortools ensemble method now with neuron factors sorted.
-    my_rank_sorts, sort indices to keep track of cell identity
+    my_rank_sorts, sort indexes to keep track of cell identity
 
     """
 
@@ -1022,11 +1054,11 @@ def _sortfactors(my_method):
     # only use the lowest error replicate, index 0, to define sort order
     rep_num = 0
 
-    # keep sort indices because these define original cell identity
+    # keep sort indexes because these define original cell identity
     my_rank_sorts = []
 
     # sort each neuron factor and update the order based on strongest factor
-    # reflecting prioritized sorting of ealiest to latest factors
+    # reflecting prioritized sorting of earliest to latest factors
     for k in my_method.results.keys():
 
         full_sort = []
@@ -1085,7 +1117,7 @@ def _triggerfromrun(run, trace_type='zscore_day', cs='', downsample=True,
     clean_artifacts : str
         nan, interp; Remove huge artifacts in dff traces by interpolating
         or adding in nan values
-        Note: setting either value here will cause zscoring to nan artifacts
+        Note: setting either value here will cause z-scoring to nan artifacts
         before calculating mu/sigma
     thresh : int
         Threshold for removing artifacts
@@ -1211,7 +1243,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         hunger = 'hungry'
     hunger = [hunger]*len(trial_idx)
 
-    # get relevant trial-distinguising tags excluding kelly, hunger-state, learning-state
+    # get relevant trial-distinguishing tags excluding kelly, hunger-state, learning-state
     tags = [str(run_tags[s]) for s in range(len(run_tags)) if run_tags[s] != hunger[0]
             and run_tags[s] != learning_state[0]
             and run_tags[s] != 'kelly'
