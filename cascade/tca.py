@@ -740,9 +740,7 @@ def groupday_tca(
     if group_by.lower() == 'naive':
         tags = 'naive'
         use_dprime = False
-        print(
-            'Warning: orientation mapping runs added to naive trials for TCA.')
-        exclude_tags = ('disengaged', 'contrast',
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start')
 
     elif group_by.lower() == 'high_dprime_learning':
