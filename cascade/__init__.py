@@ -1,4 +1,4 @@
 # Folders
-from cascade import metadata, plotting
+from . import metadata, plotting
 # Files
-from cascade import df, tca, utils, paths
+from . import df, tca, utils, paths
