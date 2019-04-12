@@ -250,8 +250,8 @@ def groupday_factors_annotated(
         ax[2].set_title('Trial factors')
 
         # add title to whole figure
-        ax[0].text(-1.2, 4, mouse + ': \n\nrank: ' + str(int(r)) + '\nmethod: '
-                   + method + ' \ngroup_by: '
+        ax[0].text(-1.2, 4, '\n' + mouse + ': \n\nrank: ' + str(int(r)) +
+                   '\nmethod: ' + method + ' \ngroup_by: '
                    + group_by, fontsize=12, transform=ax[0].transAxes,
                    color='#969696')
 
@@ -821,7 +821,7 @@ def pairday_factors_annotated(
             ax[2].set_title('Trial factors')
 
             # add title to whole figure
-            ax[0].text(-1.2, 4, mouse + ': \n\nrank: ' + str(int(r))
+            ax[0].text(-1.2, 4, '\n' + mouse + ': \n\nrank: ' + str(int(r))
                        + '\nmethod: ' + method + ' \ndates: '
                        + str(day1.date) + ' - ' + str(day2.date),
                        fontsize=12, transform=ax[0].transAxes,
@@ -1747,7 +1747,7 @@ def singleday_factors_annotated(
             ax[2].set_title('Trial factors')
 
             # add title to whole figure
-            ax[0].text(-1.2, 4, mouse + ': \n\nrank: ' + str(int(r))
+            ax[0].text(-1.2, 4, '\n' + mouse + ': \n\nrank: ' + str(int(r))
                        + '\nmethod: ' + method + ' \ndate: '
                        + str(day1.date),
                        fontsize=12, transform=ax[0].transAxes,
