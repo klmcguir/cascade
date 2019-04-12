@@ -966,7 +966,7 @@ def groupday_tca(
         nt_tag = '_nantrial' + str(nan_trial_threshold)
         # remove cells with too many nan trials
         ntrials = np.shape(group_tensor)[2]
-        nbadtrials = np.sum(np.isnan(group_tensor[:, 0, :]), 3)
+        nbadtrials = np.sum(np.isnan(group_tensor[:, 0, :]), 1)
         badtrialratio = nbadtrials/ntrials
         badcell_indexer = badtrialratio < nan_trial_threshold
         group_tensor = group_tensor[badcell_indexer, :, :]
