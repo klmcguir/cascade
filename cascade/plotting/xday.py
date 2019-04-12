@@ -23,7 +23,7 @@ def mean_response(
         word=None,
         drive_threshold=15,  # usually 15
         drive_css=('0', '135', '270'),
-        smooth=True,
+        smooth=False,
 
         verbose=True):
     """
@@ -166,10 +166,8 @@ def mean_response(
                     label=(str(dates.iloc[l]) + '-' + state.iloc[l]))
                 if col == legend_ind:
                     labels.append(str(dates.iloc[l]) + '-' + state.iloc[l])
-            if col == legend_ind:
-                axes
         axes[-1].legend(
-            axes[-1].lines, labels, loc='upper left',
+            axes[legend_ind].lines, labels, loc='upper left',
             bbox_to_anchor=(1.02, 1.03), title='Days')
 
         # match y-limits
@@ -187,8 +185,8 @@ def mean_response(
             y_lim = axes[col].get_ylim()
             ons = 0
             offs = 3
-            axes[col].plot([ons, ons], y_lim, ':k')
-            axes[col].plot([offs, offs], y_lim, ':k')
+            axes[col].plot([ons, ons], y_lim, ':', color='#525252')
+            axes[col].plot([offs, offs], y_lim, ':', color='#525252')
 
         # save
         save_dir = paths.df_plots(
