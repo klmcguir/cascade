@@ -971,11 +971,12 @@ def groupday_tca(
         badcell_indexer = badtrialratio < nan_trial_threshold
         group_tensor = group_tensor[badcell_indexer, :, :]
         if verbose:
-            print('Removed ' + str(np.sum(badcell_indexer)) +
+            print('Removed ' + str(np.sum(~badcell_indexer)) +
                   ' cells from tensor:' + ' badtrialratio < ' +
                   str(nan_trial_threshold))
-            print('Kept ' + str() + ' cells from tensor:' +
-                  ' badtrialratio < ' + str(nan_trial_threshold))
+            print('Kept ' + str(np.sum(badcell_indexer)) +
+                  ' cells from tensor:' + ' badtrialratio < ' +
+                  str(nan_trial_threshold))
     else:
         nt_tag = ''
 
