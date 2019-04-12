@@ -697,6 +697,7 @@ def groupday_tca(
         warp=False,
         smooth=True,
         smooth_win=5,
+        nan_trial_threshold=None,
         verbose=True,
 
         # filtering params
@@ -748,14 +749,15 @@ def groupday_tca(
         up_or_down = 'up'
         tags = 'learning'
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
-                        'retinotopy', 'sated', 'reversal1_start')
+                        'retinotopy', 'sated', 'learning_start',
+                        'reversal1_start')
 
     elif group_by.lower() == 'low_dprime_leanrning':
         use_dprime = True
         up_or_down = 'down'
         tags = 'learning'
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
-                        'retinotopy', 'sated')
+                        'retinotopy', 'sated', 'learning_start')
 
     elif group_by.lower() == 'high_dprime_reversal1':
         use_dprime = True
@@ -795,6 +797,7 @@ def groupday_tca(
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start',
                         'reversal1_start')
+
     elif group_by.lower() == 'l_vs_r1':  # high dprime
         use_dprime = True
         up_or_down = 'up'
@@ -805,6 +808,14 @@ def groupday_tca(
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start',
                         'reversal1_start')
+
+    elif group_by.lower() == 'all':
+        tags = None
+        use_dprime = False
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated', 'learning_start',
+                        'reversal1_start', 'reversal2_start')
+
     else:
         print('Using input parameters without modification by group_by=...')
 
@@ -949,22 +960,43 @@ def groupday_tca(
             group_tensor[(id_union == k), :, trial_start:trial_end] = celln_all_trials
         trial_start += np.shape(tensor_list[i])[2]
 
+    # allow for cells with low number of trials to be dropped
+    if nan_trial_threshold:
+        # update saving tag
+        nt_tag = '_nantrial' + str(nan_trial_threshold)
+        # remove cells with too many nan trials
+        ntrials = np.shape(group_tensor)[2]
+        nbadtrials = np.sum(np.isnan(group_tensor[:, 0, :]), 3)
+        badtrialratio = nbadtrials/ntrials
+        badcell_indexer = badtrialratio < nan_trial_threshold
+        group_tensor = group_tensor[badcell_indexer, :, :]
+        if verbose:
+            print('Removed ' + str(np.sum(badcell_indexer)) +
+                  ' cells from tensor:' + ' badtrialratio < ' +
+                  str(nan_trial_threshold))
+            print('Kept ' + str() + ' cells from tensor:' +
+                  ' badtrialratio < ' + str(nan_trial_threshold))
+    else:
+        nt_tag = ''
+
     # just so you have a clue how big the tensor is
-    print('Tensor decomp about to begin: tensor shape = '
-          + str(np.shape(group_tensor)))
+    if verbose:
+        print('Tensor decomp about to begin: tensor shape = '
+              + str(np.shape(group_tensor)))
 
     # concatenate and save df for the day
-    meta_path = os.path.join(save_dir, str(day1.mouse) + '_'
-                             + str(group_by) + '_df_group_meta.pkl')
-    input_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_'
-                                     + str(group_by) + '_group_tensor_'
-                                     + str(trace_type) + '.npy')
-    input_ids_path = os.path.join(save_dir, str(day1.mouse) + '_'
-                                  + str(group_by) + '_group_ids_'
-                                  + str(trace_type) + '.npy')
-    output_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_'
-                                      + str(group_by) + '_group_decomp_'
-                                      + str(trace_type) + '.npy')
+    meta_path = os.path.join(
+        save_dir, str(day1.mouse) + '_' + str(group_by) + nt_tag +
+        '_df_group_meta.pkl')
+    input_tensor_path = os.path.join(
+        save_dir, str(day1.mouse) + '_' + str(group_by) + nt_tag +
+        '_group_tensor_' + str(trace_type) + '.npy')
+    input_ids_path = os.path.join(
+        save_dir, str(day1.mouse) + '_' + str(group_by) + nt_tag +
+        '_group_ids_' + str(trace_type) + '.npy')
+    output_tensor_path = os.path.join(
+        save_dir, str(day1.mouse) + '_' + str(group_by) + nt_tag +
+        '_group_decomp_' + str(trace_type) + '.npy')
     meta.to_pickle(meta_path)
     np.save(input_tensor_path, group_tensor)
     np.save(input_ids_path, id_union)
