@@ -84,6 +84,7 @@ def groupday_factors_annotated(
         warp=False,
         word=None,
         group_by=None,
+        nan_thresh=None,
         extra_col=4,
         alpha=0.6,
         plot_running=True,
@@ -174,23 +175,31 @@ def groupday_factors_annotated(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        nt_tag = '_nantrial' + str(nan_thresh)
+        nt_save_tag = ' nantrial ' + str(nan_thresh)
+    else:
+        nt_tag = ''
+        nt_save_tag = ''
+
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by)
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
         + '_group_decomp_' + str(trace_type) + '.npy')
     meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by)
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
         + '_df_group_meta.pkl')
 
     # save dir
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     if scale_y:
-        save_tag = ' scaled-y'
+        save_tag = nt_save_tag + ' scaled-y'
     else:
-        save_tag = ''
+        save_tag = nt_save_tag + ''
     save_dir = os.path.join(save_dir, 'factors annotated' + save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     date_dir = os.path.join(save_dir, str(group_by) + ' ' + method)
@@ -239,6 +248,12 @@ def groupday_factors_annotated(
         ax[0].set_title('Neuron factors')
         ax[1].set_title('Temporal factors')
         ax[2].set_title('Trial factors')
+
+        # add title to whole figure
+        ax[0].text(-1.2, 4, mouse + ': \n\nrank: ' + str(int(r)) + '\nmethod: '
+                   + method + ' \ngroup_by: '
+                   + group_by, fontsize=12, transform=ax[0].transAxes,
+                   color='#969696')
 
         # reshape for easier indexing
         ax = np.array(ax).reshape((U.rank, -1))
@@ -804,6 +819,13 @@ def pairday_factors_annotated(
             ax[0].set_title('Neuron factors')
             ax[1].set_title('Temporal factors')
             ax[2].set_title('Trial factors')
+
+            # add title to whole figure
+            ax[0].text(-1.2, 4, mouse + ': \n\nrank: ' + str(int(r))
+                       + '\nmethod: ' + method + ' \ndates: '
+                       + str(day1.date) + ' - ' + str(day2.date),
+                       fontsize=12, transform=ax[0].transAxes,
+                       color='#969696')
 
             # reshape for easier indexing
             ax = np.array(ax).reshape((U.rank, -1))
@@ -1723,6 +1745,13 @@ def singleday_factors_annotated(
             ax[0].set_title('Neuron factors')
             ax[1].set_title('Temporal factors')
             ax[2].set_title('Trial factors')
+
+            # add title to whole figure
+            ax[0].text(-1.2, 4, mouse + ': \n\nrank: ' + str(int(r))
+                       + '\nmethod: ' + method + ' \ndate: '
+                       + str(day1.date),
+                       fontsize=12, transform=ax[0].transAxes,
+                       color='#969696')
 
             # reshape for easier indexing
             ax = np.array(ax).reshape((U.rank, -1))
