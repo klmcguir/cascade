@@ -1012,6 +1012,7 @@ def groupday_tca(
         for m in method:
             for r in range(1, rank+1):
                 results[r] = tt.mcp_als(group_tensor, r, mask, **fit_options)
+                print('mcp_als: rank ' + str(r) + ' complete.')
             ensemble[m] = results
         np.save(output_tensor_path, ensemble)
     else:
