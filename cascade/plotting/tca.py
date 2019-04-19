@@ -1,6 +1,7 @@
 """Functions for plotting tca decomp."""
 import os
 import flow
+import pool
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -12,6 +13,8 @@ from copy import deepcopy
 from .. import df
 from .. import tca
 from .. import paths
+from .. import utils
+import warnings
 
 
 """
@@ -1369,6 +1372,252 @@ def pairday_varex_percell(
 """
 ----------------------------- SINGLE DAY PLOTS -----------------------------
 """
+
+
+def singleday_noisecorr(
+        mouse,
+        trace_type='zscore_day',
+        corr_trace_type='zscore_day',
+        cs='',
+        warp=False,
+        word=None,
+        remove_licking=True,
+        running_lowspeed=False,
+        running_highspeed=False,
+        speed_thresh=10,
+        randomizations=500,
+        vis_drive_thresh=0,
+        sort_rank=10,
+        verbose=False):
+
+    """
+    Plot similarity and error plots for TCA decomposition ensembles.
+
+    Parameters:
+    -----------
+    mouse : str; mouse name
+    trace_type : str; dff, zscore, deconvolved
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../noise corr
+    """
+
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
+
+    clus_daily = []
+    acorr_daily = []
+    acorr_daily_sort = []
+    aclus_daily_sort = []
+
+    for day1 in days:
+
+        # load dir
+        load_dir = paths.tca_path(mouse, 'single',
+                                  pars=pars, word=word)
+        tensor_path = os.path.join(load_dir, str(day1.mouse)
+                                   + '_' + str(day1.date)
+                                   + '_single_decomp_'
+                                   + str(trace_type) + '.npy')
+        input_tensor_path = os.path.join(load_dir, str(day1.mouse)
+                                         + '_' + str(day1.date)
+                                         + '_single_tensor_'
+                                         + str(trace_type) + '.npy')
+        input_ids_path = os.path.join(load_dir, str(day1.mouse)
+                                      + '_' + str(day1.date)
+                                      + '_single_ids_'
+                                      + str(trace_type) + '.npy')
+        meta_path = os.path.join(load_dir, str(day1.mouse)
+                                 + '_' + str(day1.date)
+                                 + '_df_single_meta.pkl')
+
+        # save dir
+        save_dir = paths.tca_plots(mouse, 'single', pars=pars, word=word)
+        if remove_licking:
+            lick_tag = '-no-lick'
+        else:
+            lick_tag = ''
+        if running_lowspeed:
+            run_tag = '-lowspeed' + str(speed_thresh)
+        elif running_highspeed:
+            run_tag = '-highspeed' + str(speed_thresh)
+        else:
+            run_tag = ''
+        save_dir = os.path.join(save_dir, 'noise corr ' + corr_trace_type + ' '
+                                + lick_tag + run_tag)
+        if not os.path.isdir(save_dir): os.mkdir(save_dir)
+
+        # load your data
+        ensemble = np.load(tensor_path)
+        ensemble = ensemble.item()
+        ids = np.load(input_ids_path)
+        intensor = np.load(input_tensor_path)
+        meta = pd.read_pickle(meta_path)
+        orientation = meta['orientation']
+        speed = meta['speed']
+
+        # all ids for the day
+        d1_ids = flow.xday._read_crossday_ids(day1.mouse, day1.date)
+        d1_ids = np.array([int(s) for s in d1_ids])
+
+        # if you want to use a different trace type recreate to match
+        # tensor dims
+        if corr_trace_type == 'dff' or corr_trace_type == 'deconvolved':
+            # trs = pool.stimulus.trials(
+            #     day1, cs, start_s=-1, end_s=6,
+            #     baseline=(-1, 0), trace_type=corr_trace_type,
+            #     cutoff_before_lick_ms=-1, error_trials=-1,
+            #     pavlovian=False)
+            meta = utils.getdailymeta(day1, tags='hungry', run_types='training')
+            orientation = meta['orientation']
+            speed = meta['speed']
+            trs = utils.getdailycstraces(
+                day1, cs='', trace_type=corr_trace_type,
+                start_time=-1, end_time=6)
+            trs = trs[np.isin(d1_ids, ids), :, :]
+            if day1.runs()[0].trace2p().d['framerate'] > 30:
+                sz = np.shape(trs)  # dims: (cells, time, trials)
+                if sz[1] % 2 == 1:
+                    trs = trs[:, :-1, :]
+                    sz = np.shape(trs)
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore')
+                    with np.errstate(invalid='ignore', divide='ignore'):
+                        ds_traces = np.zeros((sz[0], int(sz[1]/2), sz[2]))
+                        for trial in range(sz[2]):
+                            a = trs[:, :, trial].reshape(sz[0], int(sz[1]/2), 2)
+                            if corr_trace_type.lower() == 'deconvolved':
+                                ds_traces[:, :, trial] = np.nanmax(a, axis=2)
+                            else:
+                                ds_traces[:, :, trial] = np.nanmean(a, axis=2)
+                trs = ds_traces
+            intensor = trs
+
+        # nan area after first lick in trial
+        # if no first lick, us lowest latency median first lick for three stimuli
+        if remove_licking:
+            firstlick = meta['firstlick']
+            median_lick = []
+            for cs in [0, 135, 270]:
+                median_lick.append(meta.loc[(orientation == cs), :]['firstlick'].median())
+            median_lick = np.nanmin(median_lick)
+            for tri in range(np.shape(intensor)[2]):
+                if np.isfinite(firstlick[tri]):
+                    intensor[:, int(np.floor(15.5 + firstlick[tri] - 1)):, tri] = np.nan
+                else:
+                    if np.isfinite(median_lick):  # (if there were licks recorded)
+                        intensor[:, int(np.floor(15.5 + median_lick)):, tri] = np.nan
+
+        # split running into high and low groups
+        if running_highspeed and running_lowspeed:
+            print('WTF. High and low speed boolean?')
+        elif running_highspeed:
+            speed_bool = speed > speed_thresh
+            intensor = intensor[:, :, speed_bool]
+        elif running_lowspeed:
+            speed_bool = speed <= speed_thresh
+            intensor = intensor[:, :, speed_bool]
+
+        # sort neuron factors by component they belong to most
+        # assumes only one method was used
+        method = [i for i in ensemble.keys()][0]
+        sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
+
+        # run noise corr for each cs
+        cs_clusters = {}
+        cscorr = {}
+        sscorr = {}
+        for cs in ['0', '135', '270']:
+
+            # boolean index for cs accounting for running boolean
+            if running_highspeed or running_lowspeed:
+                csbool = np.isin(orientation, int(cs))[speed_bool]
+            else:
+                csbool = np.isin(orientation, int(cs))
+
+            # select trials
+            trs = np.nanmean(intensor[:, 16:48, csbool], axis=1)
+            ncells = np.shape(trs)[0]
+
+            # additional visual drive thresholding
+            drive = pool.calc.driven.visually(day1, cs)
+            drive_bool = drive[np.isin(d1_ids, ids)] > vis_drive_thresh
+
+            # get TCA clusters
+            # factors are already sorted, so these will define
+            # clusters, no need to sort again
+            cell_clusters = {}
+            for k in sort_ensemble.results.keys():
+                factors = sort_ensemble.results[k][0].factors[0]
+                max_fac = np.argmax(factors, axis=1)
+                max_fac_val = np.max(factors, axis=1)
+                max_fac[max_fac_val == 0] = -1
+                cell_clusters[k] = max_fac[drive_bool]
+            cs_clusters[cs] = cell_clusters
+
+            # Catch cases when there aren't enough trials
+            if np.shape(trs)[1] < 10:
+                print('Not enough trials (' + str(np.shape(trs)[1]) + ') in '
+                      + str(day1.date) + ' ' + cs +
+                      ' trs to calculate noise corr.')
+                continue
+
+            stimorder = np.arange(np.shape(trs)[1])
+            corrs = np.zeros((ncells, ncells))
+            corrs[:, :] = np.nan
+            if np.sum(np.invert(np.isfinite(trs))) == 0:
+                corrs = np.corrcoef(trs)
+
+                for i in range(randomizations):
+                    for c in range(ncells):
+                        np.random.shuffle(stimorder)
+                        trs[c, :] = trs[c, stimorder]
+
+                    corrs -= np.corrcoef(trs)/float(randomizations)
+            sscorr[cs] = corrs[:, my_sorts[sort_rank-1]][my_sorts[sort_rank-1], :][drive_bool, :][:, drive_bool]
+            cscorr[cs] = corrs[drive_bool, :][:, drive_bool]
+        acorr_daily.append(cscorr)
+        acorr_daily_sort.append(sscorr)
+        aclus_daily_sort.append(cs_clusters)
+
+    # plot
+    cmap = sns.color_palette('muted', sort_rank)
+    whitergb = (1, 1, 1)
+    for c, corr in enumerate(acorr_daily_sort):
+        for cs in ['0', '135', '270']:
+            if ~np.isin(cs, list(corr.keys())):
+                continue
+            if np.sum(np.isnan(corr[cs]).flatten()) > 0:
+                continue
+            color_vec = []
+            for k in aclus_daily_sort[c][cs][sort_rank]:
+                if k >= 0:
+                    color_vec.append(cmap[int(k)])
+                else:
+                    color_vec.append(whitergb)
+            fig = plt.figure()
+            a = sns.clustermap(
+                corr[cs], row_colors=color_vec, col_colors=color_vec,
+                row_cluster=False, col_cluster=False, method='ward')
+            a.cax.set_ylabel('correlation\ncoefficient (R)')
+            a.cax.set_title(
+                str(days[c].date) + ': ' + corr_trace_type + ': rank '
+                + str(sort_rank) + ': ' + cs +
+                ' ' + lick_tag + run_tag, horizontalalignment='left')
+            a.ax_heatmap.set_xlabel('Cell Number')
+            a.ax_heatmap.set_ylabel('Cell Number')
+
+            # save, show figs as you go if verbose
+            save_path = os.path.join(
+                save_dir, 'cs' + cs + '-' +
+                str(days[c].date) + '-rank' +
+                str(int(sort_rank)) + lick_tag + run_tag + '.png')
+            plt.savefig(save_path, bbox_inches='tight')
+            if verbose:
+                plt.show()
+            plt.close(fig)
 
 
 def singleday_qc(
