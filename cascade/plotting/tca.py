@@ -239,7 +239,9 @@ def groupday_factors_annotated(
         ensemble2 = {}
         ensemble2[method] = lambda: None
         ensemble2[method].results = ensemble[method]
-    sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
+        sort_ensemble, my_sorts = tca._sortfactors(ensemble2[method])
+    else:
+        sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
 
     for r in sort_ensemble.results:
 
