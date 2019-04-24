@@ -10,6 +10,250 @@ from . import tca
 from . import paths
 
 
+def match_singleday_to_groupday(
+        mouse,
+        rank_num=10,
+        trace_type='zscore_day',
+        method='ncp_bcd',
+        cs='',
+        warp=False,
+        word='convinced',
+        group_word='supply',
+        group_by='high_dprime_learning',
+        exclude_reversal=True,
+        sim_thresh=0.2,
+        ratio_thresh=0.6):
+
+    # ------------------- GROUPDAY LOADING -------------------
+
+    # groupday loader
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # load dir
+    load_dir = paths.tca_path(
+        mouse, 'group', pars=pars, word=group_word, group_pars=group_pars)
+    template_tensor_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by)
+        + '_group_decomp_' + str(trace_type) + '.npy')
+    template_meta_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by)
+        + '_df_group_meta.pkl')
+    template_ids_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by)
+        + '_group_ids_' + str(trace_type) + '.npy')
+
+    # load your data
+    template_ensemble = np.load(template_tensor_path)
+    template_ensemble = template_ensemble.item()
+    ids = np.load(template_ids_path)
+    meta = pd.read_pickle(template_meta_path)
+
+    # get trial metadata
+    template_orientation = meta['orientation']
+    template_trial_num = np.arange(0, len(template_orientation))
+    template_condition = meta['condition']
+    template_trialerror = meta['trialerror']
+    template_hunger = deepcopy(meta['hunger'])
+    template_speed = meta['speed']
+    template_dates = meta.reset_index()['date']
+    template_learning_state = meta['learning_state']
+
+    # merge hunger and tag info for plotting hunger
+    template_tags = meta['tag']
+    template_hunger[template_tags == 'disengaged'] = 'disengaged'
+
+    # calculate change indices for days and reversal/learning
+    udays = {d: c for c, d in enumerate(np.unique(template_dates))}
+    ndays = np.diff([udays[i] for i in template_dates])
+    day_x = np.where(ndays)[0] + 0.5
+    ustate = {d: c for c, d in enumerate(np.unique(template_learning_state))}
+    nstate = np.diff([ustate[i] for i in template_learning_state])
+    lstate_x = np.where(nstate)[0] + 0.5
+
+    # sort neuron factors by component they belong to most
+    template_sort_ensemble, template_my_sorts = tca._sortfactors(
+        template_ensemble[method])
+
+    # put ids in correct order (k is 1 indexed)
+    template_cell_ids = {}  # keys are rank
+    for k in template_sort_ensemble.results.keys():
+        template_cell_ids[k] = ids[template_my_sorts[k-1]]
+
+    # get template factors of interest
+    template_factors = template_sort_ensemble.results[rank_num][0]
+    template_cell_ids = template_cell_ids[rank_num]
+
+    # ------------------- SINGLEDAY LOADING -------------------
+
+    # pars for loading tca data
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+
+    # create datesorter
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
+
+    conds_by_day = []
+    oris_by_day = []
+    trialerr_by_day = []
+    neuron_ids_by_day = []
+    neuron_clusters_by_day = []
+    factors_by_day = []
+    ndate = []
+    # noise_corr_by_day = []
+
+    # loop through days in FORWARD order
+    for day1 in days:
+
+        # load dir
+        load_dir = paths.tca_path(mouse, 'single',
+                                  pars=pars, word=word)
+        tensor_path = os.path.join(load_dir, str(day1.mouse)
+                                   + '_' + str(day1.date)
+                                   + '_single_decomp_'
+                                   + str(trace_type) + '.npy')
+        input_tensor_path = os.path.join(load_dir, str(day1.mouse)
+                                         + '_' + str(day1.date)
+                                         + '_single_tensor_'
+                                         + str(trace_type) + '.npy')
+        input_ids_path = os.path.join(load_dir, str(day1.mouse)
+                                      + '_' + str(day1.date)
+                                      + '_single_ids_'
+                                      + str(trace_type) + '.npy')
+        meta_path = os.path.join(load_dir, str(day1.mouse)
+                                 + '_' + str(day1.date)
+                                 + '_df_single_meta.pkl')
+
+        # load your metadata, skip post reversal days
+        meta = pd.read_pickle(meta_path)
+        condition = meta['condition']
+        orientation = meta['orientation']
+        trialerror = meta['trialerror']
+        if exclude_reversal:
+            if 'reversal1' in meta['learning_state'].unique() \
+            or 'reversal2' in meta['learning_state'].unique():
+                continue
+
+        # skip days that do not have minus, AND neutral
+        if 'minus' not in meta['condition'].unique() \
+        or 'neutral' not in meta['condition'].unique() \
+        or 'plus' not in meta['condition'].unique():
+            continue
+
+        # print
+        ndate.append(day1.date)
+
+        # load your data
+        ensemble = np.load(tensor_path)
+        ensemble = ensemble.item()
+        ids = np.load(input_ids_path)
+
+        # sort neuron factors by component they belong to most
+        sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
+
+        cell_ids = {}  # keys are rank
+        cell_clusters = {}
+        itr_num = 0  # use only best iteration of TCA, index 0
+        for k in sort_ensemble.results.keys():
+            # factors are already sorted, so these will define
+            # clusters, no need to sort again
+            factors = sort_ensemble.results[k][itr_num].factors[0]
+            max_fac = np.argmax(factors, axis=1)
+            cell_clusters[k] = max_fac
+            cell_ids[k] = ids[my_sorts[k-1]]
+
+        # get noise corr for each
+        # cs_noise = []
+        # for cs in ['0', '135', '270']:
+        #     cs_noise.append(pool.calc.correlations.noise(day1, cs))
+
+        # noise_corr_by_day.append(cs_noise)
+        neuron_ids_by_day.append(cell_ids[rank_num])
+        neuron_clusters_by_day.append(cell_clusters[rank_num])
+        factors_by_day.append(sort_ensemble.results[rank_num][0])
+        conds_by_day.append(condition)
+        oris_by_day.append(orientation)
+        trialerr_by_day.append(trialerror)
+
+    # ------------------- CORRELATE -------------------
+
+    # create similarity matrices for comparison of all neuron
+    # factors weights between a pair of days
+    noise_mat_by_day = []
+    on_sim_mat_by_day = []
+    off_sim_mat_by_day = []
+    tuning_sim_mat_by_day = []
+    noise_id = []
+    cells_compared = []
+    for i in range(len(factors_by_day)):
+
+        # always compare in the time-forward direction
+        ids1 = template_cell_ids
+        ids2 = neuron_ids_by_day[i]
+        ids1_bool = np.isin(ids1, ids2)
+        ids2_bool = np.isin(ids2, ids1)
+
+        # get sort order to match ids between days
+        ids1_sort = np.argsort(ids1[ids1_bool])
+        ids2_sort = np.argsort(ids2[ids2_bool])
+
+        # get neuron factor weight matrices for ids matched between days
+        ids1_weights = template_factors.factors[0][ids1_bool, :]
+        ids2_weights = factors_by_day[i].factors[0][ids2_bool, :]
+        cells_compared.append(np.shape(ids1_weights)[0])
+
+        # get noise corr only for cells included in comparison
+        # cs_noise = noise_corr_by_day[i]
+        # id_cs_noise = []
+        # cs_noise_bool = np.isin(np.arange(len(cs_noise[0]))+1, ids2)
+        # for cs in range(len(['0', '135', '270'])):
+        #     cs_bool = cs_noise[cs][cs_noise_bool, :][:, cs_noise_bool]
+        #     id_cs_noise.append(cs_bool)
+
+        on_corr = np.corrcoef(
+            ids1_weights[ids1_sort, :].T, y=ids2_weights[ids2_sort, :].T)
+        on_corr[np.isnan(on_corr)] = 0
+        on_sim_mat_by_day.append(deepcopy(on_corr[-rank_num:, 0:rank_num]))
+        # noise_mat_by_day.append(id_cs_noise)
+
+    # ------------------- STITCH TOGETHER CORRELATION MAPS -------------------
+
+    # find the best correlated factor and second-best correlated factor in the
+    # groupday template for each singleday factor
+    best_arg = np.zeros((len(on_sim_mat_by_day), rank_num))
+    best_val = np.zeros((len(on_sim_mat_by_day), rank_num))
+    second_best_arg = np.zeros((len(on_sim_mat_by_day), rank_num))
+    second_best_val = np.zeros((len(on_sim_mat_by_day), rank_num))
+    test_temp = []
+    for c, sim_mat in enumerate(on_sim_mat_by_day):
+        y = np.argmax(sim_mat, axis=0)
+        y2 = np.argsort(sim_mat, axis=0)[-2]  # second best value
+        yv = np.max(sim_mat, axis=0)
+        yv2 = np.sort(sim_mat, axis=0)[-2]
+        best_arg[c, :] = y
+        best_val[c, :] = yv
+        second_best_arg[c, :] = y2
+        second_best_val[c, :] = yv2
+
+    # ------------------- FILTER CORRELATION MAPS -------------------
+
+    # create boolean matrices to remove bad matches from your best_arg factor
+    # matches
+    numer = second_best_val
+    numer[numer < 0] = 0
+    denom = best_val
+    denom[denom < 0] = 0
+    ratio = numer/denom  # 1 is bad, means the best corr and 2nd best are same
+    bad_sim_bool = best_val < sim_thresh
+    bad_ratio_bool = ratio > ratio_thresh
+
+    # set matches that are poorly correlated or too similar to the next-best
+    # match to -1
+    factor_map = best_arg
+    factor_map[bad_sim_bool] = -1
+
+    return factor_map, ndate
+
+
 def factor_squid(
         mouse,
         rank_num=10,

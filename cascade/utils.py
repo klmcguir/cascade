@@ -3,11 +3,79 @@ import flow
 import pool
 import numpy as np
 import warnings
+import pandas as pd
+from . import tca
 
 
-def getcstraces(run, cs='', trace_type='zscore_iti', start_time=-1, end_time=6,
-                downsample=True, clean_artifacts='interp', thresh=17.5,
-                warp=False, smooth=True, smooth_win=5, smooth_win_dec=3):
+def getdailycstraces(
+        # DateSorter params
+        DateSorter,
+
+        # cstrace params
+        cs='',
+        trace_type='zscore_day',
+        start_time=-1,
+        end_time=6,
+        downsample=True,
+        clean_artifacts=None,
+        thresh=17.5,
+        warp=False,
+        smooth=False,
+        smooth_win=5,
+        smooth_win_dec=3):
+    """
+    Wrapper function for getcstraces. Gets cstraces for a DateSorter object.
+    """
+
+    if isinstance(DateSorter, flow.sorters.Date):
+        runs = DateSorter.runs(run_types='training', tags='hungry')
+
+    runlist = []
+    for run in runs:
+        trs = getcstraces(
+                run, cs=cs, trace_type=trace_type,
+                start_time=start_time, end_time=end_time,
+                downsample=downsample, clean_artifacts=clean_artifacts,
+                thresh=thresh, warp=warp, smooth=smooth,
+                smooth_win=smooth_win, smooth_win_dec=smooth_win_dec)
+        runlist.append(trs)
+    cstraces = np.concatenate(runlist, axis=2)
+
+    return cstraces
+
+
+def getdailymeta(
+        DateSorter,
+        tags='hungry',
+        run_types='training'):
+    """
+    Wrapper function for tca._trialmetafromrun(run). Gets trial metadata for a
+    DateSorter object.
+    """
+    if isinstance(DateSorter, flow.sorters.Date):
+        runs = DateSorter.runs(run_types=run_types, tags=tags)
+
+    metalist = []
+    for run in runs:
+        metalist.append(tca._trialmetafromrun(run))
+    meta = pd.concat(metalist, axis=0)
+
+    return meta
+
+
+def getcstraces(
+        run,
+        cs='',
+        trace_type='zscore_day',
+        start_time=-1,
+        end_time=6,
+        downsample=True,
+        clean_artifacts=None,
+        thresh=17.5,
+        warp=False,
+        smooth=True,
+        smooth_win=5,
+        smooth_win_dec=3):
     """
     Wrapper function for flow.Trace2P.cstraces() or .warpsctraces().
     Adds in artifact removal, and multiple types of z-score calc.
