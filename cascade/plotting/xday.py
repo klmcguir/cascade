@@ -27,7 +27,7 @@ def mean_response(
 
         verbose=True):
     """
-    Create heatmap of each cell's mean response to each
+    Create line plot of each cell's mean response to each
     simulus aligned across time.
 
     Parameters:
