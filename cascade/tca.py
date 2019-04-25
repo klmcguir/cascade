@@ -155,7 +155,8 @@ def singleday_tca(
 
                 # subselect metadata to remove certain condtions
                 if len(exclude_conds) > 0:
-                    dfr = dfr.loc[(~dfr['condition'].isin([exclude_conds])), :]
+                    run_traces = run_traces[:, :, (~dfr['condition'].isin(exclude_conds))]
+                    dfr = dfr.loc[(~dfr['condition'].isin(exclude_conds)), :]
 
                 # drop trials with nans and add to lists
                 keep = np.sum(np.sum(np.isnan(run_traces), axis=0, keepdims=True),
@@ -388,7 +389,8 @@ def pairday_tca(
                               a valid option.')
                 # subselect metadata to remove certain conditions
                 if len(exclude_conds) > 0:
-                    dfr = dfr.loc[(~dfr['condition'].isin([exclude_conds])), :]
+                    run_traces = run_traces[:, :, (~dfr['condition'].isin(exclude_conds))]
+                    dfr = dfr.loc[(~dfr['condition'].isin(exclude_conds)), :]
                 # drop trials with nans and add to lists
                 keep = np.sum(np.sum(np.isnan(run_traces), axis=0, keepdims=True),
                               axis=1, keepdims=True).flatten() == 0
@@ -920,7 +922,8 @@ def groupday_tca(
 
                 # subselect metadata to remove certain conditions
                 if len(exclude_conds) > 0:
-                    dfr = dfr.loc[(~dfr['condition'].isin([exclude_conds])), :]
+                    run_traces = run_traces[:, :, (~dfr['condition'].isin(exclude_conds))]
+                    dfr = dfr.loc[(~dfr['condition'].isin(exclude_conds)), :]
 
                 # drop trials with nans and add to lists
                 keep = np.sum(np.sum(np.isnan(run_traces), axis=0,
