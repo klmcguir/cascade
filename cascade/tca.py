@@ -814,9 +814,14 @@ def groupday_tca(
     elif group_by.lower() == 'all':
         tags = None
         use_dprime = False
-        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
-                        'retinotopy', 'sated', 'learning_start',
-                        'reversal1_start', 'reversal2_start')
+        if mouse == 'OA27':
+            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                            'retinotopy', 'sated', 'learning_start',
+                            'reversal1_start', 'reversal2_start')
+        else:
+            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                            'retinotopy', 'sated')
+
 
     else:
         print('Using input parameters without modification by group_by=...')
