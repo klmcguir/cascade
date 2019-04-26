@@ -20,6 +20,7 @@ def match_singleday_to_groupday(
         word='convinced',
         group_word='supply',
         group_by='high_dprime_learning',
+        nan_thresh=0.85,
         exclude_reversal=True,
         sim_thresh=0.2,
         ratio_thresh=0.6):
@@ -30,17 +31,23 @@ def match_singleday_to_groupday(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        nt_tag = '_nantrial' + str(nan_thresh)
+    else:
+        nt_tag = ''
+
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=group_word, group_pars=group_pars)
     template_tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by)
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
         + '_group_decomp_' + str(trace_type) + '.npy')
     template_meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by)
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
         + '_df_group_meta.pkl')
     template_ids_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by)
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
         + '_group_ids_' + str(trace_type) + '.npy')
 
     # load your data
