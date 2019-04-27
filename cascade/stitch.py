@@ -258,7 +258,11 @@ def match_singleday_to_groupday(
     factor_map = best_arg
     factor_map[bad_sim_bool] = -1
 
-    return factor_map, ndate
+    similarity_maps = {
+        'best_val': best_val, 'best_arg': best_arg,
+        'second_best_val': second_best_val, 'second_best_arg': second_best_arg}
+
+    return factor_map, ndate, similarity_maps
 
 
 def factor_squid(

@@ -820,6 +820,16 @@ def pairday_factors_annotated(
         trialerror = meta['trialerror']
         hunger = deepcopy(meta['hunger'])
         speed = meta['speed']
+        dates = meta.reset_index()['date']
+        learning_state = meta['learning_state']
+
+        # calculate change indices for days and reversal/learning
+        udays = {d: c for c, d in enumerate(np.unique(dates))}
+        ndays = np.diff([udays[i] for i in dates])
+        day_x = np.where(ndays)[0] + 0.5
+        ustate = {d: c for c, d in enumerate(np.unique(learning_state))}
+        nstate = np.diff([ustate[i] for i in learning_state])
+        lstate_x = np.where(nstate)[0] + 0.5
 
         # merge hunger and tag info for plotting hunger
         tags = meta['tag']
@@ -955,6 +965,22 @@ def pairday_factors_annotated(
                             ax[i, col].set_title('State')
                             ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
                                               borderaxespad=2.5)
+
+                    # plot days, reversal, or learning lines if there are any
+                    if col >= 2:
+                        y_lim = ax[i, col].get_ylim()
+                        if len(day_x) > 0:
+                            for k in day_x:
+                                ax[i, col].plot(
+                                    [k, k], y_lim, color='#969696', linewidth=1)
+                        if len(lstate_x) > 0:
+                            ls_vals = ['naive', 'learning', 'reversal1']
+                            ls_colors = ['#66bd63', '#d73027', '#a50026']
+                            for k in lstate_x:
+                                ls = learning_state[int(k-0.5)]
+                                ax[i, col].plot(
+                                    [k, k], y_lim, color=ls_colors[ls_vals.index(ls)],
+                                    linewidth=1.5)
 
                     # set axes labels
                     ax[i, col].set_yticks(y_ticks)
@@ -2293,6 +2319,16 @@ def singleday_factors_annotated(
         trialerror = meta['trialerror']
         hunger = deepcopy(meta['hunger'])
         speed = meta['speed']
+        dates = meta.reset_index()['date']
+        learning_state = meta['learning_state']
+
+        # calculate change indices for days and reversal/learning
+        udays = {d: c for c, d in enumerate(np.unique(dates))}
+        ndays = np.diff([udays[i] for i in dates])
+        day_x = np.where(ndays)[0] + 0.5
+        ustate = {d: c for c, d in enumerate(np.unique(learning_state))}
+        nstate = np.diff([ustate[i] for i in learning_state])
+        lstate_x = np.where(nstate)[0] + 0.5
 
         # merge hunger and tag info for plotting hunger
         tags = meta['tag']
@@ -2427,6 +2463,22 @@ def singleday_factors_annotated(
                             ax[i, col].set_title('State')
                             ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                               borderaxespad=2.5)
+
+                    # plot days, reversal, or learning lines if there are any
+                    if col >= 2:
+                        y_lim = ax[i, col].get_ylim()
+                        if len(day_x) > 0:
+                            for k in day_x:
+                                ax[i, col].plot(
+                                    [k, k], y_lim, color='#969696', linewidth=1)
+                        if len(lstate_x) > 0:
+                            ls_vals = ['naive', 'learning', 'reversal1']
+                            ls_colors = ['#66bd63', '#d73027', '#a50026']
+                            for k in lstate_x:
+                                ls = learning_state[int(k-0.5)]
+                                ax[i, col].plot(
+                                    [k, k], y_lim, color=ls_colors[ls_vals.index(ls)],
+                                    linewidth=1.5)
 
                     # set axes labels
                     ax[i, col].set_yticks(y_ticks)
