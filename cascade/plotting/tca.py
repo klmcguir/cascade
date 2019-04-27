@@ -500,7 +500,7 @@ def groupday_varex_summary(
     save_dir = os.path.join(save_dir, 'qc' + nt_save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path = os.path.join(
-        save_dir, str(day1.mouse) + '_summary_variance_cubehelix.pdf')
+        save_dir, str(mouse) + '_summary_variance_cubehelix.pdf')
 
     # load your data
     ensemble = np.load(tensor_path)
