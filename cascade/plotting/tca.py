@@ -24,20 +24,24 @@ import warnings
 
 def groupday_shortlist(
         mouse,
-        # TODO ADD  NECESSARY PARAMS
         trace_type='zscore_day',
         method='ncp_bcd',
         cs='',
         warp=False,
         word=None,
+        group_by='all',
+        nan_thresh=0.85,
         verbose=False):
 
     groupday_varex_summary(mouse, trace_type=trace_type, method=method, cs=cs,
-                          warp=warp, word=word, verbose=verbose)
+                           warp=warp, word=word, group_by=group_by,
+                           nan_thresh=nan_thresh, verbose=verbose)
     groupday_factors_annotated(mouse, trace_type=trace_type, method=method,
-                              cs=cs, warp=warp, word=word, verbose=verbose)
+                               cs=cs, warp=warp, word=word, group_by=group_by,
+                               nan_thresh=nan_thresh, verbose=verbose)
     groupday_varex_percell(mouse, method=method, trace_type=trace_type, cs=cs,
-                          warp=warp, ve_min=0.05, word=word)
+                           warp=warp, ve_min=0.05, word=word, group_by=group_by,
+                           nan_thresh=nan_thresh, verbose=verbose)
 
 
 def pairday_shortlist(
@@ -439,6 +443,299 @@ def groupday_factors_annotated(
         plt.close()
 
 
+def groupday_varex_summary(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_bcd',
+        cs='',
+        warp=False,
+        word=None,
+        group_by=None,
+        nan_thresh=None,
+        verbose=False):
+    """
+    Plot reconstruction error as variance explained across all whole groupday
+    TCA decomposition ensemble.
+
+    Parameters:
+    -----------
+    mouse : str; mouse name
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../qc
+    """
+
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
+
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        nt_tag = '_nantrial' + str(nan_thresh)
+        nt_save_tag = ' nantrial ' + str(nan_thresh)
+    else:
+        nt_tag = ''
+        nt_save_tag = ''
+
+    # load dir
+    load_dir = paths.tca_path(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    tensor_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        + '_group_decomp_' + str(trace_type) + '.npy')
+    input_tensor_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        + '_group_tensor_' + str(trace_type) + '.npy')
+    meta_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        + '_df_group_meta.pkl')
+
+    # save dir
+    save_dir = paths.tca_plots(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    save_dir = os.path.join(save_dir, 'qc' + nt_save_tag)
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    var_path = os.path.join(
+        save_dir, str(day1.mouse) + '_summary_variance_cubehelix.pdf')
+
+    # load your data
+    ensemble = np.load(tensor_path)
+    ensemble = ensemble.item()
+    V = ensemble[method]
+    X = np.load(input_tensor_path)
+
+    # get reconstruction error as variance explained
+    var, var_s, x, x_s = [], [], [], []
+    for r in V.results:
+        bU = V.results[r][0].factors.full()
+        var.append((np.var(X) - np.var(X - bU)) / np.var(X))
+        x.append(r)
+        for it in range(0, len(V.results[r])):
+            U = V.results[r][it].factors.full()
+            var_s.extend([(np.var(X) - np.var(X - U)) / np.var(X)])
+            x_s.extend([r])
+
+    # mean response of neuron across trials
+    mU = np.mean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
+    var_mean = (np.var(X) - np.var(X - mU)) / np.var(X)
+
+    # smoothed response of neuron across time
+    smU = np.convolve(
+        X.reshape((X.size)),
+        np.ones(5, dtype=np.float64)/5, 'same').reshape(np.shape(X))
+    var_smooth = (np.var(X) - np.var(X - smU)) / np.var(X)
+
+    # create figure and axes
+    buffer = 5
+    right_pad = 5
+    fig = plt.figure(figsize=(10, 8))
+    gs = GridSpec(
+        100, 100, figure=fig, left=0.05, right=.95, top=.95, bottom=0.05)
+    ax = fig.add_subplot(gs[10:90-buffer, :90-right_pad])
+    c = 0
+    cmap = sns.color_palette(sns.cubehelix_palette(c+1))
+
+    # plot
+    R = np.max([r for r in V.results.keys()])
+    ax.scatter(x_s, var_s, color=cmap[c], alpha=0.5)
+    ax.scatter([R+2], var_mean, color=cmap[c], alpha=0.5)
+    ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
+    ax.plot(x, var, label=('single ' + str(c)), color=cmap[c])
+    ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c])
+    ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
+
+    # add labels/titles
+    x_labels = [str(R) for R in V.results]
+    x_labels.extend(
+        ['', 'mean\n cell\n response', '', 'smooth\n response\n (0.3s)'])
+    ax.set_xticks(range(1, len(V.results) + 5))
+    ax.set_xticklabels(x_labels)
+    ax.set_xlabel('model rank')
+    ax.set_ylabel('fractional variance explained')
+    ax.set_title('Variance Explained: ' + str(method) + ', ' + mouse)
+    ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+
+    fig.savefig(var_path, bbox_inches='tight')
+
+
+def groupday_varex_percell(  # TODO MAKE THIS WORK FOR GROUPDAY
+        mouse,
+        method='ncp_bcd',
+        trace_type='zscore_day',
+        cs='',
+        warp=False,
+        word=None,
+        group_by=None,
+        nan_thresh=None,
+        ve_min=0.05,
+        filetype='pdf'):
+    """
+    Plot TCA reconstruction error as variance explained per cell
+    for TCA decomposition. Create folder of variance explained per cell
+    swarm plots. Calculate summary plots of 'fraction of maximum variance
+    explained' per cell by rank for all cells given a certain (ve_min) threshold
+    for maximum variance explained
+
+    Parameters:
+    -----------
+    mouse : str; mouse name
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+    ve_min: float; minimum variance explained for best rank per cell
+                   to be included in summary of fraction of maximum variance
+                   explained
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder/ .../qc
+                                             .../variance explained per cell
+
+    """
+
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+
+    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
+
+    # create folder structure if needed
+    cs_tag = '' if len(cs) == 0 else ' ' + str(cs)
+    warp_tag = '' if warp is False else ' warp'
+    folder_name = 'tensors single ' + str(trace_type) + cs_tag + warp_tag
+
+    ve, ve_max, ve_frac, rank_num, day_num, cell_num = [], [], [], [], [], []
+    for c, day1 in enumerate(days, 0):
+
+        # get dirs for loading
+        load_dir = paths.tca_path(mouse, 'single', pars=pars, word=word)
+        if not os.path.isdir(load_dir): os.mkdir(load_dir)
+        tensor_path = os.path.join(load_dir, str(day1.mouse) + '_'
+                                   + str(day1.date) + '_single_decomp_'
+                                   + str(trace_type) + '.npy')
+        input_tensor_path = os.path.join(load_dir, str(day1.mouse) + '_'
+                                         + str(day1.date) + '_single_tensor_'
+                                         + str(trace_type) + '.npy')
+        if not os.path.isfile(tensor_path): continue
+        if not os.path.isfile(input_tensor_path): continue
+
+        # load your data
+        ensemble = np.load(tensor_path)
+        ensemble = ensemble.item()
+        V = ensemble[method]
+        X = np.load(input_tensor_path)
+
+        # get reconstruction error as variance explained per cell
+        for cell in range(0, np.shape(X)[0]):
+            rank_ve_vec = []
+            rank_vec = []
+            for r in V.results:
+                U = V.results[r][0].factors.full()
+                Usub = X - U
+                rank_ve = (np.var(X[cell, :, :]) - np.var(Usub[cell, :, :])) / np.var(X[cell, :, :])
+                rank_ve_vec.append(rank_ve)
+                rank_vec.append(r)
+            max_ve = np.max(rank_ve_vec)
+            ve.extend(rank_ve_vec)
+            ve_max.extend([max_ve for s in rank_ve_vec])
+            ve_frac.extend(rank_ve_vec / max_ve)
+            rank_num.extend(rank_vec)
+            day_num.extend([c+1 for s in rank_ve_vec])
+            cell_num.extend([cell for s in rank_ve_vec])
+
+    # build pd dataframe of all variance measures
+    index = pd.MultiIndex.from_arrays([
+    day_num,
+    rank_num,
+    ve,
+    ve_max,
+    ve_frac,
+    cell_num,
+    ],
+    names=['day', 'rank', 'variance_explained', 'max_ve', 'frac_ve', 'cell'])
+    df = pd.DataFrame(index=index)
+    df = df.reset_index()
+
+    # make a rainbow colormap, HUSL space but does not circle back on itself
+    cmap = sns.color_palette('hls', int(np.ceil(1.5*np.unique(df['rank'])[-1])))
+    cmap = cmap[0:np.unique(df['rank'])[-1]]
+
+    # Part 1
+    # slice df, only look at cells with a max variance >5%
+    sliced_df2 = df.loc[(df['day']) & (df['max_ve'] >= ve_min), :]
+
+    # CDF plot
+    fig1 = plt.figure(figsize=(15,9))
+    for i in np.unique(sliced_df2['rank']):
+        input_ve = sliced_df2.loc[(sliced_df2['rank'] == i),'frac_ve']
+        ax = sns.distplot(input_ve, kde_kws={'cumulative': True, 'lw': 2, 'color': cmap[i-1], 'label': str(i)}, hist=False)
+        lg = ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+        lg.set_title('rank')
+        ax.set_title(mouse + ', Fraction of maximum variance explained per cell, CDF')
+        ax.set_xlabel('Fraction of maximum variance explained')
+
+    # swarm plot
+    fig2 =plt.figure(figsize=(18,6))
+    ax2 = sns.violinplot(x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=3, alpha=1, inner=None, palette=cmap)
+    ax2.set_title(mouse + ', Fraction of maximum variance explained per cell, violin')
+    ax2.set_ylabel('Fraction of maximum variance explained')
+
+    # swarm plot
+    fig3 = plt.figure(figsize=(18,6))
+    ax3 = sns.swarmplot(x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=2, alpha=1, palette=cmap)
+    ax3.set_title(mouse + ', Fraction of maximum variance explained per cell, swarm')
+    ax3.set_ylabel('Fraction of maximum variance explained')
+
+    # set up saving paths/dir
+    save_dir = paths.tca_plots(mouse, 'single', pars=pars, word=word)
+    save_dir = os.path.join(save_dir, 'qc')
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    save_file_base = mouse + '_singleday_frac_max_var_expl_' + trace_type
+
+    # save
+    if filetype.lower() == 'pdf':
+        suffix = '.pdf'
+    elif filetype.lower() == 'eps':
+        suffix = '.eps'
+    else:
+        suffix = '.png'
+    fig1.savefig(os.path.join(save_dir, save_file_base + '_CDF' + suffix), bbox_inches='tight')
+    fig2.savefig(os.path.join(save_dir, save_file_base + '_violin' + suffix), bbox_inches='tight')
+    fig3.savefig(os.path.join(save_dir, save_file_base + '_swarm.png'), bbox_inches='tight')
+
+    # Part 2
+    # plot sorted per "cell" varienace explained (approximate, this is by unique max_ve not cells per se)
+    # set up saving paths/dir
+    save_dir = os.path.join(save_dir, 'variance explained per cell')
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    save_file_base = mouse + '_singleday_var_expl_' + trace_type
+
+    for d in np.unique(df['day']):
+
+        sliced_df = df.loc[(df['day'] == d),:]
+
+        # make a rainbow colormap, HUSL space but does not circle back on itself
+        cmap = sns.color_palette('hls', int(np.ceil(1.5*np.unique(df['rank'])[-1])))
+        cmap = cmap[0:np.unique(df['rank'])[-1]]
+
+        fig0 = plt.figure(figsize=(20, 6))
+        ax0 = sns.swarmplot(x=sliced_df['max_ve'], y=sliced_df['variance_explained'],
+                            hue=sliced_df['rank'], palette=cmap)
+        lg = ax0.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+        lg.set_title('rank')
+        ax0.set_xlabel('cell count')
+        x_lim = ax0.get_xlim()
+        ticks = ax0.get_xticks()
+        new_ticks = [t for t in ticks[10::10]]
+        ax0.set_xticks(new_ticks)
+        ax0.set_xticklabels(np.arange(10, len(ticks), 10))
+        ax0.set_title(mouse + ', Variance explained per cell, day ' + str(d))
+
+        fig0.savefig(os.path.join(save_dir, save_file_base + '_day_' + str(d)
+                     + suffix), bbox_inches='tight')
+        plt.close()
+
 
 """
 ----------------------------- PAIR DAY PLOTS -----------------------------
@@ -560,7 +857,7 @@ def pairday_factors(
         word=None,
         verbose=False):
     """
-    Plot TCA factors for all days and ranks/componenets for
+    Plot TCA factors for all days and ranks/components for
     TCA decomposition ensembles.
 
     Parameters:
@@ -650,7 +947,8 @@ def pairday_factors(
 
 
         # make necessary dirs
-        date_dir = os.path.join(save_dir, str(day1.date) + '_' + str(day2.date) + ' ' + method)
+        date_dir = os.path.join(
+            save_dir, str(day1.date) + '_' + str(day2.date) + ' ' + method)
         if not os.path.isdir(date_dir):
             os.mkdir(date_dir)
 
@@ -675,11 +973,14 @@ def pairday_factors(
             for k in range(0, len(ax)):
                 if np.mod(k+1, 3) == 1:
                     ax[k].set_ylabel('Component #' + str(count), rotation=0,
-                                     labelpad=45, verticalalignment='center', fontstyle='oblique')
+                                     labelpad=45, verticalalignment='center',
+                                     fontstyle='oblique')
                     count = count + 1
 
             # Show plots.
-            plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + '.png'), bbox_inches='tight')
+            plt.savefig(
+                os.path.join(date_dir, 'rank_' + str(int(r)) + '.png'),
+                bbox_inches='tight')
             if verbose:
                 plt.show()
             plt.close()
@@ -701,7 +1002,7 @@ def pairday_factors_annotated(
 
     """
     Plot TCA factors with trial metadata annotations for all days
-    and ranks/componenets for TCA decomposition ensembles.
+    and ranks/components for TCA decomposition ensembles.
 
     Parameters:
     -----------
@@ -844,12 +1145,13 @@ def pairday_factors_annotated(
 
             fig, axes = plt.subplots(U.rank, U.ndim + extra_col,
                                      figsize=(9 + extra_col, U.rank))
-            figt = tt.plot_factors(U, plots=['bar', 'line', 'scatter'],
-                                   axes=None,
-                                   fig=fig,
-                                   scatter_kw=plot_options[method]['scatter_kw'],
-                                   line_kw=plot_options[method]['line_kw'],
-                                   bar_kw=plot_options[method]['bar_kw'])
+            figt = tt.plot_factors(
+                U, plots=['bar', 'line', 'scatter'],
+                axes=None,
+                fig=fig,
+                scatter_kw=plot_options[method]['scatter_kw'],
+                line_kw=plot_options[method]['line_kw'],
+                bar_kw=plot_options[method]['bar_kw'])
             ax = figt[0].axes
             ax[0].set_title('Neuron factors')
             ax[1].set_title('Temporal factors')
@@ -901,36 +1203,46 @@ def pairday_factors_annotated(
                     if plot_running:
                         scale_by = np.nanmax(speed)/y_lim[1]
                         if not np.isnan(scale_by):
-                            ax[i, col].plot(np.array(speed.tolist())/scale_by, color=[1, 0.1, 0.6, 0.2])
+                            ax[i, col].plot(
+                                np.array(speed.tolist())/scale_by,
+                                color=[1, 0.1, 0.6, 0.2])
                             # , label='speed')
 
                     # Orientation - main variable to plot
                     if col == 3:
                         ori_vals = [0, 135, 270]
-                        color_vals = [[0.28, 0.68, 0.93, alpha], [0.84, 0.12, 0.13, alpha],
+                        color_vals = [[0.28, 0.68, 0.93, alpha],
+                                      [0.84, 0.12, 0.13, alpha],
                                       [0.46, 0.85, 0.47, alpha]]
                         for k in range(0, 3):
-                            ax[i, col].plot(trial_num[orientation==ori_vals[k]],
-                                            U.factors[2][orientation==ori_vals[k], i], 'o',
-                                            label=str(ori_vals[k]), color=color_vals[k], markersize=2)
+                            ax[i, col].plot(
+                                trial_num[orientation==ori_vals[k]],
+                                U.factors[2][orientation==ori_vals[k], i], 'o',
+                                label=str(ori_vals[k]), color=color_vals[k],
+                                markersize=2)
                         if i == 0:
                             ax[i, col].set_title('Orientation')
-                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
-                                              borderaxespad=2.5)
+                            ax[i, col].legend(
+                                bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                borderaxespad=2.5)
                     elif col == 4:
                         cs_vals = ['plus', 'minus', 'neutral']
                         cs_labels = ['plus', 'minus', 'neutral']
-                        color_vals = [[0.46, 0.85, 0.47, alpha], [0.84, 0.12, 0.13, alpha],
-                                      [0.28, 0.68, 0.93, alpha]];
+                        color_vals = [[0.46, 0.85, 0.47, alpha],
+                                      [0.84, 0.12, 0.13, alpha],
+                                      [0.28, 0.68, 0.93, alpha]]
                         col = 4
                         for k in range(0,3):
-                            ax[i, col].plot(trial_num[condition==cs_vals[k]],
-                                                           U.factors[2][condition==cs_vals[k], i], 'o',
-                                                           label=str(cs_labels[k]), color=color_vals[k], markersize=2)
+                            ax[i, col].plot(
+                                trial_num[condition==cs_vals[k]],
+                                U.factors[2][condition==cs_vals[k], i], 'o',
+                                label=str(cs_labels[k]), color=color_vals[k],
+                                markersize=2)
                         if i == 0:
                             ax[i, col].set_title('Condition')
-                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
-                                              borderaxespad=2.5)
+                            ax[i, col].legend(
+                                bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                borderaxespad=2.5)
                     elif col == 5:
                         trialerror_vals = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
                         trialerror_labels = ['hit',
@@ -944,27 +1256,35 @@ def pairday_factors_annotated(
                                              'pav early licking',
                                              'pav late licking',]
                         for k in trialerror_vals:
-                            ax[i, col].plot(trial_num[trialerror==trialerror_vals[k]],
-                                            U.factors[2][trialerror==trialerror_vals[k], i], 'o',
-                                            label=str(trialerror_labels[k]), alpha=0.8, markersize=2)
+                            ax[i, col].plot(
+                                trial_num[trialerror==trialerror_vals[k]],
+                                U.factors[2][trialerror==trialerror_vals[k], i],
+                                'o', label=str(trialerror_labels[k]), alpha=0.8,
+                                markersize=2)
                         if i == 0:
                             ax[i, col].set_title('Trialerror')
-                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
-                                              borderaxespad=2.5)
+                            ax[i, col].legend(
+                                bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                borderaxespad=2.5)
 
                     elif col == 6:
                         h_vals = ['hungry', 'sated', 'disengaged']
                         h_labels = ['hungry', 'sated', 'disengaged']
-                        color_vals = [[1, 0.6, 0.3, alpha], [0.7, 0.9, 0.4, alpha],
-                                      [0.6, 0.5, 0.6, alpha], [0.0, 0.9, 0.4, alpha]]
+                        color_vals = [[1, 0.6, 0.3, alpha],
+                                      [0.7, 0.9, 0.4, alpha],
+                                      [0.6, 0.5, 0.6, alpha],
+                                      [0.0, 0.9, 0.4, alpha]]
                         for k in range(0,3):
-                            ax[i, col].plot(trial_num[hunger==h_vals[k]],
-                                            U.factors[2][hunger==h_vals[k], i], 'o',
-                                            label=str(h_labels[k]), color=color_vals[k], markersize=2)
+                            ax[i, col].plot(
+                                trial_num[hunger==h_vals[k]],
+                                U.factors[2][hunger==h_vals[k], i],
+                                'o', label=str(h_labels[k]),
+                                color=color_vals[k], markersize=2)
                         if i == 0:
                             ax[i, col].set_title('State')
-                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
-                                              borderaxespad=2.5)
+                            ax[i, col].legend(
+                                bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                borderaxespad=2.5)
 
                     # plot days, reversal, or learning lines if there are any
                     if col >= 2:
@@ -972,14 +1292,16 @@ def pairday_factors_annotated(
                         if len(day_x) > 0:
                             for k in day_x:
                                 ax[i, col].plot(
-                                    [k, k], y_lim, color='#969696', linewidth=1)
+                                    [k, k], y_lim, color='#969696',
+                                    linewidth=1)
                         if len(lstate_x) > 0:
                             ls_vals = ['naive', 'learning', 'reversal1']
                             ls_colors = ['#66bd63', '#d73027', '#a50026']
                             for k in lstate_x:
                                 ls = learning_state[int(k-0.5)]
                                 ax[i, col].plot(
-                                    [k, k], y_lim, color=ls_colors[ls_vals.index(ls)],
+                                    [k, k], y_lim,
+                                    color=ls_colors[ls_vals.index(ls)],
                                     linewidth=1.5)
 
                     # set axes labels
@@ -1259,7 +1581,7 @@ def pairday_varex_percell(
         word=None,
         ve_min=0.05):
     """
-    Plot TCA reconstruction error as variance explianed per cell
+    Plot TCA reconstruction error as variance explained per cell
     for TCA decomposition. Create folder of variance explained per cell
     swarm plots. Calculate summary plots of 'fraction of maximum variance
     explained' per cell by rank for all cells given a certain (ve_min) threshold
@@ -1355,22 +1677,32 @@ def pairday_varex_percell(
     fig1 = plt.figure(figsize=(15,9))
     for i in np.unique(sliced_df2['rank']):
         input_ve = sliced_df2.loc[(sliced_df2['rank'] == i),'frac_ve']
-        ax = sns.distplot(input_ve, kde_kws={'cumulative': True, 'lw': 2, 'color': cmap[i-1], 'label': str(i)}, hist=False)
-        lg = ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+        ax = sns.distplot(
+            input_ve, kde_kws={'cumulative': True, 'lw': 2, 'color': cmap[i-1],
+            'label': str(i)}, hist=False)
+        lg = ax.legend(
+            bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
         lg.set_title('rank')
-        ax.set_title(mouse + ', Fraction of maximum variance explained per cell, CDF')
+        ax.set_title(
+            mouse + ', Fraction of maximum variance explained per cell, CDF')
         ax.set_xlabel('Fraction of maximum variance explained')
 
     # swarm plot
     fig2 =plt.figure(figsize=(18,6))
-    ax2 = sns.violinplot(x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=3, alpha=1, inner=None, palette=cmap)
-    ax2.set_title(mouse + ', Fraction of maximum variance explained per cell, violin')
+    ax2 = sns.violinplot(
+        x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=3, alpha=1,
+        inner=None, palette=cmap)
+    ax2.set_title(
+        mouse + ', Fraction of maximum variance explained per cell, violin')
     ax2.set_ylabel('Fraction of maximum variance explained')
 
     # swarm plot
     fig3 = plt.figure(figsize=(18,6))
-    ax3 = sns.swarmplot(x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=2, alpha=1, palette=cmap)
-    ax3.set_title(mouse + ', Fraction of maximum variance explained per cell, swarm')
+    ax3 = sns.swarmplot(
+        x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=2, alpha=1,
+        palette=cmap)
+    ax3.set_title(
+        mouse + ', Fraction of maximum variance explained per cell, swarm')
     ax3.set_ylabel('Fraction of maximum variance explained')
 
     # set up saving paths/dir
@@ -1380,12 +1712,19 @@ def pairday_varex_percell(
     save_file_base = mouse + '_pairday_frac_max_var_expl_' + trace_type
 
     # save
-    fig1.savefig(os.path.join(save_dir, save_file_base + '_CDF.pdf'), bbox_inches='tight')
-    fig2.savefig(os.path.join(save_dir, save_file_base + '_violin.pdf'), bbox_inches='tight')
-    fig3.savefig(os.path.join(save_dir, save_file_base + '_swarm.pdf'), bbox_inches='tight')
+    fig1.savefig(
+        os.path.join(save_dir, save_file_base + '_CDF.pdf'),
+        bbox_inches='tight')
+    fig2.savefig(
+        os.path.join(save_dir, save_file_base + '_violin.pdf'),
+        bbox_inches='tight')
+    fig3.savefig(
+        os.path.join(save_dir, save_file_base + '_swarm.pdf'),
+        bbox_inches='tight')
 
     # Part 2
-    # plot sorted per "cell" varienace explained (approximate, this is by unique max_ve not cells per se)
+    # plot sorted per "cell" varienace explained (approximate, this is by
+    # unique max_ve not cells per se)
     # set up saving paths/dir
     save_dir = os.path.join(save_dir, 'variance explained per cell')
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
@@ -1396,13 +1735,16 @@ def pairday_varex_percell(
         sliced_df = df.loc[(df['day'] == d),:]
 
         # make a rainbow colormap, HUSL space but does not circle back on itself
-        cmap = sns.color_palette('hls', int(np.ceil(1.5*np.unique(df['rank'])[-1])))
+        cmap = sns.color_palette(
+            'hls', int(np.ceil(1.5*np.unique(df['rank'])[-1])))
         cmap = cmap[0:np.unique(df['rank'])[-1]]
 
         fig0 = plt.figure(figsize=(20, 6))
-        ax0 = sns.swarmplot(x=sliced_df['max_ve'], y=sliced_df['variance_explained'],
-                            hue=sliced_df['rank'], palette=cmap)
-        lg = ax0.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+        ax0 = sns.swarmplot(
+            x=sliced_df['max_ve'], y=sliced_df['variance_explained'],
+            hue=sliced_df['rank'], palette=cmap)
+        lg = ax0.legend(
+            bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
         lg.set_title('rank')
         ax0.set_xlabel('cell count')
         x_lim = ax0.get_xlim()
@@ -2079,7 +2421,7 @@ def singleday_factors(
         word=None,
         verbose=False):
     """
-    Plot TCA factors for all days and ranks/componenets for
+    Plot TCA factors for all days and ranks/components for
     TCA decomposition ensembles.
 
     Parameters:
@@ -2208,7 +2550,7 @@ def singleday_factors_annotated(
 
     """
     Plot TCA factors with trial metadata annotations for all days
-    and ranks/componenets for TCA decomposition ensembles.
+    and ranks/components for TCA decomposition ensembles.
 
     Parameters:
     -----------
@@ -2744,11 +3086,11 @@ def singleday_varex_percell(
         ve_min=0.05,
         filetype='pdf'):
     """
-    Plot TCA reconstruction error as variance explianed per cell
+    Plot TCA reconstruction error as variance explained per cell
     for TCA decomposition. Create folder of variance explained per cell
     swarm plots. Calculate summary plots of 'fraction of maximum variance
-    explained' per cell by rank for all cells given a certain (ve_min) threshold
-    for maximum variance explained
+    explained' per cell by rank for all cells given a certain (ve_min)
+    threshold for maximum variance explained.
 
     Parameters:
     -----------
@@ -2875,7 +3217,8 @@ def singleday_varex_percell(
     fig3.savefig(os.path.join(save_dir, save_file_base + '_swarm.png'), bbox_inches='tight')
 
     # Part 2
-    # plot sorted per "cell" varienace explained (approximate, this is by unique max_ve not cells per se)
+    # plot sorted per "cell" variance explained (approximate, this is by unique
+    # max_ve not cells per se)
     # set up saving paths/dir
     save_dir = os.path.join(save_dir, 'variance explained per cell')
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
