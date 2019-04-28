@@ -520,14 +520,14 @@ def groupday_varex_summary(
             x_s.extend([r])
 
     # mean response of neuron across trials
-    mU = np.mean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
-    var_mean = (np.var(X) - np.var(X - mU)) / np.var(X)
+    mU = np.nanmean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
+    var_mean = (np.nanvar(X) - np.nanvar(X - mU)) / np.nanvar(X)
 
     # smoothed response of neuron across time
     smU = np.convolve(
         X.reshape((X.size)),
         np.ones(5, dtype=np.float64)/5, 'same').reshape(np.shape(X))
-    var_smooth = (np.var(X) - np.var(X - smU)) / np.var(X)
+    var_smooth = (np.nanvar(X) - np.nanvar(X - smU)) / np.nanvar(X)
 
     # create figure and axes
     buffer = 5
