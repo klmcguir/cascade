@@ -471,8 +471,6 @@ def groupday_varex_summary(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
-    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
-
     # if cells were removed with too many nan trials
     if nan_thresh:
         nt_tag = '_nantrial' + str(nan_thresh)
@@ -544,7 +542,7 @@ def groupday_varex_summary(
     ax.scatter(x_s, var_s, color=cmap[c], alpha=0.5)
     ax.scatter([R+2], var_mean, color=cmap[c], alpha=0.5)
     ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
-    ax.plot(x, var, label=('single ' + str(c)), color=cmap[c])
+    ax.plot(x, var, label=('mouse ' + mouse), color=cmap[c])
     ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c])
     ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
 
