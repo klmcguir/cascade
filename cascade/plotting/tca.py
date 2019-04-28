@@ -512,11 +512,11 @@ def groupday_varex_summary(
     var, var_s, x, x_s = [], [], [], []
     for r in V.results:
         bU = V.results[r][0].factors.full()
-        var.append((np.var(X) - np.var(X - bU)) / np.var(X))
+        var.append((np.nanvar(X) - np.nanvar(X - bU)) / np.nanvar(X))
         x.append(r)
         for it in range(0, len(V.results[r])):
             U = V.results[r][it].factors.full()
-            var_s.extend([(np.var(X) - np.var(X - U)) / np.var(X)])
+            var_s.extend([(np.nanvar(X) - np.nanvar(X - U)) / np.nanvar(X)])
             x_s.extend([r])
 
     # mean response of neuron across trials
