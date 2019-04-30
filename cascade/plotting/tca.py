@@ -79,7 +79,7 @@ def singleday_shortlist(
 
 
 """
---------------------------- ACROSS ANIMAL OF PLOTS ---------------------------
+--------------------------- ACROSS ANIMAL PLOTS ---------------------------
 """
 
 
@@ -404,7 +404,7 @@ def groupday_longform_factors_annotated(
                             markersize=2, alpha=alpha)
 
                     ax[i, col].set_title(
-                        'Component ' + str(comp) + '\n\n\nTrial factors')
+                        'Component ' + str(comp + 1) + '\n\n\nTrial factors')
                     ax[i, col].legend(
                         bbox_to_anchor=(1.02, 1), loc='upper left',
                         borderaxespad=0, title='Orientation', markerscale=2,
