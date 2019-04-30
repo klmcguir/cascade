@@ -539,7 +539,8 @@ def groupday_longform_factors_annotated(
             else:
                 suffix = '.png'
             plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) +
-                        '_component_' + str(comp) + suffix), bbox_inches='tight')
+                        '_component_' + str(comp + 1) + suffix),
+                        bbox_inches='tight')
             if verbose:
                 plt.show()
             plt.close('all')
