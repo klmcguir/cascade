@@ -7,6 +7,42 @@ import pandas as pd
 from . import tca
 
 
+def update_naive_cs(meta, verbose=False):
+    """
+    Helper function that takes a pd metadata dataframe and makes sure that cses
+    match between naive and learning learning_state.
+    """
+
+    # cses to check, pavlovians etc. will remain the same
+    cs_list = ['plus', 'minus', 'neutral']
+
+    # original dataframe columns
+    orientation = meta['orientation']
+    condition = meta['condition']
+
+    # get correct cs-ori pairings
+    learning_cs = condition[learning_state == 'learning']
+    learning_ori = orientation[learning_state == 'learning']
+    cs_codes = {}
+    for cs in cs_list:
+        ori = np.unique(learning_ori[learning_cs == cs])[0]
+        cs_codes[ori] = cs
+
+    # make sure not to mix in other run types (i.e., )
+    naive_pmn = condition.isin(cs_list) & (learning_state == 'naive')
+
+    # update metadate
+    for ori, cs in cs_codes.items():
+        meta.loc[naive_pmn & (orientation == ori), 'condition'] = cs
+
+    if verbose:
+        print('Updated naive cs-ori pairings to match learning.')
+        for k, v in cs_codes.items():
+            print(k, v)
+
+    return meta
+
+
 def getdailycstraces(
         # DateSorter params
         DateSorter,

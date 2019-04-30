@@ -79,6 +79,141 @@ def singleday_shortlist(
 
 
 """
+--------------------------- ACROSS ANIMAL OF PLOTS ---------------------------
+"""
+
+
+def groupmouse_varex_summary(
+        mice,
+        trace_type='zscore_day',
+        method='ncp_bcd',
+        cs='',
+        warp=False,
+        words=None,
+        group_by='all',
+        nan_thresh=0.85,
+        rectified=False,
+        verbose=False):
+    """
+    Plot reconstruction error as variance explained across all whole groupday
+    TCA decomposition ensemble.
+
+    Parameters:
+    -----------
+    mouse : str; mouse name
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../qc
+    """
+
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        nt_tag = '_nantrial' + str(nan_thresh)
+        nt_save_tag = ' nantrial ' + str(nan_thresh)
+    else:
+        nt_tag = ''
+        nt_save_tag = ''
+
+    # save tag for rectification
+    if rectified:
+        r_tag = ' rectified'
+    else:
+        r_tag = ''
+
+    # save dir
+    mouse = 'Grouped'
+    save_dir = paths.tca_plots(
+        mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
+    save_dir = os.path.join(save_dir, 'qc' + nt_save_tag + r_tag)
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    var_path = os.path.join(
+        save_dir, str(mouse) + '_summary_variance_explained.pdf')
+
+    # create figure and axes
+    buffer = 5
+    right_pad = 5
+    fig = plt.figure(figsize=(10, 8))
+    gs = GridSpec(
+        100, 100, figure=fig, left=0.05, right=.95, top=.95, bottom=0.05)
+    ax = fig.add_subplot(gs[10:90-buffer, :90-right_pad])
+    cmap = sns.color_palette('hls', len(mice))
+
+    for c, mouse in enumerate(mice):
+        # load dir
+        load_dir = paths.tca_path(
+            mouse, 'group', pars=pars, word=words[c], group_pars=group_pars)
+        tensor_path = os.path.join(
+            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+            + '_group_decomp_' + str(trace_type) + '.npy')
+        input_tensor_path = os.path.join(
+            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+            + '_group_tensor_' + str(trace_type) + '.npy')
+        meta_path = os.path.join(
+            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+            + '_df_group_meta.pkl')
+
+        # load your data
+        ensemble = np.load(tensor_path)
+        ensemble = ensemble.item()
+        V = ensemble[method]
+        X = np.load(input_tensor_path)
+
+        # rectify input tensor (only look at nonnegative variance)
+        if rectified:
+            X[X < 0] = 0
+
+        # get reconstruction error as variance explained
+        var, var_s, x, x_s = [], [], [], []
+        for r in V.results:
+            bU = V.results[r][0].factors.full()
+            var.append((np.nanvar(X) - np.nanvar(X - bU)) / np.nanvar(X))
+            x.append(r)
+            for it in range(0, len(V.results[r])):
+                U = V.results[r][it].factors.full()
+                var_s.extend([(np.nanvar(X) - np.nanvar(X - U)) / np.nanvar(X)])
+                x_s.extend([r])
+
+        # mean response of neuron across trials
+        mU = np.nanmean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
+        var_mean = (np.nanvar(X) - np.nanvar(X - mU)) / np.nanvar(X)
+
+        # smoothed response of neuron across time
+        smU = np.convolve(
+            X.reshape((X.size)),
+            np.ones(5, dtype=np.float64)/5, 'same').reshape(np.shape(X))
+        var_smooth = (np.nanvar(X) - np.nanvar(X - smU)) / np.nanvar(X)
+
+        # plot
+        R = np.max([r for r in V.results.keys()])
+        ax.scatter(x_s, var_s, color=cmap[c], alpha=0.5)
+        ax.scatter([R+2], var_mean, color=cmap[c], alpha=0.5)
+        ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
+        ax.plot(x, var, label=('mouse ' + mouse), color=cmap[c])
+        ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c])
+        ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
+
+    # add labels/titles
+    x_labels = [str(R) for R in V.results]
+    x_labels.extend(
+        ['', 'mean\n cell\n response', '', 'smooth\n response\n (0.3s)'])
+    ax.set_xticks(range(1, len(V.results) + 5))
+    ax.set_xticklabels(x_labels)
+    ax.set_xlabel('model rank')
+    ax.set_ylabel('fractional variance explained')
+    ax.set_title(
+        'Variance Explained: ' + str(method) + r_tag + ', ' + str(mice))
+    ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+
+    fig.savefig(var_path, bbox_inches='tight')
+
+
+"""
 ----------------------------- GROUP DAY PLOTS -----------------------------
 """
 
