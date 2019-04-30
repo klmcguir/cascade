@@ -7,7 +7,7 @@ import pandas as pd
 from . import tca
 
 
-def update_naive_cs(meta, verbose=False):
+def update_naive_cs(meta, verbose=True):
     """
     Helper function that takes a pd metadata dataframe and makes sure that cses
     match between naive and learning learning_state.
