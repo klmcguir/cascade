@@ -19,6 +19,7 @@ def update_naive_cs(meta, verbose=False):
     # original dataframe columns
     orientation = meta['orientation']
     condition = meta['condition']
+    learning_state = meta['learning_state']
 
     # get correct cs-ori pairings
     learning_cs = condition[learning_state == 'learning']
