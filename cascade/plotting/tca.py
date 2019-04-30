@@ -225,13 +225,12 @@ def groupday_longform_factors_annotated(
         cs='',
         warp=False,
         word=None,
-        group_by=None,
-        nan_thresh=None,
-        extra_col=4,
+        group_by='all',
+        nan_thresh=0.85,
+        extra_col=1,
         alpha=0.6,
         plot_running=True,
         filetype='pdf',
-        scale_y=False,
         verbose=False):
 
     """
