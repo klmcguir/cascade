@@ -123,8 +123,10 @@ def groupmouse_varex_summary(
     # save tag for rectification
     if rectified:
         r_tag = ' rectified'
+        r_save_tag = '_rectified'
     else:
         r_tag = ''
+        r_save_tag = ''
 
     # save dir
     mouse = 'Grouped'
@@ -133,7 +135,8 @@ def groupmouse_varex_summary(
     save_dir = os.path.join(save_dir, 'qc' + nt_save_tag + r_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path = os.path.join(
-        save_dir, str(mouse) + '_summary_variance_explained.pdf')
+        save_dir, str(mouse) + '_summary_variance_explained' + r_save_tag
+        + '.pdf')
 
     # create figure and axes
     buffer = 5
