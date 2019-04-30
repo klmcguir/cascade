@@ -291,10 +291,6 @@ def groupday_longform_factors_annotated(
     # save dir
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    if scale_y:
-        save_tag = nt_save_tag + ' scaled-y'
-    else:
-        save_tag = nt_save_tag + ''
     save_dir = os.path.join(save_dir, 'factors annotated long-form' + save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     date_dir = os.path.join(save_dir, str(group_by) + ' ' + method)
