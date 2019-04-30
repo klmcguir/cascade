@@ -273,10 +273,10 @@ def groupday_longform_factors_annotated(
     # if cells were removed with too many nan trials
     if nan_thresh:
         nt_tag = '_nantrial' + str(nan_thresh)
-        nt_save_tag = ' nantrial ' + str(nan_thresh)
+        save_tag = ' nantrial ' + str(nan_thresh)
     else:
         nt_tag = ''
-        nt_save_tag = ''
+        save_tag = ''
 
     # load dir
     load_dir = paths.tca_path(
