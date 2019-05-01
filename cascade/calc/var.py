@@ -191,7 +191,7 @@ def groupday_varex_byday_bycomp(
     rank = []
     component = []
     for r in V.results:
-        for fac_num in range(np.shape(V.results[r][0].factors[0][:, fac_num])[1]):
+        for fac_num in range(np.shape(V.results[r][0].factors[0][:, :])[1]):
             # reconstruct single component model
             a = V.results[r][0].factors[0][:, fac_num]
             b = V.results[r][0].factors[1][:, fac_num]
@@ -300,7 +300,7 @@ def groupday_varex_byday_bycomp_bycell(
     cell_idx = []
     cell_id = []
     for r in V.results:
-        for fac_num in range(np.shape(V.results[r][0].factors[0][:, fac_num])[1]):
+        for fac_num in range(np.shape(V.results[r][0].factors[0][:, :])[1]):
             # reconstruct single component model
             a = V.results[r][0].factors[0][:, fac_num]
             b = V.results[r][0].factors[1][:, fac_num]
