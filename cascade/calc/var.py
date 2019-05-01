@@ -200,7 +200,7 @@ def groupday_varex_byday_bycomp(
             abc = ab[:, :, None] @ c[None, :]
             # calculate variance explained per day
             for day in np.unique(dates):
-                day_bool = dates.isin(day)
+                day_bool = dates.isin([day])
                 bUd = abc[:, :, day_bool]
                 bX = X[:, :, day_bool]
                 rank.append(r)
@@ -309,7 +309,7 @@ def groupday_varex_byday_bycomp_bycell(
             abc = ab[:, :, None] @ c[None, :]
             # calculate variance explained per day
             for day in np.unique(dates):
-                day_bool = dates.isin(day)
+                day_bool = dates.isin([day])
                 abcd = abc[:, :, day_bool]
                 xxxx = X[:, :, day_bool]
                 for cell_num in range():
