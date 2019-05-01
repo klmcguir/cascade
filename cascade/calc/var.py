@@ -7,7 +7,7 @@ import pandas as pd
 import os
 
 
-@memoize(across='mouse', updated=190429, returns='other', large_output=True)
+@memoize(across='mouse', updated=190429, returns='other', large_output=False)
 def groupday_varex_byday(
         mouse,
         trace_type='zscore_day',
@@ -121,7 +121,7 @@ def groupday_varex_byday(
     return dfvar
 
 
-@memoize(across='mouse', updated=190429, returns='other', large_output=True)
+@memoize(across='mouse', updated=190429, returns='other', large_output=False)
 def groupday_varex_byday_bycomp(
         mouse,
         trace_type='zscore_day',
@@ -224,7 +224,7 @@ def groupday_varex_byday_bycomp(
 
     return dfvar
 
-@memoize(across='mouse', updated=190429, returns='other', large_output=True)
+@memoize(across='mouse', updated=190429, returns='other', large_output=False)
 def groupday_varex_byday_bycomp_bycell(
         mouse,
         trace_type='zscore_day',
