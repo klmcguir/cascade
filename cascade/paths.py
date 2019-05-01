@@ -4,6 +4,26 @@ import json
 import flow
 
 
+def groupmouse_word(mouse_dict):
+    """
+    Hash a dictionary of mouse names into a single identifying word.
+
+    Parameters
+    ----------
+    mouse_dict : dict
+        dictionary where key is mice and values are list of mouse names
+
+    Returns
+    -------
+    word : str
+        hash word
+    """
+    word = flow.misc.wordhash.word(mouse_dict)
+    print('Mice hashed: ' + word)
+
+    return word
+
+
 def tca_path(mouse, grouping, pars=None, word=None, group_pars=None):
     """
     Create directory for TCA. Hash TCA parameters and save

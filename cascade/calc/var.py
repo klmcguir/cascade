@@ -282,7 +282,7 @@ def groupday_varex_byday_bycomp_bycell(
     ensemble = ensemble.item()
     V = ensemble[method]
     X = np.load(input_tensor_path)
-    ids = np.load(input_tensor_path)
+    ids = np.load(ids_path)
     meta = pd.read_pickle(meta_path)
     orientation = meta['orientation']
     condition = meta['condition']
