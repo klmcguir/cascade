@@ -4,6 +4,7 @@ from .. import paths
 import tensortools as tt
 import numpy as np
 import pandas as pd
+import os
 
 
 @memoize(across='mouse', updated=190429, returns='other', large_output=True)
