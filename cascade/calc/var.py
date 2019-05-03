@@ -224,6 +224,7 @@ def groupday_varex_byday_bycomp(
 
     return dfvar
 
+
 @memoize(across='mouse', updated=190429, returns='other', large_output=False)
 def groupday_varex_byday_bycomp_bycell(
         mouse,
