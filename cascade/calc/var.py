@@ -314,14 +314,14 @@ def groupday_varex_byday_bycomp_bycell(
                 abcd = abc[:, :, day_bool]
                 xxxx = X[:, :, day_bool]
                 for cell_num in range(np.shape(V.results[r][0].factors[0][:, :])[0]):
-                    cell_id = ids[cell_num]
+                    cell_identity = ids[cell_num]
                     bX = xxxx[cell_num, :, :]
                     bU = abcd[cell_num, :, :]
                     rank.append(r)
                     date.append(day)
                     component.append(fac_num+1)
                     cell_idx.append(cell_num)
-                    cell_id.append(cell_id)
+                    cell_id.append(cell_identity)
                     varex.append(
                         (np.nanvar(bX) - np.nanvar(bX - bU)) / np.nanvar(bX))
 
