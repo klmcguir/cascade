@@ -313,7 +313,7 @@ def groupday_varex_byday_bycomp_bycell(
                 day_bool = dates.isin([day])
                 abcd = abc[:, :, day_bool]
                 xxxx = X[:, :, day_bool]
-                for cell_num in range():
+                for cell_num in range(np.shape(V.results[r][0].factors[0][:, :])[0]):
                     cell_id = ids[cell_num]
                     bX = xxxx[cell_num, :, :]
                     bU = abcd[cell, :, :]
