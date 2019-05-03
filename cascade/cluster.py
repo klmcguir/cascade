@@ -12,16 +12,16 @@ from . import utils
 
 
 def trial_factors_across_mice(
-        mice=['OA27', 'OA26'],
+        mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175'],
         trace_type='zscore_day',
         method='ncp_bcd',
         cs='',
         warp=False,
-        words=['supply', 'supply'],
-        group_by='high_dprime_learning',
-        nan_thresh=None,
+        words=['rochester', 'convinced', 'convinced', 'convinced', 'convinced'],
+        group_by='all',
+        nan_thresh=0.85,
         verbose=False,
-        rank_num=10):
+        rank_num=14):
 
     """
     Cluster tca trial factors based on tuning to different oris, conditions,
