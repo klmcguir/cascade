@@ -316,7 +316,7 @@ def groupday_varex_byday_bycomp_bycell(
                 for cell_num in range(np.shape(V.results[r][0].factors[0][:, :])[0]):
                     cell_id = ids[cell_num]
                     bX = xxxx[cell_num, :, :]
-                    bU = abcd[cell, :, :]
+                    bU = abcd[cell_num, :, :]
                     rank.append(r)
                     date.append(day)
                     component.append(fac_num+1)
