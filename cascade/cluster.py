@@ -429,9 +429,9 @@ def trial_factors_across_mice_dprime(
                 for c, errset in enumerate(err_to_check):
                     error_weights[c, :] = np.nanmean(
                         trial_weights[trialerror.isin(errset) & indexer, :], axis=0)
-                        if np.isnan(np.nanmean(
-                            trial_weights[trialerror.isin(errset) & indexer, :], axis=0)):
-                            error_weights[c, :] = 0
+                    # if np.isnan(np.nanmean(
+                    #     trial_weights[trialerror.isin(errset) & indexer, :], axis=0)):
+                    #     error_weights[c, :] = 0
                 # normalize using summed mean response to all three
                 error_total = np.nansum(error_weights, axis=0)
                 # if np.nansum(error_total) > 0:
