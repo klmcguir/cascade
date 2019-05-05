@@ -383,15 +383,15 @@ def trial_factors_across_mice_dprime(
             for c, ori in enumerate(oris_to_check):
                 tuning_weights[c, :] = np.nanmean(
                     trial_weights[(orientation == ori) & indexer, :], axis=0)
-                if np.isnan(np.nanmean(
-                    trial_weights[(orientation == ori) & indexer, :], axis=0)):
-                    tuning_weights[c, :] = 0
+                # if np.isnan(np.nanmean(
+                #     trial_weights[(orientation == ori) & indexer, :], axis=0)):
+                #     tuning_weights[c, :] = 0
             # normalize using summed mean response to all three
             tuning_total = np.nansum(tuning_weights, axis=0)
-            if np.nansum(tuning_total) > 0:
-                for c in range(len(oris_to_check)):
-                    tuning_weights[c, :] = np.divide(
-                        tuning_weights[c, :], tuning_total)
+            # if np.nansum(tuning_total) > 0:
+            for c in range(len(oris_to_check)):
+                tuning_weights[c, :] = np.divide(
+                    tuning_weights[c, :], tuning_total)
             # dict for creating dataframe
             tuning_data = {}
             for c, errset in enumerate(oris_to_check):
@@ -406,15 +406,15 @@ def trial_factors_across_mice_dprime(
             for c, conds in enumerate(conds_to_check):
                 conds_weights[c, :] = np.nanmean(
                     trial_weights[(condition == conds) & indexer, :], axis=0)
-                if np.isnan(np.nanmean(
-                    trial_weights[(condition == conds) & indexer, :], axis=0)):
-                    conds_weights[c, :] = 0
+                # if np.isnan(np.nanmean(
+                #     trial_weights[(condition == conds) & indexer, :], axis=0)):
+                #     conds_weights[c, :] = 0
             # normalize using summed mean response to all three
             conds_total = np.nansum(conds_weights, axis=0)
-            if np.nansum(conds_total) > 0:
-                for c in range(len(conds_to_check)):
-                    conds_weights[c, :] = np.divide(
-                        conds_weights[c, :], conds_total)
+            # if np.nansum(conds_total) > 0:
+            for c in range(len(conds_to_check)):
+                conds_weights[c, :] = np.divide(
+                    conds_weights[c, :], conds_total)
             # dict for creating dataframe
             conds_data = {}
             for c, errset in enumerate(conds_to_check):
@@ -429,15 +429,15 @@ def trial_factors_across_mice_dprime(
                 for c, errset in enumerate(err_to_check):
                     error_weights[c, :] = np.nanmean(
                         trial_weights[trialerror.isin(errset) & indexer, :], axis=0)
-                    if np.isnan(np.nanmean(
-                        trial_weights[trialerror.isin(errset) & indexer, :], axis=0)):
-                        error_weights[c, :] = 0
+                        if np.isnan(np.nanmean(
+                            trial_weights[trialerror.isin(errset) & indexer, :], axis=0)):
+                            error_weights[c, :] = 0
                 # normalize using summed mean response to all three
                 error_total = np.nansum(error_weights, axis=0)
-                if np.nansum(error_total) > 0:
-                    for c in range(len(err_to_check)):
-                        error_weights[c, :] = np.divide(
-                            error_weights[c, :], error_total)
+                # if np.nansum(error_total) > 0:
+                for c in range(len(err_to_check)):
+                    error_weights[c, :] = np.divide(
+                        error_weights[c, :], error_total)
                 # dict for creating dataframe
                 error_data = {}
                 for c, errset in enumerate(err_val):
