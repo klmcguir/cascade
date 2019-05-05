@@ -5,11 +5,44 @@ import os
 import flow
 import pool
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 from copy import deepcopy
-from munkres import Munkres
+from scipy.cluster import hierarchy
 from . import tca
 from . import paths
 from . import utils
+
+
+def get_component_clusters(clustering_df, cluster_number):
+    """
+    Plot your clustering df and annotated clusters for help choosing
+    a reasonable number of clusters.
+    """
+    clustering_df = deepcopy(clustering_df)
+    g = sns.clustermap(clustering_df)
+    row_sorter = g.dendrogram_row.reordered_ind
+    clusters = hierarchy.fcluster(g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
+    cluster_color_options = sns.color_palette('hls', cluster_number)
+    cluster_colors = [cluster_color_options[i-1] for i in clusters]
+    plt.close('all')
+    clustering_df['cluster'] = Series(clusters, index=clustering_df.index)
+
+    return clustering_df
+
+
+def find_cluster_number(clustering_df, cluster_number):
+    """
+    Plot your clustering df and annotated clusters for help choosing
+    a reasonable number of clusters.
+    """
+    g = sns.clustermap(clustering_df)
+    row_sorter = g.dendrogram_row.reordered_ind
+    clusters = hierarchy.fcluster(g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
+    cluster_color_options = sns.color_palette('hls', cluster_number)
+    cluster_colors = [cluster_color_options[i-1] for i in clusters]
+    plt.close('all')
+    sns.clustermap(clustering_df, row_colors=cluster_colors)
 
 
 def trial_factors_across_mice(
@@ -358,7 +391,8 @@ def trial_factors_across_mice_dprime(
             # dict for creating dataframe
             tuning_data = {}
             for c, errset in enumerate(oris_to_check):
-                tuning_data['t' + str(errset) + '_' + stage] = tuning_weights[c, :]
+                # tuning_data['t' + str(errset) + '_' + stage] = tuning_weights[c, :]
+                 tuning_data['t' + str(errset)] = tuning_weights[c, :]
 
             # ------------- GET Condition TUNING
 
@@ -375,7 +409,8 @@ def trial_factors_across_mice_dprime(
             # dict for creating dataframe
             conds_data = {}
             for c, errset in enumerate(conds_to_check):
-                conds_data[errset + '_' + stage] = conds_weights[c, :]
+                # conds_data[errset + '_' + stage] = conds_weights[c, :]
+                conds_data[errset] = conds_weights[c, :]
 
             # ------------- GET Trialerror TUNING
 
@@ -393,15 +428,18 @@ def trial_factors_across_mice_dprime(
             # dict for creating dataframe
             error_data = {}
             for c, errset in enumerate(err_val):
-                error_data[errset + '_' + stage] = error_weights[c, :]
+                # error_data[errset + '_' + stage] = error_weights[c, :]
+                error_data[errset] = error_weights[c, :]
 
             # ------------ CREATE PANDAS DF
 
             index = pd.MultiIndex.from_arrays([
                 [mouse] * rank_num,
+                [stage] * rank_num,
                 range(1, rank_num+1)
                 ],
                 names=['mouse',
+                'learning_stage'
                 'component'])
             tempo_df = pd.DataFrame(
                 sort_ensemble.results[rank_num][0].factors[1][:, :].T, index=index)
