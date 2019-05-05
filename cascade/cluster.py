@@ -323,7 +323,8 @@ def trial_factors_across_mice_dprime(
             date_obj = flow.Date(mouse, date=date)
             dprime_vec.append(pool.calc.performance.dprime(date_obj))
         data = {'dprime': dprime_vec}
-        dprime = pd.DataFrame(data=data, index=dates.index)
+        dprime = pd.DataFrame(data=data, index=learning_state.index)
+        dprime = dprime['dprime']  # make indices match to meta
 
         learning_stages = [
             'naive', 'low_dp_learning', 'high_dp_learning', 'low_dp_rev1',
@@ -357,7 +358,7 @@ def trial_factors_across_mice_dprime(
             # dict for creating dataframe
             tuning_data = {}
             for c, errset in enumerate(oris_to_check):
-                tuning_data['t' + str(errset)] = tuning_weights[c, :]
+                tuning_data['t' + str(errset) + '_' + stage] = tuning_weights[c, :]
 
             # ------------- GET Condition TUNING
 
@@ -374,7 +375,7 @@ def trial_factors_across_mice_dprime(
             # dict for creating dataframe
             conds_data = {}
             for c, errset in enumerate(conds_to_check):
-                conds_data[errset] = conds_weights[c, :]
+                conds_data[errset + '_' + stage] = conds_weights[c, :]
 
             # ------------- GET Trialerror TUNING
 
@@ -392,16 +393,16 @@ def trial_factors_across_mice_dprime(
             # dict for creating dataframe
             error_data = {}
             for c, errset in enumerate(err_val):
-                error_data[errset] = error_weights[c, :]
+                error_data[errset + '_' + stage] = error_weights[c, :]
 
             # ------------ CREATE PANDAS DF
 
             index = pd.MultiIndex.from_arrays([
                 [mouse] * rank_num,
-                [stage] * rank_num,
                 range(1, rank_num+1)
                 ],
-                names=['mouse', 'learning_stage', 'component'])
+                names=['mouse',
+                'component'])
             tempo_df = pd.DataFrame(
                 sort_ensemble.results[rank_num][0].factors[1][:, :].T, index=index)
             tuning_df = pd.DataFrame(tuning_data, index=index)
