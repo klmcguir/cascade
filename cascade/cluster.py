@@ -439,7 +439,7 @@ def trial_factors_across_mice_dprime(
                 range(1, rank_num+1)
                 ],
                 names=['mouse',
-                'learning_stage'
+                'learning_stage',
                 'component'])
             tempo_df = pd.DataFrame(
                 sort_ensemble.results[rank_num][0].factors[1][:, :].T, index=index)
