@@ -493,19 +493,19 @@ def trial_factors_across_mice_dprime(
             df_list_index.append(pd.DataFrame(index=index))
 
         #     factors_by_day.append(sort_ensemble.results[rank_num][0])
-            conds_by_day.append(condition)
-            oris_by_day.append(orientation)
-            trialerr_by_day.append(trialerror)
+            conds_by_day.append(condition.reset_index())
+            oris_by_day.append(orientation.reset_index())
+            trialerr_by_day.append(trialerror.reset_index())
 
     # concatenate all runs together in final dataframe
-    all_tempo_df = pd.concat(df_list_tempo.reset_index(), axis=0)
-    all_tuning_df = pd.concat(df_list_tuning.reset_index(), axis=0)
-    all_conds_df = pd.concat(df_list_conds.reset_index(), axis=0)
-    all_error_df = pd.concat(df_list_error.reset_index(), axis=0)
-    all_index_df = pd.concat(df_list_index.reset_index(), axis=0)
+    all_tempo_df = pd.concat(df_list_tempo, axis=0)
+    all_tuning_df = pd.concat(df_list_tuning, axis=0).set_index(['mouse', 'component'])
+    all_conds_df = pd.concat(df_list_conds, axis=0).set_index(['mouse', 'component'])
+    all_error_df = pd.concat(df_list_error, axis=0).set_index(['mouse', 'component'])
+    all_index_df = pd.concat(df_list_index, axis=0)
 
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df],
-                                axis=1).set_index(['mouse', 'component'])
+                                axis=1)
     temporal_factor_df = all_tempo_df
 
     return trial_factor_df, temporal_factor_df
