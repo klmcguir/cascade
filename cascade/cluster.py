@@ -499,9 +499,9 @@ def trial_factors_across_mice_dprime(
 
     # concatenate all runs together in final dataframe
     all_tempo_df = pd.concat(df_list_tempo, axis=0)
-    all_tuning_df = pd.concat(df_list_tuning, axis=0).set_index(['mouse', 'component'])
-    all_conds_df = pd.concat(df_list_conds, axis=0).set_index(['mouse', 'component'])
-    all_error_df = pd.concat(df_list_error, axis=0).set_index(['mouse', 'component'])
+    all_tuning_df = pd.concat(df_list_tuning, axis=0)
+    all_conds_df = pd.concat(df_list_conds, axis=0)
+    all_error_df = pd.concat(df_list_error, axis=0)
     all_index_df = pd.concat(df_list_index, axis=0)
 
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df],
