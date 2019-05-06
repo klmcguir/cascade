@@ -498,14 +498,14 @@ def trial_factors_across_mice_dprime(
             trialerr_by_day.append(trialerror)
 
     # concatenate all runs together in final dataframe
-    all_tempo_df = pd.concat(df_list_tempo, axis=1)
-    all_tuning_df = pd.concat(df_list_tuning, axis=1)
-    all_conds_df = pd.concat(df_list_conds, axis=1)
-    all_error_df = pd.concat(df_list_error, axis=1)
-    all_index_df = pd.concat(df_list_index, axis=1)
+    all_tempo_df = pd.concat(df_list_tempo.reset_index(), axis=0)
+    all_tuning_df = pd.concat(df_list_tuning.reset_index(), axis=0)
+    all_conds_df = pd.concat(df_list_conds.reset_index(), axis=0)
+    all_error_df = pd.concat(df_list_error.reset_index(), axis=0)
+    all_index_df = pd.concat(df_list_index.reset_index(), axis=0)
 
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df],
-                                axis=8)
+                                axis=1).set_index(['mouse', 'component'])
     temporal_factor_df = all_tempo_df
 
     return trial_factor_df, temporal_factor_df
