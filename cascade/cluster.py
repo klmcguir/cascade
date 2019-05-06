@@ -26,7 +26,8 @@ def get_component_clusters(clustering_df, cluster_number):
     cluster_color_options = sns.color_palette('hls', cluster_number)
     cluster_colors = [cluster_color_options[i-1] for i in clusters]
     plt.close('all')
-    clustering_df['cluster'] = Series(clusters, index=clustering_df.index)
+    clustering_df['cluster'] = pd.Series(
+        clusters, index=clustering_df.index)
 
     return clustering_df
 
