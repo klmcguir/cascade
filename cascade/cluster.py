@@ -503,7 +503,7 @@ def trial_factors_across_mice_dprime(
     all_conds_df = pd.concat(df_list_conds, axis=0)
     all_error_df = pd.concat(df_list_error, axis=0)
     all_index_df = pd.concat(df_list_index, axis=0)
-
+    import ipdb; ipdb.set_trace()
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df],
                                 axis=1)
     temporal_factor_df = all_tempo_df
