@@ -40,8 +40,8 @@ def find_cluster_number(clustering_df, cluster_number):
     a reasonable number of clusters.
     """
     clustering_df = deepcopy(
-    clustering_df.loc[:, ('plus', 'minus', 'neutral', 'hit',
-                      'miss', 'false_alarm')])
+        clustering_df.loc[:, ('plus', 'minus', 'neutral', 'hit',
+                          'miss', 'false_alarm')])
     g = sns.clustermap(clustering_df)
     row_sorter = g.dendrogram_row.reordered_ind
     clusters = hierarchy.fcluster(g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
