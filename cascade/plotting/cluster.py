@@ -27,7 +27,6 @@ def groupday_longform_factors_annotated(
         words=['rochester', 'convinced', 'convinced', 'convinced', 'convinced'],
         group_by='all',
         nan_thresh=0.85,
-        verbose=False,
         rank_num=14,
         clus_num=10,
         extra_col=1,
