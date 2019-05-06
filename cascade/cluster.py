@@ -421,9 +421,6 @@ def trial_factors_across_mice_dprime(
             for c, ori in enumerate(oris_to_check):
                 tuning_weights[c, :] = np.nanmean(
                     trial_weights[(orientation == ori) & indexer, :], axis=0)
-                # if np.isnan(np.nanmean(
-                #     trial_weights[(orientation == ori) & indexer, :], axis=0)):
-                #     tuning_weights[c, :] = 0
             # normalize using summed mean response to all three
             tuning_total = np.nansum(tuning_weights, axis=0)
             # if np.nansum(tuning_total) > 0:
@@ -433,7 +430,6 @@ def trial_factors_across_mice_dprime(
             # dict for creating dataframe
             tuning_data = {}
             for c, errset in enumerate(oris_to_check):
-                # tuning_data['t' + str(errset) + '_' + stage] = tuning_weights[c, :]
                  tuning_data['t' + str(errset) + '_' + stage] = tuning_weights[c, :]
 
             # ------------- GET Condition TUNING
@@ -444,9 +440,6 @@ def trial_factors_across_mice_dprime(
             for c, conds in enumerate(conds_to_check):
                 conds_weights[c, :] = np.nanmean(
                     trial_weights[(condition == conds) & indexer, :], axis=0)
-                # if np.isnan(np.nanmean(
-                #     trial_weights[(condition == conds) & indexer, :], axis=0)):
-                #     conds_weights[c, :] = 0
             # normalize using summed mean response to all three
             conds_total = np.nansum(conds_weights, axis=0)
             # if np.nansum(conds_total) > 0:
@@ -467,9 +460,6 @@ def trial_factors_across_mice_dprime(
             for c, errset in enumerate(err_to_check):
                 error_weights[c, :] = np.nanmean(
                     trial_weights[trialerror.isin(errset) & indexer, :], axis=0)
-                # if np.isnan(np.nanmean(
-                #     trial_weights[trialerror.isin(errset) & indexer, :], axis=0)):
-                #     error_weights[c, :] = 0
             # normalize using summed mean response to all three
             error_total = np.nansum(error_weights, axis=0)
             # if np.nansum(error_total) > 0:
@@ -508,11 +498,11 @@ def trial_factors_across_mice_dprime(
             trialerr_by_day.append(trialerror)
 
     # concatenate all runs together in final dataframe
-    all_tempo_df = pd.concat(df_list_tempo, axis=0)
-    all_tuning_df = pd.concat(df_list_tuning, axis=0)
-    all_conds_df = pd.concat(df_list_conds, axis=0)
-    all_error_df = pd.concat(df_list_error, axis=0)
-    all_index_df = pd.concat(df_list_index, axis=0)
+    all_tempo_df = pd.concat(df_list_tempo, axis=1)
+    all_tuning_df = pd.concat(df_list_tuning, axis=1)
+    all_conds_df = pd.concat(df_list_conds, axis=1)
+    all_error_df = pd.concat(df_list_error, axis=1)
+    all_index_df = pd.concat(df_list_index, axis=1)
 
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df],
                                 axis=1)
