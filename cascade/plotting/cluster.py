@@ -193,7 +193,7 @@ def groupday_longform_factors_annotated(
                     comp_cluster = lookup_df.loc[
                         (lookup_df['mouse'] == mouse) &
                         (lookup_df['component'] == (comp + 1)),
-                        'cluster']
+                        'cluster'].values[0]
                     if comp_cluster != clus:
                         continue
 
