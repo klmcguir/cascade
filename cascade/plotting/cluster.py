@@ -29,6 +29,7 @@ def groupday_longform_factors_annotated(
         nan_thresh=0.85,
         rank_num=14,
         clus_num=10,
+        use_dprime=False,
         extra_col=1,
         alpha=0.6,
         plot_running=True,
