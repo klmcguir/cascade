@@ -182,225 +182,222 @@ def groupday_longform_factors_annotated(
 
             rows = 5
             cols = 3
-            for r in sort_ensemble.results:
+            U = sort_ensemble.results[rank_num][0].factors
+            for comp in range(U.rank):
 
-                U = sort_ensemble.results[r][0].factors
+                # check that comp belongs in cluster
+                lookup_df = clus_df.reset_index()
+                comp_cluster = lookup_df.loc[
+                    (lookup_df['mouse'] == mouse) &
+                    (lookup_df['component'] == (comp + 1)),
+                    'cluster'].values[0]
+                if comp_cluster != clus:
+                    continue
 
-                for comp in range(U.rank):
+                fig, axes = plt.subplots(
+                    rows, cols, figsize=(17, rows),
+                    gridspec_kw={'width_ratios': [2, 2, 17]})
 
-                    # check that comp belongs in cluster
-                    lookup_df = clus_df.reset_index()
-                    comp_cluster = lookup_df.loc[
-                        (lookup_df['mouse'] == mouse) &
-                        (lookup_df['component'] == (comp + 1)),
-                        'cluster'].values[0]
-                    if comp_cluster != clus:
-                        continue
+                # reshape for easier indexing
+                ax = np.array(axes).reshape((rows, -1))
+                ax[0, 0].set_title('Neuron factors')
+                ax[0, 1].set_title('Temporal factors')
+                ax[0, 2].set_title('Trial factors')
 
-                    fig, axes = plt.subplots(
-                        rows, cols, figsize=(17, rows),
-                        gridspec_kw={'width_ratios': [2, 2, 17]})
+                # add title to whole figure
+                ax[0, 0].text(
+                    -1.2, 4,
+                    '\n' + mouse + ': \n\nrank: ' + str(int(rank_num))
+                    + '\nmethod: ' + method + ' \ngroup_by: '
+                    + group_by, + ' \ncluster: ' + str(clus),
+                    fontsize=12,
+                    transform=ax[0, 0].transAxes, color='#969696')
 
-                    # reshape for easier indexing
-                    ax = np.array(axes).reshape((rows, -1))
-                    ax[0, 0].set_title('Neuron factors')
-                    ax[0, 1].set_title('Temporal factors')
-                    ax[0, 2].set_title('Trial factors')
+                # plot cell factors
+                ax[0, 0].bar(
+                    np.arange(0, len(U.factors[0][:, comp])),
+                    U.factors[0][:, comp], color='b')
+                ax[0, 0].autoscale(enable=True, axis='both', tight=True)
 
-                    # add title to whole figure
-                    ax[0, 0].text(
-                        -1.2, 4,
-                        '\n' + mouse + ': \n\nrank: ' + str(int(r))
-                        + '\nmethod: ' + method + ' \ngroup_by: '
-                        + group_by, + ' \ncluster: ' + str(clus),
-                        fontsize=12,
-                        transform=ax[0, 0].transAxes, color='#969696')
+                # plot temporal factors
+                ax[0, 1].plot(U.factors[1][:, comp], color='r', linewidth=1.5)
+                ax[0, 1].autoscale(enable=True, axis='both', tight=True)
 
-                    # plot cell factors
-                    ax[0, 0].bar(
-                        np.arange(0, len(U.factors[0][:, comp])),
-                        U.factors[0][:, comp], color='b')
-                    ax[0, 0].autoscale(enable=True, axis='both', tight=True)
+                # add a line for stim onset and offset
+                # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
+                y_lim = ax[0, 1].get_ylim()
+                ons = 15.5*1
+                offs = ons+15.5*3
+                ax[0, 1].plot([ons, ons], y_lim, ':k')
+                ax[0, 1].plot([offs, offs], y_lim, ':k')
 
-                    # plot temporal factors
-                    ax[0, 1].plot(U.factors[1][:, comp], color='r', linewidth=1.5)
-                    ax[0, 1].autoscale(enable=True, axis='both', tight=True)
+                col = cols - 1
+                for i in range(rows):
 
-                    # add a line for stim onset and offset
-                    # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
-                    y_lim = ax[0, 1].get_ylim()
-                    ons = 15.5*1
-                    offs = ons+15.5*3
-                    ax[0, 1].plot([ons, ons], y_lim, ':k')
-                    ax[0, 1].plot([offs, offs], y_lim, ':k')
+                    # get axis values
+                    y_lim = [0, np.nanmax(U.factors[2][:, comp])]
 
-                    col = cols - 1
-                    for i in range(rows):
+                    # running
+                    if plot_running:
+                        scale_by = np.nanmax(speed)/y_lim[1]
+                        if not np.isnan(scale_by):
+                            ax[i, col].plot(
+                                np.array(speed.tolist())/scale_by,
+                                color=[1, 0.1, 0.6, 0.2])
+                            # , label='speed')
 
-                        # get axis values
-                        y_lim = [0, np.nanmax(U.factors[2][:, comp])]
+                    # Orientation - main variable to plot
+                    if i == 0:
+                        ori_vals = [0, 135, 270]
+                        # color_vals = [[0.28, 0.68, 0.93, alpha],
+                        #               [0.84, 0.12, 0.13, alpha],
+                        #               [0.46, 0.85, 0.47, alpha]]
+                        color_vals = sns.color_palette('husl', 3)
+                        for k in range(0, 3):
+                            ax[i, col].plot(
+                                trial_num[orientation == ori_vals[k]],
+                                U.factors[2][orientation == ori_vals[k], comp],
+                                'o', label=str(ori_vals[k]), color=color_vals[k],
+                                markersize=2, alpha=alpha)
 
-                        # running
-                        if plot_running:
-                            scale_by = np.nanmax(speed)/y_lim[1]
-                            if not np.isnan(scale_by):
-                                ax[i, col].plot(
-                                    np.array(speed.tolist())/scale_by,
-                                    color=[1, 0.1, 0.6, 0.2])
-                                # , label='speed')
+                        ax[i, col].set_title(
+                            'Component ' + str(comp + 1) + '\n\n\nTrial factors')
+                        ax[i, col].legend(
+                            bbox_to_anchor=(1.02, 1), loc='upper left',
+                            borderaxespad=0, title='Orientation', markerscale=2,
+                            prop={'size': 8})
+                        ax[i, col].autoscale(enable=True, axis='both', tight=True)
+                        ax[i, col].set_xticklabels([])
 
-                        # Orientation - main variable to plot
-                        if i == 0:
-                            ori_vals = [0, 135, 270]
-                            # color_vals = [[0.28, 0.68, 0.93, alpha],
-                            #               [0.84, 0.12, 0.13, alpha],
-                            #               [0.46, 0.85, 0.47, alpha]]
-                            color_vals = sns.color_palette('husl', 3)
-                            for k in range(0, 3):
-                                ax[i, col].plot(
-                                    trial_num[orientation == ori_vals[k]],
-                                    U.factors[2][orientation == ori_vals[k], comp],
-                                    'o', label=str(ori_vals[k]), color=color_vals[k],
-                                    markersize=2, alpha=alpha)
+                    # Condition - main variable to plot
+                    elif i == 1:
+                        cs_vals = ['plus', 'minus', 'neutral']
+                        cs_labels = ['plus', 'minus', 'neutral']
+                        color_vals = [[0.46, 0.85, 0.47, alpha],
+                                      [0.84, 0.12, 0.13, alpha],
+                                      [0.28, 0.68, 0.93, alpha]]
+                        for k in range(0, 3):
+                            ax[i, col].plot(
+                                trial_num[condition == cs_vals[k]],
+                                U.factors[2][condition == cs_vals[k], comp], 'o',
+                                label=str(cs_labels[k]), color=color_vals[k],
+                                markersize=2)
 
-                            ax[i, col].set_title(
-                                'Component ' + str(comp + 1) + '\n\n\nTrial factors')
-                            ax[i, col].legend(
-                                bbox_to_anchor=(1.02, 1), loc='upper left',
-                                borderaxespad=0, title='Orientation', markerscale=2,
-                                prop={'size': 8})
-                            ax[i, col].autoscale(enable=True, axis='both', tight=True)
-                            ax[i, col].set_xticklabels([])
+                        ax[i, col].legend(
+                            bbox_to_anchor=(1.02, 1), loc='upper left',
+                            borderaxespad=0, title='Condition', markerscale=2,
+                            prop={'size': 8})
+                        ax[i, col].autoscale(enable=True, axis='both', tight=True)
+                        ax[i, col].set_xticklabels([])
 
-                        # Condition - main variable to plot
-                        elif i == 1:
-                            cs_vals = ['plus', 'minus', 'neutral']
-                            cs_labels = ['plus', 'minus', 'neutral']
-                            color_vals = [[0.46, 0.85, 0.47, alpha],
-                                          [0.84, 0.12, 0.13, alpha],
-                                          [0.28, 0.68, 0.93, alpha]]
-                            for k in range(0, 3):
-                                ax[i, col].plot(
-                                    trial_num[condition == cs_vals[k]],
-                                    U.factors[2][condition == cs_vals[k], comp], 'o',
-                                    label=str(cs_labels[k]), color=color_vals[k],
-                                    markersize=2)
+                    # Trial error - main variable to plot
+                    elif i == 2:
+                        color_counter = 0
+                        error_colors = sns.color_palette(
+                            palette='muted', n_colors=10)
+                        trialerror_vals = [0, 1]  # 2, 3, 4, 5,] # 6, 7, 8, 9]
+                        trialerror_labels = ['hit',
+                                             'miss',
+                                             'neutral correct reject',
+                                             'neutral false alarm',
+                                             'minus correct reject',
+                                             'minus false alarm',
+                                             'blank correct reject',
+                                             'blank false alarm',
+                                             'pav early licking',
+                                             'pav late licking']
+                        for k in range(len(trialerror_vals)):
+                            ax[i, col].plot(
+                                trial_num[trialerror == trialerror_vals[k]],
+                                U.factors[2][trialerror == trialerror_vals[k], comp],
+                                'o', label=str(trialerror_labels[k]), alpha=alpha,
+                                markersize=2, color=error_colors[color_counter])
+                            color_counter = color_counter + 1
 
-                            ax[i, col].legend(
-                                bbox_to_anchor=(1.02, 1), loc='upper left',
-                                borderaxespad=0, title='Condition', markerscale=2,
-                                prop={'size': 8})
-                            ax[i, col].autoscale(enable=True, axis='both', tight=True)
-                            ax[i, col].set_xticklabels([])
+                        ax[i, col].legend(
+                            bbox_to_anchor=(1.02, 1), loc='upper left',
+                            borderaxespad=0, title='Trialerror', markerscale=2,
+                            prop={'size': 8})
+                        ax[i, col].autoscale(enable=True, axis='both', tight=True)
+                        ax[i, col].set_xticklabels([])
 
-                        # Trial error - main variable to plot
-                        elif i == 2:
-                            color_counter = 0
-                            error_colors = sns.color_palette(
-                                palette='muted', n_colors=10)
-                            trialerror_vals = [0, 1]  # 2, 3, 4, 5,] # 6, 7, 8, 9]
-                            trialerror_labels = ['hit',
-                                                 'miss',
-                                                 'neutral correct reject',
-                                                 'neutral false alarm',
-                                                 'minus correct reject',
-                                                 'minus false alarm',
-                                                 'blank correct reject',
-                                                 'blank false alarm',
-                                                 'pav early licking',
-                                                 'pav late licking']
-                            for k in range(len(trialerror_vals)):
-                                ax[i, col].plot(
-                                    trial_num[trialerror == trialerror_vals[k]],
-                                    U.factors[2][trialerror == trialerror_vals[k], comp],
-                                    'o', label=str(trialerror_labels[k]), alpha=alpha,
-                                    markersize=2, color=error_colors[color_counter])
-                                color_counter = color_counter + 1
+                    # Trial error 2.0 - main variable to plot
+                    elif i == 3:
+                        trialerror_vals = [2, 3]
+                        trialerror_labels = ['neutral correct reject',
+                                             'neutral false alarm']
+                        for k in range(len(trialerror_vals)):
+                            ax[i, col].plot(
+                                trial_num[trialerror == trialerror_vals[k]],
+                                U.factors[2][trialerror == trialerror_vals[k], comp],
+                                'o', label=str(trialerror_labels[k]), alpha=alpha,
+                                markersize=2, color=error_colors[color_counter])
+                            color_counter = color_counter + 1
+
+                        ax[i, col].legend(
+                            bbox_to_anchor=(1.02, 1), loc='upper left',
+                            borderaxespad=0, title='Trialerror', markerscale=2,
+                            prop={'size': 8})
+                        ax[i, col].autoscale(enable=True, axis='both', tight=True)
+                        ax[i, col].set_xticklabels([])
+
+                    # Trial error 3.0 - main variable to plot
+                    elif i == 4:
+                        trialerror_vals = [4, 5]
+                        trialerror_labels = ['minus correct reject',
+                                             'minus false alarm']
+                        for k in range(len(trialerror_vals)):
+                            ax[i, col].plot(
+                                trial_num[trialerror == trialerror_vals[k]],
+                                U.factors[2][trialerror == trialerror_vals[k], comp],
+                                'o', label=str(trialerror_labels[k]), alpha=alpha,
+                                markersize=2, color=error_colors[color_counter])
+                            color_counter = color_counter + 1
 
                             ax[i, col].legend(
                                 bbox_to_anchor=(1.02, 1), loc='upper left',
                                 borderaxespad=0, title='Trialerror', markerscale=2,
                                 prop={'size': 8})
-                            ax[i, col].autoscale(enable=True, axis='both', tight=True)
-                            ax[i, col].set_xticklabels([])
+                        ax[i, col].autoscale(enable=True, axis='both', tight=True)
 
-                        # Trial error 2.0 - main variable to plot
-                        elif i == 3:
-                            trialerror_vals = [2, 3]
-                            trialerror_labels = ['neutral correct reject',
-                                                 'neutral false alarm']
-                            for k in range(len(trialerror_vals)):
+                    # plot days, reversal, or learning lines if there are any
+                    if col >= 1:
+                        y_lim = ax[i, col].get_ylim()
+                        if len(day_x) > 0:
+                            for k in day_x:
                                 ax[i, col].plot(
-                                    trial_num[trialerror == trialerror_vals[k]],
-                                    U.factors[2][trialerror == trialerror_vals[k], comp],
-                                    'o', label=str(trialerror_labels[k]), alpha=alpha,
-                                    markersize=2, color=error_colors[color_counter])
-                                color_counter = color_counter + 1
-
-                            ax[i, col].legend(
-                                bbox_to_anchor=(1.02, 1), loc='upper left',
-                                borderaxespad=0, title='Trialerror', markerscale=2,
-                                prop={'size': 8})
-                            ax[i, col].autoscale(enable=True, axis='both', tight=True)
-                            ax[i, col].set_xticklabels([])
-
-                        # Trial error 3.0 - main variable to plot
-                        elif i == 4:
-                            trialerror_vals = [4, 5]
-                            trialerror_labels = ['minus correct reject',
-                                                 'minus false alarm']
-                            for k in range(len(trialerror_vals)):
+                                    [k, k], y_lim, color='#969696', linewidth=1)
+                        if len(lstate_x) > 0:
+                            ls_vals = ['naive', 'learning', 'reversal1']
+                            ls_colors = ['#66bd63', '#d73027', '#a50026']
+                            for k in lstate_x:
+                                ls = learning_state[int(k-0.5)]
                                 ax[i, col].plot(
-                                    trial_num[trialerror == trialerror_vals[k]],
-                                    U.factors[2][trialerror == trialerror_vals[k], comp],
-                                    'o', label=str(trialerror_labels[k]), alpha=alpha,
-                                    markersize=2, color=error_colors[color_counter])
-                                color_counter = color_counter + 1
+                                    [k, k], y_lim,
+                                    color=ls_colors[ls_vals.index(ls)],
+                                    linewidth=1.5)
 
-                                ax[i, col].legend(
-                                    bbox_to_anchor=(1.02, 1), loc='upper left',
-                                    borderaxespad=0, title='Trialerror', markerscale=2,
-                                    prop={'size': 8})
-                            ax[i, col].autoscale(enable=True, axis='both', tight=True)
+                    # hide subplots that won't be used
+                    if i > 0:
+                        ax[i, 0].axis('off')
+                        ax[i, 1].axis('off')
 
-                        # plot days, reversal, or learning lines if there are any
-                        if col >= 1:
-                            y_lim = ax[i, col].get_ylim()
-                            if len(day_x) > 0:
-                                for k in day_x:
-                                    ax[i, col].plot(
-                                        [k, k], y_lim, color='#969696', linewidth=1)
-                            if len(lstate_x) > 0:
-                                ls_vals = ['naive', 'learning', 'reversal1']
-                                ls_colors = ['#66bd63', '#d73027', '#a50026']
-                                for k in lstate_x:
-                                    ls = learning_state[int(k-0.5)]
-                                    ax[i, col].plot(
-                                        [k, k], y_lim,
-                                        color=ls_colors[ls_vals.index(ls)],
-                                        linewidth=1.5)
+                    # despine plots to look like sns defaults
+                    sns.despine()
 
-                        # hide subplots that won't be used
-                        if i > 0:
-                            ax[i, 0].axis('off')
-                            ax[i, 1].axis('off')
-
-                        # despine plots to look like sns defaults
-                        sns.despine()
-
-                    # save
-                    if filetype.lower() == 'pdf':
-                        suffix = '.pdf'
-                    elif filetype.lower() == 'eps':
-                        suffix = '.eps'
-                    else:
-                        suffix = '.png'
-                    plt.savefig(
-                        os.path.join(
-                            clus_dir, mouse + '_rank_' + str(int(r)) +
-                            '_component_' + str(comp + 1) + '_cluster_' +
-                            str(clus) + suffix),
-                        bbox_inches='tight')
-                    if verbose:
-                        plt.show()
-                    plt.close('all')
+                # save
+                if filetype.lower() == 'pdf':
+                    suffix = '.pdf'
+                elif filetype.lower() == 'eps':
+                    suffix = '.eps'
+                else:
+                    suffix = '.png'
+                plt.savefig(
+                    os.path.join(
+                        clus_dir, mouse + '_rank_' + str(int(rank_num)) +
+                        '_component_' + str(comp + 1) + '_cluster_' +
+                        str(clus) + suffix),
+                    bbox_inches='tight')
+                if verbose:
+                    plt.show()
+                plt.close('all')
