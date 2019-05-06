@@ -209,7 +209,7 @@ def groupday_longform_factors_annotated(
                     -1.2, 4,
                     '\n' + mouse + ': \n\nrank: ' + str(int(rank_num))
                     + '\nmethod: ' + method + ' \ngroup_by: '
-                    + group_by, + ' \ncluster: ' + str(clus),
+                    + group_by + ' \ncluster: ' + str(clus),
                     fontsize=12,
                     transform=ax[0, 0].transAxes, color='#969696')
 
