@@ -400,6 +400,9 @@ def trial_factors_across_mice_dprime(
         learning_stages = [
             'naive', 'low_dp_learning', 'high_dp_learning', 'low_dp_rev1',
             'high_dp_rev1']
+        df_mouse_tuning = []
+        df_mouse_conds = []
+        df_mouse_error = []
         for stage in learning_stages:
 
             if stage == 'naive':
@@ -483,27 +486,29 @@ def trial_factors_across_mice_dprime(
                 sort_ensemble.results[rank_num][0].factors[1][:, :].T, index=index)
             tuning_df = pd.DataFrame(tuning_data, index=index)
             conds_df = pd.DataFrame(conds_data, index=index)
-            # if stage != 'naive':
             error_df = pd.DataFrame(error_data, index=index)
+
+            # create lists of dfs for concatenation
             df_list_tempo.append(tempo_df)
-            df_list_tuning.append(tuning_df)
-            df_list_conds.append(conds_df)
-            # if stage != 'naive':
-            df_list_error.append(error_df)
             df_list_index.append(pd.DataFrame(index=index))
+            df_mouse_tuning.append(tuning_df)
+            df_mouse_conds.append(conds_df)
+            df_mouse_error.append(error_df)
+            conds_by_day.append(condition)
+            oris_by_day.append(orientation)
+            trialerr_by_day.append(trialerror)
 
-        #     factors_by_day.append(sort_ensemble.results[rank_num][0])
-            conds_by_day.append(condition.reset_index())
-            oris_by_day.append(orientation.reset_index())
-            trialerr_by_day.append(trialerror.reset_index())
+        # concatenate different columns per mouse
+        df_list_tuning.append(pd.concat(df_mouse_tuning, axis=1))
+        df_list_conds.append(pd.concat(df_mouse_conds, axis=1))
+        df_list_error.append(pd.concat(df_mouse_error, axis=1))
 
-    # concatenate all runs together in final dataframe
+    # concatenate all mice/runs together in final dataframe
     all_tempo_df = pd.concat(df_list_tempo, axis=0)
     all_tuning_df = pd.concat(df_list_tuning, axis=0)
     all_conds_df = pd.concat(df_list_conds, axis=0)
     all_error_df = pd.concat(df_list_error, axis=0)
     all_index_df = pd.concat(df_list_index, axis=0)
-    import ipdb; ipdb.set_trace()
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df],
                                 axis=1)
     temporal_factor_df = all_tempo_df
