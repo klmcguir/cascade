@@ -48,7 +48,9 @@ def find_cluster_number(clustering_df, cluster_number):
     cluster_color_options = sns.color_palette('hls', cluster_number)
     cluster_colors = [cluster_color_options[i-1] for i in clusters]
     plt.close('all')
-    sns.clustermap(clustering_df, row_colors=cluster_colors)
+    plt.figure(figsize=(15, 15))
+    sns.clustermap(clustering_df, row_colors=cluster_colors,
+                   xticklabels=True, yticklabels=True)
 
 
 def get_component_clusters_ori(clustering_df, cluster_number):
@@ -80,7 +82,9 @@ def find_cluster_number_ori(clustering_df, cluster_number):
     cluster_color_options = sns.color_palette('hls', cluster_number)
     cluster_colors = [cluster_color_options[i-1] for i in clusters]
     plt.close('all')
-    sns.clustermap(clustering_df, row_colors=cluster_colors)
+    plt.figure(figsize=(15, 15))
+    sns.clustermap(clustering_df, row_colors=cluster_colors,
+                   xticklabels=True, yticklabels=True)
 
 
 def trial_factors_across_mice(
