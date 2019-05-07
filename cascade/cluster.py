@@ -473,6 +473,8 @@ def trial_factors_across_mice_dprime(
                 error_data = {}
                 for c, errset in enumerate(err_val):
                     error_data[errset + '_' + stage] = error_weights[c, :]
+            else:
+                error_data = []
 
             # ------------ CREATE PANDAS DF
 
@@ -493,8 +495,7 @@ def trial_factors_across_mice_dprime(
             df_list_index.append(pd.DataFrame(index=index))
             df_mouse_tuning.append(tuning_df)
             df_mouse_conds.append(conds_df)
-            if stage != 'naive':
-                df_mouse_error.append(error_df)
+            df_mouse_error.append(error_df)
             conds_by_day.append(condition)
             oris_by_day.append(orientation)
             trialerr_by_day.append(trialerror)
