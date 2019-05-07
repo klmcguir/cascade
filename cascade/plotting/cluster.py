@@ -114,8 +114,7 @@ def groupday_longform_factors_annotated(
             nan_thresh=nan_thresh,
             verbose=verbose,
             rank_num=rank_num)
-    # clus_df = clus_df.dropna(how='all')
-    # clus_df = clus_df.dropna(axis='columns')
+    clus_df = clus_df.dropna(axis='rows')
     clus_df = cluster.get_component_clusters(clus_df, clus_num)
 
     for mnum, mouse in enumerate(mice):
