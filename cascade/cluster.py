@@ -455,24 +455,24 @@ def trial_factors_across_mice_dprime(
                 conds_data[errset + '_' + stage] = conds_weights[c, :]
 
             # ------------- GET Trialerror TUNING
-            # if stage != 'naive':
-            trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
-            err_to_check = [[0], [1], [2, 4], [3, 5]]  # hit, miss, CR, FA
-            err_val = ['hit', 'miss', 'correct_reject', 'false_alarm']
-            error_weights = np.zeros((len(err_to_check), rank_num))
-            for c, errset in enumerate(err_to_check):
-                error_weights[c, :] = np.nanmean(
-                    trial_weights[trialerror.isin(errset) & indexer, :], axis=0)
-            # normalize using summed mean response to all three
-            error_total = np.nansum(error_weights, axis=0)
-            # if np.nansum(error_total) > 0:
-            for c in range(len(err_to_check)):
-                error_weights[c, :] = np.divide(
-                    error_weights[c, :], error_total)
-            # dict for creating dataframe
-            error_data = {}
-            for c, errset in enumerate(err_val):
-                error_data[errset + '_' + stage] = error_weights[c, :]
+            if stage != 'naive':
+                trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
+                err_to_check = [[0], [1], [2, 4], [3, 5]]  # hit, miss, CR, FA
+                err_val = ['hit', 'miss', 'correct_reject', 'false_alarm']
+                error_weights = np.zeros((len(err_to_check), rank_num))
+                for c, errset in enumerate(err_to_check):
+                    error_weights[c, :] = np.nanmean(
+                        trial_weights[trialerror.isin(errset) & indexer, :], axis=0)
+                # normalize using summed mean response to all three
+                error_total = np.nansum(error_weights, axis=0)
+                # if np.nansum(error_total) > 0:
+                for c in range(len(err_to_check)):
+                    error_weights[c, :] = np.divide(
+                        error_weights[c, :], error_total)
+                # dict for creating dataframe
+                error_data = {}
+                for c, errset in enumerate(err_val):
+                    error_data[errset + '_' + stage] = error_weights[c, :]
 
             # ------------ CREATE PANDAS DF
 
@@ -493,7 +493,8 @@ def trial_factors_across_mice_dprime(
             df_list_index.append(pd.DataFrame(index=index))
             df_mouse_tuning.append(tuning_df)
             df_mouse_conds.append(conds_df)
-            df_mouse_error.append(error_df)
+            if stage != 'naive':
+                df_mouse_error.append(error_df)
             conds_by_day.append(condition)
             oris_by_day.append(orientation)
             trialerr_by_day.append(trialerror)
@@ -508,7 +509,7 @@ def trial_factors_across_mice_dprime(
     all_tuning_df = pd.concat(df_list_tuning, axis=0)
     all_conds_df = pd.concat(df_list_conds, axis=0)
     all_error_df = pd.concat(df_list_error, axis=0)
-    all_index_df = pd.concat(df_list_index, axis=0)
+    # all_index_df = pd.concat(df_list_index, axis=0)
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df],
                                 axis=1)
     temporal_factor_df = all_tempo_df
