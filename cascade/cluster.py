@@ -33,7 +33,7 @@ def get_component_clusters(clustering_df, cluster_number):
     return clustering_df
 
 
-def find_cluster_number(clustering_df, cluster_number):
+def find_cluster_number(clustering_df, cluster_number, col_cluster=True):
     """
     Plot your clustering df and annotated clusters for help choosing
     a reasonable number of clusters.
@@ -46,10 +46,17 @@ def find_cluster_number(clustering_df, cluster_number):
     clusters = hierarchy.fcluster(g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
     cluster_color_options = sns.color_palette('hls', cluster_number)
     cluster_colors = [cluster_color_options[i-1] for i in clusters]
+
+    mouse_list = clustering_df.reset_index().loc[:, 'mouse']
+    mouse_color_options = sns.light_palette('navy', len(mouse_list.unique()))
+    mouse_color_dict = {k: v for k, v in zip(mouse_list.unique(),
+                                             mouse_color_options)}
+    mouse_colors = [mouse_color_dict[m] for m in mouse_list]
+
     plt.close('all')
     plt.figure(figsize=(15, 15))
     sns.clustermap(clustering_df, row_colors=cluster_colors,
-                   xticklabels=True, yticklabels=True)
+                   xticklabels=True, yticklabels=True, col_cluster=col_cluster)
 
 
 def get_component_clusters_ori(clustering_df, cluster_number):
@@ -71,7 +78,7 @@ def get_component_clusters_ori(clustering_df, cluster_number):
     return clustering_df
 
 
-def find_cluster_number_ori(clustering_df, cluster_number):
+def find_cluster_number_ori(clustering_df, cluster_number, col_cluster=True):
     """
     Plot your clustering df and annotated clusters for help choosing
     a reasonable number of clusters.
@@ -92,7 +99,7 @@ def find_cluster_number_ori(clustering_df, cluster_number):
     plt.close('all')
     plt.figure(figsize=(15, 15))
     sns.clustermap(clustering_df, row_colors=[mouse_colors, cluster_colors],
-                   xticklabels=True, yticklabels=True)
+                   xticklabels=True, yticklabels=True, col_cluster=col_cluster)
 
 
 def trial_factors_across_mice(
