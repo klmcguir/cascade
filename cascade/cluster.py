@@ -24,9 +24,8 @@ def get_component_clusters(clustering_df, cluster_number):
                           'miss', 'false_alarm')])
     g = sns.clustermap(clustering_df)
     row_sorter = g.dendrogram_row.reordered_ind
-    clusters = hierarchy.fcluster(g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
-    cluster_color_options = sns.color_palette('hls', cluster_number)
-    cluster_colors = [cluster_color_options[i-1] for i in clusters]
+    clusters = hierarchy.fcluster(
+        g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
     plt.close('all')
     clustering_df['cluster'] = pd.Series(
         clusters, index=clustering_df.index)
@@ -61,7 +60,8 @@ def get_component_clusters_ori(clustering_df, cluster_number):
     clustering_df = deepcopy(clustering_df)
     g = sns.clustermap(clustering_df)
     row_sorter = g.dendrogram_row.reordered_ind
-    clusters = hierarchy.fcluster(g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
+    clusters = hierarchy.fcluster(
+        g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
     cluster_color_options = sns.color_palette('hls', cluster_number)
     cluster_colors = [cluster_color_options[i-1] for i in clusters]
     plt.close('all')
@@ -78,12 +78,20 @@ def find_cluster_number_ori(clustering_df, cluster_number):
     """
     g = sns.clustermap(clustering_df)
     row_sorter = g.dendrogram_row.reordered_ind
-    clusters = hierarchy.fcluster(g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
+    clusters = hierarchy.fcluster(
+        g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
     cluster_color_options = sns.color_palette('hls', cluster_number)
     cluster_colors = [cluster_color_options[i-1] for i in clusters]
+
+    mouse_list = clustering_df.reset_index().loc[:, 'mouse']
+    mouse_color_options = sns.light_palette('navy', len(mouse_list.unique()))
+    mouse_color_dict = {k: v for k, v in zip(mouse_color_options,
+                                              mouse_list.unique())}
+    mouse_colors = [mouse_color_dict[m] for m in mouse_list]
+
     plt.close('all')
     plt.figure(figsize=(15, 15))
-    sns.clustermap(clustering_df, row_colors=cluster_colors,
+    sns.clustermap(clustering_df, row_colors=[mouse_colors, cluster_colors],
                    xticklabels=True, yticklabels=True)
 
 
