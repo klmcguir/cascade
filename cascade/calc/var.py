@@ -90,7 +90,7 @@ def groupday_varex_byday(
             np.ones(5, dtype=np.float64)/5, 'same').reshape(np.shape(X))
         # calculate variance explained per day
         for day in np.unique(dates):
-            day_bool = dates.isin(day)
+            day_bool = dates.isin([day])
             bUd = bU[:, :, day_bool]
             mUd = mU[:, :, day_bool]
             smUd = smU[:, :, day_bool]
