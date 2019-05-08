@@ -21,7 +21,7 @@ def get_component_clusters(clustering_df, cluster_number):
     """
     clustering_df = deepcopy(
         clustering_df.loc[:, ('plus', 'minus', 'neutral', 'hit',
-                          'miss', 'false_alarm')])
+                          'miss', 'false_alarm', 'correct_reject')])
     g = sns.clustermap(clustering_df)
     row_sorter = g.dendrogram_row.reordered_ind
     clusters = hierarchy.fcluster(
@@ -40,7 +40,7 @@ def find_cluster_number(clustering_df, cluster_number, col_cluster=True):
     """
     clustering_df = deepcopy(
         clustering_df.loc[:, ('plus', 'minus', 'neutral', 'hit',
-                          'miss', 'false_alarm')])
+                          'miss', 'false_alarm', 'correct_reject')])
     g = sns.clustermap(clustering_df)
     row_sorter = g.dendrogram_row.reordered_ind
     clusters = hierarchy.fcluster(g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
@@ -100,6 +100,49 @@ def find_cluster_number_ori(clustering_df, cluster_number, col_cluster=True):
     plt.figure(figsize=(15, 15))
     sns.clustermap(clustering_df, row_colors=[mouse_colors, cluster_colors],
                    xticklabels=True, yticklabels=True, col_cluster=col_cluster)
+
+
+def find_cluster_number_tempo(clustering_df, cluster_number, col_cluster=False):
+    """
+    Plot your clustering df and annotated clusters for help choosing
+    a reasonable number of clusters.
+    """
+    g = sns.clustermap(clustering_df)
+    row_sorter = g.dendrogram_row.reordered_ind
+    clusters = hierarchy.fcluster(
+        g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
+    cluster_color_options = sns.color_palette('hls', cluster_number)
+    cluster_colors = [cluster_color_options[i-1] for i in clusters]
+
+    mouse_list = clustering_df.reset_index().loc[:, 'mouse']
+    mouse_color_options = sns.light_palette('navy', len(mouse_list.unique()))
+    mouse_color_dict = {k: v for k, v in zip(mouse_list.unique(),
+                                             mouse_color_options)}
+    mouse_colors = [mouse_color_dict[m] for m in mouse_list]
+
+    plt.close('all')
+    plt.figure(figsize=(15, 15))
+    sns.clustermap(clustering_df, row_colors=[mouse_colors, cluster_colors],
+                   col_cluster=col_cluster)
+
+
+def get_component_clusters_tempo(clustering_df, cluster_number):
+    """
+    Plot your clustering df and annotated clusters for help choosing
+    a reasonable number of clusters.
+    """
+    clustering_df = deepcopy(clustering_df)
+    g = sns.clustermap(clustering_df)
+    row_sorter = g.dendrogram_row.reordered_ind
+    clusters = hierarchy.fcluster(
+        g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
+    cluster_color_options = sns.color_palette('hls', cluster_number)
+    cluster_colors = [cluster_color_options[i-1] for i in clusters]
+    plt.close('all')
+    clustering_df['temporal_cluster'] = pd.Series(
+        clusters, index=clustering_df.index)
+
+    return clustering_df
 
 
 def trial_factors_across_mice(
