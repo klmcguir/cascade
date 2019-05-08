@@ -37,9 +37,10 @@ def update_naive_cs(meta, verbose=True):
         meta.loc[naive_pmn & (orientation == ori), 'condition'] = cs
 
     if verbose:
+        meta.reset_index()
         print('Updated naive cs-ori pairings to match learning.')
         for k, v in cs_codes.items():
-            print(k, v)
+            print('    ', k, v)
 
     return meta
 
