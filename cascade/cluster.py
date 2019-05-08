@@ -86,7 +86,7 @@ def find_cluster_number_ori(clustering_df, cluster_number):
     mouse_list = clustering_df.reset_index().loc[:, 'mouse']
     mouse_color_options = sns.light_palette('navy', len(mouse_list.unique()))
     mouse_color_dict = {k: v for k, v in zip(mouse_color_options,
-                                              mouse_list.unique())}
+                                             list(mouse_list.unique()))}
     mouse_colors = [mouse_color_dict[m] for m in mouse_list]
 
     plt.close('all')
