@@ -342,7 +342,7 @@ def trial_factors_across_mice(
     return trial_factor_df, temporal_factor_df
 
 
-def trial_factors_across_mice_dprime(
+def trial_factors_across_mice_learning_stages(
         mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175'],
         trace_type='zscore_day',
         method='ncp_bcd',
@@ -351,8 +351,9 @@ def trial_factors_across_mice_dprime(
         words=['rochester', 'convinced', 'convinced', 'convinced', 'convinced'],
         group_by='all',
         nan_thresh=0.85,
-        verbose=False,
-        rank_num=14):
+        speed_thresh=5,
+        rank_num=14,
+        verbose=False):
 
     """
     Cluster tca trial factors based on tuning to different oris, conditions,
@@ -403,6 +404,8 @@ def trial_factors_across_mice_dprime(
     df_list_conds = []
     df_list_error = []
     df_list_index = []
+    df_list_runmod = []
+    df_list_ramp = []
     for mnum, mouse in enumerate(mice):
 
         # load dir
@@ -465,6 +468,8 @@ def trial_factors_across_mice_dprime(
         df_mouse_tuning = []
         df_mouse_conds = []
         df_mouse_error = []
+        df_mouse_runmod = []
+        df_mouse_ramp = []
         for stage in learning_stages:
 
             if stage == 'naive':
@@ -517,6 +522,7 @@ def trial_factors_across_mice_dprime(
                 conds_data[errset + '_' + stage] = conds_weights[c, :]
 
             # ------------- GET Trialerror TUNING
+
             if stage != 'naive':
                 trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
                 err_to_check = [[0], [1], [2, 4], [3, 5]]  # hit, miss, CR, FA
@@ -538,6 +544,76 @@ def trial_factors_across_mice_dprime(
             else:
                 error_data = []
 
+            # ------------- RUNNING MODULATION for preferred ori
+
+            oris_to_check = [0, 135, 270]
+            pref_ori_idx = np.argmax(tuning_weights, axis=0)
+            trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
+            running_calc = np.zeros((2, rank_num))
+            for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
+                pref_indexer = (orientation == oris_to_check[ori])
+                running_calc[0, c] = np.nanmean(
+                    trial_weights[
+                        (speed >= speed_thresh) &
+                        pref_indexer
+                        & indexer, c],
+                    axis=0)
+                running_calc[1, c] = np.nanmean(
+                    trial_weights[
+                        (speed < speed_thresh) &
+                        pref_indexer &
+                        indexer, c],
+                    axis=0)
+            # normalize using summed mean response to both running states
+            run_total = np.nansum(running_calc, axis=0)
+            # if np.nansum(run_total) > 0:
+            for i in range(2):
+                running_calc[i, :] = np.divide(
+                    running_calc[i, :], run_total)
+            # dict for creating dataframe
+            # take only running/(running + stationary) value
+            running_data = {}
+            running_data['running_modulation_' + stage] = running_calc[0, :]
+
+            # ------------- EARLY/LATE RAMP INDEX for preferred ori
+
+            oris_to_check = [0, 135, 270]
+            pref_ori_idx = np.argmax(tuning_weights, axis=0)
+            trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
+            ramp_calc = np.zeros((2, rank_num))
+            # build your date indexer for the first and last half of the day
+            early_indexer = dates == 0
+            late_indexer = dates == 0
+            for day in np.unique(dates):
+                day_idx = np.where(dates.isin([day]))[0]
+                early_indexer[day_idx[0:int(len(day_idx)/2)]] = True
+                late_indexer[day_idx[int(len(day_idx)/2):-1]] = True
+            # get early vs late mean dff for preferred ori per component
+            for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
+                pref_indexer = (orientation == oris_to_check[ori])
+                ramp_calc[0, c] = np.nanmean(
+                    trial_weights[
+                        early_indexer &
+                        pref_indexer
+                        & indexer, c],
+                    axis=0)
+                ramp_calc[1, c] = np.nanmean(
+                    trial_weights[
+                        late_indexer &
+                        pref_indexer &
+                        indexer, c],
+                    axis=0)
+            # normalize using summed mean response to both early/late
+            ramp_index = np.log2(ramp_calc[1, :]/ramp_calc[0, :])
+            # if np.nansum(run_total) > 0:
+            for i in range(2):
+                running_calc[i, :] = np.divide(
+                    running_calc[i, :], run_total)
+            # dict for creating dataframe
+            # take only running/(running + stationary) value
+            ramp_data = {}
+            ramp_data['ramp_index' + stage] = ramp_index
+
             # ------------ CREATE PANDAS DF
 
             index = pd.MultiIndex.from_arrays([
@@ -551,6 +627,8 @@ def trial_factors_across_mice_dprime(
             tuning_df = pd.DataFrame(tuning_data, index=index)
             conds_df = pd.DataFrame(conds_data, index=index)
             error_df = pd.DataFrame(error_data, index=index)
+            running_df = pd.DataFrame(running_data, index=index)
+            ramp_df = pd.DataFrame(ramp_data, index=index)
 
             # create lists of dfs for concatenation
             df_list_tempo.append(tempo_df)
@@ -558,23 +636,29 @@ def trial_factors_across_mice_dprime(
             df_mouse_tuning.append(tuning_df)
             df_mouse_conds.append(conds_df)
             df_mouse_error.append(error_df)
+            df_mouse_runmod.append(running_df)
+            df_mouse_ramp.append(ramp_df)
             conds_by_day.append(condition)
             oris_by_day.append(orientation)
             trialerr_by_day.append(trialerror)
+
 
         # concatenate different columns per mouse
         df_list_tuning.append(pd.concat(df_mouse_tuning, axis=1))
         df_list_conds.append(pd.concat(df_mouse_conds, axis=1))
         df_list_error.append(pd.concat(df_mouse_error, axis=1))
+        df_list_runmod.append(pd.concat(df_mouse_runmod, axis=1))
+        df_list_ramp.append(pd.concat(df_mouse_ramp, axis=1))
 
     # concatenate all mice/runs together in final dataframe
     all_tempo_df = pd.concat(df_list_tempo, axis=0)
     all_tuning_df = pd.concat(df_list_tuning, axis=0)
     all_conds_df = pd.concat(df_list_conds, axis=0)
     all_error_df = pd.concat(df_list_error, axis=0)
+    all_runmod_df = pd.concat(df_list_runmod, axis=0)
+    all_ramp_df = pd.concat(df_list_ramp, axis=0)
     # all_index_df = pd.concat(df_list_index, axis=0)
-    trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df],
-                                axis=1)
-    temporal_factor_df = all_tempo_df
+    trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df,
+                                all_runmod_df, all_ramp_df], axis=1)
 
-    return trial_factor_df, temporal_factor_df
+    return trial_factor_df, all_tempo_df
