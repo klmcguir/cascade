@@ -582,8 +582,9 @@ def trial_factors_across_mice_learning_stages(
             trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
             ramp_calc = np.zeros((2, rank_num))
             # build your date indexer for the first and last half of the day
-            early_indexer = orientation == 0  # need idxer df indices to match
-            late_indexer = orientation == 0
+            # need indexer df indices to match
+            early_indexer = orientation == 'not_this'
+            late_indexer = orientation == 'not_this'
             for day in np.unique(dates):
                 day_idx = np.where(dates.isin([day]))[0]
                 early_indexer[day_idx[0:int(len(day_idx)/2)]] = True
