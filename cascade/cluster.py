@@ -106,6 +106,7 @@ def find_cluster_number_remove_indices(
                 'false_alarm_low_dp_rev1', 'hit_high_dp_rev1',
                 'miss_high_dp_rev1', 'correct_reject_high_dp_rev1',
                 'false_alarm_high_dp_rev1'])
+        clustering_df = clustering_df.dropna(axis='rows')
     # if running mod, center of mass, or ramp index are included, remove
     # from columns and make a color vector for each
     learning_stages = [
@@ -162,7 +163,8 @@ def find_cluster_number_remove_indices(
     ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
 
 
-    plt.close('all')
+    plt.clo
+    se('all')
     plt.figure(figsize=(15, 15))
     sns.clustermap(
         clustering_df, row_colors=[mouse_colors, cm_colors, ramp_colors, run_colors, cluster_colors],
