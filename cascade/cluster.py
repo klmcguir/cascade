@@ -123,6 +123,22 @@ def find_cluster_number_remove_indices(clustering_df, cluster_number, col_cluste
     print(cm_color_dict)
     cm_colors = [cm_color_dict[m] for m in binned_cm]
 
+    # create running mod color labels
+    binned_cm = pd.cut(center_of_mass, 108, labels=range(0, 108))
+    cm_color_options = sns.light_palette('red', 108)
+    cm_color_dict = {k: v for k, v in zip(binned_cm.unique(),
+                                             cm_color_options)}
+    print(cm_color_dict)
+    cm_colors = [cm_color_dict[m] for m in binned_cm]
+
+    # create ramp index color labels
+    binned_cm = pd.cut(mean_ramp, 108, labels=range(0, 108))
+    cm_color_options = sns.light_palette('red', 108)
+    cm_color_dict = {k: v for k, v in zip(binned_cm.unique(),
+                                             cm_color_options)}
+    print(cm_color_dict)
+    cm_colors = [cm_color_dict[m] for m in binned_cm]
+
 
     plt.close('all')
     plt.figure(figsize=(15, 15))
@@ -644,8 +660,6 @@ def trial_factors_across_mice_learning_stages(
                 ],
                 names=['mouse',
                 'component'])
-            tempo_df = pd.DataFrame(
-                sort_ensemble.results[rank_num][0].factors[1][:, :].T, index=index)
             tuning_df = pd.DataFrame(tuning_data, index=index)
             conds_df = pd.DataFrame(conds_data, index=index)
             error_df = pd.DataFrame(error_data, index=index)
@@ -653,8 +667,6 @@ def trial_factors_across_mice_learning_stages(
             ramp_df = pd.DataFrame(ramp_data, index=index)
 
             # create lists of dfs for concatenation
-            df_list_tempo.append(tempo_df)
-            df_list_index.append(pd.DataFrame(index=index))
             df_mouse_tuning.append(tuning_df)
             df_mouse_conds.append(conds_df)
             df_mouse_error.append(error_df)
@@ -664,8 +676,14 @@ def trial_factors_across_mice_learning_stages(
             oris_by_day.append(orientation)
             trialerr_by_day.append(trialerror)
 
+        # only get the temporal factors once
+        tempo_df = pd.DataFrame(
+                sort_ensemble.results[rank_num][0].factors[1][:, :].T,
+                index=index)
 
         # concatenate different columns per mouse
+        df_list_tempo.append(tempo_df)
+        df_list_index.append(pd.DataFrame(index=index))
         df_list_tuning.append(pd.concat(df_mouse_tuning, axis=1))
         df_list_conds.append(pd.concat(df_mouse_conds, axis=1))
         df_list_error.append(pd.concat(df_mouse_error, axis=1))
