@@ -78,12 +78,34 @@ def get_component_clusters_ori(clustering_df, cluster_number):
     return clustering_df
 
 
-def find_cluster_number_remove_indices(clustering_df, cluster_number, col_cluster=True):
+def find_cluster_number_remove_indices(
+        clustering_df,
+        cluster_number,
+        col_cluster=True,
+        auto_drop=True):
     """
     Plot your clustering df and annotated clusters for help choosing
     a reasonable number of clusters.
     """
 
+    if auto_drop:
+        clustering_df = clustering_df.drop(
+            columns=[
+                'plus_naive', 'minus_naive', 'neutral_naive',
+                'plus_low_dp_learning', 'minus_low_dp_learning',
+                'neutral_low_dp_learning', 'plus_low_dp_rev1',
+                'minus_low_dp_rev1', 'neutral_low_dp_rev1',
+                'hit_low_dp_learning', 'miss_low_dp_learning',
+                'correct_reject_low_dp_learning',
+                'false_alarm_low_dp_learning',
+                'hit_high_dp_learning', 'miss_high_dp_learning',
+                'correct_reject_high_dp_learning',
+                'false_alarm_high_dp_learning',
+                'hit_low_dp_rev1', 'miss_low_dp_rev1',
+                'correct_reject_low_dp_rev1',
+                'false_alarm_low_dp_rev1', 'hit_high_dp_rev1',
+                'miss_high_dp_rev1', 'correct_reject_high_dp_rev1',
+                'false_alarm_high_dp_rev1'])
     # if running mod, center of mass, or ramp index are included, remove
     # from columns and make a color vector for each
     learning_stages = [
@@ -143,7 +165,7 @@ def find_cluster_number_remove_indices(clustering_df, cluster_number, col_cluste
     plt.close('all')
     plt.figure(figsize=(15, 15))
     sns.clustermap(
-        clustering_df, row_colors=[mouse_colors, cm_colors, cluster_colors],
+        clustering_df, row_colors=[mouse_colors, cm_colors, ramp_colors, run_colors, cluster_colors],
         xticklabels=True, yticklabels=True, col_cluster=col_cluster)
 
 
