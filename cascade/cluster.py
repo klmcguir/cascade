@@ -116,7 +116,7 @@ def find_cluster_number_remove_indices(clustering_df, cluster_number, col_cluste
     mouse_colors = [mouse_color_dict[m] for m in mouse_list]
 
     # create center of mass color labels
-    binned_cm = pd.cut(test, 108, labels=range(0, 108))
+    binned_cm = pd.cut(center_of_mass, 108, labels=range(0, 108))
     cm_color_options = sns.light_palette('red', 108)
     cm_color_dict = {k: v for k, v in zip(binned_cm.unique(),
                                              cm_color_options)}
