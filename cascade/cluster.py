@@ -129,7 +129,11 @@ def find_cluster_number_remove_indices(
                 't270_high_dp_learning',
                 't0_low_dp_rev1', 't135_low_dp_rev1', 't270_low_dp_rev1',
                 't0_high_dp_rev1', 't135_high_dp_rev1', 't270_high_dp_rev1'])
+        nan_indexer = clustering_df.isna().any(axis=1)
         clustering_df = clustering_df.dropna(axis='rows')
+        mean_running_mod = mean_running_mod.loc[~nan_indexer, :]
+        mean_ramp = mean_ramp.loc[~nan_indexer, :]
+        center_of_mass = center_of_mass.loc[~nan_indexer, :]
 
     # cluster to get cluster color labels for each component
     g = sns.clustermap(clustering_df)
@@ -149,7 +153,7 @@ def find_cluster_number_remove_indices(
     # create center of mass color labels
     binned_cm = pd.cut(center_of_mass, 10, labels=range(0, 10))
     cm_color_options = sns.light_palette('red', 10)
-    cm_color_dict = {k: v for k, v in zip(binned_cm.unique(),
+    cm_color_dict = {k: v for k, v in zip(np.unique(binned_cm),
                                           cm_color_options)}
     print('cm', cm_color_dict)
     cm_colors = [cm_color_dict[m] for m in binned_cm]
@@ -157,7 +161,7 @@ def find_cluster_number_remove_indices(
     # create running mod color labels
     binned_run = pd.cut(mean_running_mod, 10, labels=range(0, 10))
     run_color_options = sns.light_palette('purple', 10)
-    run_color_dict = {k: v for k, v in zip(binned_run.unique(),
+    run_color_dict = {k: v for k, v in zip(np.unique(binned_run),
                                            run_color_options)}
     print('run', run_color_dict)
     run_colors = [run_color_dict[m] for m in binned_run]
@@ -165,11 +169,10 @@ def find_cluster_number_remove_indices(
     # create ramp index color labels
     binned_ramp = pd.cut(mean_ramp, 11, labels=range(0, 11))
     ramp_color_options = sns.diverging_palette(10, 220, sep=80, n=11)
-    ramp_color_dict = {k: v for k, v in zip(binned_ramp.unique(),
+    ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
                                             ramp_color_options)}
     print('ramp', ramp_color_dict)
     ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
-
 
     plt.close('all')
     plt.figure(figsize=(15, 15))
