@@ -174,10 +174,17 @@ def find_cluster_number_remove_indices(
     print('ramp', ramp_color_dict)
     ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
 
+    data = {'mouse': mouse_colors,
+            'center_of_mass': cm_colors,
+            'running_modulation': run_colors,
+            'ramp_index': ramp_colors,
+            'cluster': cluster_colors}
+    color_df = pd.DataFrame(data=data, index=clustering_df.index)
+# [mouse_colors, cm_colors, ramp_colors, run_colors, cluster_colors]
     plt.close('all')
     plt.figure(figsize=(15, 15))
     sns.clustermap(
-        clustering_df, row_colors=[mouse_colors, cm_colors, ramp_colors, run_colors, cluster_colors],
+        clustering_df, row_colors=color_df,
         xticklabels=True, yticklabels=True, col_cluster=col_cluster)
 
 
