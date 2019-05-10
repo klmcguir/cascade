@@ -83,6 +83,18 @@ def find_cluster_number_ori(clustering_df, cluster_number, col_cluster=True):
     Plot your clustering df and annotated clusters for help choosing
     a reasonable number of clusters.
     """
+
+    # if running mod, center of mass, or ramp index are included, remove
+    # from columns and make a color vector for each
+    learning_stages = [
+            'naive', 'low_dp_learning', 'high_dp_learning', 'low_dp_rev1',
+            'high_dp_rev1']
+    for stage in learning_stages:
+        run_stage = 'running_modulation_' + stage
+        ramp_stage = 'ramp_index_' + stage
+    if ramp_stage in clustering_df.columns:
+        clustering_df = clustering_df.drop(columns=[''])
+
     g = sns.clustermap(clustering_df)
     row_sorter = g.dendrogram_row.reordered_ind
     clusters = hierarchy.fcluster(
@@ -565,15 +577,13 @@ def trial_factors_across_mice_learning_stages(
                         indexer, c],
                     axis=0)
             # normalize using summed mean response to both running states
-            run_total = np.nansum(running_calc, axis=0)
-            # if np.nansum(run_total) > 0:
-            for i in range(2):
-                running_calc[i, :] = np.divide(
-                    running_calc[i, :], run_total)
+            # run_total = np.nansum(running_calc, axis=0)
+            running_mod = running_calc[0, :]/(running_calc[0, :] +
+                                              running_calc[1, :])
             # dict for creating dataframe
             # take only running/(running + stationary) value
             running_data = {}
-            running_data['running_modulation_' + stage] = running_calc[0, :]
+            running_data['running_modulation_' + stage] = running_mod
 
             # ------------- EARLY/LATE RAMP INDEX for preferred ori
 
@@ -583,8 +593,8 @@ def trial_factors_across_mice_learning_stages(
             ramp_calc = np.zeros((2, rank_num))
             # build your date indexer for the first and last half of the day
             # need indexer df indices to match
-            early_indexer = orientation == 'not_this'
-            late_indexer = orientation == 'not_this'
+            early_indexer = orientation.isin(['not_this'])
+            late_indexer = orientation.isin(['not_this'])
             for day in np.unique(dates):
                 day_idx = np.where(dates.isin([day]))[0]
                 early_indexer[day_idx[0:int(len(day_idx)/2)]] = True
@@ -613,7 +623,7 @@ def trial_factors_across_mice_learning_stages(
             # dict for creating dataframe
             # take only running/(running + stationary) value
             ramp_data = {}
-            ramp_data['ramp_index' + stage] = ramp_index
+            ramp_data['ramp_index_' + stage] = ramp_index
 
             # ------------ CREATE PANDAS DF
 
