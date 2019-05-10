@@ -155,7 +155,6 @@ def find_cluster_number_remove_indices(
     cm_color_options = sns.light_palette('red', 10)
     cm_color_dict = {k: v for k, v in zip(np.unique(binned_cm),
                                           cm_color_options)}
-    print('cm', cm_color_dict)
     cm_colors = [cm_color_dict[m] for m in binned_cm]
 
     # create running mod color labels
@@ -163,7 +162,6 @@ def find_cluster_number_remove_indices(
     run_color_options = sns.light_palette('purple', 10)
     run_color_dict = {k: v for k, v in zip(np.unique(binned_run),
                                            run_color_options)}
-    print('run', run_color_dict)
     run_colors = [run_color_dict[m] for m in binned_run]
 
     # create ramp index color labels
@@ -171,7 +169,6 @@ def find_cluster_number_remove_indices(
     ramp_color_options = sns.diverging_palette(10, 220, sep=80, n=11)
     ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
                                             ramp_color_options)}
-    print('ramp', ramp_color_dict)
     ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
 
     data = {'mouse': mouse_colors,
@@ -182,9 +179,8 @@ def find_cluster_number_remove_indices(
     color_df = pd.DataFrame(data=data, index=clustering_df.index)
 # [mouse_colors, cm_colors, ramp_colors, run_colors, cluster_colors]
     plt.close('all')
-    plt.figure(figsize=(15, 15))
     sns.clustermap(
-        clustering_df, row_colors=color_df,
+        clustering_df, row_colors=color_df, figsize=(15, 15),
         xticklabels=True, yticklabels=True, col_cluster=col_cluster)
 
 
