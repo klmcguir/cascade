@@ -616,12 +616,6 @@ def trial_factors_across_mice_learning_stages(
                     axis=0)
             # normalize using summed mean response to both early/late
             ramp_index = np.log2(ramp_calc[1, :]/ramp_calc[0, :])
-            # if np.nansum(run_total) > 0:
-            for i in range(2):
-                running_calc[i, :] = np.divide(
-                    running_calc[i, :], run_total)
-            # dict for creating dataframe
-            # take only running/(running + stationary) value
             ramp_data = {}
             ramp_data['ramp_index_' + stage] = ramp_index
 
