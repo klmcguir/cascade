@@ -78,7 +78,7 @@ def get_component_clusters_ori(clustering_df, cluster_number):
     return clustering_df
 
 
-def find_cluster_number_ori(clustering_df, cluster_number, col_cluster=True):
+def find_cluster_number_remove_indices(clustering_df, cluster_number, col_cluster=True):
     """
     Plot your clustering df and annotated clusters for help choosing
     a reasonable number of clusters.
@@ -89,12 +89,18 @@ def find_cluster_number_ori(clustering_df, cluster_number, col_cluster=True):
     learning_stages = [
             'naive', 'low_dp_learning', 'high_dp_learning', 'low_dp_rev1',
             'high_dp_rev1']
-    for stage in learning_stages:
-        run_stage = 'running_modulation_' + stage
-        ramp_stage = 'ramp_index_' + stage
-    if ramp_stage in clustering_df.columns:
-        clustering_df = clustering_df.drop(columns=[''])
+    run_stage = ['running_modulation_' + stage for stage in learning_stages]
+    ramp_stage = ['ramp_index_' + stage for stage in learning_stages]
+    mean_running_mod = clustering_df.loc[:, run_stage].mean(axis=1)
+    mean_ramp = clustering_df.loc[:, ramp_stage].mean(axis=1)
+    center_of_mass = clustering_df.loc[:, 'center_of_mass']
 
+    # drop columns you don't want to cluster
+    clustering_df = clustering_df.drop(columns=run_stage)
+    clustering_df = clustering_df.drop(columns=ramp_stage)
+    clustering_df = clustering_df.drop(columns=['center_of_mass'])
+
+    # cluster to get cluster color labels for each component
     g = sns.clustermap(clustering_df)
     row_sorter = g.dendrogram_row.reordered_ind
     clusters = hierarchy.fcluster(
@@ -102,16 +108,27 @@ def find_cluster_number_ori(clustering_df, cluster_number, col_cluster=True):
     cluster_color_options = sns.color_palette('hls', cluster_number)
     cluster_colors = [cluster_color_options[i-1] for i in clusters]
 
+    # create mouse color labels
     mouse_list = clustering_df.reset_index().loc[:, 'mouse']
     mouse_color_options = sns.light_palette('navy', len(mouse_list.unique()))
     mouse_color_dict = {k: v for k, v in zip(mouse_list.unique(),
                                              mouse_color_options)}
     mouse_colors = [mouse_color_dict[m] for m in mouse_list]
 
+    # create center of mass color labels
+    binned_cm = pd.cut(test, 108, labels=range(0, 108))
+    cm_color_options = sns.light_palette('red', 108)
+    cm_color_dict = {k: v for k, v in zip(binned_cm.unique(),
+                                             cm_color_options)}
+    print(cm_color_dict)
+    cm_colors = [cm_color_dict[m] for m in binned_cm]
+
+
     plt.close('all')
     plt.figure(figsize=(15, 15))
-    sns.clustermap(clustering_df, row_colors=[mouse_colors, cluster_colors],
-                   xticklabels=True, yticklabels=True, col_cluster=col_cluster)
+    sns.clustermap(
+        clustering_df, row_colors=[mouse_colors, cm_colors, cluster_colors],
+        xticklabels=True, yticklabels=True, col_cluster=col_cluster)
 
 
 def find_cluster_number_tempo(clustering_df, cluster_number, col_cluster=False):
@@ -665,5 +682,13 @@ def trial_factors_across_mice_learning_stages(
     # all_index_df = pd.concat(df_list_index, axis=0)
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df,
                                 all_runmod_df, all_ramp_df], axis=1)
+
+    # calculate center of mass for your temporal components
+    tr = all_tempo_df.values
+    pos = np.arange(1, np.shape(tr)[1]+1)
+    center_of_mass = []
+    for i in range(np.shape(tr)[0]):
+        center_of_mass.append(np.sum(tr[i, :] * pos)/np.sum(tr[i, :]))
+    trial_factor_df['center_of_mass'] = center_of_mass
 
     return trial_factor_df, all_tempo_df
