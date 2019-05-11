@@ -16,6 +16,10 @@ from .. import paths
 from .. import utils
 import warnings
 
+"""
+----------------------------- SINGLEDAY PLOTS -----------------------------
+"""
+
 
 def singleday_noisecorr(
         # TCA params
