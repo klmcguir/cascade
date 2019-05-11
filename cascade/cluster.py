@@ -107,30 +107,12 @@ def find_cluster_number_remove_indices(
     clustering_df = clustering_df.drop(columns=['center_of_mass'])
 
     if auto_drop:
-        clustering_df = clustering_df.drop(
-            columns=[
-                'plus_naive', 'minus_naive', 'neutral_naive',
-                'plus_low_dp_learning', 'minus_low_dp_learning',
-                'neutral_low_dp_learning', 'plus_low_dp_rev1',
-                'minus_low_dp_rev1', 'neutral_low_dp_rev1',
-                'hit_low_dp_learning', 'miss_low_dp_learning',
-                'correct_reject_low_dp_learning',
-                'false_alarm_low_dp_learning',
-                'hit_high_dp_learning', 'miss_high_dp_learning',
-                'correct_reject_high_dp_learning',
-                'false_alarm_high_dp_learning',
-                'hit_low_dp_rev1', 'miss_low_dp_rev1',
-                'correct_reject_low_dp_rev1',
-                'false_alarm_low_dp_rev1', 'hit_high_dp_rev1',
-                'miss_high_dp_rev1', 'correct_reject_high_dp_rev1',
-                'false_alarm_high_dp_rev1',
-                't0_naive', 't135_naive', 't270_naive',
-                't0_low_dp_learning', 't135_low_dp_learning',
-                't270_low_dp_learning',
-                't0_high_dp_learning', 't135_high_dp_learning',
-                't270_high_dp_learning',
-                't0_low_dp_rev1', 't135_low_dp_rev1', 't270_low_dp_rev1',
-                't0_high_dp_rev1', 't135_high_dp_rev1', 't270_high_dp_rev1'])
+        keep_cols = ['plus_high_dp_learning', 'neutral_high_dp_learning',
+                     'minus_high_dp_learning', 'plus_high_dp_rev1',
+                     'minus_high_dp_rev1', 'neutral_high_dp_rev1']
+        drop_inds = ~clustering_df.columns.isin(keep_cols)
+        drop_cols = clustering_df.columns[drop_inds]
+        clustering_df = clustering_df.drop(columns=drop_cols)
         nan_indexer = clustering_df.isna().any(axis=1)
         clustering_df = clustering_df.dropna(axis='rows')
         mean_running_mod = mean_running_mod.loc[~nan_indexer, :]
