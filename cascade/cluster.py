@@ -90,9 +90,11 @@ def find_cluster_number_remove_indices(
 
     # if running mod, center of mass, or ramp index are included, remove
     # from columns and make a color vector for each
+    # learning_stages = [
+    #         'naive', 'low_dp_learning', 'high_dp_learning', 'low_dp_rev1',
+    #         'high_dp_rev1']
     learning_stages = [
-            'naive', 'low_dp_learning', 'high_dp_learning', 'low_dp_rev1',
-            'high_dp_rev1']
+            'pre_rev1']
     run_stage = ['running_modulation_' + stage for stage in learning_stages]
     ramp_stage = ['ramp_index_' + stage for stage in learning_stages]
     mean_running_mod = clustering_df.loc[:, run_stage].mean(axis=1)
@@ -546,7 +548,7 @@ def trial_factors_across_mice_learning_stages(
 
         learning_stages = [
             'naive', 'low_dp_learning', 'high_dp_learning', 'low_dp_rev1',
-            'high_dp_rev1']
+            'high_dp_rev1', 'pre_rev1']
         df_mouse_tuning = []
         df_mouse_conds = []
         df_mouse_error = []
@@ -564,6 +566,8 @@ def trial_factors_across_mice_learning_stages(
                 indexer = learning_state.isin(['reversal1']) & (dprime < 2)
             elif stage == 'high_dp_rev1':
                 indexer = learning_state.isin(['reversal1']) & (dprime >= 2)
+            elif stage == 'pre_rev1':
+                indexer = learning_state.isin(['naive', 'learning'])
 
             # ------------- GET TUNING
 
