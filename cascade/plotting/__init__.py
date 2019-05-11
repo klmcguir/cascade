@@ -1,2 +1,2 @@
-from . import tca, xday, stitch, cluster
+from . import tca, xday, stitch, cluster, correlate
 from .. import df
