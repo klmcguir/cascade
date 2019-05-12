@@ -149,8 +149,8 @@ def find_cluster_number_remove_indices(
     # run_colors = [run_color_dict[m] for m in binned_run]
     bins =[-np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0,
            0.2, 0.4, 0.6, 0.8, 1, np.inf]
-    binned_run = pd.cut(mean_running_mod, bins, labels=range(0, 11))
-    run_color_options = sns.diverging_palette(220, 10, n=11)
+    binned_run = pd.cut(mean_running_mod, bins, labels=range(0, 12))
+    run_color_options = sns.diverging_palette(220, 10, n=12)
     run_color_dict = {k: v for k, v in zip(np.unique(binned_run),
                                            run_color_options)}
     run_colors = [run_color_dict[m] for m in binned_run]
@@ -158,8 +158,8 @@ def find_cluster_number_remove_indices(
     # create ramp index color labels
     bins =[-np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0,
            0.2, 0.4, 0.6, 0.8, 1, np.inf]
-    binned_ramp = pd.cut(mean_ramp, bins, labels=range(0, 11))
-    ramp_color_options = sns.diverging_palette(220, 10, n=11)
+    binned_ramp = pd.cut(mean_ramp, bins, labels=range(0, 12))
+    ramp_color_options = sns.diverging_palette(220, 10, n=12)
     ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
                                             ramp_color_options)}
     ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
