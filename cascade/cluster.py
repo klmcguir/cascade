@@ -142,19 +142,29 @@ def find_cluster_number_remove_indices(
     cm_colors = [cm_color_dict[m] for m in binned_cm]
 
     # create running mod color labels
-    binned_run = pd.cut(mean_running_mod, 10, labels=range(0, 10))
-    run_color_options = sns.light_palette('purple', 10)
+    # binned_run = pd.cut(mean_running_mod, 10, labels=range(0, 10))
+    # run_color_options = sns.light_palette('purple', 10)
+    # run_color_dict = {k: v for k, v in zip(np.unique(binned_run),
+    #                                        run_color_options)}
+    # run_colors = [run_color_dict[m] for m in binned_run]
+    bins =[-np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0,
+           0.2, 0.4, 0.6, 0.8, 1, np.inf]
+    binned_run = pd.cut(mean_running_mod, bins, labels=range(0, 11))
+    run_color_options = sns.diverging_palette(220, 10, n=11)
     run_color_dict = {k: v for k, v in zip(np.unique(binned_run),
                                            run_color_options)}
     run_colors = [run_color_dict[m] for m in binned_run]
 
     # create ramp index color labels
-    binned_ramp = pd.cut(mean_ramp, 11, labels=range(0, 11))
-    ramp_color_options = sns.diverging_palette(10, 220, sep=80, n=11)
+    bins =[-np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0,
+           0.2, 0.4, 0.6, 0.8, 1, np.inf]
+    binned_ramp = pd.cut(mean_ramp, bins, labels=range(0, 11))
+    ramp_color_options = sns.diverging_palette(220, 10, n=11)
     ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
                                             ramp_color_options)}
     ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
 
+    # create df of running colors for row colors
     data = {'mouse': mouse_colors,
             'center_of_mass': cm_colors,
             'running_modulation': run_colors,
@@ -634,8 +644,9 @@ def trial_factors_across_mice_learning_stages(
                     axis=0)
             # normalize using summed mean response to both running states
             # run_total = np.nansum(running_calc, axis=0)
-            running_mod = running_calc[0, :]/(running_calc[0, :] +
-                                              running_calc[1, :])
+            # running_mod = running_calc[0, :]/(running_calc[0, :] +
+            #                                   running_calc[1, :])
+            running_mod = np.log2(running_calc[0, :]/running_calc[1, :])
             # dict for creating dataframe
             # take only running/(running + stationary) value
             running_data = {}
