@@ -1033,11 +1033,11 @@ def trial_factors_summary_across_mice_days(
         # concatenate different columns per mouse
         df_list_tempo.append(tempo_df)
         df_list_index.append(pd.DataFrame(index=index))
-        df_list_tuning.append(pd.concat(df_mouse_tuning, axis=1))
-        df_list_conds.append(pd.concat(df_mouse_conds, axis=1))
-        df_list_error.append(pd.concat(df_mouse_error, axis=1))
-        df_list_runmod.append(pd.concat(df_mouse_runmod, axis=1))
-        df_list_ramp.append(pd.concat(df_mouse_ramp, axis=1))
+        df_list_tuning.append(pd.concat(df_mouse_tuning, axis=0))
+        df_list_conds.append(pd.concat(df_mouse_conds, axis=0))
+        df_list_error.append(pd.concat(df_mouse_error, axis=0))
+        df_list_runmod.append(pd.concat(df_mouse_runmod, axis=0))
+        df_list_ramp.append(pd.concat(df_mouse_ramp, axis=0))
 
     # concatenate all mice/runs together in final dataframe
     all_tempo_df = pd.concat(df_list_tempo, axis=0)
