@@ -859,7 +859,7 @@ def trial_factors_summary_across_mice_days(
 
         # create dataframe of dprime values
         dprime_vec = []
-        for date in dates['date']:
+        for date in dates:
             date_obj = flow.Date(mouse, date=date)
             dprime_vec.append(pool.calc.performance.dprime(date_obj))
         data = {'dprime': dprime_vec}
