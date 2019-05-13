@@ -963,7 +963,7 @@ def trial_factors_summary_across_mice_days(
             # dict for creating dataframe
             # take only running/(running + stationary) value
             running_data = {}
-            running_data[day] = running_mod
+            running_data['running_mod'] = running_mod
 
             # ------------- EARLY/LATE RAMP INDEX for preferred ori
 
@@ -1056,6 +1056,8 @@ def trial_factors_summary_across_mice_days(
     center_of_mass = []
     for i in range(np.shape(tr)[0]):
         center_of_mass.append(np.sum(tr[i, :] * pos)/np.sum(tr[i, :]))
-    trial_factor_df['center_of_mass'] = center_of_mass
+    data = {'center_of_mass': center_of_mass}
+    new_tempo_df = pd.DataFrame(data=data, index=all_tempo_df.index)
+    trial_factor_df = pd.concat([trial_factor_df, new_tempo_dfnew])
 
     return trial_factor_df, all_tempo_df
