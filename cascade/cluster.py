@@ -872,7 +872,9 @@ def trial_factors_summary_across_mice_days(
         df_mouse_ramp = []
 
         for day in np.unique(dates):
-            indexer = np.where(dates.isin([day]))[0]
+
+            # set day indexer
+            indexer = dates.isin([day])
 
             # ------------- GET TUNING
 
