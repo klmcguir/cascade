@@ -940,6 +940,7 @@ def trial_factors_summary_across_mice_days(
                 error_CR[day] = error_weights[2, :]
                 error_FA[day] = error_weights[4, :]
             else:
+                error_hit, error_miss, error_CR, error_FA = {}, {}, {}, {}
                 error_hit[day] = []
                 error_miss[day] = []
                 error_CR[day] = []
