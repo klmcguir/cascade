@@ -913,7 +913,7 @@ def trial_factors_summary_across_mice_days(
             # dict for creating dataframe
             conds_data = {}
             for c, errset in enumerate(conds_to_check):
-                conds_data[errset + '_' + stage] = conds_weights[c, :]
+                conds_data[errset] = conds_weights[c, :]
 
             # ------------- GET Trialerror TUNING
 
