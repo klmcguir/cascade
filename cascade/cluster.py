@@ -839,7 +839,7 @@ def trial_factors_summary_across_mice_days(
         trialerror = meta['trialerror']
         hunger = deepcopy(meta['hunger'])
         speed = meta['speed']
-        dates = meta.reset_index()['date']
+        dates = pd.DataFrame(data=meta.reset_index()['date'], index=meta.index)
         learning_state = meta['learning_state']
 
         # sort neuron factors by component they belong to most
