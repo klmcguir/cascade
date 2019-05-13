@@ -839,7 +839,7 @@ def trial_factors_summary_across_mice_days(
         trialerror = meta['trialerror']
         hunger = deepcopy(meta['hunger'])
         speed = meta['speed']
-        dates = pd.DataFrame(data={'date': meta.reset_index()['date']}, index=meta.index)
+        dates = pd.DataFrame(data={'date': meta.index.get_level_values('date')}, index=meta.index)
         learning_state = meta['learning_state']
 
         # sort neuron factors by component they belong to most
@@ -858,7 +858,7 @@ def trial_factors_summary_across_mice_days(
 
         # create dataframe of dprime values
         dprime_vec = []
-        for date in dates:
+        for date in dates['date']:
             date_obj = flow.Date(mouse, date=date)
             dprime_vec.append(pool.calc.performance.dprime(date_obj))
         data = {'dprime': dprime_vec}
