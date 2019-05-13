@@ -892,10 +892,9 @@ def trial_factors_summary_across_mice_days(
                 tuning_weights[c, :] = np.divide(
                     tuning_weights[c, :], tuning_total)
             # dict for creating dataframe
-            tuning_0, tuning_135, tuning_270 = {}, {}, {}
-            tuning_0[day] = tuning_weights[0, :]
-            tuning_135[day] = tuning_weights[1, :]
-            tuning_270[day] = tuning_weights[2, :]
+            tuning_data = {}
+            for c, errset in enumerate(oris_to_check):
+                tuning_data['t' + str(errset)] = tuning_weights[c, :]
 
             # ------------- GET Condition TUNING
 
@@ -912,10 +911,9 @@ def trial_factors_summary_across_mice_days(
                 conds_weights[c, :] = np.divide(
                     conds_weights[c, :], conds_total)
             # dict for creating dataframe
-            conds_plus, conds_minus, conds_neutral = {}, {}, {}
-            conds_plus[day] = conds_weights[0, :]
-            conds_minus[day] = conds_weights[1, :]
-            conds_neutral[day] = conds_weights[2, :]
+            conds_data = {}
+            for c, errset in enumerate(conds_to_check):
+                conds_data[errset + '_' + stage] = conds_weights[c, :]
 
             # ------------- GET Trialerror TUNING
 
@@ -934,17 +932,11 @@ def trial_factors_summary_across_mice_days(
                     error_weights[c, :] = np.divide(
                         error_weights[c, :], error_total)
                 # dict for creating dataframe
-                error_hit, error_miss, error_CR, error_FA = {}, {}, {}, {}
-                error_hit[day] = error_weights[0, :]
-                error_miss[day] = error_weights[1, :]
-                error_CR[day] = error_weights[2, :]
-                error_FA[day] = error_weights[4, :]
+                error_data = {}
+                for c, errset in enumerate(err_val):
+                    error_data[errset] = error_weights[c, :]
             else:
-                error_hit, error_miss, error_CR, error_FA = {}, {}, {}, {}
-                error_hit[day] = []
-                error_miss[day] = []
-                error_CR[day] = []
-                error_FA[day] = []
+                error_data = []
 
             # ------------- RUNNING MODULATION for preferred ori
 
@@ -1011,9 +1003,10 @@ def trial_factors_summary_across_mice_days(
 
             index = pd.MultiIndex.from_arrays([
                 [mouse] * rank_num,
+                [date] * rank_num,
                 range(1, rank_num+1)
                 ],
-                names=['mouse',
+                names=['mouse', 'date'
                 'component'])
             tuning_df = pd.DataFrame(tuning_data, index=index)
             conds_df = pd.DataFrame(conds_data, index=index)
