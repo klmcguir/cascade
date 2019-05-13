@@ -997,7 +997,7 @@ def trial_factors_summary_across_mice_days(
             # normalize using summed mean response to both early/late
             ramp_index = np.log2(ramp_calc[1, :]/ramp_calc[0, :])
             ramp_data = {}
-            ramp_data[day] = ramp_index
+            ramp_data['ramp_index'] = ramp_index
 
             # ------------ CREATE PANDAS DF
 
@@ -1058,6 +1058,6 @@ def trial_factors_summary_across_mice_days(
         center_of_mass.append(np.sum(tr[i, :] * pos)/np.sum(tr[i, :]))
     data = {'center_of_mass': center_of_mass}
     new_tempo_df = pd.DataFrame(data=data, index=all_tempo_df.index)
-    trial_factor_df = pd.concat([trial_factor_df, new_tempo_dfnew], axis=1)
+    trial_factor_df = pd.concat([trial_factor_df, new_tempo_df], axis=1)
 
     return trial_factor_df, all_tempo_df
