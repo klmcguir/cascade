@@ -1006,8 +1006,9 @@ def trial_factors_summary_across_mice_days(
                 [date] * rank_num,
                 range(1, rank_num+1)
                 ],
-                names=['mouse', 'date'
-                'component'])
+                names=['mouse',
+                       'date',
+                       'component'])
             tuning_df = pd.DataFrame(tuning_data, index=index)
             conds_df = pd.DataFrame(conds_data, index=index)
             error_df = pd.DataFrame(error_data, index=index)
