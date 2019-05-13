@@ -1026,6 +1026,12 @@ def trial_factors_summary_across_mice_days(
             trialerr_by_day.append(trialerror)
 
         # only get the temporal factors once
+        index = pd.MultiIndex.from_arrays([
+            [mouse] * rank_num,
+            range(1, rank_num+1)
+            ],
+            names=['mouse',
+                   'component'])
         tempo_df = pd.DataFrame(
                 sort_ensemble.results[rank_num][0].factors[1][:, :].T,
                 index=index)
@@ -1058,6 +1064,6 @@ def trial_factors_summary_across_mice_days(
         center_of_mass.append(np.sum(tr[i, :] * pos)/np.sum(tr[i, :]))
     data = {'center_of_mass': center_of_mass}
     new_tempo_df = pd.DataFrame(data=data, index=all_tempo_df.index)
-    trial_factor_df = pd.concat([trial_factor_df, new_tempo_df], axis=1)
+    trial_factor_df = trial_factor_df.join(new_tempo_df)
 
     return trial_factor_df, all_tempo_df
