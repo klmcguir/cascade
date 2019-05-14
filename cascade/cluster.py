@@ -907,8 +907,9 @@ def trial_factors_summary_across_mice_days(
             trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
             tuning_weights = np.zeros((3, rank_num))
             oris_to_check = [0, 135, 270]
-            scale_factor = (np.nanmean(trial_weights[indexer, :], axis=0)/
-                            np.nanmax(trial_weights[:, :], axis=0))
+            # scale_factor = (np.nanmean(trial_weights[indexer, :], axis=0)/
+            #                 np.nanmax(trial_weights[:, :], axis=0))
+            scale_factor = np.nanmean(trial_weights[indexer, :], axis=0)
             for c, ori in enumerate(oris_to_check):
                 tuning_weights[c, :] = np.nanmean(
                     trial_weights[(orientation == ori) & indexer, :], axis=0)
@@ -918,8 +919,9 @@ def trial_factors_summary_across_mice_days(
             for c in range(len(oris_to_check)):
                 tuning_weights[c, :] = np.divide(
                     tuning_weights[c, :], tuning_total)
-                tuning_weights[c, :] = np.multiply(
-                    tuning_weights[c, :], scale_factor)
+                # tuning_weights[c, :] = np.multiply(
+                #     tuning_weights[c, :], scale_factor)
+                tuning_weights[c, scale_factor < 0.05] = 0
             # dict for creating dataframe
             tuning_sc_data = {}
             for c, errset in enumerate(oris_to_check):
