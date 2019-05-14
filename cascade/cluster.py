@@ -804,6 +804,7 @@ def trial_factors_summary_across_mice_days(
     # factors_by_day = []
     day_list = []
     df_list_tempo = []
+    df_list_tuning_sc = []
     df_list_tuning = []
     df_list_conds = []
     df_list_error = []
@@ -867,6 +868,7 @@ def trial_factors_summary_across_mice_days(
         dprime = dprime['dprime']  # make indices match to meta
 
         df_mouse_tuning = []
+        df_mouse_tuning_scaled = []
         df_mouse_conds = []
         df_mouse_error = []
         df_mouse_runmod = []
@@ -899,6 +901,29 @@ def trial_factors_summary_across_mice_days(
             tuning_data = {}
             for c, errset in enumerate(oris_to_check):
                 tuning_data['t' + str(errset)] = tuning_weights[c, :]
+
+            # ------------- GET SCALED TUNING
+
+            trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
+            tuning_weights = np.zeros((3, rank_num))
+            oris_to_check = [0, 135, 270]
+            scale_factor = (np.nanmean(trial_weights[indexer, :], axis=0)/
+                            np.nanmax(trial_weights[:, :], axis=0))
+            for c, ori in enumerate(oris_to_check):
+                tuning_weights[c, :] = np.nanmean(
+                    trial_weights[(orientation == ori) & indexer, :], axis=0)
+            # normalize using summed mean response to all three
+            tuning_total = np.nansum(tuning_weights, axis=0)
+            # if np.nansum(tuning_total) > 0:
+            for c in range(len(oris_to_check)):
+                tuning_weights[c, :] = np.divide(
+                    tuning_weights[c, :], tuning_total)
+                tuning_weights[c, :] = np.multiply(
+                    tuning_weights[c, :], scale_factor)
+            # dict for creating dataframe
+            tuning_sc_data = {}
+            for c, errset in enumerate(oris_to_check):
+                tuning_sc_data['sc' + str(errset)] = tuning_weights[c, :]
 
             # ------------- GET Condition TUNING
 
@@ -1014,6 +1039,7 @@ def trial_factors_summary_across_mice_days(
                        'date',
                        'component'])
             tuning_df = pd.DataFrame(tuning_data, index=index)
+            tuning_sc_df = pd.DataFrame(tuning_scaled_data, index=index)
             conds_df = pd.DataFrame(conds_data, index=index)
             error_df = pd.DataFrame(error_data, index=index)
             running_df = pd.DataFrame(running_data, index=index)
@@ -1021,6 +1047,7 @@ def trial_factors_summary_across_mice_days(
 
             # create lists of dfs for concatenation
             df_mouse_tuning.append(tuning_df)
+            df_mouse_tuning_scaled.append(tuning_sc_df)
             df_mouse_conds.append(conds_df)
             df_mouse_error.append(error_df)
             df_mouse_runmod.append(running_df)
@@ -1044,6 +1071,7 @@ def trial_factors_summary_across_mice_days(
         df_list_tempo.append(tempo_df)
         df_list_index.append(pd.DataFrame(index=index))
         df_list_tuning.append(pd.concat(df_mouse_tuning, axis=0))
+        df_list_tuning_sc.append(pd.concat(df_mouse_tuning_scaled, axis=0))
         df_list_conds.append(pd.concat(df_mouse_conds, axis=0))
         df_list_error.append(pd.concat(df_mouse_error, axis=0))
         df_list_runmod.append(pd.concat(df_mouse_runmod, axis=0))
@@ -1052,12 +1080,14 @@ def trial_factors_summary_across_mice_days(
     # concatenate all mice/runs together in final dataframe
     all_tempo_df = pd.concat(df_list_tempo, axis=0)
     all_tuning_df = pd.concat(df_list_tuning, axis=0)
+    all_tuning_sc_df = pd.concat(df_list_tuning_sc, axis=0)
     all_conds_df = pd.concat(df_list_conds, axis=0)
     all_error_df = pd.concat(df_list_error, axis=0)
     all_runmod_df = pd.concat(df_list_runmod, axis=0)
     all_ramp_df = pd.concat(df_list_ramp, axis=0)
     # all_index_df = pd.concat(df_list_index, axis=0)
-    trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df,
+    trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_tuning_sc_df,
+                                all_error_df,
                                 all_runmod_df, all_ramp_df], axis=1)
 
     # calculate center of mass for your temporal components
