@@ -1039,7 +1039,7 @@ def trial_factors_summary_across_mice_days(
                        'date',
                        'component'])
             tuning_df = pd.DataFrame(tuning_data, index=index)
-            tuning_sc_df = pd.DataFrame(tuning_scaled_data, index=index)
+            tuning_sc_df = pd.DataFrame(tuning_sc_data, index=index)
             conds_df = pd.DataFrame(conds_data, index=index)
             error_df = pd.DataFrame(error_data, index=index)
             running_df = pd.DataFrame(running_data, index=index)
