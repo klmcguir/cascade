@@ -1025,8 +1025,7 @@ def groupday_tca(
             ensemble[m].results = results
         np.save(output_tensor_path, ensemble)
     elif np.isin('mncp_hals', method):
-        mask = np.ones(np.shape(group_tensor))
-        mask[np.isnan(group_tensor)] = 0
+        mask = ~np.isnan(group_tensor)
         group_tensor[np.isnan(group_tensor)] = 0
         ensemble = {}
         results = {}
