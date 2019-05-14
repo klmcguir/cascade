@@ -975,8 +975,8 @@ def trial_factors_summary_across_mice_days(
             # need indexer df indices to match
             early_indexer = orientation.isin(['not_this'])
             late_indexer = orientation.isin(['not_this'])
-            for day in np.unique(dates):
-                day_idx = np.where(dates.isin([day]))[0]
+            for d in np.unique(dates):
+                day_idx = np.where(dates.isin([d]))[0]
                 early_indexer[day_idx[0:int(len(day_idx)/2)]] = True
                 late_indexer[day_idx[int(len(day_idx)/2):-1]] = True
             # get early vs late mean dff for preferred ori per component
@@ -1039,11 +1039,11 @@ def trial_factors_summary_across_mice_days(
         # concatenate different columns per mouse
         df_list_tempo.append(tempo_df)
         df_list_index.append(pd.DataFrame(index=index))
-        df_list_tuning.append(pd.concat(df_mouse_tuning, axis=1))
-        df_list_conds.append(pd.concat(df_mouse_conds, axis=1))
-        df_list_error.append(pd.concat(df_mouse_error, axis=1))
-        df_list_runmod.append(pd.concat(df_mouse_runmod, axis=1))
-        df_list_ramp.append(pd.concat(df_mouse_ramp, axis=1))
+        df_list_tuning.append(pd.concat(df_mouse_tuning, axis=0))
+        df_list_conds.append(pd.concat(df_mouse_conds, axis=0))
+        df_list_error.append(pd.concat(df_mouse_error, axis=0))
+        df_list_runmod.append(pd.concat(df_mouse_runmod, axis=0))
+        df_list_ramp.append(pd.concat(df_mouse_ramp, axis=0))
 
     # concatenate all mice/runs together in final dataframe
     all_tempo_df = pd.concat(df_list_tempo, axis=0)
