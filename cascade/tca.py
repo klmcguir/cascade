@@ -1012,7 +1012,7 @@ def groupday_tca(
 
     # run TCA - iterate over different fitting methods
     if np.isin('mcp_als', method):
-        mask = np.ones((cell_num, np.shape(tensor_list[0])[1], trial_num))
+        mask = np.ones(np.shape(group_tensor))
         mask[np.isnan(group_tensor)] = 0
         group_tensor[np.isnan(group_tensor)] = 0
         ensemble = {}
@@ -1025,7 +1025,7 @@ def groupday_tca(
             ensemble[m].results = results
         np.save(output_tensor_path, ensemble)
     elif np.isin('mncp_hals', method):
-        mask = np.ones((cell_num, np.shape(tensor_list[0])[1], trial_num))
+        mask = np.ones(np.shape(group_tensor))
         mask[np.isnan(group_tensor)] = 0
         group_tensor[np.isnan(group_tensor)] = 0
         ensemble = {}
