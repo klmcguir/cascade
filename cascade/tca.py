@@ -1024,6 +1024,19 @@ def groupday_tca(
             ensemble[m] = lambda: None
             ensemble[m].results = results
         np.save(output_tensor_path, ensemble)
+    elif np.isin('mncp_hals', method):
+        mask = np.ones((cell_num, np.shape(tensor_list[0])[1], trial_num))
+        mask[np.isnan(group_tensor)] = 0
+        group_tensor[np.isnan(group_tensor)] = 0
+        ensemble = {}
+        results = {}
+        for m in method:
+            for r in range(1, rank+1):
+                results[r] = [tt.mncp_hals(group_tensor, r, mask, **fit_options)]
+                print('mncp_hals: rank ' + str(r) + ' complete.')
+            ensemble[m] = lambda: None
+            ensemble[m].results = results
+        np.save(output_tensor_path, ensemble)
     else:
         ensemble = {}
         group_tensor[np.isnan(group_tensor)] = 0
