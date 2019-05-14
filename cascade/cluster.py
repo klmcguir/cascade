@@ -877,9 +877,9 @@ def trial_factors_summary_across_mice_days(
             # set day indexer
             indexer = dates.isin([day])
 
-            if all(~np.isin(np.unique(learning_state[indexer]),
-                        ['naive', 'learning'])):
-                continue
+            # if all(~np.isin(np.unique(learning_state[indexer]),
+            #             ['naive', 'learning'])):
+            #     continue
 
             # ------------- GET TUNING
 
