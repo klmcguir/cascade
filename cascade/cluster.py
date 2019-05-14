@@ -921,7 +921,7 @@ def trial_factors_summary_across_mice_days(
                     tuning_weights[c, :], tuning_total)
                 # tuning_weights[c, :] = np.multiply(
                 #     tuning_weights[c, :], scale_factor)
-                tuning_weights[c, scale_factor < 0.05] = 0
+                tuning_weights[c, scale_factor < 0.01] = 0
             # dict for creating dataframe
             tuning_sc_data = {}
             for c, errset in enumerate(oris_to_check):
