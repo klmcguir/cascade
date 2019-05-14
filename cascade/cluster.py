@@ -1066,6 +1066,6 @@ def trial_factors_summary_across_mice_days(
     new_tempo_df = pd.DataFrame(data=data, index=all_tempo_df.index)
     trial_factor_df = pd.merge(
         trial_factor_df, new_tempo_df, how='left',
-        left_on=['mouse', 'component'])
+        on=['mouse', 'component'])
 
     return trial_factor_df, all_tempo_df
