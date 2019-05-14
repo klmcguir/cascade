@@ -1064,6 +1064,7 @@ def trial_factors_summary_across_mice_days(
         center_of_mass.append(np.sum(tr[i, :] * pos)/np.sum(tr[i, :]))
     data = {'center_of_mass': center_of_mass}
     new_tempo_df = pd.DataFrame(data=data, index=all_tempo_df.index)
+    breakhere
     trial_factor_df = pd.merge(
         trial_factor_df.reset_index('date'), new_tempo_df, how='left',
         on=['mouse', 'component']).set_index('date', append=True)
