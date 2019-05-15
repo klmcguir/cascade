@@ -811,6 +811,8 @@ def trial_factors_summary_across_mice_days(
     df_list_index = []
     df_list_runmod = []
     df_list_ramp = []
+    df_list_fano = []
+    df_list_bias = []
     for mnum, mouse in enumerate(mice):
 
         # load dir
@@ -873,6 +875,8 @@ def trial_factors_summary_across_mice_days(
         df_mouse_error = []
         df_mouse_runmod = []
         df_mouse_ramp = []
+        df_mouse_fano = []
+        df_mouse_bias = []
 
         for day in np.unique(dates):
 
@@ -926,6 +930,25 @@ def trial_factors_summary_across_mice_days(
             tuning_sc_data = {}
             for c, errset in enumerate(oris_to_check):
                 tuning_sc_data['sc' + str(errset)] = tuning_weights[c, :]
+
+            # ------------- GET FANOFACTOR for preferred tuning
+
+            oris_to_check = [0, 135, 270]
+            pref_ori_idx = np.argmax(tuning_weights, axis=0)
+            trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
+            running_calc = np.zeros((2, rank_num))
+            for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
+                pref_indexer = (orientation == oris_to_check[ori])
+                running_calc[0, c] = np.nanvar(
+                    trial_weights[pref_indexer & indexer, c], axis=0)
+                running_calc[1, c] = np.nanmean(
+                    trial_weights[pref_indexer & indexer, c], axis=0)
+            # normalize using summed mean response to both running states
+            fano = running_calc[0, :]/running_calc[1, :]
+            # dict for creating dataframe
+            # take only running/(running + stationary) value
+            fano_data = {}
+            fano_data['fano_factor'] = fano
 
             # ------------- GET Condition TUNING
 
@@ -1046,6 +1069,7 @@ def trial_factors_summary_across_mice_days(
             error_df = pd.DataFrame(error_data, index=index)
             running_df = pd.DataFrame(running_data, index=index)
             ramp_df = pd.DataFrame(ramp_data, index=index)
+            fano_df = pd.DataFrame(fano_data, index=index)
 
             # create lists of dfs for concatenation
             df_mouse_tuning.append(tuning_df)
@@ -1054,6 +1078,7 @@ def trial_factors_summary_across_mice_days(
             df_mouse_error.append(error_df)
             df_mouse_runmod.append(running_df)
             df_mouse_ramp.append(ramp_df)
+            df_mouse_fano.append(fano_df)
             conds_by_day.append(condition)
             oris_by_day.append(orientation)
             trialerr_by_day.append(trialerror)
@@ -1078,6 +1103,7 @@ def trial_factors_summary_across_mice_days(
         df_list_error.append(pd.concat(df_mouse_error, axis=0))
         df_list_runmod.append(pd.concat(df_mouse_runmod, axis=0))
         df_list_ramp.append(pd.concat(df_mouse_ramp, axis=0))
+        df_list_ramp.append(pd.concat(df_mouse_ramp, axis=0))
 
     # concatenate all mice/runs together in final dataframe
     all_tempo_df = pd.concat(df_list_tempo, axis=0)
@@ -1087,9 +1113,10 @@ def trial_factors_summary_across_mice_days(
     all_error_df = pd.concat(df_list_error, axis=0)
     all_runmod_df = pd.concat(df_list_runmod, axis=0)
     all_ramp_df = pd.concat(df_list_ramp, axis=0)
+    all_fano_df = pd.concat(df_list_fano, axis=0)
     # all_index_df = pd.concat(df_list_index, axis=0)
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_tuning_sc_df,
-                                all_error_df,
+                                all_error_df, all_fano_df,
                                 all_runmod_df, all_ramp_df], axis=1)
 
     # calculate center of mass for your temporal components
