@@ -197,9 +197,8 @@ def find_cluster_number_tempo(clustering_df, cluster_number, col_cluster=False):
     mouse_colors = [mouse_color_dict[m] for m in mouse_list]
 
     plt.close('all')
-    plt.figure(figsize=(15, 15))
     sns.clustermap(clustering_df, row_colors=[mouse_colors, cluster_colors],
-                   col_cluster=col_cluster)
+                   col_cluster=col_cluster, figsize=(15, 15), yticklabels=True)
 
 
 def get_component_clusters_tempo(clustering_df, cluster_number):
