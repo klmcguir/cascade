@@ -719,7 +719,7 @@ def groupday_factors_annotated(
     if isinstance(ensemble[method], dict):
         ensemble2 = {}
         ensemble2[method] = lambda: None
-        ensemble[method] = {k: [v] for k, v in ensemble[method].items()}
+        ensemble[method] = {k: v for k, v in ensemble[method].items()}
         ensemble2[method].results = ensemble[method]
         sort_ensemble, my_sorts = tca._sortfactors(ensemble2[method])
     else:
