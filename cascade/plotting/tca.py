@@ -654,6 +654,20 @@ def groupday_factors_annotated(
           'alpha': 0.5,
         },
       },
+      'mncp_hals': {
+        'line_kw': {
+          'color': 'red',
+          'label': 'mcp_als',
+        },
+        'scatter_kw': {
+          'color': 'green',
+          'alpha': 0.5,
+        },
+        'bar_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+        },
+      },
     }
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
