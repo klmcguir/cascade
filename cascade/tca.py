@@ -1011,40 +1011,17 @@ def groupday_tca(
     np.save(input_ids_path, id_union)
 
     # run TCA - iterate over different fitting methods
-    if np.isin('mcp_als', method):
-        mask = np.ones(np.shape(group_tensor))
-        mask[np.isnan(group_tensor)] = 0
-        group_tensor[np.isnan(group_tensor)] = 0
-        ensemble = {}
-        results = {}
-        for m in method:
-            for r in range(1, rank+1):
-                results[r] = [tt.mcp_als(group_tensor, r, mask, **fit_options)]
-                print('mcp_als: rank ' + str(r) + ' complete.')
-            ensemble[m] = lambda: None
-            ensemble[m].results = results
-        np.save(output_tensor_path, ensemble)
-    elif np.isin('mncp_hals', method):
+    if np.isin('mcp_als', method) | np.isin('mncp_hals', method):
         mask = ~np.isnan(group_tensor)
-        group_tensor[np.isnan(group_tensor)] = 0
-        ensemble = {}
-        results = {}
-        for m in method:
-            for r in range(1, rank+1):
-                results[r] = [tt.mncp_hals(group_tensor, r, mask, **fit_options)]
-                print('mncp_hals: rank ' + str(r) + ' complete.')
-            ensemble[m] = lambda: None
-            ensemble[m].results = results
-        np.save(output_tensor_path, ensemble)
-    else:
-        ensemble = {}
-        group_tensor[np.isnan(group_tensor)] = 0
-        for m in method:
-            ensemble[m] = tt.Ensemble(
-                fit_method=m, fit_options=deepcopy(fit_options))
-            ensemble[m].fit(group_tensor, ranks=range(1, rank+1),
-                            replicates=replicates, verbose=False)
-        np.save(output_tensor_path, ensemble)
+        fit_options['mask'] = mask
+    group_tensor[np.isnan(group_tensor)] = 0
+    ensemble = {}
+    for m in method:
+        ensemble[m] = tt.Ensemble(
+            fit_method=m, fit_options=deepcopy(fit_options))
+        ensemble[m].fit(group_tensor, ranks=range(1, rank+1),
+                        replicates=replicates, verbose=False)
+    np.save(output_tensor_path, ensemble)
 
     # print output so you don't go crazy waiting
     if verbose:
