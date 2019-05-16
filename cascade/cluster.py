@@ -948,7 +948,15 @@ def trial_factors_summary_across_mice_days(
             # dict for creating dataframe
             # take only running/(running + stationary) value
             fano_data = {}
-            fano_data['fano_factor'] = fano
+            fano_data['fano_factor_pref'] = fano
+            for c, ori in enumerate(oris_to_check):  # this is as long as rank #
+                pref_indexer = (orientation == ori)
+                running_calc[0, :] = np.nanvar(
+                    trial_weights[pref_indexer & indexer, :], axis=0)
+                running_calc[1, :] = np.nanmean(
+                    trial_weights[pref_indexer & indexer, :], axis=0)
+                fano = running_calc[0, :]/running_calc[1, :]
+                fano_data['fano_factor_' + str(ori)] = fano
 
             # ------------- GET Condition TUNING
 
