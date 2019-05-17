@@ -718,8 +718,8 @@ def groupday_factors_annotated(
 
     # re-balance your factors ()
     print('Re-balancing factors.')
-    for r in sort_ensemble.results:
-        for i in range(len(sort_ensemble.results[r])):
+    for r in ensemble[method].results:
+        for i in range(len(ensemble[method].results[r])):
             ensemble[method].results[r][i].factors.rebalance()
 
     # calculate change indices for days and reversal/learning
