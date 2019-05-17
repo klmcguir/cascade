@@ -716,6 +716,12 @@ def groupday_factors_annotated(
     dates = meta.reset_index()['date']
     learning_state = meta['learning_state']
 
+    # re-balance your factors ()
+    print('Re-balancing factors.')
+    for r in sort_ensemble.results:
+        for i in range(len(sort_ensemble.results[r])):
+            ensemble[method].results[r][i].factors.rebalance()
+
     # calculate change indices for days and reversal/learning
     udays = {d: c for c, d in enumerate(np.unique(dates))}
     ndays = np.diff([udays[i] for i in dates])
@@ -730,14 +736,7 @@ def groupday_factors_annotated(
 
     # sort neuron factors by component they belong to most
     # if 'mcp_als' has been run make sure the variable is in the correct format
-    if isinstance(ensemble[method], dict):
-        ensemble2 = {}
-        ensemble2[method] = lambda: None
-        ensemble[method] = {k: v for k, v in ensemble[method].items()}
-        ensemble2[method].results = ensemble[method]
-        sort_ensemble, my_sorts = tca._sortfactors(ensemble2[method])
-    else:
-        sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
+    sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
 
     for r in sort_ensemble.results:
 
