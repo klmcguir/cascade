@@ -221,6 +221,11 @@ def getcstraces(
                                       trace_type=trace_type, cutoff_before_lick_ms=-1,
                                       errortrials=-1, baseline=(-1, 0),
                                       move_outcome_to=4, baseline_to_stimulus=True)
+    elif '_norm' in trace_type.lower():
+        run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
+                                  trace_type='dff', cutoff_before_lick_ms=-1,
+                                  errortrials=-1, baseline=(-1, 0),
+                                  baseline_to_stimulus=True)
     else:
         run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
                                   trace_type=trace_type, cutoff_before_lick_ms=-1,
