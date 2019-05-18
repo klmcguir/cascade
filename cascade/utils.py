@@ -260,4 +260,23 @@ def getcstraces(
                                               'same')
         run_traces = run_traces.reshape((sz[0], sz[1], sz[2]))
 
+    # normalize between zero and one and truncate negative values (for NMF)
+    if 'trunc_norm' in trace_type.lower():
+        sz = np.shape(run_traces)  # dims: (cells, time, trials)
+        run_traces = run_traces.reshape((sz[0], sz[1]*sz[2]))
+        cell_max = np.nanmax(run_traces, axis=1)
+        for cell in range(np.shape(run_traces)[0]):
+            run_traces[cell, :] = run_traces[cell, :]/cell_max[cell]
+        run_traces = run_traces.reshape((sz[0], sz[1], sz[2]))
+        run_traces[run_traces < 0] = 0
+
+    # normalize positive values between zero and one (allows negatives)
+    if 'true_norm' in trace_type.lower():
+        sz = np.shape(run_traces)  # dims: (cells, time, trials)
+        run_traces = run_traces.reshape((sz[0], sz[1]*sz[2]))
+        cell_max = np.nanmax(run_traces, axis=1)
+        for cell in range(np.shape(run_traces)[0]):
+            run_traces[cell, :] = run_traces[cell, :]/cell_max[cell]
+        run_traces = run_traces.reshape((sz[0], sz[1], sz[2]))
+
     return run_traces
