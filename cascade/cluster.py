@@ -802,6 +802,7 @@ def trial_factors_summary_across_mice_days(
     # neuron_clusters_by_day = []
     # factors_by_day = []
     day_list = []
+    df_list_cm_learning = []
     df_list_tempo = []
     df_list_tuning_sc = []
     df_list_tuning = []
@@ -1090,6 +1091,30 @@ def trial_factors_summary_across_mice_days(
             oris_by_day.append(orientation)
             trialerr_by_day.append(trialerror)
 
+        # ------------- CENTER OF MASS for preferred ori trials across learning
+        # only calculate once for all days
+        # calculate center of mass for your trial factors for learning
+        oris_to_check = [0, 135, 270]
+        learning_indexer = learning_state.isin(['naive', 'learning'])
+        trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
+        pref_ori_idx = np.argmax(tuning_weights, axis=0)
+        pos = np.arange(1, len(orientation)+1)
+        for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
+            pref_indexer = (orientation == oris_to_check[ori])
+            pos_pref = pos[learning_indexer & pref_indexer]
+            weights_pref = trial_weights[learning_indexer & pref_indexer, c]
+            cm_learning.append(
+                np.sum(weights_pref * pos_pref)/np.sum(weights_pref))
+        center_of_mass_trail_learning = []
+        data = {'center_of_mass_trials_learning': center_of_mass}
+        index = pd.MultiIndex.from_arrays([
+            [mouse] * rank_num,
+            range(1, rank_num+1)
+            ],
+            names=['mouse',
+                   'component'])
+        cm_learning_df = pd.DataFrame(data=data, index=index)
+
         # only get the temporal factors once
         index = pd.MultiIndex.from_arrays([
             [mouse] * rank_num,
@@ -1111,6 +1136,7 @@ def trial_factors_summary_across_mice_days(
         df_list_runmod.append(pd.concat(df_mouse_runmod, axis=0))
         df_list_ramp.append(pd.concat(df_mouse_ramp, axis=0))
         df_list_fano.append(pd.concat(df_mouse_fano, axis=0))
+        df_list_cm_learning.append(cm_learning_df)
 
     # concatenate all mice/runs together in final dataframe
     all_tempo_df = pd.concat(df_list_tempo, axis=0)
@@ -1121,6 +1147,8 @@ def trial_factors_summary_across_mice_days(
     all_runmod_df = pd.concat(df_list_runmod, axis=0)
     all_ramp_df = pd.concat(df_list_ramp, axis=0)
     all_fano_df = pd.concat(df_list_fano, axis=0)
+    all_cm_learning_df = pd.concat(df_list_cm_learning, axis=0)  # different index
+
     # all_index_df = pd.concat(df_list_index, axis=0)
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_tuning_sc_df,
                                 all_error_df, all_fano_df,
@@ -1136,6 +1164,11 @@ def trial_factors_summary_across_mice_days(
     new_tempo_df = pd.DataFrame(data=data, index=all_tempo_df.index)
     trial_factor_df = pd.merge(
         trial_factor_df.reset_index('date'), new_tempo_df, how='left',
+        on=['mouse', 'component']).set_index('date', append=True)
+
+    # merge in trial learning center of mass
+    trial_factor_df = pd.merge(
+        trial_factor_df.reset_index('date'), all_cm_learning_df, how='left',
         on=['mouse', 'component']).set_index('date', append=True)
 
     return trial_factor_df, all_tempo_df
