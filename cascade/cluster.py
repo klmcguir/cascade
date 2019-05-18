@@ -1099,14 +1099,14 @@ def trial_factors_summary_across_mice_days(
         trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
         pref_ori_idx = np.argmax(tuning_weights, axis=0)
         pos = np.arange(1, len(orientation)+1)
+        cm_learning= []
         for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
             pref_indexer = (orientation == oris_to_check[ori])
             pos_pref = pos[learning_indexer & pref_indexer]
             weights_pref = trial_weights[learning_indexer & pref_indexer, c]
             cm_learning.append(
                 np.sum(weights_pref * pos_pref)/np.sum(weights_pref))
-        center_of_mass_trail_learning = []
-        data = {'center_of_mass_trials_learning': center_of_mass}
+        data = {'center_of_mass_trials_learning': cm_learning}
         index = pd.MultiIndex.from_arrays([
             [mouse] * rank_num,
             range(1, rank_num+1)
