@@ -18,7 +18,7 @@ from .. import cluster
 import warnings
 
 
-def groupday_longform_factors_annotated(
+def groupday_longform_factors_annotated_clusfolders(
         mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175'],
         trace_type='zscore_day',
         method='ncp_bcd',
