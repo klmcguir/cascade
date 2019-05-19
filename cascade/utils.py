@@ -217,6 +217,7 @@ def getcstraces(
 
     # normalize: (X-min)/(max)
     elif '_norm' in trace_type.lower():
+        arti = False if clean_artifacts is None else True  # artifact removal
 
         # get dff for creation of alternative trace_types
         traces = t2p.trace('dff')
