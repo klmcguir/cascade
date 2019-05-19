@@ -183,9 +183,11 @@ def find_cluster_number_remove_indices(
     color_df = pd.DataFrame(data=data, index=clustering_df.index)
 # [mouse_colors, cm_colors, ramp_colors, run_colors, cluster_colors]
     plt.close('all')
-    sns.clustermap(
+    fig = sns.clustermap(
         clustering_df, row_colors=color_df, figsize=(15, 15),
         xticklabels=True, yticklabels=True, col_cluster=col_cluster)
+
+    return fig
 
 
 def find_cluster_number_tempo(clustering_df, cluster_number, col_cluster=False):
