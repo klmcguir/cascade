@@ -100,6 +100,7 @@ def find_cluster_number_remove_indices(
     mean_running_mod = clustering_df.loc[:, run_stage].mean(axis=1)
     mean_ramp = clustering_df.loc[:, ramp_stage].mean(axis=1)
     center_of_mass = clustering_df.loc[:, 'center_of_mass']
+    cm_learning = clustering_df.loc[:, 'center_of_mass_trials_learning']
 
     # drop columns you don't want to cluster
     clustering_df = clustering_df.drop(columns=run_stage)
@@ -134,6 +135,13 @@ def find_cluster_number_remove_indices(
                                              mouse_color_options)}
     mouse_colors = [mouse_color_dict[m] for m in mouse_list]
 
+    # create center of mass trials during learning color labels
+    binned_cml = pd.cut(cm_learning, 10, labels=range(0, 10))
+    cml_color_options = sns.light_palette('red', 10)
+    cml_color_dict = {k: v for k, v in zip(np.unique(binned_cml),
+                                          cml_color_options)}
+    cml_colors = [cml_color_dict[m] for m in binned_cml]
+
     # create center of mass color labels
     binned_cm = pd.cut(center_of_mass, 10, labels=range(0, 10))
     cm_color_options = sns.light_palette('red', 10)
@@ -167,6 +175,7 @@ def find_cluster_number_remove_indices(
     # create df of running colors for row colors
     data = {'mouse': mouse_colors,
             'center_of_mass': cm_colors,
+            'c_of_m_learning': cml_colors,
             'running_modulation': run_colors,
             'ramp_index': ramp_colors,
             'cluster': cluster_colors}
