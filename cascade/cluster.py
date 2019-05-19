@@ -93,8 +93,8 @@ def find_cluster_number_remove_indices(
     # learning_stages = [
     #         'naive', 'low_dp_learning', 'high_dp_learning', 'low_dp_rev1',
     #         'high_dp_rev1']
-    # learning_stages = [
-    #         'pre_rev1']
+    learning_stages = [
+            'pre_rev1']
     run_stage = ['running_modulation_' + stage for stage in learning_stages]
     ramp_stage = ['ramp_index_' + stage for stage in learning_stages]
     mean_running_mod = clustering_df.loc[:, run_stage].mean(axis=1)
