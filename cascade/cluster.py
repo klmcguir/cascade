@@ -119,6 +119,7 @@ def find_cluster_number_remove_indices(
         mean_running_mod = mean_running_mod.loc[~nan_indexer, :]
         mean_ramp = mean_ramp.loc[~nan_indexer, :]
         center_of_mass = center_of_mass.loc[~nan_indexer, :]
+        cm_learning = cm_learning.loc[~nan_indexer, :]
 
     # cluster to get cluster color labels for each component
     g = sns.clustermap(clustering_df)
