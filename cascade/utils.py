@@ -157,7 +157,7 @@ def getcstraces(
     date = run.parent
     date.set_subset(run.cells)
 
-    # z-score
+    # standardize: z-score
     if 'zscore' in trace_type.lower():
 
         # get dff for creation of alternative trace_types
@@ -206,7 +206,29 @@ def getcstraces(
                 print('WARNING: did not recognize z-scoring method.')
             traces = ((traces.T - mu)/sigma).T
 
-        #
+        # smooth data
+        if smooth:
+            for cell in range(np.shape(traces)[0]):
+                traces[cell, :] = np.convolve(traces[cell, :], np.ones(smooth_win,
+                                              dtype=np.float64)/smooth_win, 'same')
+
+        # add new trace type into t2p
+        t2p.add_trace(trace_type, traces)
+
+    # normalize: (X-min)/(max)
+    elif '_norm' in trace_type.lower():
+
+        # get dff for creation of alternative trace_types
+        traces = t2p.trace('dff')
+
+        # subtract the min and divide by max of stimulus windows
+        mx = pool.calc.zscore.stim_max(date, window=5, nan_artifacts=arti,
+                                             thresh=thresh)
+        mn = pool.calc.zscore.stim_min(date, window=5, nan_artifacts=arti,
+                                                   thresh=thresh)
+        traces = ((traces.T - mn)/mx).T
+
+        # smooth traces
         if smooth:
             for cell in range(np.shape(traces)[0]):
                 traces[cell, :] = np.convolve(traces[cell, :], np.ones(smooth_win,
@@ -221,11 +243,6 @@ def getcstraces(
                                       trace_type=trace_type, cutoff_before_lick_ms=-1,
                                       errortrials=-1, baseline=(-1, 0),
                                       move_outcome_to=4, baseline_to_stimulus=True)
-    elif '_norm' in trace_type.lower():
-        run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
-                                  trace_type='dff', cutoff_before_lick_ms=-1,
-                                  errortrials=-1, baseline=(-1, 0),
-                                  baseline_to_stimulus=True)
     else:
         run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
                                   trace_type=trace_type, cutoff_before_lick_ms=-1,
@@ -265,23 +282,8 @@ def getcstraces(
                                               'same')
         run_traces = run_traces.reshape((sz[0], sz[1], sz[2]))
 
-    # normalize between zero and one and truncate negative values (for NMF)
-    if 'trunc_norm' in trace_type.lower():
-        sz = np.shape(run_traces)  # dims: (cells, time, trials)
-        run_traces = run_traces.reshape((sz[0], sz[1]*sz[2]))
-        cell_max = np.nanmax(run_traces, axis=1)
-        for cell in range(np.shape(run_traces)[0]):
-            run_traces[cell, :] = run_traces[cell, :]/cell_max[cell]
-        run_traces = run_traces.reshape((sz[0], sz[1], sz[2]))
+    # truncate negative values (for NMF)
+    if 'trunc_' in trace_type.lower():
         run_traces[run_traces < 0] = 0
-
-    # normalize positive values between zero and one (allows negatives)
-    if 'true_norm' in trace_type.lower():
-        sz = np.shape(run_traces)  # dims: (cells, time, trials)
-        run_traces = run_traces.reshape((sz[0], sz[1]*sz[2]))
-        cell_max = np.nanmax(run_traces, axis=1)
-        for cell in range(np.shape(run_traces)[0]):
-            run_traces[cell, :] = run_traces[cell, :]/cell_max[cell]
-        run_traces = run_traces.reshape((sz[0], sz[1], sz[2]))
 
     return run_traces
