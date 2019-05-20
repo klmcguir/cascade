@@ -810,7 +810,7 @@ def trial_factors_across_mice_learning_stages(
                 axis=0)
             ramp_learning.append(
                 np.log2(weights_pref_high_dp/weights_pref_lowdp))
-        data = {'ramp_index_learning': cm_learning}
+        data = {'ramp_index_learning': ramp_learning}
         index = pd.MultiIndex.from_arrays([
             [mouse] * rank_num,
             range(1, rank_num+1)
@@ -857,7 +857,7 @@ def trial_factors_across_mice_learning_stages(
             np.log2(np.nanmean(tr[i, 64:96])/np.nanmean(tr[i, 16:64])))
     trial_factor_df['center_of_mass'] = center_of_mass
     trial_factor_df['ramp_index_trace'] = ramp_index_trace
-    trial_factor_df['ramp_index_trace_offset'] = ramp_index_trace
+    trial_factor_df['ramp_index_trace_offset'] = offset_index_trace
 
     return trial_factor_df, all_tempo_df
 
