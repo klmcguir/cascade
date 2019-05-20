@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import tensortools as tt
 import seaborn as sns
-from seaborn.matrix import Clustergrid
+# from seaborn.matrix import ClusterGrid
 import pandas as pd
 from copy import deepcopy
 from .. import df
@@ -20,7 +20,7 @@ import warnings
 
 
 # added functionality from https://github.com/mwaskom/seaborn/pull/1393/files
-class MyCluserGrid(Clustergrid):
+class MyCluserGrid(sns.matrix.ClusterGrid):
     def __init__(self, data, pivot_kws=None, z_score=None, standard_scale=None,
                  figsize=None, row_colors=None, col_colors=None, mask=None,
                  expected_size_dendrogram=1.0,
