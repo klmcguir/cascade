@@ -20,7 +20,7 @@ import warnings
 
 
 # added functionality from https://github.com/mwaskom/seaborn/pull/1393/files
-class MyCluserGrid(sns.matrix.ClusterGrid):
+class MyClusterGrid(sns.matrix.ClusterGrid):
     def __init__(self, data, pivot_kws=None, z_score=None, standard_scale=None,
                  figsize=None, row_colors=None, col_colors=None, mask=None,
                  expected_size_dendrogram=1.0,
@@ -291,12 +291,14 @@ def groupday_longform_factors_annotated_clusfolders(
 
     """
     Plot TCA factors with trial metadata annotations for all days
-    and ranks/componenets for TCA decomposition ensembles.
+    and ranks/components for TCA decomposition ensembles. Save factors
+    with the same cluster into the same folder so that user can quickly
+    check qualitative similarities between clusters.
 
     Parameters:
     -----------
-    mouse : str
-        Mouse name.
+    mouse : list of str
+        Mouse names.
     trace_type : str
         dff, zscore, zscore_iti, zscore_day, deconvolved
     method : str
@@ -306,6 +308,14 @@ def groupday_longform_factors_annotated_clusfolders(
         includes all stimuli
     warp : bool
         Use traces with time-warped outcome.
+    words : list of str
+        List of hash words that match mice.
+    group_by : str
+        Metric used for building tensor across days. Usually defines a stage
+        of learning.
+    nan_thresh : float
+        Maximum proportion of nan trials per cell to include in the tensor.
+        Cells with more than this ratio are removed from analysis.
     extra_col : int
         Number of columns to add to the original three factor columns
     alpha : float
