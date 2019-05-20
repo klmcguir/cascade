@@ -206,7 +206,7 @@ def find_cluster_number_remove_indices(
     ramp_color_options = sns.diverging_palette(220, 10, n=12)
     ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
                                             ramp_color_options)}
-    offset_ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
+    offset_ramp_colors = [ramp_color_dict[m] if ~np.isnan(m) else [.5, .5, .5, 1.] for m in binned_ramp]
 
     # create df of running colors for row colors
     data = {'mouse': mouse_colors,
