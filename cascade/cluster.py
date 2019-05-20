@@ -852,9 +852,9 @@ def trial_factors_across_mice_learning_stages(
     for i in range(np.shape(tr)[0]):
         center_of_mass.append(np.sum(tr[i, :] * pos)/np.sum(tr[i, :]))
         ramp_index_trace.append(
-            log2(np.nanmean(tr[i, 40:64])/np.nanmean(tr[i, 16:40])))
+            np.log2(np.nanmean(tr[i, 40:64])/np.nanmean(tr[i, 16:40])))
         offset_index_trace.append(
-            log2(np.nanmean(tr[i, 64:96])/np.nanmean(tr[i, 16:64])))
+            np.log2(np.nanmean(tr[i, 64:96])/np.nanmean(tr[i, 16:64])))
     trial_factor_df['center_of_mass'] = center_of_mass
     trial_factor_df['ramp_index_trace'] = ramp_index_trace
     trial_factor_df['ramp_index_trace_offset'] = ramp_index_trace
