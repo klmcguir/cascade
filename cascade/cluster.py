@@ -196,8 +196,7 @@ def find_cluster_number_remove_indices(
            0.2, 0.4, 0.6, 0.8, 1, np.inf]
     binned_ramp = pd.cut(ri_trace, bins, labels=range(0, 12))
     ramp_color_options = sns.diverging_palette(220, 10, n=12)
-    ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
-                                            ramp_color_options)}
+    ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp), ramp_color_options)}
     trace_ramp_colors = [ramp_color_dict[m] for m in binned_ramp
                          if ~np.isnan(m) else [.5, .5, .5]]
 
