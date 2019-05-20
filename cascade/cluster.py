@@ -103,7 +103,7 @@ def find_cluster_number_remove_indices(
     ri_trials = clustering_df.loc[:, ramp_stage].mean(axis=1)
     ri_learning = clustering_df.loc[:, 'ramp_index_learning']
     ri_trace = clustering_df.loc[:, 'ramp_index_trace']
-    ri_offset = clustering_df.loc[:, 'ramp_index_trace_offset']
+    ri_offset = clustering_df.loc[:, 'ramp_index_trace']
     center_of_mass = clustering_df.loc[:, 'center_of_mass']
 
     # drop columns you don't want to affect clustering (i.e. nans)
@@ -112,9 +112,9 @@ def find_cluster_number_remove_indices(
     clustering_df = clustering_df.drop(
         columns=['ramp_index_learning'])
     clustering_df = clustering_df.drop(
-        columns=['ramp_index_learning'])
+        columns=['ramp_index_trace'])
     clustering_df = clustering_df.drop(
-        columns=['ramp_index_learning'])
+        columns=['ramp_index_trace_offset'])
     clustering_df = clustering_df.drop(columns=['center_of_mass'])
 
     if auto_drop:
