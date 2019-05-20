@@ -103,7 +103,7 @@ def find_cluster_number_remove_indices(
     ri_trials = clustering_df.loc[:, ramp_stage].mean(axis=1)
     ri_learning = clustering_df.loc[:, 'ramp_index_learning']
     ri_trace = clustering_df.loc[:, 'ramp_index_trace']
-    ri_offset = clustering_df.loc[:, 'ramp_index_trace']
+    ri_offset = clustering_df.loc[:, 'ramp_index_trace_offset']
     center_of_mass = clustering_df.loc[:, 'center_of_mass']
 
     # drop columns you don't want to affect clustering (i.e. nans)
@@ -179,7 +179,8 @@ def find_cluster_number_remove_indices(
     ramp_color_options = sns.diverging_palette(220, 10, n=12)
     ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
                                             ramp_color_options)}
-    trial_ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
+    trial_ramp_colors = [ramp_color_dict[m] for m in binned_ramp
+                         if ~np.isnan(m) else [.5, .5, .5]]
 
     # create learning ramp index color labels
     bins =[-np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0,
@@ -197,7 +198,8 @@ def find_cluster_number_remove_indices(
     ramp_color_options = sns.diverging_palette(220, 10, n=12)
     ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
                                             ramp_color_options)}
-    trace_ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
+    trace_ramp_colors = [ramp_color_dict[m] for m in binned_ramp
+                         if ~np.isnan(m) else [.5, .5, .5]]
 
     # create trace ramp index color labels
     bins =[-np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0,
