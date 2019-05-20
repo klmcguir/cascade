@@ -1,22 +1,24 @@
 """Functions for plotting clustered factors from tca decomp."""
-import os
 import flow
 import pool
+
+import os
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
+from matplotlib import gridspec
 import tensortools as tt
 import seaborn as sns
-# from seaborn.matrix import ClusterGrid
 import pandas as pd
+
 from copy import deepcopy
+import warnings
+
 from .. import df
 from .. import tca
 from .. import paths
 from .. import utils
 from .. import cluster
-import warnings
 
 
 # added functionality from https://github.com/mwaskom/seaborn/pull/1393/files
@@ -35,7 +37,7 @@ class MyClusterGrid(sns.matrix.ClusterGrid):
         self.data2d = self.format_data(self.data, pivot_kws, z_score,
                                        standard_scale)
 
-        self.mask = _matrix_mask(self.data2d, mask)
+        self.mask = sns.matrix._matrix_mask(self.data2d, mask)
 
         if figsize is None:
             width, height = 10, 10
@@ -135,35 +137,6 @@ class MyClusterGrid(sns.matrix.ClusterGrid):
         ratios.append(1 - sum(ratios))
 
         return ratios
-
-
-def _matrix_mask(data, mask):
-    """Ensure that data and mask are compatabile and add missing values.
-    Values will be plotted for cells where ``mask`` is ``False``.
-    ``data`` is expected to be a DataFrame; ``mask`` can be an array or
-    a DataFrame.
-    """
-    if mask is None:
-        mask = np.zeros(data.shape, np.bool)
-    if isinstance(mask, np.ndarray):
-        # For array masks, ensure that shape matches data then convert
-        if mask.shape != data.shape:
-            raise ValueError("Mask must have the same shape as data.")
-        mask = pd.DataFrame(mask,
-                            index=data.index,
-                            columns=data.columns,
-                            dtype=np.bool)
-    elif isinstance(mask, pd.DataFrame):
-        # For DataFrame masks, ensure that semantic labels match data
-        if not mask.index.equals(data.index) \
-           and mask.columns.equals(data.columns):
-            err = "Mask must have the same index and columns as data."
-            raise ValueError(err)
-    # Add any cells with missing data to the mask
-    # This works around an issue where `plt.pcolormesh` doesn't represent
-    # missing data properly
-    mask = mask | pd.isnull(data)
-    return mask
 
 
 def clustermap(data, pivot_kws=None, method='average', metric='euclidean',
