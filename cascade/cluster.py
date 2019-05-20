@@ -12,6 +12,7 @@ from scipy.cluster import hierarchy
 from . import tca
 from . import paths
 from . import utils
+from .plotting import cluster
 
 
 def get_component_clusters(clustering_df, cluster_number):
@@ -97,15 +98,23 @@ def find_cluster_number_remove_indices(
     learning_stages = [
             'pre_rev1']
     run_stage = ['running_modulation_' + stage for stage in learning_stages]
-    ramp_stage = ['ramp_index_' + stage for stage in learning_stages]
+    ramp_stage = ['ramp_index_trials' + stage for stage in learning_stages]
     mean_running_mod = clustering_df.loc[:, run_stage].mean(axis=1)
-    mean_ramp = clustering_df.loc[:, ramp_stage].mean(axis=1)
+    ri_trials = clustering_df.loc[:, ramp_stage].mean(axis=1)
+    ri_learning = clustering_df.loc[:, 'ramp_index_learning']
+    ri_trace = clustering_df.loc[:, 'ramp_index_trace']
+    ri_offset = clustering_df.loc[:, 'ramp_index_trace_offset']
     center_of_mass = clustering_df.loc[:, 'center_of_mass']
-    cm_learning = clustering_df.loc[:, 'center_of_mass_trials_learning']
 
-    # drop columns you don't want to cluster
+    # drop columns you don't want to affect clustering (i.e. nans)
     clustering_df = clustering_df.drop(columns=run_stage)
     clustering_df = clustering_df.drop(columns=ramp_stage)
+    clustering_df = clustering_df.drop(
+        columns=['ramp_index_learning'])
+    clustering_df = clustering_df.drop(
+        columns=['ramp_index_learning'])
+    clustering_df = clustering_df.drop(
+        columns=['ramp_index_learning'])
     clustering_df = clustering_df.drop(columns=['center_of_mass'])
 
     if auto_drop:
@@ -118,9 +127,12 @@ def find_cluster_number_remove_indices(
         nan_indexer = clustering_df.isna().any(axis=1)
         clustering_df = clustering_df.dropna(axis='rows')
         mean_running_mod = mean_running_mod.loc[~nan_indexer, :]
-        mean_ramp = mean_ramp.loc[~nan_indexer, :]
+        ri_trials = ri_trials.loc[~nan_indexer, :]
+        ri_learning = ri_learning.loc[~nan_indexer, :]
+        ri_trace = ri_trace.loc[~nan_indexer, :]
+        ri_offset = ri_offset.loc[~nan_indexer, :]
         center_of_mass = center_of_mass.loc[~nan_indexer, :]
-        cm_learning = cm_learning.loc[~nan_indexer, :]
+        # cm_learning = cm_learning.loc[~nan_indexer, :]
 
     # cluster to get cluster color labels for each component
     g = sns.clustermap(clustering_df)
@@ -138,11 +150,11 @@ def find_cluster_number_remove_indices(
     mouse_colors = [mouse_color_dict[m] for m in mouse_list]
 
     # create center of mass trials during learning color labels
-    binned_cml = pd.cut(cm_learning, 10, labels=range(0, 10))
-    cml_color_options = sns.light_palette('red', 10)
-    cml_color_dict = {k: v for k, v in zip(np.unique(binned_cml),
-                                          cml_color_options)}
-    cml_colors = [cml_color_dict[m] for m in binned_cml]
+    # binned_cml = pd.cut(cm_learning, 10, labels=range(0, 10))
+    # cml_color_options = sns.light_palette('red', 10)
+    # cml_color_dict = {k: v for k, v in zip(np.unique(binned_cml),
+    #                                       cml_color_options)}
+    # cml_colors = [cml_color_dict[m] for m in binned_cml]
 
     # create center of mass color labels
     binned_cm = pd.cut(center_of_mass, 10, labels=range(0, 10))
@@ -152,11 +164,6 @@ def find_cluster_number_remove_indices(
     cm_colors = [cm_color_dict[m] for m in binned_cm]
 
     # create running mod color labels
-    # binned_run = pd.cut(mean_running_mod, 10, labels=range(0, 10))
-    # run_color_options = sns.light_palette('purple', 10)
-    # run_color_dict = {k: v for k, v in zip(np.unique(binned_run),
-    #                                        run_color_options)}
-    # run_colors = [run_color_dict[m] for m in binned_run]
     bins =[-np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0,
            0.2, 0.4, 0.6, 0.8, 1, np.inf]
     binned_run = pd.cut(mean_running_mod, bins, labels=range(0, 12))
@@ -165,26 +172,55 @@ def find_cluster_number_remove_indices(
                                            run_color_options)}
     run_colors = [run_color_dict[m] for m in binned_run]
 
-    # create ramp index color labels
+    # create trial ramp index color labels
     bins =[-np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0,
            0.2, 0.4, 0.6, 0.8, 1, np.inf]
-    binned_ramp = pd.cut(mean_ramp, bins, labels=range(0, 12))
+    binned_ramp = pd.cut(ri_trials, bins, labels=range(0, 12))
     ramp_color_options = sns.diverging_palette(220, 10, n=12)
     ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
                                             ramp_color_options)}
-    ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
+    trial_ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
+
+    # create learning ramp index color labels
+    bins =[-np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0,
+           0.2, 0.4, 0.6, 0.8, 1, np.inf]
+    binned_ramp = pd.cut(ri_learning, bins, labels=range(0, 12))
+    ramp_color_options = sns.diverging_palette(220, 10, n=12)
+    ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
+                                            ramp_color_options)}
+    learning_ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
+
+    # create trace ramp index color labels
+    bins =[-np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0,
+           0.2, 0.4, 0.6, 0.8, 1, np.inf]
+    binned_ramp = pd.cut(ri_trace, bins, labels=range(0, 12))
+    ramp_color_options = sns.diverging_palette(220, 10, n=12)
+    ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
+                                            ramp_color_options)}
+    trace_ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
+
+    # create trace ramp index color labels
+    bins =[-np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0,
+           0.2, 0.4, 0.6, 0.8, 1, np.inf]
+    binned_ramp = pd.cut(ri_offset, bins, labels=range(0, 12))
+    ramp_color_options = sns.diverging_palette(220, 10, n=12)
+    ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
+                                            ramp_color_options)}
+    offset_ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
 
     # create df of running colors for row colors
     data = {'mouse': mouse_colors,
             'running-modulation': run_colors,
-            'trace-center-of-mass': cm_colors,
-            'c_of_m_learning': cml_colors,
-            'ramp-index-daily-trials': ramp_colors,
+            'ramp-index-learning': learning_ramp_colors,
+            'ramp-index-daily-trials': trial_ramp_colors,
+            'ramp-index-trace': trace_ramp_colors,
+            'ramp-index-trace-offset': offset_ramp_colors,
+            'center-of-mass-trace': cm_colors,
             'cluster': cluster_colors}
     color_df = pd.DataFrame(data=data, index=clustering_df.index)
 # [mouse_colors, cm_colors, ramp_colors, run_colors, cluster_colors]
     plt.close('all')
-    fig = sns.clustermap(
+    fig = cluster.clustermap(
         clustering_df, row_colors=color_df, figsize=(13, 13),
         xticklabels=True, yticklabels=True, col_cluster=col_cluster,
         expected_size_colors=expected_size_colors)
@@ -699,7 +735,7 @@ def trial_factors_across_mice_learning_stages(
             # normalize using summed mean response to both late/early
             ramp_index = np.log2(ramp_calc[1, :]/ramp_calc[0, :])
             ramp_data = {}
-            ramp_data['ramp_index_trial' + stage] = ramp_index
+            ramp_data['ramp_index_trials_' + stage] = ramp_index
 
             # ------------ CREATE PANDAS DF
 
@@ -1140,7 +1176,7 @@ def trial_factors_summary_across_mice_days(
             # normalize using summed mean response to both early/late
             ramp_index = np.log2(ramp_calc[1, :]/ramp_calc[0, :])
             ramp_data = {}
-            ramp_data['ramp_index'] = ramp_index
+            ramp_data['ramp_index_trials'] = ramp_index
 
             # ------------ CREATE PANDAS DF
 
