@@ -1274,7 +1274,7 @@ def trial_factors_summary_across_mice_days(
         df_list_ramp.append(pd.concat(df_mouse_ramp, axis=0))
         df_list_fano.append(pd.concat(df_mouse_fano, axis=0))
         df_list_cm_learning.append(cm_learning_df)
-        df_list_dprime.append(dprime, axis=0)
+        df_list_dprime.append(dprime)
 
     # concatenate all mice/runs together in final dataframe
     all_tempo_df = pd.concat(df_list_tempo, axis=0)
