@@ -1054,15 +1054,15 @@ def trial_factors_summary_across_mice_days(
             oris_to_check = [0, 135, 270]
             pref_ori_idx = np.argmax(tuning_weights, axis=0)
             trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
-            running_calc = np.zeros((2, rank_num))
+            response_calc = np.zeros((2, rank_num))
             for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
                 pref_indexer = (orientation == oris_to_check[ori])
-                max_calc_all_time[0, c] = np.nanmax(
+                response_calc[0, c] = np.nanmax(
                     trial_weights[pref_indexer, c], axis=0)
-                trial_calc_per_day[1, c] = np.nanmean(
+                response_calc[1, c] = np.nanmean(
                     trial_weights[pref_indexer & indexer, c], axis=0)
             # normalize using summed mean response to both running states
-            maxnorm = running_calc[1, :]/running_calc[0, :]
+            maxnorm = response_calc[1, :]/response_calc[0, :]
             # dict for creating dataframe
             # take only running/(running + stationary) value
             tuning_sc_data = {}
