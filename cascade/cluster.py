@@ -1290,7 +1290,7 @@ def trial_factors_summary_across_mice_days(
 
     # all_index_df = pd.concat(df_list_index, axis=0)
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_tuning_sc_df,
-                                all_error_df, all_fano_df,
+                                all_error_df, all_fano_df, all_dprime_df,
                                 all_runmod_df, all_ramp_df], axis=1)
 
     # calculate center of mass for your temporal components
@@ -1311,3 +1311,4 @@ def trial_factors_summary_across_mice_days(
         on=['mouse', 'component']).set_index('date', append=True)
 
     return trial_factor_df, all_tempo_df
+,
