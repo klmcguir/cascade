@@ -929,6 +929,7 @@ def trial_factors_summary_across_mice_days(
     df_list_runmod = []
     df_list_ramp = []
     df_list_fano = []
+    df_list_dprime = []
     df_list_bias = []
     for mnum, mouse in enumerate(mice):
 
@@ -1023,7 +1024,7 @@ def trial_factors_summary_across_mice_days(
             for c, errset in enumerate(oris_to_check):
                 tuning_data['t' + str(errset)] = tuning_weights[c, :]
 
-            # ------------- GET SCALED TUNING
+            # ------------- GET SCALED TUNING #1
 
             trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
             tuning_weights = np.zeros((3, rank_num))
@@ -1047,6 +1048,25 @@ def trial_factors_summary_across_mice_days(
             tuning_sc_data = {}
             for c, errset in enumerate(oris_to_check):
                 tuning_sc_data['sc' + str(errset)] = tuning_weights[c, :]
+
+            # ------------- GET NORMALIZED drive for preferred tuning
+
+            oris_to_check = [0, 135, 270]
+            pref_ori_idx = np.argmax(tuning_weights, axis=0)
+            trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
+            running_calc = np.zeros((2, rank_num))
+            for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
+                pref_indexer = (orientation == oris_to_check[ori])
+                max_calc_all_time[0, c] = np.nanmax(
+                    trial_weights[pref_indexer, c], axis=0)
+                trial_calc_per_day[1, c] = np.nanmean(
+                    trial_weights[pref_indexer & indexer, c], axis=0)
+            # normalize using summed mean response to both running states
+            maxnorm = running_calc[1, :]/running_calc[0, :]
+            # dict for creating dataframe
+            # take only running/(running + stationary) value
+            tuning_sc_data = {}
+            tuning_sc_data['norm_pref_response'] = maxnorm
 
             # ------------- GET FANOFACTOR for preferred tuning
 
@@ -1254,6 +1274,7 @@ def trial_factors_summary_across_mice_days(
         df_list_ramp.append(pd.concat(df_mouse_ramp, axis=0))
         df_list_fano.append(pd.concat(df_mouse_fano, axis=0))
         df_list_cm_learning.append(cm_learning_df)
+        df_list_dprime.append(dprime, axis=0)
 
     # concatenate all mice/runs together in final dataframe
     all_tempo_df = pd.concat(df_list_tempo, axis=0)
@@ -1265,6 +1286,7 @@ def trial_factors_summary_across_mice_days(
     all_ramp_df = pd.concat(df_list_ramp, axis=0)
     all_fano_df = pd.concat(df_list_fano, axis=0)
     all_cm_learning_df = pd.concat(df_list_cm_learning, axis=0)  # different index
+    all_dprime_df = pd.concat(df_list_dprime, axis=0)
 
     # all_index_df = pd.concat(df_list_index, axis=0)
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_tuning_sc_df,
@@ -1286,6 +1308,11 @@ def trial_factors_summary_across_mice_days(
     # merge in trial learning center of mass
     trial_factor_df = pd.merge(
         trial_factor_df.reset_index('date'), all_cm_learning_df, how='left',
+        on=['mouse', 'component']).set_index('date', append=True)
+
+    # merge in dprime
+    trial_factor_df = pd.merge(
+        trial_factor_df.reset_index('date'), dprime, how='left',
         on=['mouse', 'component']).set_index('date', append=True)
 
     return trial_factor_df, all_tempo_df
