@@ -1310,9 +1310,4 @@ def trial_factors_summary_across_mice_days(
         trial_factor_df.reset_index('date'), all_cm_learning_df, how='left',
         on=['mouse', 'component']).set_index('date', append=True)
 
-    # merge in dprime
-    trial_factor_df = pd.merge(
-        trial_factor_df.reset_index('date'), dprime, how='left',
-        on=['mouse', 'component']).set_index('date', append=True)
-
     return trial_factor_df, all_tempo_df
