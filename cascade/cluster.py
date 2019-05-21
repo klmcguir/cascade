@@ -1311,4 +1311,3 @@ def trial_factors_summary_across_mice_days(
         on=['mouse', 'component']).set_index('date', append=True)
 
     return trial_factor_df, all_tempo_df
-,
