@@ -978,15 +978,6 @@ def trial_factors_summary_across_mice_days(
             cell_clusters[k] = max_fac
             cell_ids[k] = ids[my_sorts[k-1]]
 
-        # create dataframe of dprime values
-        dprime_vec = []
-        for date in dates:
-            date_obj = flow.Date(mouse, date=date)
-            dprime_vec.append(pool.calc.performance.dprime(date_obj))
-        data = {'dprime': dprime_vec}
-        dprime = pd.DataFrame(data=data, index=learning_state.index)
-        dprime = dprime['dprime']  # make indices match to meta
-
         df_mouse_tuning = []
         df_mouse_tuning_scaled = []
         df_mouse_conds = []
@@ -995,6 +986,7 @@ def trial_factors_summary_across_mice_days(
         df_mouse_ramp = []
         df_mouse_fano = []
         df_mouse_bias = []
+        df_mouse_dprime = []
 
         for day in np.unique(dates):
 
@@ -1004,6 +996,13 @@ def trial_factors_summary_across_mice_days(
             # if all(~np.isin(np.unique(learning_state[indexer]),
             #             ['naive', 'learning'])):
             #     continue
+
+            # ------------ GET DPRIME
+
+            date_obj = flow.Date(mouse, date=day)
+            data = [pool.calc.performance.dprime(date_obj)]*rank_num
+            dprime_data = {}
+            dprime_data['dprime'] = data
 
             # ------------- GET TUNING
 
@@ -1215,6 +1214,7 @@ def trial_factors_summary_across_mice_days(
             running_df = pd.DataFrame(running_data, index=index)
             ramp_df = pd.DataFrame(ramp_data, index=index)
             fano_df = pd.DataFrame(fano_data, index=index)
+            dprime_df = pd.DataFrame(dprime_data, index=index)
 
             # create lists of dfs for concatenation
             df_mouse_tuning.append(tuning_df)
@@ -1224,6 +1224,7 @@ def trial_factors_summary_across_mice_days(
             df_mouse_runmod.append(running_df)
             df_mouse_ramp.append(ramp_df)
             df_mouse_fano.append(fano_df)
+            df_mouse_dprime.append(dprime_df)
             conds_by_day.append(condition)
             oris_by_day.append(orientation)
             trialerr_by_day.append(trialerror)
@@ -1274,7 +1275,7 @@ def trial_factors_summary_across_mice_days(
         df_list_ramp.append(pd.concat(df_mouse_ramp, axis=0))
         df_list_fano.append(pd.concat(df_mouse_fano, axis=0))
         df_list_cm_learning.append(cm_learning_df)
-        df_list_dprime.append(dprime)
+        df_list_dprime.append(pd.concat(df_mouse_dprime, axis=0))
 
     # concatenate all mice/runs together in final dataframe
     all_tempo_df = pd.concat(df_list_tempo, axis=0)
