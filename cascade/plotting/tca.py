@@ -317,7 +317,7 @@ def groupday_longform_factors_annotated(
     print('Re-balancing factors.')
     for r in ensemble[method].results:
         for i in range(len(ensemble[method].results[r])):
-            ensemble[method].results[r][i].factors.rebalance()
+            ensemble[method].results[r][i].factors.rebalance() 
 
     # calculate change indices for days and reversal/learning
     udays = {d: c for c, d in enumerate(np.unique(dates))}
