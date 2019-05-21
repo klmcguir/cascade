@@ -802,14 +802,14 @@ def trial_factors_across_mice_learning_stages(
         for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
             pref_indexer = (orientation == oris_to_check[ori])
             pos_pref = pos[learning_indexer & pref_indexer]
-            weights_pref_lowdp = np.nanmean(trial_weights[
-                learning_indexer & (dprime >= 2) & pref_indexer, c],
-                axis=0)
-            weights_pref_high_dp = np.nanmean(trial_weights[
+            weights_pref_low_dp = np.nanmean(trial_weights[
                 learning_indexer & (dprime < 2) & pref_indexer, c],
                 axis=0)
+            weights_pref_high_dp = np.nanmean(trial_weights[
+                learning_indexer & (dprime >= 2) & pref_indexer, c],
+                axis=0)
             ramp_learning.append(
-                np.log2(weights_pref_high_dp/weights_pref_lowdp))
+                np.log2(weights_pref_high_dp/weights_pref_low_dp))
         data = {'ramp_index_learning': ramp_learning}
         index = pd.MultiIndex.from_arrays([
             [mouse] * rank_num,
