@@ -1264,6 +1264,13 @@ def trial_factors_summary_across_mice_days(
                 sort_ensemble.results[rank_num][0].factors[1][:, :].T,
                 index=index)
 
+        # normalize mag of response
+        df_calc = df_mouse_dprime.pivot(
+            index=['mouse', 'date'], columns='component', values='dprime')
+        df_calc = df_calc.div(df_calc.max(axis=0))
+        df_mouse_dprime = df_calc.pivot(
+            index=['mouse', 'date', 'component'], columns='dprime')
+
         # concatenate different columns per mouse
         df_list_tempo.append(tempo_df)
         df_list_index.append(pd.DataFrame(index=index))
