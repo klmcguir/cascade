@@ -313,6 +313,12 @@ def groupday_longform_factors_annotated(
     dates = meta.reset_index()['date']
     learning_state = meta['learning_state']
 
+    # re-balance your factors ()
+    print('Re-balancing factors.')
+    for r in ensemble[method].results:
+        for i in range(len(ensemble[method].results[r])):
+            ensemble[method].results[r][i].factors.rebalance()
+
     # calculate change indices for days and reversal/learning
     udays = {d: c for c, d in enumerate(np.unique(dates))}
     ndays = np.diff([udays[i] for i in dates])
