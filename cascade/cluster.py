@@ -1057,9 +1057,9 @@ def trial_factors_summary_across_mice_days(
             for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
                 pref_indexer = (orientation == oris_to_check[ori])
                 response_calc[0, c] = np.nanmax(
-                    trial_weights[pref_indexer, c], axis=0)
+                    trial_weights[pref_indexer, c])
                 response_calc[1, c] = np.nanmean(
-                    trial_weights[pref_indexer & indexer, c], axis=0)
+                    trial_weights[pref_indexer & indexer, c])
             # normalize using summed mean response to both running states
             maxnorm = response_calc[1, :]/response_calc[0, :]
             # dict for creating dataframe
