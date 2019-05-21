@@ -1061,11 +1061,11 @@ def trial_factors_summary_across_mice_days(
                 response_calc[1, c] = np.nanmean(
                     trial_weights[pref_indexer & indexer, c])
             # normalize using summed mean response to both running states
-            maxnorm = response_calc[1, :]/response_calc[0, :]
+            maxnorm = response_calc[1, :]  #/response_calc[0, :]
             # dict for creating dataframe
             # take only running/(running + stationary) value
             tuning_sc_data = {}
-            tuning_sc_data['norm_pref_response'] = maxnorm
+            tuning_sc_data['mag_pref_response'] = maxnorm
 
             # ------------- GET FANOFACTOR for preferred tuning
 
