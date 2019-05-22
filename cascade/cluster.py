@@ -1115,7 +1115,7 @@ def trial_factors_summary_across_mice_days(
 
             # ------------- GET Trialerror TUNING
 
-            if np.isin('naive', np.unique(learning_state[indexer])):
+            if ~np.isin('naive', np.unique(learning_state[indexer])):
                 trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
                 err_to_check = [[0], [1], [2, 4], [3, 5]]  # hit, miss, CR, FA
                 err_val = ['hit', 'miss', 'correct_reject', 'false_alarm']
