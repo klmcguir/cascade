@@ -470,10 +470,10 @@ def trial_factors_across_mice(
 def trial_factors_across_mice_learning_stages(
         mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175'],
         trace_type='zscore_day',
-        method='ncp_bcd',
+        method='mncp_hals',
         cs='',
         warp=False,
-        words=['rochester', 'convinced', 'convinced', 'convinced', 'convinced'],
+        words=['orlando', 'already', 'already', 'already', 'already'],
         group_by='all',
         nan_thresh=0.85,
         speed_thresh=5,
