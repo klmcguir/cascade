@@ -129,7 +129,7 @@ def groupmouse_varex_summary(
         r_save_tag = ''
 
     # save dir
-    mouse = groupmouse_word({'mice': mice})
+    mouse = paths.groupmouse_word({'mice': mice})
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
     save_dir = os.path.join(save_dir, 'qc' + nt_save_tag + r_tag)
