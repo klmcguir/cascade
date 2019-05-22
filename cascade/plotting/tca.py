@@ -129,7 +129,7 @@ def groupmouse_varex_summary(
         r_save_tag = ''
 
     # save dir
-    mouse = 'Grouped'
+    mouse = groupmouse_word({'mice': mice})
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
     save_dir = os.path.join(save_dir, 'qc' + nt_save_tag + r_tag)
@@ -934,6 +934,7 @@ def groupday_varex_summary(
         word=None,
         group_by=None,
         nan_thresh=None,
+        rectified=False,
         verbose=False):
     """
     Plot reconstruction error as variance explained across all whole groupday
@@ -987,6 +988,10 @@ def groupday_varex_summary(
     ensemble = ensemble.item()
     V = ensemble[method]
     X = np.load(input_tensor_path)
+
+    # rectify input tensor (only look at nonnegative variance)
+    if rectified:
+        X[X < 0] = 0
 
     # get reconstruction error as variance explained
     var, var_s, x, x_s = [], [], [], []
