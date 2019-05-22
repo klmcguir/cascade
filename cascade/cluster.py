@@ -1268,6 +1268,7 @@ def trial_factors_summary_across_mice_days(
         df_calc = pd.concat(df_mouse_tuning_scaled, axis=0)
         df_calc = df_calc.unstack()
         df_calc = df_calc/df_calc.max(axis=0)
+        df_calc = df_calc.stack()
 
         # concatenate different columns per mouse
         df_list_tempo.append(tempo_df)
