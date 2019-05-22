@@ -129,7 +129,7 @@ def groupmouse_varex_summary(
         r_save_tag = ''
 
     # save dir
-    mouse = paths.groupmouse_word({'mice': mice})
+    group_word = paths.groupmouse_word({'mice': mice})
     mouse = 'Group-' + group_word
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
