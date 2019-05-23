@@ -797,11 +797,9 @@ def trial_factors_across_mice_learning_stages(
         learning_indexer = learning_state.isin(['naive', 'learning'])
         trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
         pref_ori_idx = np.argmax(tuning_weights, axis=0)
-        pos = np.arange(1, len(orientation)+1)
         ramp_learning = []
         for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
             pref_indexer = (orientation == oris_to_check[ori])
-            pos_pref = pos[learning_indexer & pref_indexer]
             weights_pref_low_dp = np.nanmean(trial_weights[
                 learning_indexer & (dprime < 2) & pref_indexer, c],
                 axis=0)
@@ -825,17 +823,13 @@ def trial_factors_across_mice_learning_stages(
         learning_indexer = learning_state.isin(['naive', 'learning'])
         trial_weights = speed.values
         pref_ori_idx = np.argmax(tuning_weights, axis=0)
-        pos = np.arange(1, len(orientation)+1)
         ramp_learning = []
         for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
             pref_indexer = (orientation == oris_to_check[ori])
-            pos_pref = pos[learning_indexer & pref_indexer]
             weights_pref_low_dp = np.nanmean(trial_weights[
-                learning_indexer & (dprime < 2) & pref_indexer, c],
-                axis=0)
+                learning_indexer & (dprime < 2) & pref_indexer])
             weights_pref_high_dp = np.nanmean(trial_weights[
-                learning_indexer & (dprime >= 2) & pref_indexer, c],
-                axis=0)
+                learning_indexer & (dprime >= 2) & pref_indexer, c])
             ramp_learning.append(
                 np.log2(weights_pref_high_dp/weights_pref_low_dp))
         data = {'ramp_index_speed_learning': ramp_learning}
