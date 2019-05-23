@@ -533,6 +533,7 @@ def trial_factors_across_mice_learning_stages(
     df_list_ramp = []
     df_list_cm_learning = []
     df_list_ramp_learning = []
+    df_list_speed_learning = []
     for mnum, mouse in enumerate(mice):
 
         # load dir
@@ -792,7 +793,6 @@ def trial_factors_across_mice_learning_stages(
 
         # ------------- RAMP INDEX for preferred ori trials across learning
         # only calculate once for all days
-        # calculate center of mass for your trial factors for learning
         oris_to_check = [0, 135, 270]
         learning_indexer = learning_state.isin(['naive', 'learning'])
         trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
@@ -819,6 +819,34 @@ def trial_factors_across_mice_learning_stages(
                    'component'])
         ramp_learning_df = pd.DataFrame(data=data, index=index)
 
+        # ------------- RAMP SPEED for preferred ori trials across learning
+        # only calculate once for all days
+        oris_to_check = [0, 135, 270]
+        learning_indexer = learning_state.isin(['naive', 'learning'])
+        trial_weights = speed
+        pref_ori_idx = np.argmax(tuning_weights, axis=0)
+        pos = np.arange(1, len(orientation)+1)
+        ramp_learning = []
+        for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
+            pref_indexer = (orientation == oris_to_check[ori])
+            pos_pref = pos[learning_indexer & pref_indexer]
+            weights_pref_low_dp = np.nanmean(trial_weights[
+                learning_indexer & (dprime < 2) & pref_indexer, c],
+                axis=0)
+            weights_pref_high_dp = np.nanmean(trial_weights[
+                learning_indexer & (dprime >= 2) & pref_indexer, c],
+                axis=0)
+            ramp_learning.append(
+                np.log2(weights_pref_high_dp/weights_pref_low_dp))
+        data = {'ramp_index_speed_learning': ramp_learning}
+        index = pd.MultiIndex.from_arrays([
+            [mouse] * rank_num,
+            range(1, rank_num+1)
+            ],
+            names=['mouse',
+                   'component'])
+        speed_learning_df = pd.DataFrame(data=data, index=index)
+
         # concatenate different columns per mouse
         df_list_tempo.append(tempo_df)
         df_list_index.append(pd.DataFrame(index=index))
@@ -829,6 +857,7 @@ def trial_factors_across_mice_learning_stages(
         df_list_ramp.append(pd.concat(df_mouse_ramp, axis=1))
         df_list_cm_learning.append(cm_learning_df)
         df_list_ramp_learning.append(ramp_learning_df)
+        df_list_speed_learning.append(speed_learning_df)
 
     # concatenate all mice/runs together in final dataframe
     all_tempo_df = pd.concat(df_list_tempo, axis=0)
@@ -839,8 +868,10 @@ def trial_factors_across_mice_learning_stages(
     all_ramp_df = pd.concat(df_list_ramp, axis=0)
     all_cm_learning_df = pd.concat(df_list_cm_learning, axis=0)
     all_ramp_learning_df = pd.concat(df_list_ramp_learning, axis=0)
+    all_speed_learning_df = pd.concat(df_list_speed_learning, axis=0)
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df,
                                 all_cm_learning_df, all_ramp_learning_df,
+                                all_speed_learning_df,
                                 all_runmod_df, all_ramp_df], axis=1)
 
     # calculate center of mass amd ramp index for your temporal components
