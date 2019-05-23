@@ -164,10 +164,10 @@ def dirupdate_revdate(mouse, update=True):
 
             # add new tag for date to metadata
             flow.metadata.add_date(
-                mouse, int(day), tags=['learning'], update=update)
+                mouse, int(day.date), tags=['learning'], update=update)
 
         elif int(day.date) >= int(reversal_date):
 
             # add new tag for date to metadata
             flow.metadata.add_date(
-                mouse, int(day), tags=['reversal1'], update=update)
+                mouse, int(day.date), tags=['reversal1'], update=update)
