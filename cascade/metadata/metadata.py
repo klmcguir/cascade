@@ -144,3 +144,30 @@ def dirupdate_training(mouse, update=True):
             run_type = 'other'
             flow.metadata.add_run(run.mouse, run.date, run.run, run_type,
                                   tags=[run.run_type], overwrite=False, update=update)
+
+
+def dirupdate_revdate(mouse, update=True):
+    """ Update existing json metadata to add tags for learning state to
+    Arthur's and Jeff's data.
+    """
+
+    # get reversal date
+    reversal_date = flow.metadata.reversal(mouse)
+
+    # get all days for an existing mouse
+    days = flow.DateSorter.frommeta(mice=[mouse])
+
+    for day in days:
+
+        # check if date is pre- or post-reversal
+        if int(day.date) < int(reversal_date)
+
+            # add new tag for date to metadata
+            flow.metadata.add_date(
+                mouse, int(day), tags=['learning'], update=update)
+
+        elif int(day.date) >= int(reversal_date):
+
+            # add new tag for date to metadata
+            flow.metadata.add_date(
+                mouse, int(day), tags=['reversal1'], update=update)
