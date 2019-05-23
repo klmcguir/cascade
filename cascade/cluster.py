@@ -829,7 +829,7 @@ def trial_factors_across_mice_learning_stages(
             weights_pref_low_dp = np.nanmean(trial_weights[
                 learning_indexer & (dprime < 2) & pref_indexer])
             weights_pref_high_dp = np.nanmean(trial_weights[
-                learning_indexer & (dprime >= 2) & pref_indexer, c])
+                learning_indexer & (dprime >= 2) & pref_indexer])
             ramp_learning.append(
                 np.log2(weights_pref_high_dp/weights_pref_low_dp))
         data = {'ramp_index_speed_learning': ramp_learning}
