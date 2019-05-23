@@ -823,7 +823,7 @@ def trial_factors_across_mice_learning_stages(
         # only calculate once for all days
         oris_to_check = [0, 135, 270]
         learning_indexer = learning_state.isin(['naive', 'learning'])
-        trial_weights = speed
+        trial_weights = speed.values
         pref_ori_idx = np.argmax(tuning_weights, axis=0)
         pos = np.arange(1, len(orientation)+1)
         ramp_learning = []
