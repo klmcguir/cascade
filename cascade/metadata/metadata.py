@@ -160,7 +160,7 @@ def dirupdate_revdate(mouse, update=True):
     for day in days:
 
         # check if date is pre- or post-reversal
-        if int(day.date) < int(reversal_date)
+        if int(day.date) < int(reversal_date):
 
             # add new tag for date to metadata
             flow.metadata.add_date(
