@@ -566,6 +566,12 @@ def trial_factors_across_mice_learning_stages(
         dates = meta.reset_index()['date']
         learning_state = meta['learning_state']
 
+        # re-balance your factors ()
+        print('Re-balancing factors.')
+        for r in ensemble[method].results:
+            for i in range(len(ensemble[method].results[r])):
+                ensemble[method].results[r][i].factors.rebalance()
+
         # sort neuron factors by component they belong to most
         sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
 
@@ -988,6 +994,12 @@ def trial_factors_summary_across_mice_days(
         dates = pd.DataFrame(data={'date': meta.index.get_level_values('date')}, index=meta.index)
         dates = dates['date']  # turn into series for index matching for bool
         learning_state = meta['learning_state']
+
+        # re-balance your factors ()
+        print('Re-balancing factors.')
+        for r in ensemble[method].results:
+            for i in range(len(ensemble[method].results[r])):
+                ensemble[method].results[r][i].factors.rebalance()
 
         # sort neuron factors by component they belong to most
         sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
