@@ -4,6 +4,7 @@ import flow
 import numpy as np
 import pandas as pd
 import warnings
+from copy import deepcopy
 from . import utils
 from . import paths
 
