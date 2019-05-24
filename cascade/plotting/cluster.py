@@ -604,14 +604,14 @@ def hierclus_on_trials_learning_stages(
     # plot
     plt.close('all')
 
-    fig1 = cas.plotting.cluster.clustermap(
+    fig1 = clustermap(
         clustering_df, row_colors=color_df, figsize=(13, 13),
         xticklabels=True, yticklabels=True, col_cluster=True,
         row_cluster=True, expected_size_colors=0.5, method='ward')
     fig1.savefig(
         var_path_prefix + '_trialfac.png', bbox_inches='tight')
 
-    fig2 = cas.plotting.cluster.clustermap(
+    fig2 = clustermap(
         t_df.iloc[row_sorter, :], row_colors=color_df.iloc[row_sorter, :],
         figsize=(13, 13), xticklabels=False, yticklabels=True,
         col_cluster=False, row_cluster=False, expected_size_colors=0.5,
@@ -619,14 +619,14 @@ def hierclus_on_trials_learning_stages(
     fig2.savefig(
         var_path_prefix + '_tempofac.png', bbox_inches='tight')
 
-    fig3 = cas.plotting.cluster.clustermap(
+    fig3 = clustermap(
         t_df, row_colors=color_df, figsize=(13, 13),
         xticklabels=False, yticklabels=True, col_cluster=False,
         row_cluster=True, expected_size_colors=0.5, method='ward')
     fig3.savefig(
         var_path_prefix + '_tempofac_sort.png', bbox_inches='tight')
 
-    fig4 = cas.plotting.cluster.clustermap(
+    fig4 = clustermap(
         clustering_df2.iloc[row_sorter, :], figsize=(13, 13),
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
         xticklabels=True, yticklabels=True, col_cluster=False,
