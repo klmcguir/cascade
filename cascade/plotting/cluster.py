@@ -482,6 +482,7 @@ def hierclus_on_trials_learning_stages(
         drop_inds = ~clustering_df.columns.isin(keep_cols)
         drop_cols = clustering_df.columns[drop_inds]
         clustering_df = clustering_df.drop(columns=drop_cols)
+        nan_indexer = clustering_df.isna().any(axis=1)  # this has to be here
         clustering_df = clustering_df.dropna(axis='rows')
 
         # create df containing all learning stages through rev1
@@ -498,7 +499,6 @@ def hierclus_on_trials_learning_stages(
         clustering_df2 = clustering_df2.dropna(axis='rows')
 
         # remove nanned rows from other dfs
-        nan_indexer = clustering_df.isna().any(axis=1)
         mean_running_mod = mean_running_mod.loc[~nan_indexer, :]
         ri_trials = ri_trials.loc[~nan_indexer, :]
         ri_learning = ri_learning.loc[~nan_indexer, :]
