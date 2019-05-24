@@ -137,7 +137,7 @@ def groupmouse_varex_summary(
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path = os.path.join(
         save_dir, str(mouse) + '_summary_variance_explained' + r_save_tag
-        + '_n' + str(len(mice)) +'.pdf')
+        + '_n' + str(len(mice)) + '.pdf')
 
     # create figure and axes
     buffer = 5
