@@ -548,14 +548,14 @@ def behaviortraces(t2p, cs, start_s=-1, end_s=6, trace_type='speed',
 def groupmouse_trialfac_summary_days(
         mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175'],
         trace_type='zscore_day',
-        method='ncp_bcd',
+        method='mncp_hals',
         cs='',
         warp=False,
-        words=['rochester', 'convinced', 'convinced', 'convinced', 'convinced'],
+        words=['orlando', 'already', 'already', 'already', 'already'],
         group_by='all',
         nan_thresh=0.85,
         speed_thresh=5,
-        rank_num=14,
+        rank_num=18,
         verbose=False):
 
     """
@@ -579,21 +579,8 @@ def groupmouse_trialfac_summary_days(
     # if cells were removed with too many nan trials
     if nan_thresh:
         nt_tag = '_nantrial' + str(nan_thresh)
-        nt_save_tag = ' nantrial ' + str(nan_thresh)
     else:
         nt_tag = ''
-        nt_save_tag = ''
-
-    # save dir
-    group_word = paths.groupmouse_word({'mice': mice})
-    mouse = 'Group-' + group_word
-    save_dir = paths.tca_plots(
-        mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
-    save_dir = os.path.join(save_dir, 'qc' + nt_save_tag)
-    if not os.path.isdir(save_dir): os.mkdir(save_dir)
-    var_path = os.path.join(
-        save_dir, str(mouse) + '_hierarchical_clustering_n' + str(len(mice))
-        + '.pdf')
 
     conds_by_day = []
     oris_by_day = []
@@ -1043,21 +1030,8 @@ def groupmouse_trialfac_summary_stages(
     # if cells were removed with too many nan trials
     if nan_thresh:
         nt_tag = '_nantrial' + str(nan_thresh)
-        nt_save_tag = ' nantrial ' + str(nan_thresh)
     else:
         nt_tag = ''
-        nt_save_tag = ''
-
-    # save dir
-    group_word = paths.groupmouse_word({'mice': mice})
-    mouse = 'Group-' + group_word
-    save_dir = paths.tca_plots(
-        mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
-    save_dir = os.path.join(save_dir, 'qc' + nt_save_tag)
-    if not os.path.isdir(save_dir): os.mkdir(save_dir)
-    var_path = os.path.join(
-        save_dir, str(mouse) + '_hierarchical_clustering_n' + str(len(mice))
-        + '.pdf')
 
     conds_by_day = []
     oris_by_day = []
