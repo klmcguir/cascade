@@ -7,6 +7,7 @@ import warnings
 from copy import deepcopy
 from . import utils
 from . import paths
+from . import tca
 
 # ----------------------- EARLY STAGE DFs -----------------------
 
