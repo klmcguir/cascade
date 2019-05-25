@@ -424,7 +424,6 @@ def corr_ramp_indices(
     else:
         nt_tag = ''
         nt_save_tag = ''
-    met_tag = '_' + cluster_method
     group_word = paths.groupmouse_word({'mice': mice})
     mouse = 'Group-' + group_word
     save_dir = paths.tca_plots(
@@ -432,7 +431,7 @@ def corr_ramp_indices(
     save_dir = os.path.join(save_dir, 'correlations' + nt_save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path_prefix = os.path.join(
-        save_dir, str(mouse) + met_tag + '_rank' + str(rank_num) + '_clus' +
+        save_dir, str(mouse) + '_rank' + str(rank_num) + '_clus' +
         str(cluster_number) + '_pearsonR_trialfac_bystage'
         + '_n' + str(len(mice)) + nt_tag)
 
