@@ -11,6 +11,7 @@ import tensortools as tt
 import seaborn as sns
 import pandas as pd
 from scipy.cluster import hierarchy
+from scipy.stats import pearsonr
 
 from copy import deepcopy
 import warnings
@@ -393,6 +394,149 @@ def twiny_plot(*args, **kwargs):
         ax2.set_ylabel('dprime')
         ax2.plot(range(len(*args)), *args, **kwargs,
                 color=clr, alpha=0.5, linewidth=5)
+
+
+def corr_ramp_indices(
+
+        # df params
+        mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175'],
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        words=['orlando', 'already', 'already', 'already', 'already'],
+        group_by='all',
+        nan_thresh=0.85,
+        speed_thresh=5,
+        rank_num=18,
+        auto_drop=True):
+
+    """
+    Cluster weights from your trial factors and hierarchically cluster using
+    seaborn.clustermap. Annotate plots with useful summary metrics.
+    """
+    # deal with saving dir
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+    if nan_thresh:
+        nt_tag = '_nantrial' + str(nan_thresh)
+        nt_save_tag = ' nantrial ' + str(nan_thresh)
+    else:
+        nt_tag = ''
+        nt_save_tag = ''
+    met_tag = '_' + cluster_method
+    group_word = paths.groupmouse_word({'mice': mice})
+    mouse = 'Group-' + group_word
+    save_dir = paths.tca_plots(
+        mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
+    save_dir = os.path.join(save_dir, 'correlations' + nt_save_tag)
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    var_path_prefix = os.path.join(
+        save_dir, str(mouse) + met_tag + '_rank' + str(rank_num) + '_clus' +
+        str(cluster_number) + '_pearsonR_trialfac_bystage'
+        + '_n' + str(len(mice)) + nt_tag)
+
+    # create dataframes - ignore python and numpy divide by zero warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        with np.errstate(invalid='ignore', divide='ignore'):
+            clustering_df, t_df = \
+                df.groupmouse_trialfac_summary_stages(
+                    mice=mice,
+                    trace_type=trace_type,
+                    method=method,
+                    cs=cs,
+                    warp=warp,
+                    words=words,
+                    group_by=group_by,
+                    nan_thresh=nan_thresh,
+                    speed_thresh=speed_thresh,
+                    rank_num=rank_num,
+                    verbose=False)
+
+    # if running mod, center of mass, or ramp indices are included, remove
+    # from columns (make these into a color df for annotating y-axis)
+    learning_stages = ['pre_rev1']
+    run_stage = ['running_modulation_' + stage for stage in learning_stages]
+    ramp_stage = ['ramp_index_trials_' + stage for stage in learning_stages]
+    mean_running_mod = clustering_df.loc[:, run_stage].mean(axis=1)
+    ri_trials = clustering_df.loc[:, ramp_stage].mean(axis=1)
+    ri_learning = clustering_df.loc[:, 'ramp_index_learning']
+    ri_trace = clustering_df.loc[:, 'ramp_index_trace']
+    ri_offset = clustering_df.loc[:, 'ramp_index_trace_offset']
+    ri_speed = clustering_df.loc[:, 'ramp_index_speed_learning']
+    center_of_mass = clustering_df.loc[:, 'center_of_mass']
+
+    if auto_drop:
+
+        # create df only early and high dp learning stages
+        keep_cols = [
+            'plus_high_dp_learning', 'neutral_high_dp_learning',
+            'minus_high_dp_learning', 'plus_high_dp_rev1',
+            'minus_high_dp_rev1', 'neutral_high_dp_rev1',
+            'plus_naive', 'minus_naive', 'neutral_naive']
+        drop_inds = ~clustering_df.columns.isin(keep_cols)
+        drop_cols = clustering_df.columns[drop_inds]
+        clustering_df = clustering_df.drop(columns=drop_cols)
+        nan_indexer = clustering_df.isna().any(axis=1)  # this has to be here
+        clustering_df = clustering_df.dropna(axis='rows')
+
+        # remove nanned rows from other dfs
+        mean_running_mod = mean_running_mod.loc[~nan_indexer, :]
+        ri_trials = ri_trials.loc[~nan_indexer, :]
+        ri_learning = ri_learning.loc[~nan_indexer, :]
+        ri_trace = ri_trace.loc[~nan_indexer, :]
+        ri_offset = ri_offset.loc[~nan_indexer, :]
+        ri_speed = ri_speed.loc[~nan_indexer, :]
+        center_of_mass = center_of_mass.loc[~nan_indexer, :]
+        t_df = t_df.loc[~nan_indexer, :]
+
+
+    corr_df = pd.concat(
+        [mean_running_mod, ri_speed, ri_learning, ri_trials, ri_trace,
+         ri_offset], axis=1)
+    with pd.option_context('mode.use_inf_as_null', True):
+        corr_df[corr_df.isna()] = 0
+
+    corrmat = np.zeros((6, 6))
+    pmat = np.zeros((6, 6))
+    for i in range(6):
+        for k in range(6):
+            corA, corP = pearsonr(corr_df.iloc[row_sorter, :].values[:, i], corr_df.iloc[row_sorter, :].values[:, k])
+            corrmat[i, k] = corA
+            pmat[i, k] = corP
+
+    labels = ['running modulation', 'speed RI', 'learning RI',
+              'daily trial RI', 'trace RI', 'trace offset RI']
+    plt.figure()
+    plt.imshow(corrmat)
+    c = plt.colorbar()
+    c.set_label('R')
+    plt.title('Pearson-R corrcoef')
+    plt.xticklabels(labels)
+    plt.yticklabels(labels)
+    plt.savefig(
+        var_path_prefix + '_corr.png', bbox_inches='tight')
+
+    plt.figure()
+    plt.imshow(pmat)
+    c = plt.colorbar()
+    c.set_label('R')
+    plt.title('Pearson-R pvals')
+    plt.xticklabels(labels)
+    plt.yticklabels(labels)
+    plt.savefig(
+        var_path_prefix + '_pvals.png', bbox_inches='tight')
+
+    plt.figure()
+    plt.imshow(np.log10(pmat))
+    c = plt.colorbar()
+    c.set_label('R')
+    plt.title('Pearson-R $log_{10}$(pvals)')
+    plt.xticklabels(labels)
+    plt.yticklabels(labels)
+    plt.savefig(
+        var_path_prefix + '_log10pvals.png', bbox_inches='tight')
 
 
 def hierclus_on_trials_learning_stages(
