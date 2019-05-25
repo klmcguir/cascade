@@ -511,7 +511,7 @@ def corr_ramp_indices(
     c = plt.colorbar()
     c.set_label('correlation (R)')
     plt.title('Pearson-R corrcoef')
-    plt.xticks(range(len(labels)), labels)
+    plt.xticks(range(len(labels)), labels, rotation=90)
     plt.yticks(range(len(labels)), labels)
     plt.savefig(
         var_path_prefix + '_corr.png', bbox_inches='tight')
@@ -521,7 +521,7 @@ def corr_ramp_indices(
     c = plt.colorbar()
     c.set_label('p-value')
     plt.title('Pearson-R pvals')
-    plt.xticks(range(len(labels)), labels)
+    plt.xticks(range(len(labels)), labels, rotation=90)
     plt.yticks(range(len(labels)), labels)
     plt.savefig(
         var_path_prefix + '_pvals.png', bbox_inches='tight')
@@ -531,7 +531,7 @@ def corr_ramp_indices(
     c = plt.colorbar()
     c.set_label('$log_{10}$(p-value)')
     plt.title('Pearson-R $log_{10}$(pvals)')
-    plt.xticks(range(len(labels)), labels)
+    plt.xticks(range(len(labels)), labels, rotation=90)
     plt.yticks(range(len(labels)), labels)
     plt.savefig(
         var_path_prefix + '_log10pvals.png', bbox_inches='tight')
