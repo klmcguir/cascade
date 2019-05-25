@@ -431,8 +431,7 @@ def corr_ramp_indices(
     save_dir = os.path.join(save_dir, 'correlations' + nt_save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path_prefix = os.path.join(
-        save_dir, str(mouse) + '_rank' + str(rank_num) + '_clus' +
-        str(cluster_number) + '_pearsonR_trialfac_bystage'
+        save_dir, str(mouse) + '_rank' + str(rank_num) + '_pearsonR_trialfac_bystage'
         + '_n' + str(len(mice)) + nt_tag)
 
     # create dataframes - ignore python and numpy divide by zero warnings
