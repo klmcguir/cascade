@@ -1401,9 +1401,9 @@ def groupmouse_trialfac_summary_stages(
     for i in range(np.shape(tr)[0]):
         center_of_mass.append(np.sum(tr[i, :] * pos)/np.sum(tr[i, :]))
         ramp_index_trace.append(
-            np.log2(np.nanmean(tr[i, 40:64])/np.nanmean(tr[i, 16:40])))
+            np.log2(np.nanmean(tr[i, 39:62])/np.nanmean(tr[i, 16:39])))
         offset_index_trace.append(
-            np.log2(np.nanmean(tr[i, 64:96])/np.nanmean(tr[i, 16:64])))
+            np.log2(np.nanmean(tr[i, 62:93])/np.nanmean(tr[i, 16:62])))
     trial_factor_df['center_of_mass'] = center_of_mass
     trial_factor_df['ramp_index_trace'] = ramp_index_trace
     trial_factor_df['ramp_index_trace_offset'] = offset_index_trace
