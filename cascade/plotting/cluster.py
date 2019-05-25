@@ -528,8 +528,10 @@ def corr_ramp_indices(
         var_path_prefix + '_pvals.png', bbox_inches='tight')
 
     plt.figure()
+    vmin = np.nanmin(np.log10(pmat).flatten())
+    vmax = 0
     sns.heatmap(np.log10(pmat), annot=annot, xticklabels=labels,
-                yticklabels=labels,
+                yticklabels=labels, vmin=vmin, vmax=vmax,
                 square=True, cbar_kws={'label': '$log_{10}$(p-value)'})
     plt.xticks(rotation=45, ha='right')
     plt.title('Pearson-R log$_{10}$(p-values)')
@@ -662,7 +664,7 @@ def corr_ramp_indices_bymouse(
                     yticklabels=labels,
                     square=True, cbar_kws={'label': 'correlation (R)'})
         plt.xticks(rotation=45, ha='right')
-        plt.title('Pearson-R corrcoef')
+        plt.title(ms + 'Pearson-R corrcoef')
         plt.savefig(
             var_path_prefix + '_corr.png', bbox_inches='tight')
 
@@ -670,16 +672,18 @@ def corr_ramp_indices_bymouse(
         sns.heatmap(pmat, annot=annot, xticklabels=labels, yticklabels=labels,
                     square=True, cbar_kws={'label': 'p-value'})
         plt.xticks(rotation=45, ha='right')
-        plt.title('Pearson-R p-values')
+        plt.title(ms + 'Pearson-R p-values')
         plt.savefig(
             var_path_prefix + '_pvals.png', bbox_inches='tight')
 
         plt.figure()
+        vmin = np.nanmin(np.log10(pmat).flatten())
+        vmax = 0
         sns.heatmap(np.log10(pmat), annot=annot, xticklabels=labels,
-                    yticklabels=labels,
+                    yticklabels=labels, vmin=vmin, vmax=vmax,
                     square=True, cbar_kws={'label': '$log_{10}$(p-value)'})
         plt.xticks(rotation=45, ha='right')
-        plt.title('Pearson-R log$_{10}$(p-values)')
+        plt.title(ms + ' Pearson-R log$_{10}$(p-values)')
         plt.savefig(
             var_path_prefix + '_log10pvals.png', bbox_inches='tight')
 
