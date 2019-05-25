@@ -409,7 +409,8 @@ def corr_ramp_indices(
         nan_thresh=0.85,
         speed_thresh=5,
         rank_num=18,
-        auto_drop=True):
+        auto_drop=True,
+        annot=False):
 
     """
     Cluster weights from your trial factors and hierarchically cluster using
@@ -424,6 +425,10 @@ def corr_ramp_indices(
     else:
         nt_tag = ''
         nt_save_tag = ''
+    if annot:
+        a_tag = '_annot'
+    else:
+        a_tag = ''
     group_word = paths.groupmouse_word({'mice': mice})
     mouse = 'Group-' + group_word
     save_dir = paths.tca_plots(
@@ -432,7 +437,7 @@ def corr_ramp_indices(
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path_prefix = os.path.join(
         save_dir, str(mouse) + '_rank' + str(rank_num) + '_pearsonR_trialfac_bystage'
-        + '_n' + str(len(mice)) + nt_tag)
+        + '_n' + str(len(mice)) + nt_tag + a_tag)
 
     # create dataframes - ignore python and numpy divide by zero warnings
     with warnings.catch_warnings():
@@ -507,29 +512,24 @@ def corr_ramp_indices(
     labels = ['running modulation', 'speed RI', 'learning RI',
               'daily trial RI', 'trace RI', 'trace offset RI']
     plt.figure()
-    sns.heatmap(corrmat, annot=True, xticklabels=labels, yticklabels=labels,
-            square=True, cbar_kws={'label': 'correlation (R)'})
+    sns.heatmap(corrmat, annot=annot, xticklabels=labels, yticklabels=labels,
+                square=True, cbar_kws={'label': 'correlation (R)'})
     plt.title('Pearson-R corrcoef')
     plt.savefig(
         var_path_prefix + '_corr.png', bbox_inches='tight')
 
     plt.figure()
-    plt.imshow(pmat)
-    c = plt.colorbar()
-    c.set_label('p-value')
+    sns.heatmap(pmat, annot=annot, xticklabels=labels, yticklabels=labels,
+                square=True, cbar_kws={'label': 'p-value'})
     plt.title('Pearson-R p-values')
-    plt.xticks(range(len(labels)), labels, rotation=90)
-    plt.yticks(range(len(labels)), labels)
     plt.savefig(
         var_path_prefix + '_pvals.png', bbox_inches='tight')
 
     plt.figure()
-    plt.imshow(np.log10(pmat))
-    c = plt.colorbar()
-    c.set_label('$log_{10}$(p-value)')
+    sns.heatmap(np.log10(pmat), annot=annot, xticklabels=labels,
+                yticklabels=labels,
+                square=True, cbar_kws={'label': '$log_{10}$(p-value)'})
     plt.title('Pearson-R log$_{10}$(p-values)')
-    plt.xticks(range(len(labels)), labels, rotation=90)
-    plt.yticks(range(len(labels)), labels)
     plt.savefig(
         var_path_prefix + '_log10pvals.png', bbox_inches='tight')
 
