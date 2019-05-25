@@ -428,6 +428,7 @@ def hierclus_on_trials_learning_stages(
     else:
         nt_tag = ''
         nt_save_tag = ''
+    met_tag = '_' + cluster_method
     group_word = paths.groupmouse_word({'mice': mice})
     mouse = 'Group-' + group_word
     save_dir = paths.tca_plots(
@@ -435,7 +436,7 @@ def hierclus_on_trials_learning_stages(
     save_dir = os.path.join(save_dir, 'clustering' + nt_save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path_prefix = os.path.join(
-        save_dir, str(mouse) + '_rank' + str(rank_num) + '_clus' +
+        save_dir, str(mouse) + met_tag + '_rank' + str(rank_num) + '_clus' +
         str(cluster_number) + '_heirclus_trialfac_bystage'
         + '_n' + str(len(mice)) + nt_tag)
 
@@ -518,7 +519,7 @@ def hierclus_on_trials_learning_stages(
              'minus_low_dp_rev1', 'minus_high_dp_rev1']]
 
     # cluster to get cluster color labels for each component
-    g = sns.clustermap(clustering_df, method='ward')
+    g = sns.clustermap(clustering_df, method=cluster_method)
     row_sorter = g.dendrogram_row.reordered_ind
     clusters = hierarchy.fcluster(
         g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
@@ -607,7 +608,7 @@ def hierclus_on_trials_learning_stages(
     fig1 = clustermap(
         clustering_df, row_colors=color_df, figsize=(13, 13),
         xticklabels=True, yticklabels=True, col_cluster=True,
-        row_cluster=True, expected_size_colors=0.5, method='ward')
+        row_cluster=True, expected_size_colors=0.5, method=cluster_method)
     fig1.savefig(
         var_path_prefix + '_trialfac.png', bbox_inches='tight')
 
@@ -622,7 +623,7 @@ def hierclus_on_trials_learning_stages(
     fig3 = clustermap(
         t_df, row_colors=color_df, figsize=(13, 13),
         xticklabels=False, yticklabels=True, col_cluster=False,
-        row_cluster=True, expected_size_colors=0.5, method='ward')
+        row_cluster=True, expected_size_colors=0.5, method=cluster_method)
     fig3.savefig(
         var_path_prefix + '_tempofac_sort.png', bbox_inches='tight')
 
@@ -630,7 +631,7 @@ def hierclus_on_trials_learning_stages(
         clustering_df2.iloc[row_sorter, :], figsize=(13, 13),
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
         xticklabels=True, yticklabels=True, col_cluster=False,
-        row_cluster=False, expected_size_colors=0.5, method='ward')
+        row_cluster=False, expected_size_colors=0.5, method=cluster_method)
     fig4.savefig(
         var_path_prefix + '_5ptstages.png', bbox_inches='tight')
 
