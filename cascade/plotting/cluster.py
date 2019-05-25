@@ -542,7 +542,7 @@ def hierclus_on_trials_learning_stages(
 
     # bins for creating custom heatmaps
     bins = [
-        -np.inf, -2 -1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1, 2, np.inf]
+        -np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1, np.inf]
 
     # create running mod color labels
     binned_run = pd.cut(mean_running_mod, bins, labels=range(0, len(bins)-1))
