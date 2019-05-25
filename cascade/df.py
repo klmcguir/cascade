@@ -1318,7 +1318,7 @@ def groupmouse_trialfac_summary_stages(
         # ------------- RAMP INDEX for preferred ori trials across learning
         # only calculate once for all days
         oris_to_check = [0, 135, 270]
-        learning_indexer = learning_state.isin(['naive', 'learning'])
+        learning_indexer = learning_state.isin(['learning'])
         trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
         pref_ori_idx = np.argmax(tuning_weights, axis=0)
         ramp_learning = []
