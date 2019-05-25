@@ -542,7 +542,7 @@ def hierclus_on_trials_learning_stages(
 
     # bins for creating custom heatmaps
     bins = [
-        -np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1, np.inf]
+        -np.inf, -2 -1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1, 2, np.inf]
 
     # create running mod color labels
     binned_run = pd.cut(mean_running_mod, bins, labels=range(0, len(bins)-1))
@@ -598,7 +598,7 @@ def hierclus_on_trials_learning_stages(
             'ramp-index-daily-trials': trial_ramp_colors,
             'ramp-index-trace': trace_ramp_colors,
             'ramp-index-trace-offset': offset_ramp_colors,
-            'center-of-mass-trace': cm_colors,
+            # 'center-of-mass-trace': cm_colors,
             'cluster': cluster_colors}
     color_df = pd.DataFrame(data=data, index=clustering_df.index)
 
