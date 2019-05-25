@@ -500,7 +500,7 @@ def corr_ramp_indices(
     pmat = np.zeros((6, 6))
     for i in range(6):
         for k in range(6):
-            corA, corP = pearsonr(corr_df.iloc[row_sorter, :].values[:, i], corr_df.iloc[row_sorter, :].values[:, k])
+            corA, corP = pearsonr(corr_df.values[:, i], corr_df.values[:, k])
             corrmat[i, k] = corA
             pmat[i, k] = corP
 
