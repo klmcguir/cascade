@@ -507,7 +507,7 @@ def corr_ramp_indices(
     labels = ['running modulation', 'speed RI', 'learning RI',
               'daily trial RI', 'trace RI', 'trace offset RI']
     plt.figure()
-    sns.heatmap(corrmat, annot=True, xticklabels=labels, yticklabels=labels
+    sns.heatmap(corrmat, annot=True, xticklabels=labels, yticklabels=labels,
             square=True, cbar_kws={'label': 'correlation (R)'})
     plt.title('Pearson-R corrcoef')
     plt.savefig(
