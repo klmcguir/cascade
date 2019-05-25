@@ -507,12 +507,9 @@ def corr_ramp_indices(
     labels = ['running modulation', 'speed RI', 'learning RI',
               'daily trial RI', 'trace RI', 'trace offset RI']
     plt.figure()
-    plt.imshow(corrmat)
-    c = plt.colorbar()
-    c.set_label('correlation (R)')
+    sns.heatmap(corrmat, annot=True, xticklabels=labels, yticklabels=labels
+            square=True, cbar_kws={'label': 'correlation (R)'})
     plt.title('Pearson-R corrcoef')
-    plt.xticks(range(len(labels)), labels, rotation=90)
-    plt.yticks(range(len(labels)), labels)
     plt.savefig(
         var_path_prefix + '_corr.png', bbox_inches='tight')
 
@@ -520,7 +517,7 @@ def corr_ramp_indices(
     plt.imshow(pmat)
     c = plt.colorbar()
     c.set_label('p-value')
-    plt.title('Pearson-R pvals')
+    plt.title('Pearson-R p-values')
     plt.xticks(range(len(labels)), labels, rotation=90)
     plt.yticks(range(len(labels)), labels)
     plt.savefig(
@@ -530,7 +527,7 @@ def corr_ramp_indices(
     plt.imshow(np.log10(pmat))
     c = plt.colorbar()
     c.set_label('$log_{10}$(p-value)')
-    plt.title('Pearson-R $log_{10}$(pvals)')
+    plt.title('Pearson-R log$_{10}$(p-values)')
     plt.xticks(range(len(labels)), labels, rotation=90)
     plt.yticks(range(len(labels)), labels)
     plt.savefig(
