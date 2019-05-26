@@ -646,7 +646,7 @@ def corr_ramp_indices_bymouse(
             save_dir, str(ms) + '_rank' + str(rank_num) +
             '_pearsonR_trialfac_bystage' + nt_tag + a_tag)
 
-        ms_indexer = corrmat.reset_index()['mouse'] == ms
+        ms_indexer = corr_df.reset_index()['mouse'] == ms
         corrmat = np.zeros((6, 6))
         pmat = np.zeros((6, 6))
         for i in range(6):
