@@ -681,7 +681,7 @@ def corr_ramp_indices_bymouse(
         vmax = 0
         sns.heatmap(np.log10(pmat), annot=annot, xticklabels=labels,
                     yticklabels=labels, vmin=vmin, vmax=vmax, robust=True,
-                    square=True, cbar_kws={'label': '$log_{10}$(p-value)'})
+                    square=True, cbar_kws={'label': 'log$_{10}$(p-value)'})
         plt.xticks(rotation=45, ha='right')
         plt.title(ms + ' Pearson-R log$_{10}$(p-values)')
         plt.savefig(
