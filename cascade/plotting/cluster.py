@@ -641,7 +641,7 @@ def corr_ramp_indices_bymouse(
     with pd.option_context('mode.use_inf_as_null', True):
         corr_df[corr_df.isna()] = 0
 
-    for ms in np.unique(corrmat.reset_index()['mouse']):
+    for ms in np.unique(corr_df.reset_index()['mouse']):
         var_path_prefix = os.path.join(
             save_dir, str(ms) + '_rank' + str(rank_num) +
             '_pearsonR_trialfac_bystage' + nt_tag + a_tag)
