@@ -350,12 +350,12 @@ def lineplot_grid_factor_tuning_byday(
         data = {'tuning': tuning_vals, 'condition': condition}
         tuning_df = pd.DataFrame(data, index=var_df.index)
         new_list.append(tuning_df)
-        new_df = pd.concat(new_list, axis=0)
-        grid = sns.FacetGrid(
-            new_df.reset_index(), row='mouse', col='component',
-            hue='condition', aspect=2, height=3,
-            palette=sns.color_palette('hls', 7), dropna=False,
-            row_order=['OA27', 'OA26', 'OA67', 'VF226', 'CC175'])
+    new_df = pd.concat(new_list, axis=0)
+    grid = sns.FacetGrid(
+        new_df.reset_index(), row='mouse', col='component',
+        hue='condition', aspect=2, height=3,
+        palette=sns.color_palette('hls', 7), dropna=False,
+        row_order=['OA27', 'OA26', 'OA67', 'VF226', 'CC175'])
 
     # plot
     grid.map(twiny_plot, 'tuning').add_legend()
