@@ -348,7 +348,7 @@ def lineplot_grid_factor_tuning_byday(
         tuning_vals = var_df[i].values
         condition = [i]*len(tuning_vals)
         data = {'tuning': tuning_vals, 'condition': condition}
-        tuning_df = pd.DataFrame(data, index=a.index)
+        tuning_df = pd.DataFrame(data, index=var_df.index)
         new_list.append(tuning_df)
         new_df = pd.concat(new_list, axis=0)
         grid = sns.FacetGrid(
