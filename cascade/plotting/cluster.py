@@ -318,8 +318,7 @@ def lineplot_grid_factor_tuning_byday(
     save_dir = os.path.join(save_dir, 'lineplots' + nt_save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path = os.path.join(
-        save_dir, str(mouse) + '_rank' + str(rank_num) + '_clus' +
-        str(cluster_number) + '_lineplot_trialfac_byday'
+        save_dir, str(mouse) + '_rank' + str(rank_num) + '_lineplot_trialfac_byday'
         + '_n' + str(len(mice)) + nt_tag + '.pdf')
 
     # create dataframes - ignore python and numpy divide by zero warnings
