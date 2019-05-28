@@ -187,18 +187,18 @@ def getcstraces(
         # z-score
         if 'zscore' in trace_type.lower():
             arti = False if clean_artifacts is None else True
-            if trace_type.lower() == 'zscore_day':
+            if 'zscore_day' in trace_type.lower():
                 mu = pool.calc.zscore.mu(date, nan_artifacts=arti,
                                          thresh=thresh)
                 sigma = pool.calc.zscore.sigma(date, nan_artifacts=arti,
                                                thresh=thresh)
-            elif trace_type.lower() == 'zscore_iti':
+            elif 'zscore_iti' in trace_type.lower():
                 mu = pool.calc.zscore.iti_mu(date, window=4,
                                              nan_artifacts=arti, thresh=thresh)
                 sigma = pool.calc.zscore.iti_sigma(date, window=4,
                                                    nan_artifacts=arti,
                                                    thresh=thresh)
-            elif trace_type.lower() == 'zscore_run':
+            elif 'zscore_run' in trace_type.lower():
                 mu = pool.calc.zscore.run_mu(run, nan_artifacts=arti,
                                              thresh=thresh)
                 sigma = pool.calc.zscore.run_sigma(run, nan_artifacts=arti,
