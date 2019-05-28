@@ -193,9 +193,10 @@ def getcstraces(
                 sigma = pool.calc.zscore.sigma(date, nan_artifacts=arti,
                                                thresh=thresh)
             elif trace_type.lower() == 'zscore_iti':
-                mu = pool.calc.zscore.iti_mu(date, window=4, nan_artifacts=arti,
-                                             thresh=thresh)
-                sigma = pool.calc.zscore.iti_sigma(date, window=4, nan_artifacts=arti,
+                mu = pool.calc.zscore.iti_mu(date, window=4,
+                                             nan_artifacts=arti, thresh=thresh)
+                sigma = pool.calc.zscore.iti_sigma(date, window=4,
+                                                   nan_artifacts=arti,
                                                    thresh=thresh)
             elif trace_type.lower() == 'zscore_run':
                 mu = pool.calc.zscore.run_mu(run, nan_artifacts=arti,
@@ -209,8 +210,9 @@ def getcstraces(
         # smooth data
         if smooth:
             for cell in range(np.shape(traces)[0]):
-                traces[cell, :] = np.convolve(traces[cell, :], np.ones(smooth_win,
-                                              dtype=np.float64)/smooth_win, 'same')
+                traces[cell, :] = np.convolve(
+                    traces[cell, :], np.ones(smooth_win,
+                    dtype=np.float64)/smooth_win, 'same')
 
         # add new trace type into t2p
         t2p.add_trace(trace_type, traces)
@@ -224,16 +226,17 @@ def getcstraces(
 
         # subtract the min and divide by max of stimulus windows
         mx = pool.calc.zscore.stim_max(date, window=5, nan_artifacts=arti,
-                                             thresh=thresh)
+                                       thresh=thresh)
         mn = pool.calc.zscore.stim_min(date, window=5, nan_artifacts=arti,
-                                                   thresh=thresh)
+                                       thresh=thresh)
         traces = ((traces.T - mn)/mx).T
 
         # smooth traces
         if smooth:
             for cell in range(np.shape(traces)[0]):
-                traces[cell, :] = np.convolve(traces[cell, :], np.ones(smooth_win,
-                                              dtype=np.float64)/smooth_win, 'same')
+                traces[cell, :] = np.convolve(
+                    traces[cell, :], np.ones(smooth_win,
+                    dtype=np.float64)/smooth_win, 'same')
 
         # add new trace type into t2p
         t2p.add_trace(trace_type, traces)
