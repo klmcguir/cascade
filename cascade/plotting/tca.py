@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+from sklearn.decomposition import PCA
 import tensortools as tt
 import seaborn as sns
 import pandas as pd
@@ -93,7 +94,7 @@ def groupmouse_varex_summary(
         group_by='all',
         nan_thresh=0.85,
         rectified=False,
-        verbose=False):
+        verbose=True):
     """
     Plot reconstruction error as variance explained across all whole groupday
     TCA decomposition ensemble.
@@ -193,19 +194,38 @@ def groupmouse_varex_summary(
             np.ones(5, dtype=np.float64)/5, 'same').reshape(np.shape(X))
         var_smooth = (np.nanvar(X) - np.nanvar(X - smU)) / np.nanvar(X)
 
+        # calculate trial concatenated PCA reconstruction of data, this is
+        # the upper bound of performance we could expect
+        if verbose:
+            print('Calculating trial concatenated PCA control: ' + mouse)
+        iX = deepcopy(X)
+        iX[np.isnan(iX)] = np.nanmean(iX[:])  # impute empties w/ mean of data
+        sz = np.shape(iX)
+        iX = iX.reshape(sz[0], sz[1])
+        mu = np.nanmean(iX, axis=0)
+        catPCA = PCA()
+        catPCA.fit(iX)
+        Xhat = np.dot(pca.transform(X), pca.components_) + mu
+        var_PCA = [(np.nanvar(X) - np.nanvar(X - Xhat)) / np.nanvar(X)]
+
+
         # plot
         R = np.max([r for r in V.results.keys()])
         ax.scatter(x_s, var_s, color=cmap[c], alpha=0.5)
         ax.scatter([R+2], var_mean, color=cmap[c], alpha=0.5)
         ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
+        ax.scatter([R+6], var_PCA, color=cmap[c], alpha=0.5)
         ax.plot(x, var, label=('mouse ' + mouse), color=cmap[c])
         ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c])
         ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
+        ax.plot([R+5.5, R+6.5], [var_PCA, var_PCA], color=cmap[c])
 
     # add labels/titles
     x_labels = [str(R) for R in V.results]
     x_labels.extend(
-        ['', 'mean\n cell\n response', '', 'smooth\n response\n (0.3s)'])
+        ['', 'mean\n cell\n response',
+         '', 'smooth\n response\n (0.3s)',
+         '', 'PCA\n reconstruction'])
     ax.set_xticks(range(1, len(V.results) + 5))
     ax.set_xticklabels(x_labels)
     ax.set_xlabel('model rank')
