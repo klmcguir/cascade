@@ -208,7 +208,6 @@ def groupmouse_varex_summary(
         Xhat = np.dot(pca.transform(X), pca.components_) + mu
         var_PCA = [(np.nanvar(X) - np.nanvar(X - Xhat)) / np.nanvar(X)]
 
-
         # plot
         R = np.max([r for r in V.results.keys()])
         ax.scatter(x_s, var_s, color=cmap[c], alpha=0.5)
