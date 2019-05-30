@@ -201,12 +201,17 @@ def groupmouse_varex_summary(
         iX = deepcopy(X)
         iX[np.isnan(iX)] = np.nanmean(iX[:])  # impute empties w/ mean of data
         sz = np.shape(iX)
-        iX = iX.reshape(sz[0], sz[1])
+        iX = iX.reshape(sz[0], sz[1]*sz[2])
         mu = np.nanmean(iX, axis=0)
         catPCA = PCA()
         catPCA.fit(iX)
-        Xhat = np.dot(pca.transform(X), pca.components_) + mu
-        var_PCA = [(np.nanvar(X) - np.nanvar(X - Xhat)) / np.nanvar(X)]
+        nComp = len(V.results)
+        Xhat = np.dot(catPCA.transform(iX)[:, :nComp],
+                      catPCA.components_[:nComp, :])
+        Xhat += mu
+        var_PCA = [(np.nanvar(X.reshape(sz[0], sz[1]*sz[2]))
+                   - np.nanvar(X.reshape(sz[0], sz[1]*sz[2]) - Xhat))
+                   / np.nanvar(X.reshape(sz[0], sz[1]*sz[2]))]
 
         # plot
         R = np.max([r for r in V.results.keys()])
@@ -222,9 +227,9 @@ def groupmouse_varex_summary(
     # add labels/titles
     x_labels = [str(R) for R in V.results]
     x_labels.extend(
-        ['', 'mean\n cell\n response',
-         '', 'smooth\n response\n (0.3s)',
-         '', 'PCA\n reconstruction'])
+        ['', 'mean\ncell\nresponse',
+         '', 'smooth\nresponse\n(0.3s)',
+         '', 'PCA\n(c=' + str(nComp) + ')'])
     ax.set_xticks(range(1, len(V.results) + 5))
     ax.set_xticklabels(x_labels)
     ax.set_xlabel('model rank')
