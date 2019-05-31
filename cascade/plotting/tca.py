@@ -229,7 +229,7 @@ def groupmouse_varex_summary(
     x_labels.extend(
         ['', 'mean\ncell\nresponse',
          '', 'smooth\nresponse\n(0.3s)',
-         '', 'PCA\n(c=' + str(nComp) + ')'])
+         '', 'PCA$_{nComp}$'])
     ax.set_xticks(range(1, len(V.results) + 7))
     ax.set_xticklabels(x_labels)
     ax.set_xlabel('model rank')
