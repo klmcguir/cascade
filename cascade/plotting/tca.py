@@ -230,7 +230,7 @@ def groupmouse_varex_summary(
         ['', 'mean\ncell\nresponse',
          '', 'smooth\nresponse\n(0.3s)',
          '', 'PCA\n(c=' + str(nComp) + ')'])
-    ax.set_xticks(range(1, len(V.results) + 5))
+    ax.set_xticks(range(1, len(V.results) + 7))
     ax.set_xticklabels(x_labels)
     ax.set_xlabel('model rank')
     ax.set_ylabel('fractional variance explained')
