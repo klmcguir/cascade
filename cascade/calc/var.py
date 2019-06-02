@@ -11,7 +11,7 @@ import os
 def groupday_varex_byday(
         mouse,
         trace_type='zscore_day',
-        method='ncp_bcd',
+        method='mncp_hals',
         cs='',
         warp=False,
         word=None,
@@ -125,7 +125,7 @@ def groupday_varex_byday(
 def groupday_varex_byday_bycomp(
         mouse,
         trace_type='zscore_day',
-        method='ncp_bcd',
+        method='mncp_hals',
         cs='',
         warp=False,
         word=None,
@@ -229,7 +229,7 @@ def groupday_varex_byday_bycomp(
 def groupday_varex_byday_bycomp_bycell(
         mouse,
         trace_type='zscore_day',
-        method='ncp_bcd',
+        method='mncp_hals',
         cs='',
         warp=False,
         word=None,
@@ -344,7 +344,7 @@ def groupday_varex_byday_bycomp_bycell(
 def groupday_varex_bycomp(
         mouse,
         trace_type='zscore_day',
-        method='ncp_bcd',
+        method='mncp_hals',
         cs='',
         warp=False,
         word=None,
