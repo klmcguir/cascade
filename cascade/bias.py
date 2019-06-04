@@ -328,7 +328,7 @@ def _singleday(DaySorter, pars):
     save_dir = paths.df_path(DaySorter.mouse, pars=pars)
     path = os.path.join(
         save_dir, str(DaySorter.mouse) + '_' + str(DaySorter.date) + '_df_' +
-        pars.trace_type + '.pkl')
+        pars['trace_type'] + '.pkl')
     dft = pd.read_pickle(path)
 
     # slice out your day of interest
