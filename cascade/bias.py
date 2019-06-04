@@ -16,6 +16,12 @@ def get_bias(
         trace_type='zscore_day',
         drive_threshold=20,
         drive_type='visual'):
+    """
+    Returns:
+    --------
+    FC_bias : ndarray
+        bias per cell per day
+    """
 
     # get tensor, metadata, and ids to get things rolling
     ten, met, id = cas.bias.build_tensor(
@@ -65,9 +71,9 @@ def get_bias(
         dp = pool.calc.performance.dprime(flow.Date(mouse, date=day))
         dprime_list.append(dp)
 
-    FC_mean = np.nanmean(FC_ten[:, first_sec, :], axis=1)
-    QC_mean = np.nanmean(QC_ten[:, first_sec, :], axis=1)
-    NC_mean = np.nanmean(NC_ten[:, first_sec, :], axis=1)
+    FC_mean = np.nanmean(FC_ten[:, stim_window, :], axis=1)
+    QC_mean = np.nanmean(QC_ten[:, stim_window, :], axis=1)
+    NC_mean = np.nanmean(NC_ten[:, stim_window, :], axis=1)
 
     # do not consider cells that are negative to all three cues
     neg_bool = (FC_mean < 0) & (QC_mean < 0) & (NC_mean < 0)
@@ -138,9 +144,9 @@ def get_mean_response(
         dp = pool.calc.performance.dprime(flow.Date(mouse, date=day))
         dprime_list.append(dp)
 
-    FC_mean = np.nanmean(FC_ten[:, first_sec, :], axis=1)
-    QC_mean = np.nanmean(QC_ten[:, first_sec, :], axis=1)
-    NC_mean = np.nanmean(NC_ten[:, first_sec, :], axis=1)
+    FC_mean = np.nanmean(FC_ten[:, stim_window, :], axis=1)
+    QC_mean = np.nanmean(QC_ten[:, stim_window, :], axis=1)
+    NC_mean = np.nanmean(NC_ten[:, stim_window, :], axis=1)
 
     # do not consider cells that are negative to all three cues
     neg_bool = (FC_mean < 0) & (QC_mean < 0) & (NC_mean < 0)
