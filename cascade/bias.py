@@ -6,16 +6,34 @@ import pool
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
+from . import paths
 
 
 def bias_df(
         mice=['OA27', 'OA26', 'VF226', 'OA67', 'CC175'],
-        trace_type='dff',
+
+        # trace params
+        trace_type='zscore_day',
+        cs='',
+        downsample=True,
+        start_time=-1,
+        end_time=6,
+        clean_artifacts=None,
+        thresh=20,
+        warp=False,
+        smooth=True,
+        smooth_win=5,
+
+        # drive params
         driven=True,
         drive_css=['plus', 'minus', 'neutral'],
         stim_offset=1,
-        smooth=False,
         drive_thresh=5):
+
+    pars = {'trace_type': trace_type, 'cs': cs, 'downsample': downsample,
+            'start_time': start_time, 'end_time': end_time,
+            'clean_artifacts': clean_artifacts, 'thresh': thresh,
+            'warp': warp, 'smooth': smooth, 'smooth_win': smooth_win}
 
     xmouse_bias = []
     xmouse_dprime = []
@@ -57,7 +75,7 @@ def bias_df(
                 cells = d1_ids
 
             # get traces for the day
-            dft = _singleday(DaySorter, trace_type=trace_type)
+            dft = _singleday(DaySorter, pars)
             dft = dft.reset_index(level=['cell_idx', 'timestamp'])
 
             # filter out cells which are not driven
@@ -115,8 +133,8 @@ def bias_df(
                     break
 
                 # smooth signal with rolling 3 unit window
-                if smooth:
-                    dff['trace'] = dff['trace'].rolling(3).mean()
+                # if smooth:
+                #     dff['trace'] = dff['trace'].rolling(3).mean()
 
                 trial_mean = dff.pivot_table(
                     index=['cell_idx', 'trial_idx'],
@@ -291,7 +309,7 @@ def bias_df(
     # plt.savefig(figpath, bbox_inches='tight')
 
 
-def _singleday(DaySorter, trace_type='dff'):
+def _singleday(DaySorter, trace_type=trace_type):
     """
     Build df for a single day loading/indexing efficiently.
 
@@ -308,8 +326,7 @@ def _singleday(DaySorter, trace_type='dff'):
     """
 
     # assign folder structure for loading and load
-    save_dir = os.path.join(
-        flow.paths.outd, str(DaySorter.mouse), 'dfs ' + str(trace_type))
+    save_dir = paths.df_path(DaySorter.mouse, pars=pars)
     path = os.path.join(
         save_dir, str(DaySorter.mouse) + '_' + str(DaySorter.date) + '_df_' +
         trace_type + '.pkl')
