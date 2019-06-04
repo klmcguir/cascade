@@ -11,6 +11,202 @@ from . import tca
 from . import utils
 
 
+def get_bias(
+        mouse,
+        trace_type='zscore_day',
+        drive_threshold=20,
+        drive_type='visual'):
+
+    # get tensor, metadata, and ids to get things rolling
+    ten, met, id = cas.bias.build_tensor(
+        mouse, drive_threshold=drive_threshold, trace_type=trace_type)
+
+    # get boolean indexer for period stim is on screen
+    stim_window = np.arange(-1, 7, 1/15.5)[0:108]
+    stim_window = (stim_window > 0) & (stim_window < 3)
+
+    # get vector and count of dates for the loop
+    date_vec = met.reset_index()['date']
+    date_num = len(np.unique(date_vec))
+
+    # preallocate tensors
+    FC_ten = np.zeros((np.shape(ten)[0], np.shape(ten)[1], date_num))
+    QC_ten = np.zeros((np.shape(ten)[0], np.shape(ten)[1], date_num))
+    NC_ten = np.zeros((np.shape(ten)[0], np.shape(ten)[1], date_num))
+
+    # preallocate lists
+    ls_list = []
+    dprime_list = []
+
+    # boolean vecs for each CS
+    FC_bool = met['condition'].isin(['plus']).values
+    QC_bool = met['condition'].isin(['minus']).values
+    NC_bool = met['condition'].isin(['neutral']).values
+
+    # loop through and get mean response of each cell per day for three CSs
+    for c, day in enumerate(np.unique(date_vec)):
+
+        # indexing for the day
+        day_bool = date_vec.isin([day]).values
+
+        # mean responses
+        day_FC = ten[:, :, day_bool & FC_bool]
+        day_QC = ten[:, :, day_bool & QC_bool]
+        day_NC = ten[:, :, day_bool & NC_bool]
+        FC_ten[:, :, c] = np.nanmean(day_FC, axis=2)
+        QC_ten[:, :, c] = np.nanmean(day_QC, axis=2)
+        NC_ten[:, :, c] = np.nanmean(day_NC, axis=2)
+
+        # learning state
+        ls = np.unique(met['learning_state'].values[day_bool])
+        ls_list.append(ls)
+
+        # dprime
+        dp = pool.calc.performance.dprime(flow.Date(mouse, date=day))
+        dprime_list.append(dp)
+
+    FC_mean = np.nanmean(FC_ten[:, first_sec, :], axis=1)
+    QC_mean = np.nanmean(QC_ten[:, first_sec, :], axis=1)
+    NC_mean = np.nanmean(NC_ten[:, first_sec, :], axis=1)
+
+    # do not consider cells that are negative to all three cues
+    neg_bool = (FC_mean < 0) & (QC_mean < 0) & (NC_mean < 0)
+    FC_mean[FC_mean < 0] = 0
+    QC_mean[QC_mean < 0] = 0
+    NC_mean[NC_mean < 0] = 0
+    FC_mean[neg_bool] = np.nan
+    QC_mean[neg_bool] = np.nan
+    NC_mean[neg_bool] = np.nan
+
+    # calculate bias
+    FC_bias = FC_mean/(FC_mean + QC_mean + NC_mean)
+
+    return FC_bias
+
+
+def get_mean_response(
+        mouse,
+        trace_type='zscore_day',
+        drive_threshold=20,
+        drive_type='visual'):
+
+    # get tensor, metadata, and ids to get things rolling
+    ten, met, id = cas.bias.build_tensor(
+        mouse, drive_threshold=drive_threshold, trace_type=trace_type)
+
+    # get boolean indexer for period stim is on screen
+    stim_window = np.arange(-1, 7, 1/15.5)[0:108]
+    stim_window = (stim_window > 0) & (stim_window < 3)
+
+    # get vector and count of dates for the loop
+    date_vec = met.reset_index()['date']
+    date_num = len(np.unique(date_vec))
+
+    # preallocate tensors
+    FC_ten = np.zeros((np.shape(ten)[0], np.shape(ten)[1], date_num))
+    QC_ten = np.zeros((np.shape(ten)[0], np.shape(ten)[1], date_num))
+    NC_ten = np.zeros((np.shape(ten)[0], np.shape(ten)[1], date_num))
+
+    # preallocate lists
+    ls_list = []
+    dprime_list = []
+
+    # boolean vecs for each CS
+    FC_bool = met['condition'].isin(['plus']).values
+    QC_bool = met['condition'].isin(['minus']).values
+    NC_bool = met['condition'].isin(['neutral']).values
+
+    # loop through and get mean response of each cell per day for three CSs
+    for c, day in enumerate(np.unique(date_vec)):
+
+        # indexing for the day
+        day_bool = date_vec.isin([day]).values
+
+        # mean responses
+        day_FC = ten[:, :, day_bool & FC_bool]
+        day_QC = ten[:, :, day_bool & QC_bool]
+        day_NC = ten[:, :, day_bool & NC_bool]
+        FC_ten[:, :, c] = np.nanmean(day_FC, axis=2)
+        QC_ten[:, :, c] = np.nanmean(day_QC, axis=2)
+        NC_ten[:, :, c] = np.nanmean(day_NC, axis=2)
+
+        # learning state
+        ls = np.unique(met['learning_state'].values[day_bool])
+        ls_list.append(ls)
+
+        # dprime
+        dp = pool.calc.performance.dprime(flow.Date(mouse, date=day))
+        dprime_list.append(dp)
+
+    FC_mean = np.nanmean(FC_ten[:, first_sec, :], axis=1)
+    QC_mean = np.nanmean(QC_ten[:, first_sec, :], axis=1)
+    NC_mean = np.nanmean(NC_ten[:, first_sec, :], axis=1)
+
+    # do not consider cells that are negative to all three cues
+    neg_bool = (FC_mean < 0) & (QC_mean < 0) & (NC_mean < 0)
+    FC_mean[neg_bool] = np.nan
+    QC_mean[neg_bool] = np.nan
+    NC_mean[neg_bool] = np.nan
+
+    return FC_mean, QC_mean, NC_mean
+
+
+def get_stage_average(FC_bias, dprime_list, ls_list, dprime_thresh=2):
+    '''
+    Helper function that calculates average bias/response using stages of
+    learning and dprime.
+
+    Returns:
+    --------
+    RNCB_mean1 : list
+        mean considering all cells per day independently,
+        matches Ramesh & Burgess
+    aligned_mean2 : list
+        mean considering all cells per day using alignment to first get mean
+        bias per cell across a learning stage
+    '''
+
+    dprime_list = np.array(dprime_list)
+    stage_mean1 = []
+    stage_mean2 = []
+    for stage in ['naive', 'learning', 'reversal1']:
+        if stage == 'naive':
+            naive_bool = np.isin(ls_list, stage).flatten()
+            naive_bias = FC_bias[:, naive_bool]
+            stage_mean1.append(np.nanmean(naive_bias[:]))
+            stage_mean2.append(np.nanmean(np.nanmean(naive_bias, axis=1), axis=0))
+        elif stage == 'learning':
+            low_learn_bool = (np.isin(ls_list, stage).flatten() &
+                              (dprime_list < dprime_thresh))
+            high_learn_bool = (np.isin(ls_list, stage).flatten() &
+                               (dprime_list >= dprime_thresh))
+            low_learn_bias = FC_bias[:, low_learn_bool]
+            high_learn_bias = FC_bias[:, high_learn_bool]
+            stage_mean1.append(np.nanmean(low_learn_bias[:]))
+            stage_mean2.append(
+                np.nanmean(np.nanmean(low_learn_bias, axis=1), axis=0))
+            stage_mean1.append(np.nanmean(high_learn_bias[:]))
+            stage_mean2.append(
+                np.nanmean(np.nanmean(high_learn_bias, axis=1), axis=0))
+            # changing the inner mean to 'np.mean' would force only cells
+            # fully aligned across stage to be considered
+        elif stage == 'reversal1':
+            low_rev1_bool = (np.isin(ls_list, stage).flatten() &
+                             (dprime_list < dprime_thresh))
+            high_rev1_bool = (np.isin(ls_list, stage).flatten() &
+                              (dprime_list >= dprime_thresh))
+            low_rev1_bias = FC_bias[:, low_rev1_bool]
+            high_rev1_bias = FC_bias[:, high_rev1_bool]
+            stage_mean1.append(np.nanmean(low_rev1_bias[:]))
+            stage_mean2.append(
+                np.nanmean(np.nanmean(low_rev1_bias, axis=1), axis=0))
+            stage_mean1.append(np.nanmean(high_learn_bias[:]))
+            stage_mean2.append(
+                np.nanmean(np.nanmean(high_rev1_bias, axis=1), axis=0))
+
+    return stage_mean1, stage_mean2
+
+
 def build_tensor(
         mouse,
         tags=None,
@@ -325,378 +521,3 @@ def build_tensor(
         print('Tensor built: tensor shape = ' + str(np.shape(group_tensor)))
 
     return group_tensor, meta, id_union
-
-
-def bias_df(
-        mice=['OA27', 'OA26', 'VF226', 'OA67', 'CC175'],
-
-        # trace params
-        trace_type='zscore_day',
-        cs='',
-        downsample=True,
-        start_time=-1,
-        end_time=6,
-        clean_artifacts=None,
-        thresh=20,
-        warp=False,
-        smooth=True,
-        smooth_win=5,
-
-        # drive params
-        driven=True,
-        drive_css=['plus', 'minus', 'neutral'],
-        stim_offset=1,
-        drive_thresh=5):
-
-    pars = {'trace_type': trace_type, 'cs': cs, 'downsample': downsample,
-            'start_time': start_time, 'end_time': end_time,
-            'clean_artifacts': clean_artifacts, 'thresh': thresh,
-            'warp': warp, 'smooth': smooth, 'smooth_win': smooth_win}
-
-    xmouse_bias = []
-    xmouse_dprime = []
-    xmouse_lstate = []
-    for mouse in mice:
-
-        """
-        Get mean response per cell.
-        """
-
-        # get all days for a mouse
-        learning_state = []
-        xday_bias = []
-        xday_norm_response = []
-        xday_dprime = []
-        days = flow.DateSorter.frommeta(mice=[mouse])
-        for DaySorter in days:
-
-            # get all cell ids
-            d1_ids = flow.xday._read_crossday_ids(DaySorter.mouse,
-                                                  DaySorter.date)
-            d1_ids = np.array([int(s) for s in d1_ids])
-
-            # filter cells based on visual drive across all cs, prevent
-            # breaking when only pavs are shown
-            if driven:
-                d1_drive = []
-                for dcs in drive_css:
-                    try:
-                        d1_drive.append(
-                            pool.calc.driven.visually(DaySorter, dcs))
-                    except KeyError:
-                        print(
-                            str(DaySorter) + ' requested ' + dcs +
-                            ': no match to what was shown (probably pav only)')
-                d1_drive = np.max(d1_drive, axis=0) > drive_thresh
-                cells = d1_ids[d1_drive]
-            else:
-                cells = d1_ids
-
-            # get traces for the day
-            dft = _singleday(DaySorter, pars)
-            dft = dft.reset_index(level=['cell_idx', 'timestamp'])
-
-            # filter out cells which are not driven
-            cell_indexer = dft['cell_idx'].isin(cells)
-            dft = dft.loc[cell_indexer, :]
-
-            # keep only times when stim is on the screen
-            time_indexer = dft['timestamp'].between(
-                0, stim_offset, inclusive=False)
-            dft = dft.loc[time_indexer, :]
-
-            # get metadata for the day
-            save_dir = os.path.join(flow.paths.outd, str(DaySorter.mouse))
-            meta_path = os.path.join(save_dir, str(DaySorter.mouse) +
-                                     '_df_trialmeta.pkl')
-            dfm = pd.read_pickle(meta_path)
-
-            # ensure that
-            dfm = _update_naive_conditions(dfm)
-
-            # filter metadata trials before merging
-            responses = []
-            for dcs in drive_css:
-                trial_indexer = (
-                                ((dfm.orientation == 0) |
-                                 (dfm.orientation == 135) |
-                                 (dfm.orientation == 270))
-                                &
-                                ((dfm.learning_state == 'naive') |
-                                 (dfm.learning_state == 'learning_start') |
-                                 (dfm.learning_state == 'learning') |
-                                 (dfm.learning_state == 'reversal1') |
-                                 (dfm.learning_state == 'reversal1_start') |
-                                 (dfm.learning_state == 'reversal2') |
-                                 (dfm.learning_state == 'reversal2_start'))
-                                &
-                                ((dfm.condition == dcs))
-                                &
-                                ((dfm.tag == 'standard'))
-                                &
-                                (dfm.hunger == 'hungry'))
-                dfcs = dfm.loc[trial_indexer, :]
-
-                # merge on filtered trials
-                dff = pd.merge(
-                    dft, dfcs, on=['mouse', 'date', 'run', 'trial_idx'],
-                    how='inner')
-
-                # check that df is not empty, skip dfs that filtering empties
-                if dff.empty:
-                    responses = [[np.nan, np.nan, np.nan],
-                                 [np.nan, np.nan, np.nan],
-                                 [np.nan, np.nan, np.nan]]
-                    print('Day: ' + str(DaySorter.date) +
-                          ': skipped: empty dataframe after merge.')
-                    break
-
-                # smooth signal with rolling 3 unit window
-                # if smooth:
-                #     dff['trace'] = dff['trace'].rolling(3).mean()
-
-                trial_mean = dff.pivot_table(
-                    index=['cell_idx', 'trial_idx'],
-                    columns='timestamp',
-                    values='trace').mean(axis=1).to_frame()
-                cell_mean = trial_mean.pivot_table(
-                    index=['cell_idx'],
-                    columns=['trial_idx']).mean(axis=1).tolist()
-                cell_mean = np.array(cell_mean)
-                cell_mean[cell_mean < 0] = np.nan  # 0 original
-                responses.append(cell_mean)
-
-# CHECK ON THIS KEY ERROR! all days that make it here have the three stimuli!
-            try:
-                xday_dprime.append(pool.calc.behavior.dprime(DaySorter, hmm_engaged=False))
-            except KeyError:
-                xday_dprime.append(np.nan)
-
-            ressy = np.array(responses)
-            FC = ressy[0, :]/(ressy[0, :] + ressy[1, :] + ressy[2, :])
-            QC = ressy[1, :]/(ressy[0, :] + ressy[1, :] + ressy[2, :])
-            NC = ressy[2, :]/(ressy[0, :] + ressy[1, :] + ressy[2, :])
-            print('new bias: FC-', np.nanmean(FC), ' QC-',
-                  np.nanmean(QC), ' NC-', np.nanmean(NC))
-            xday_bias.append(np.nanmean(FC))
-            learning_state.append(np.unique(dff['learning_state']))
-
-        xmouse_lstate.append(learning_state)
-        xmouse_bias.append(xday_bias)
-        xmouse_dprime.append(xday_dprime)
-
-    early = []
-    late = []
-    during = []
-    post = []
-    during2 = []
-    post2 = []
-    std_naive = []
-    std_early = []
-    std_late = []
-    std_during = []
-    std_post = []
-    std_during2 = []
-    std_post2 = []
-    dprime_thresh = 2
-    dprime_thresh2 = 2
-    for mouse in range(len(mice)):
-        dprime = xmouse_dprime[mouse]
-        lstate = xmouse_lstate[mouse]
-        bias = xmouse_bias[mouse]
-        xdp = []
-        xls = []
-        xbias =[]
-        for c, dp, ls in enumerate(zip(dprime, lstate)):
-            xbias.append(bias[c])
-            xdp.append(dp)
-            xls.append(ls)
-        xbias = np.array(xbias)
-        xbias[xbias > 4] = np.nan
-        xdp = np.array(xdp)
-        test = []
-        for s in range(len(xls)):
-            if len(xls[s]) == 0:
-                test.append(np.nan)
-            else:
-                test.append(xls[s][0])
-        xls = test
-
-        naive.append(np.nanmean(xbias[np.isin(xls, 'naive').flatten()]))
-        early.append(
-            np.nanmean(xbias[
-                (np.isin(xls, 'learning').flatten() |
-                 np.isin(xls, 'learning_start').flatten()) &
-                (xdp < dprime_thresh)]))
-        late.append(
-            np.nanmean(xbias[
-                np.isin(xls, 'learning').flatten() & (xdp > dprime_thresh2)]))
-        during.append(
-            np.nanmean(xbias[
-                (np.isin(xls, 'reversal1_start').flatten() |
-                 np.isin(xls, 'reversal1').flatten()) &
-                (xdp < dprime_thresh)]))
-        post.append(
-            np.nanmean(xbias[
-                np.isin(xls, 'reversal1').flatten() & (xdp > dprime_thresh2)]))
-        during2.append(
-            np.nanmean(xbias[
-                (np.isin(xls, 'reversal2_start').flatten() |
-                 np.isin(xls, 'reversal2').flatten()) &
-                (xdp < dprime_thresh)]))
-        post2.append(
-            np.nanmean(xbias[
-                np.isin(xls, 'reversal2').flatten() & (xdp > dprime_thresh2)]))
-
-        std_naive.append(np.nanstd(xbias[np.isin(xls, 'naive').flatten()]))
-        std_early.append(
-            np.nanstd(xbias[
-                (np.isin(xls, 'learning').flatten() |
-                 np.isin(xls, 'learning_start').flatten()) &
-                (xdp < dprime_thresh)]))
-        std_late.append(
-            np.nanstd(xbias[
-                np.isin(xls, 'learning').flatten() & (xdp > dprime_thresh2)]))
-        std_during.append(
-            np.nanstd(xbias[
-                (np.isin(xls, 'reversal1_start').flatten() |
-                 np.isin(xls, 'reversal1').flatten()) &
-                (xdp < dprime_thresh)]))
-        std_post.append(
-            np.nanstd(xbias[
-                np.isin(xls, 'reversal1').flatten() & (xdp > dprime_thresh2)]))
-        std_during2.append(
-            np.nanstd(xbias[
-                (np.isin(xls, 'reversal2_start').flatten() |
-                 np.isin(xls, 'reversal2').flatten()) &
-                (xdp < dprime_thresh)]))
-        std_post2.append(
-            np.nanstd(xbias[
-                np.isin(xls, 'reversal2').flatten() & (xdp > dprime_thresh2)]))
-
-    fig = plt.figure()
-    cmap = sns.color_palette("hls", 7)
-    # cmap = sns.color_palette("cubehelix", 7)
-    for c, mouse in enumerate(zip(naive, early, late, during, post, during2, post2)):
-        yerr = np.array([std_naive[c], std_early[c], std_late[c], std_during[c], std_post[c], std_during2[c], std_post2[c]])
-    #     plt.errorbar((0,1,2,3,4,5,6), mouse, '-o', yerr=yerr, label=mice[c])
-    #     sns.lineplot(x=(0,1,2,3,4,5,6), y=mouse, label=mice[c])
-        plt.plot(mouse, '-o', label=mice[c], color=cmap[c])
-        plt.title('FC bias')
-        plt.ylabel('FC bias')
-        plt.xlabel('Learning stage')
-        plt.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
-    ax = fig.axes
-    x = plt.xlim()
-    ax[0].set_xticks(range(0,7))
-    ax[0].set_xticklabels(['naive', 'early', 'late', 'during', 'post', 'during2', 'post2'])
-    plt.plot(x, (0.33, 0.33), ':k')
-    figpath = os.path.join(flow.paths.graphd, 'FC bias')
-    if not os.path.isdir(figpath): os.mkdir(figpath)
-    figpath = os.path.join(figpath, 'FCbias.eps')
-    # plt.savefig(figpath, bbox_inches='tight')
-
-    # plot with seaborn
-    org_data = [naive, early, late, during, post, during2, post2]
-    my_x = []
-    my_y = []
-    for c, i in enumerate(org_data):
-        my_x.extend([c]*len(i))
-        my_y.extend(list(i))
-
-    fig2 = plt.figure()
-    sns.lineplot(x=my_x, y=my_y, palette="muted")
-    # plt.plot(mouse, '-o', label=mice[c])
-    plt.title('FC bias')
-    plt.ylabel('FC bias')
-    plt.xlabel('Learning stage')
-    # plt.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
-
-    figpath = os.path.join(flow.paths.graphd, 'FC bias')
-    if not os.path.isdir(figpath): os.mkdir(figpath)
-    figpath = os.path.join(figpath, 'FCbias_mean_across_mice.pdf')
-    # plt.savefig(figpath, bbox_inches='tight')
-
-    ax1 = fig2.axes
-    x = plt.xlim()
-    ax1[0].set_xticks(range(0, 7))
-    ax1[0].set_xticklabels([
-        'naive', 'early', 'late', 'during', 'post', 'during2', 'post2'])
-    plt.plot(x, (0.33, 0.33), ':k')
-    # plt.savefig(figpath, bbox_inches='tight')
-
-
-def _singleday(DaySorter, pars):
-    """
-    Build df for a single day loading/indexing efficiently.
-
-    Parameters
-    ----------
-    DaySorter : obj
-    pars : dict
-
-    Returns
-    -------
-    pandas df
-        df of all traces over all days for a cell
-    """
-
-    # assign folder structure for loading and load
-    save_dir = paths.df_path(DaySorter.mouse, pars=pars)
-    path = os.path.join(
-        save_dir, str(DaySorter.mouse) + '_' + str(DaySorter.date) + '_df_' +
-        pars['trace_type'] + '.pkl')
-    dft = pd.read_pickle(path)
-
-    # slice out your day of interest
-    day_indexer = dft.index.get_level_values('date') == DaySorter.date
-    dft = dft.loc[day_indexer, :]
-
-    return dft
-
-
-def _update_naive_conditions(dfm):
-    """
-    Function to ensure that standard training naive runs match the
-    conditions of the learning learning_state. This ensure that slicing
-    on condition rather than orientation will still make sense. Treat
-    naive "pavlovian" as "plus".
-
-    Parameters:
-    -----------
-    dfm : pandas dataframe
-        Dataframe of cross-day trial metadata for a mouse.
-
-    Returns:
-    --------
-    dfm : pandas dataframe
-        Updated dataframe with matched naive/learning standard training
-        conditions.
-    """
-
-    plus = np.unique(
-        dfm.loc[
-            ((dfm.condition == 'plus') &
-             (dfm.learning_state == 'learning')), ['orientation']].values)
-    neutral = np.unique(
-        dfm.loc[
-            ((dfm.condition == 'neutral') &
-             (dfm.learning_state == 'learning')), ['orientation']].values)
-    minus = np.unique(
-        dfm.loc[
-            ((dfm.condition == 'minus') &
-             (dfm.learning_state == 'learning')), ['orientation']].values)
-    pav = np.unique(
-        dfm.loc[
-            ((dfm.condition == 'pavlovian') &
-             (dfm.learning_state == 'learning')), ['orientation']].values)
-    oris = np.array([plus, minus, neutral, pav])
-    oris = [int(s) for s in oris]
-    conds = list(['plus', 'minus', 'neutral', 'plus'])
-    # last entry, pavlovian treated as plus above
-    for c, ori in enumerate(oris):
-        dfm.loc[((dfm.orientation == ori) &
-                 (dfm.learning_state == 'naive') &
-                 (dfm.tag == 'standard')), 'condition'] = conds[c]
-
-    return dfm
