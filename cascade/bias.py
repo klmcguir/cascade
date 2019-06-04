@@ -246,7 +246,7 @@ def build_tensor(
                 # filter and sort
                 run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
                 # get matched trial metadata/variables
-                dfr = _trialmetafromrun(run)
+                dfr = tca._trialmetafromrun(run)
                 # subselect metadata if you are only running certain cs
                 if cs != '':
                     if cs == 'plus' or cs == 'minus' or cs == 'neutral':
