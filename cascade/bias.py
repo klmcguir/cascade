@@ -87,7 +87,7 @@ def get_bias(
     # calculate bias
     FC_bias = FC_mean/(FC_mean + QC_mean + NC_mean)
 
-    return FC_bias
+    return FC_bias, dprime_list, ls_list
 
 
 def get_mean_response(
@@ -154,7 +154,7 @@ def get_mean_response(
     QC_mean[neg_bool] = np.nan
     NC_mean[neg_bool] = np.nan
 
-    return FC_mean, QC_mean, NC_mean
+    return FC_mean, QC_mean, NC_mean, dprime_list, ls_list
 
 
 def get_stage_average(FC_bias, dprime_list, ls_list, dprime_thresh=2):
