@@ -309,15 +309,14 @@ def bias_df(
     # plt.savefig(figpath, bbox_inches='tight')
 
 
-def _singleday(DaySorter, trace_type=trace_type):
+def _singleday(DaySorter, pars):
     """
     Build df for a single day loading/indexing efficiently.
 
     Parameters
     ----------
-    mouse : str, mouse
-    date : str, date
-    trace_type : str, {'dff', 'zscore', 'deconvolved'}
+    DaySorter : obj
+    pars : dict
 
     Returns
     -------
@@ -329,7 +328,7 @@ def _singleday(DaySorter, trace_type=trace_type):
     save_dir = paths.df_path(DaySorter.mouse, pars=pars)
     path = os.path.join(
         save_dir, str(DaySorter.mouse) + '_' + str(DaySorter.date) + '_df_' +
-        trace_type + '.pkl')
+        pars.trace_type + '.pkl')
     dft = pd.read_pickle(path)
 
     # slice out your day of interest
