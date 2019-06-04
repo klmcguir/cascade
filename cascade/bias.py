@@ -15,7 +15,7 @@ def build_tensor(
         tags=None,
 
         # grouping params
-        group_by=None,
+        group_by='all',
         up_or_down='up',
         use_dprime=False,
         dprime_threshold=2,
@@ -160,10 +160,7 @@ def build_tensor(
         print('Using input parameters without modification by group_by=...')
 
     # create folder structure and save dir
-    if fit_options is None:
-        fit_options = {'tol': 0.0001, 'max_iter': 500, 'verbose': False}
-    pars = {'tags': tags, 'rank': rank, 'method': method,
-            'replicates': replicates, 'fit_options': fit_options,
+    pars = {'tags': tags,
             'trace_type': trace_type, 'cs': cs, 'downsample': downsample,
             'start_time': start_time, 'end_time': end_time,
             'clean_artifacts': clean_artifacts, 'thresh': thresh,
@@ -174,7 +171,7 @@ def build_tensor(
     group_pars = {'group_by': group_by, 'up_or_down': up_or_down,
                   'use_dprime': use_dprime,
                   'dprime_threshold': dprime_threshold}
-    save_dir = paths.tca_path(mouse, 'group', pars=pars, group_pars=group_pars)
+    # save_dir = paths.tca_path(mouse, 'group', pars=pars, group_pars=group_pars)
 
     # get DateSorter object
     if np.isin(group_by.lower(), ['naive_vs_high_dprime', 'l_vs_r1']):
