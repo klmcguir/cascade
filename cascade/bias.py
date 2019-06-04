@@ -24,7 +24,7 @@ def get_bias(
     """
 
     # get tensor, metadata, and ids to get things rolling
-    ten, met, id = cas.bias.build_tensor(
+    ten, met, id = build_tensor(
         mouse, drive_threshold=drive_threshold, trace_type=trace_type)
 
     # get boolean indexer for period stim is on screen
@@ -97,7 +97,7 @@ def get_mean_response(
         drive_type='visual'):
 
     # get tensor, metadata, and ids to get things rolling
-    ten, met, id = cas.bias.build_tensor(
+    ten, met, id = build_tensor(
         mouse, drive_threshold=drive_threshold, trace_type=trace_type)
 
     # get boolean indexer for period stim is on screen
