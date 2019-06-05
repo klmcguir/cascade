@@ -48,7 +48,7 @@ def groupday_varex(
 
     # load dir
     load_dir = paths.tca_path(
-        mouse, 'group', pars=pars, word=words[c], group_pars=group_pars)
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     tensor_path = os.path.join(
         load_dir, str(mouse) + '_' + str(group_by) + nt_tag
         + '_group_decomp_' + str(trace_type) + '.npy')
