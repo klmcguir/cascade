@@ -77,7 +77,7 @@ def groupday_varex(
     for r in V.results:
         for it in range(0, len(V.results[r])):
             U = V.results[r][it].factors.full()
-            varex.append((np.nanvar(X) - np.nanvar(X - bU)) / np.nanvar(X))
+            varex.append((np.nanvar(X) - np.nanvar(X - U)) / np.nanvar(X))
             rank.append(r)
             iteration.append(it)
 
