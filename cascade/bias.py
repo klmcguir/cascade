@@ -177,14 +177,18 @@ def get_stage_average(FC_bias, dprime_list, ls_list, dprime_thresh=2):
     stage_mean2 = []
     for stage in ['naive', 'learning', 'reversal1']:
         if stage == 'naive':
-            naive_bool = np.isin(ls_list, stage).flatten()
+            naive_list = [
+                'naive' if 'naive' in s else 'nope' for s in ls_list]
+            naive_bool = np.isin(naive_list, stage).flatten()
             naive_bias = FC_bias[:, naive_bool]
             stage_mean1.append(np.nanmean(naive_bias[:]))
             stage_mean2.append(np.nanmean(np.nanmean(naive_bias, axis=1), axis=0))
         elif stage == 'learning':
-            low_learn_bool = (np.isin(ls_list, stage).flatten() &
+            learn_list = [
+                'learning' if 'learning' in s else 'nope' for s in ls_list]
+            low_learn_bool = (np.isin(learn_list, stage).flatten() &
                               (dprime_list < dprime_thresh))
-            high_learn_bool = (np.isin(ls_list, stage).flatten() &
+            high_learn_bool = (np.isin(learn_list, stage).flatten() &
                                (dprime_list >= dprime_thresh))
             low_learn_bias = FC_bias[:, low_learn_bool]
             high_learn_bias = FC_bias[:, high_learn_bool]
@@ -197,9 +201,11 @@ def get_stage_average(FC_bias, dprime_list, ls_list, dprime_thresh=2):
             # changing the inner mean to 'np.mean' would force only cells
             # fully aligned across stage to be considered
         elif stage == 'reversal1':
-            low_rev1_bool = (np.isin(ls_list, stage).flatten() &
+            rev1_list = [
+                'reversal1' if 'reversal1' in s else 'nope' for s in ls_list]
+            low_rev1_bool = (np.isin(rev1_list, stage).flatten() &
                              (dprime_list < dprime_thresh))
-            high_rev1_bool = (np.isin(ls_list, stage).flatten() &
+            high_rev1_bool = (np.isin(rev1_list, stage).flatten() &
                               (dprime_list >= dprime_thresh))
             low_rev1_bias = FC_bias[:, low_rev1_bool]
             high_rev1_bias = FC_bias[:, high_rev1_bool]
