@@ -557,7 +557,7 @@ def groupday_varex_bycomp(
     return dfvar
 
 @memoize(across='mouse', updated=190605, returns='other', large_output=True)
-def groupday_varex_by_day_bycell(
+def groupday_varex_byday_bycell(
         mouse,
         trace_type='zscore_day',
         method='mncp_hals',
