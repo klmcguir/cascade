@@ -61,7 +61,7 @@ def groupday_cell_trial_recon(
     # save dir
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    save_dir = os.path.join(save_dir, 'model reconstructions' + save_tag)
+    save_dir = os.path.join(save_dir, 'model reconstructions')
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     date_dir = os.path.join(save_dir, str(group_by) + ' ' + method)
     if not os.path.isdir(date_dir): os.mkdir(date_dir)
@@ -257,7 +257,7 @@ def groupday_mean_trial_recon(
     # save dir
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    save_dir = os.path.join(save_dir, 'model reconstructions' + save_tag)
+    save_dir = os.path.join(save_dir, 'model reconstructions')
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     date_dir = os.path.join(save_dir, str(group_by) + ' ' + method)
     if not os.path.isdir(date_dir): os.mkdir(date_dir)
