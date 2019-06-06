@@ -291,7 +291,6 @@ def groupday_mean_trial_recon(
     rows = 1
     cols = 3
 
-    ident = sorted_ids[ncell]
     fig, axes = plt.subplots(
         rows, cols, figsize=(14, 12),
         gridspec_kw={'width_ratios': [8, 8, 1]})
@@ -315,8 +314,8 @@ def groupday_mean_trial_recon(
         yticklabels=False, cbar_kws={'label': 'z-score'}, cbar_ax=ax[0, 2])
 
     # add titles
-    ax[0, 0].set_title('Cell ' + str(ident) + ': Input Data')
-    ax[0, 1].set_title('Cell ' + str(ident) + ': TCA Model')
+    ax[0, 0].set_title(mouse + ' ' + method + ': Input Data')
+    ax[0, 1].set_title(mouse + ' ' + method + ': TCA Model')
 
     # get limits for plotting
     y_lim = ax[0, 0].get_ylim()
