@@ -312,10 +312,10 @@ def groupday_mean_trial_recon(
 
     # plot
     sns.heatmap(
-        data.T, ax=ax[0, 0], vmax=vmax, vmin=0, xticklabels=False,
+        data, ax=ax[0, 0], vmax=vmax, vmin=0, xticklabels=False,
         yticklabels=False, cbar=False)
     sns.heatmap(
-        model.T, ax=ax[0, 1], vmax=vmax, vmin=0, xticklabels=False,
+        model, ax=ax[0, 1], vmax=vmax, vmin=0, xticklabels=False,
         yticklabels=False, cbar_kws={'label': 'z-score'}, cbar_ax=ax[0, 2])
 
     # add titles
