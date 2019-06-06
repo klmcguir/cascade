@@ -86,7 +86,7 @@ def groupday_cell_trial_recon(
 
     # sort cells according to which factor they respond to the most
     sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
-    sorted_ids = ids[my_sorts]
+    sorted_ids = ids[my_sorts[rank]]
 
     # recreate model
     Xhat = V.results[rank][0].factors.full()
@@ -282,7 +282,7 @@ def groupday_mean_trial_recon(
 
     # sort cells according to which factor they respond to the most
     sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
-    sorted_ids = ids[my_sorts]
+    sorted_ids = ids[my_sorts[rank]]
 
     # recreate model
     Xhat = V.results[rank][0].factors.full()
