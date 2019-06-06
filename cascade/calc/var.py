@@ -679,7 +679,7 @@ def groupday_varex_byday_bycell(
 
     return dfvar
 
-@memoize(across='mouse', updated=190605, returns='other', large_output=True)
+@memoize(across='mouse', updated=190606, returns='other', large_output=True)
 def groupday_varex_bycell(
         mouse,
         trace_type='zscore_day',
@@ -800,6 +800,8 @@ def groupday_varex_bycell(
 
     data = {'rank': rank,
             'date':  date,
+            'cell_num': cell_idx,
+            'cell_id': cell_id,
             'variance_explained_tcamodel': varex,
             'variance_explained_smoothmodel': varex_smu,
             'variance_explained_meanmodel': varex_mu,
