@@ -237,6 +237,11 @@ def groupday_mean_trial_recon(
         nt_tag = '_nantrial' + str(nan_thresh)
     else:
         nt_tag = ''
+    # if sorting using TCA cell factors
+    if sorted:
+        sort_tag = '_sorted'
+    else:
+        sort_tag = ''
 
     # load dir
     load_dir = paths.tca_path(
@@ -297,7 +302,7 @@ def groupday_mean_trial_recon(
     data = X[my_sorts[18], :, :]
     model = Xhat[my_sorts[18], :, :]
     data = np.nanmean(data, axis=2)
-    data = np.nanmean(data, axis=2)
+    model = np.nanmean(model, axis=2)
 
     # reshape for easier indexing
     ax = np.array(axes).reshape((rows, -1))
@@ -387,6 +392,6 @@ def groupday_mean_trial_recon(
     fig.suptitle(mouse + ' mean across trials rank- ' + str(rank) +
                  ' TCA reconstruction')
     fig.savefig(os.path.join(date_dir, mouse + '_mean_rank' + str(rank)
-                + '_TCArecon.png'),
+                + sort_tag + '_TCArecon.png'),
                 bbox_inches='tight')
     plt.close('all')
