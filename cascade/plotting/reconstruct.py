@@ -33,7 +33,6 @@ def groupday_cell_trial_recon(
     Saves figures to .../analysis folder  .../qc
     """
 
-    mouse = mouse.mouse
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
@@ -230,7 +229,6 @@ def groupday_mean_trial_recon(
     Saves figures to .../analysis folder  .../qc
     """
 
-    mouse = mouse.mouse
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
