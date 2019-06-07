@@ -194,9 +194,10 @@ def groupday_cell_trial_recon(
     # ax[0, 0].set_colorbar()
     # ax[0, 1].set_colorbar()
 
-        fig.suptitle(mouse + ' cell-' + str(ident) + ' rank-'
-                     + str(rank) + ' TCA reconstruction')
-        fig.savefig(os.path.join(date_dir, mouse +'_cell' + str(ident)
+        fig.suptitle(mouse + ' sort- ' + str(ncell) + ' cell-' + str(ident)
+                     + ' rank-' + str(rank) + ' TCA reconstruction')
+        fig.savefig(os.path.join(date_dir, mouse + '_sort ' + str(ncell)
+                    + '_cell' + str(ident)
                     + '_rank' + str(rank) + '_TCArecon.png'),
                     bbox_inches='tight')
         plt.close('all')
