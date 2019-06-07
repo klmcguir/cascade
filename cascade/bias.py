@@ -212,7 +212,7 @@ def get_stage_average(FC_bias, dprime_list, ls_list, dprime_thresh=2):
             stage_mean1.append(np.nanmean(low_rev1_bias[:]))
             stage_mean2.append(
                 np.nanmean(np.nanmean(low_rev1_bias, axis=1), axis=0))
-            stage_mean1.append(np.nanmean(high_learn_bias[:]))
+            stage_mean1.append(np.nanmean(high_rev1_bias[:]))
             stage_mean2.append(
                 np.nanmean(np.nanmean(high_rev1_bias, axis=1), axis=0))
 
