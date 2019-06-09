@@ -77,19 +77,19 @@ def groupday_varex(
     for r in V.results:
         for it in range(0, len(V.results[r])):
             U = V.results[r][it].factors.full()
-            varex.append((np.nanvar(X) - np.nanvar(X - U)) / np.nanvar(X))
+            varex.append(1 - (np.nanvar(X - U)/np.nanvar(X)))
             rank.append(r)
             iteration.append(it)
 
     # mean response of neuron across trials
     mU = np.nanmean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
-    varex_mu = (np.nanvar(X) - np.nanvar(X - mU)) / np.nanvar(X)
+    varex_mu = 1 - (np.nanvar(X - mU)/np.nanvar(X))
 
     # smoothed response of neuron across time
     smU = np.convolve(
         X.reshape((X.size)),
         np.ones(5, dtype=np.float64)/5, 'same').reshape(np.shape(X))
-    varex_smu = (np.nanvar(X) - np.nanvar(X - smU)) / np.nanvar(X)
+    varex_smu = 1 - (np.nanvar(X - smU)/np.nanvar(X))
 
     # calculate trial concatenated PCA reconstruction of data, this is
     # the upper bound of performance we could expect
@@ -106,9 +106,8 @@ def groupday_varex(
     Xhat = np.dot(catPCA.transform(iX)[:, :nComp],
                   catPCA.components_[:nComp, :])
     Xhat += mu
-    varex_PCA = [(np.nanvar(X.reshape(sz[0], sz[1]*sz[2]))
-                 - np.nanvar(X.reshape(sz[0], sz[1]*sz[2]) - Xhat))
-                 / np.nanvar(X.reshape(sz[0], sz[1]*sz[2]))]
+    varex_PCA = [1 - (np.nanvar(X.reshape(sz[0], sz[1]*sz[2]) - Xhat)
+                 / np.nanvar(X.reshape(sz[0], sz[1]*sz[2])))]
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -217,12 +216,9 @@ def groupday_varex_byday(
             bX = X[:, :, day_bool]
             rank.append(r)
             date.append(day)
-            varex.append(
-                (np.nanvar(bX) - np.nanvar(bX - bUd)) / np.nanvar(bX))
-            varex_mu.append(
-                (np.nanvar(bX) - np.nanvar(bX - mUd)) / np.nanvar(bX))
-            varex_smu.append(
-                (np.nanvar(bX) - np.nanvar(bX - smUd)) / np.nanvar(bX))
+            varex.append(1 - (np.nanvar(bX - bUd)/np.nanvar(bX)))
+            varex_mu.append(1 - (np.nanvar(bX - mUd)/np.nanvar(bX)))
+            varex_smu.append(1 - (np.nanvar(bX - smUd)/np.nanvar(bX)))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -326,8 +322,7 @@ def groupday_varex_byday_bycomp(
                 rank.append(r)
                 date.append(day)
                 component.append(fac_num+1)
-                varex.append(
-                    (np.nanvar(bX) - np.nanvar(bX - bUd)) / np.nanvar(bX))
+                varex.append(1 - (np.nanvar(bX - bUd)/np.nanvar(bX)))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -442,8 +437,7 @@ def groupday_varex_byday_bycomp_bycell(
                     component.append(fac_num+1)
                     cell_idx.append(cell_num)
                     cell_id.append(cell_identity)
-                    varex.append(
-                        (np.nanvar(bX) - np.nanvar(bX - bU)) / np.nanvar(bX))
+                    varex.append(1 - (np.nanvar(bX - bU)/np.nanvar(bX)))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -540,7 +534,7 @@ def groupday_varex_bycomp(
             bUd = ab[:, :, None] @ c[None, :]
             rank.append(r)
             component.append(fac_num+1)
-            varex.append((np.nanvar(X) - np.nanvar(X - bUd)) / np.nanvar(X))
+            varex.append(1 - (np.nanvar(X - bUd)/np.nanvar(X)))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -657,11 +651,14 @@ def groupday_varex_byday_bycell(
                 rank.append(r)
                 date.append(day)
                 varex.append(
-                    (np.nanvar(bX[cell_num, :, :]) - np.nanvar(bX[cell_num, :, :] - bUd[cell_num, :, :])) / np.nanvar(bX[cell_num, :, :]))
+                    1 - (np.nanvar(bX[cell_num, :, :] - bUd[cell_num, :, :])
+                         / np.nanvar(bX[cell_num, :, :])))
                 varex_mu.append(
-                    (np.nanvar(bX[cell_num, :, :]) - np.nanvar(bX[cell_num, :, :] - mUd[cell_num, :, :])) / np.nanvar(bX[cell_num, :, :]))
+                    1 - (np.nanvar(bX[cell_num, :, :] - mUd[cell_num, :, :])
+                         / np.nanvar(bX[cell_num, :, :])))
                 varex_smu.append(
-                    (np.nanvar(bX[cell_num, :, :]) - np.nanvar(bX[cell_num, :, :] - smUd[cell_num, :, :])) / np.nanvar(bX[cell_num, :, :]))
+                    1 - (np.nanvar(bX[cell_num, :, :] - smUd[cell_num, :, :])
+                         / np.nanvar(bX[cell_num, :, :])))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -780,17 +777,17 @@ def groupday_varex_bycell(
             rank.append(r)
             date.append(day)
             varex.append(
-                (np.nanvar(X[cell_num, :, :]) - np.nanvar(X[cell_num, :, :]
-                 - bU[cell_num, :, :])) / np.nanvar(X[cell_num, :, :]))
+                1 - (np.nanvar(X[cell_num, :, :] - bU[cell_num, :, :])
+                     / np.nanvar(X[cell_num, :, :])))
             varex_mu.append(
-                (np.nanvar(X[cell_num, :, :]) - np.nanvar(X[cell_num, :, :]
-                 - mU[cell_num, :, :])) / np.nanvar(X[cell_num, :, :]))
+                1 - (np.nanvar(X[cell_num, :, :] - mU[cell_num, :, :])
+                     / np.nanvar(X[cell_num, :, :])))
             varex_smu.append(
-                (np.nanvar(X[cell_num, :, :]) - np.nanvar(X[cell_num, :, :]
-                 - smU[cell_num, :, :])) / np.nanvar(X[cell_num, :, :]))
+                1 - (np.nanvar(X[cell_num, :, :] - smU[cell_num, :, :])
+                     / np.nanvar(X[cell_num, :, :])))
             varex_daily_mu.append(
-                (np.nanvar(X[cell_num, :, :]) - np.nanvar(X[cell_num, :, :]
-                 - dmU[cell_num, :, :])) / np.nanvar(X[cell_num, :, :]))
+                1 - (np.nanvar(X[cell_num, :, :] - dmU[cell_num, :, :])
+                     / np.nanvar(X[cell_num, :, :])))
 
     # make dataframe of data
     # create your index out of relevant variables
