@@ -123,7 +123,7 @@ def varex_norm_bycomp_byday(
         x="day_num", y="norm_varex", hue="component",
         data=comp_var_df.loc[(comp_var_df['day_num'] >= 0)
                              & (comp_var_df['day_num'] <= 100), :],
-        legend='full', kind='line',
+        legend='full', kind='line', alpha=0.8,
         palette=sns.color_palette('muted', R), marker='o')
     plt.title(
         mouse
