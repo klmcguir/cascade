@@ -1,5 +1,6 @@
 """ Functions for plotting variance calculations for TCA. """
 from .. import paths, calc
+from copy import deepcopy
 import os
 import numpy as np
 import pandas as pd
