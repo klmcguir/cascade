@@ -125,5 +125,7 @@ def varex_norm_bycomp_byday(
                              & (comp_var_df['day_num'] <= 100), :],
         legend='full', kind='line',
         palette=sns.color_palette('muted', R), marker='o')
-    plt.title('Fraction of total daily variance explained per component')
+    plt.title(
+        mouse
+        + ': Fraction of total daily variance explained per component')
     plt.savefig(var_path, bbox_inches='tight')
