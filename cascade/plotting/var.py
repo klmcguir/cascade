@@ -99,8 +99,8 @@ def varex_norm_bycomp_byday(
     # dprime = pd.DataFrame(data=data, index=speed.index)
     # dprime = dprime['dprime']  # make indices match to meta
 
-    test = calc.var.groupday_varex_byday_bycomp(flow.Mouse(mouse='OA27'), word='orlando')
-    test3 = calc.var.groupday_varex_byday(flow.Mouse(mouse='OA27'), word='orlando')
+    test = calc.var.groupday_varex_byday_bycomp(flow.Mouse(mouse=mouse), word=word)
+    test3 = calc.var.groupday_varex_byday(flow.Mouse(mouse=mouse), word=word)
     # test = cas.calc.var.groupday_varex_byday_bycomp(flow.Mouse(mouse='VF226'), word='already')
     # test3 = cas.calc.var.groupday_varex_byday(flow.Mouse(mouse='VF226'), word='already')
 
