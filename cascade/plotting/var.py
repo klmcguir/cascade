@@ -40,7 +40,7 @@ def varex_norm_bycomp_byday(
         r_tag = ''
         r_save_tag = ''
     save_dir = paths.tca_plots(
-        mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     save_dir = os.path.join(save_dir, 'varex' + nt_save_tag + r_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     save_dir = os.path.join(save_dir, 'byday_bycomp')
