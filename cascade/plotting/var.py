@@ -1,4 +1,10 @@
 """ Functions for plotting variance calculations for TCA. """
+from .. import paths
+import os
+import numpy as np
+import pandas as pd
+import flow
+import pool
 
 
 def varex_norm_bycomp_byday(
