@@ -1,5 +1,5 @@
 """ Functions for plotting variance calculations for TCA. """
-from .. import paths
+from .. import paths, calc
 import os
 import numpy as np
 import pandas as pd
@@ -96,8 +96,8 @@ def varex_norm_bycomp_byday(
     # dprime = pd.DataFrame(data=data, index=speed.index)
     # dprime = dprime['dprime']  # make indices match to meta
 
-    test = cas.calc.var.groupday_varex_byday_bycomp(flow.Mouse(mouse='OA27'), word='orlando')
-    test3 = cas.calc.var.groupday_varex_byday(flow.Mouse(mouse='OA27'), word='orlando')
+    test = calc.var.groupday_varex_byday_bycomp(flow.Mouse(mouse='OA27'), word='orlando')
+    test3 = calc.var.groupday_varex_byday(flow.Mouse(mouse='OA27'), word='orlando')
     # test = cas.calc.var.groupday_varex_byday_bycomp(flow.Mouse(mouse='VF226'), word='already')
     # test3 = cas.calc.var.groupday_varex_byday(flow.Mouse(mouse='VF226'), word='already')
 
