@@ -88,13 +88,13 @@ def varex_norm_bycomp_byday(
     # ids = np.load(ids_tensor_path)
 
     # create dataframe of dprime values
-    dprime_vec = []
-    for date in dates:
-        date_obj = flow.Date(mouse, date=date)
-        dprime_vec.append(pool.calc.performance.dprime(date_obj))
-    data = {'dprime': dprime_vec}
-    dprime = pd.DataFrame(data=data, index=speed.index)
-    dprime = dprime['dprime']  # make indices match to meta
+    # dprime_vec = []
+    # for date in dates:
+    #     date_obj = flow.Date(mouse, date=date)
+    #     dprime_vec.append(pool.calc.performance.dprime(date_obj))
+    # data = {'dprime': dprime_vec}
+    # dprime = pd.DataFrame(data=data, index=speed.index)
+    # dprime = dprime['dprime']  # make indices match to meta
 
     test = cas.calc.var.groupday_varex_byday_bycomp(flow.Mouse(mouse='OA27'), word='orlando')
     test3 = cas.calc.var.groupday_varex_byday(flow.Mouse(mouse='OA27'), word='orlando')
