@@ -119,7 +119,10 @@ def varex_norm_bycomp_byday(
     comp_var_df['norm_varex'] = new_col_var
     comp_var_df['day_num'] = new_col_dates
 
-    g = sns.relplot(x="day_num", y="norm_varex", hue="component",
-                    data=comp_var_df.loc[(comp_var_df['day_num'] >= 0) & (comp_var_df['day_num'] <= 100), :],
-                    legend='full', kind='line', palette=sns.color_palette('muted', R))
+    g = sns.relplot(
+        x="day_num", y="norm_varex", hue="component",
+        data=comp_var_df.loc[(comp_var_df['day_num'] >= 0)
+                             & (comp_var_df['day_num'] <= 100), :],
+        legend='full', kind='line',
+        palette=sns.color_palette('muted', R), marker='o')
     plt.savefig(var_path, bbox_inches='tight')
