@@ -49,8 +49,8 @@ def varex_norm_bycomp_byday(
     save_dir = os.path.join(save_dir, 'byday_bycomp')
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path = os.path.join(
-        save_dir, str(mouse) + '_rank' + str() + '_norm_varex_by_day' +
-        r_save_tag + nt_save_tag + '.pdf')
+        save_dir, str(mouse) + '_rank' + str(rank_num) +
+        '_norm_varex_by_day' + r_save_tag + nt_save_tag + '.pdf')
 
     # load dir
     load_dir = paths.tca_path(
