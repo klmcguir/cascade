@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 import flow
 import pool
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 def varex_norm_bycomp_byday(
