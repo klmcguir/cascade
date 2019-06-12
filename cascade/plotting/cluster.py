@@ -932,10 +932,9 @@ def hierclus_on_trials_learning_stages(
     col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
     ori_col_df = clustering_df2.iloc[row_sorter, :]
     ori_col_df = ori_col_df.iloc[:, col_sorter]
-    fig5 = clustermap(
-        ori_col_df, figsize=(13, 13),
+    fig5 = clustermap(ori_col_df, figsize=(13, 13),
         row_colors=color_df.iloc[row_sorter, :],
-        col_colors=col_colors[col_sorter],
+        col_colors=[col_colors[s] for s in col_sorter],
         xticklabels=True, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method)
     fig5.savefig(
