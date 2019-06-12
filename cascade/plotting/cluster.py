@@ -929,6 +929,18 @@ def hierclus_on_trials_learning_stages(
     fig4.savefig(
         var_path_prefix + '_5ptstages.png', bbox_inches='tight')
 
+    col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
+    ori_col_df = clustering_df2.iloc[row_sorter, :]
+    ori_col_df = ori_col_df.iloc[:, col_sorter]
+    fig5 = clustermap(
+        ori_col_df, figsize=(13, 13),
+        row_colors=color_df.iloc[row_sorter, :],
+        col_colors=col_colors[col_sorter],
+        xticklabels=True, yticklabels=True, col_cluster=False,
+        row_cluster=False, expected_size_colors=0.5, method=cluster_method)
+    fig5.savefig(
+        var_path_prefix + '_5ptstages_oricolsort.png', bbox_inches='tight')
+
 
 def groupday_longform_factors_annotated_clusfolders(
         mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175'],
