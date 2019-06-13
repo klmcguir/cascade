@@ -752,6 +752,7 @@ def hierclus_on_trials_learning_stages(
                     rank_num=rank_num,
                     verbose=False)
     clustering_df2 = deepcopy(clustering_df)
+    clustering_df3 = deepcopy(clustering_df)
 
     # if running mod, center of mass, or ramp indices are included, remove
     # from columns (make these into a color df for annotating y-axis)
@@ -793,6 +794,23 @@ def hierclus_on_trials_learning_stages(
         clustering_df2 = clustering_df2.drop(columns=drop_cols2)
         clustering_df2 = clustering_df2.dropna(axis='rows')
 
+        # create df containing AMPLITUDE all learning stages through rev1
+        keep_cols3 = [
+            'plus_amp_naive', 'plus_amp_low_dp_learning',
+            'plus_amp_high_dp_learning',
+            'plus_amp_low_dp_rev1', 'plus_amp_high_dp_rev1',
+            'neutral_amp_naive',
+            'neutral_amp_low_dp_learning',
+            'neutral_amp_high_dp_learning',
+            'neutral_amp_low_dp_rev1', 'neutral_amp_high_dp_rev1',
+            'minus_amp_naive',
+            'minus_amp_low_dp_learning', 'minus_high_dp_learning',
+            'minus_low_dp_rev1', 'minus_high_dp_rev1']
+        drop_inds3 = ~clustering_df3.columns.isin(keep_cols3)
+        drop_cols3 = clustering_df3.columns[drop_inds3]
+        clustering_df3 = clustering_df3.drop(columns=drop_cols3)
+        clustering_df3 = clustering_df3.dropna(axis='rows')
+
         # remove nanned rows from other dfs
         mean_running_mod = mean_running_mod.loc[~nan_indexer, :]
         ri_trials = ri_trials.loc[~nan_indexer, :]
@@ -811,6 +829,18 @@ def hierclus_on_trials_learning_stages(
              'neutral_low_dp_rev1', 'neutral_high_dp_rev1',
              'minus_naive', 'minus_low_dp_learning', 'minus_high_dp_learning',
              'minus_low_dp_rev1', 'minus_high_dp_rev1']]
+
+        # reorder df columns for plots with no clustering on columns
+        clustering_df3 = clustering_df3[
+            ['plus_amp_naive', 'plus_amp_low_dp_learning',
+             'plus_amp_high_dp_learning',
+             'plus_amp_low_dp_rev1', 'plus_amp_high_dp_rev1',
+             'neutral_amp_naive',
+             'neutral_amp_low_dp_learning', 'neutral_amp_high_dp_learning',
+             'neutral_amp_low_dp_rev1', 'neutral_amp_high_dp_rev1',
+             'minus_amp_naive', 'minus_amp_low_dp_learning',
+             'minus_amp_high_dp_learning',
+             'minus_amp_low_dp_rev1', 'minus_amp_high_dp_rev1']]
 
     # cluster to get cluster color labels for each component
     g = sns.clustermap(clustering_df, method=cluster_method)
@@ -939,6 +969,33 @@ def hierclus_on_trials_learning_stages(
         row_cluster=False, expected_size_colors=0.5, method=cluster_method)
     fig5.savefig(
         var_path_prefix + '_5ptstages_oricolsort.png', bbox_inches='tight')
+
+    fig6 = clustermap(
+        clustering_df3.iloc[row_sorter, :], figsize=(13, 13),
+        row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
+        xticklabels=True, yticklabels=True, col_cluster=False,
+        row_cluster=False, expected_size_colors=0.5, method=cluster_method)
+    fig6.savefig(
+        var_path_prefix + '_5ptstages_amp.png', bbox_inches='tight')
+
+    col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
+    ori_col_df = clustering_df3.iloc[row_sorter, :]
+    ori_col_df = ori_col_df.iloc[:, col_sorter]
+    fig7 = clustermap(ori_col_df, figsize=(13, 13),
+        row_colors=color_df.iloc[row_sorter, :],
+        col_colors=[col_colors[s] for s in col_sorter],
+        xticklabels=True, yticklabels=True, col_cluster=False,
+        row_cluster=False, expected_size_colors=0.5, method=cluster_method)
+    fig7.savefig(
+        var_path_prefix + '_5ptstages_amp_oricolsort.png', bbox_inches='tight')
+
+    fig8 = clustermap(
+        clustering_df3.iloc[row_sorter, :], figsize=(13, 13),
+        row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
+        xticklabels=True, yticklabels=True, col_cluster=False,
+        row_cluster=True, expected_size_colors=0.5, method=cluster_method)
+    fig8.savefig(
+        var_path_prefix + '_5ptstages_ampclus.png', bbox_inches='tight')
 
 
 def groupday_longform_factors_annotated_clusfolders(
