@@ -841,7 +841,7 @@ def groupmouse_trialfac_summary_days(
             running_data = {}
             running_data['running_mod'] = running_mod
 
-            # ------------- EARLY/LATE RAMP INDEX for preferred ori
+            # ------------- EARLY/LATE RAMP INDEX within day for preferred ori
 
             oris_to_check = [0, 135, 270]
             pref_ori_idx = np.argmax(tuning_weights, axis=0)
@@ -1052,6 +1052,7 @@ def groupmouse_trialfac_summary_stages(
     df_list_cm_learning = []
     df_list_ramp_learning = []
     df_list_speed_learning = []
+    df_list_amplitude = []
     for mnum, mouse in enumerate(mice):
 
         # load dir
@@ -1116,12 +1117,13 @@ def groupmouse_trialfac_summary_stages(
 
         learning_stages = [
             'naive', 'low_dp_learning', 'high_dp_learning', 'low_dp_rev1',
-            'high_dp_rev1', 'pre_rev1']
+            'high_dp_rev1', 'pre_rev1', 'pre_rev_wnaive']
         df_mouse_tuning = []
         df_mouse_conds = []
         df_mouse_error = []
         df_mouse_runmod = []
         df_mouse_ramp = []
+        df_mouse_amplitude = []
         for stage in learning_stages:
 
             if stage == 'naive':
@@ -1134,8 +1136,23 @@ def groupmouse_trialfac_summary_stages(
                 indexer = learning_state.isin(['reversal1']) & (dprime < 2)
             elif stage == 'high_dp_rev1':
                 indexer = learning_state.isin(['reversal1']) & (dprime >= 2)
-            elif stage == 'pre_rev1':
+            elif stage == 'pre_rev_wnaive':
                 indexer = learning_state.isin(['naive', 'learning'])
+            elif stage == 'pre_rev1':
+                indexer = learning_state.isin(['learning'])
+
+            # ------------- GET Condition Amplitude
+
+            trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
+            conds_to_check = ['plus', 'minus', 'neutral']
+            conds_weights = np.zeros((len(conds_to_check), rank_num))
+            for c, conds in enumerate(conds_to_check):
+                conds_weights[c, :] = np.nanmean(
+                    trial_weights[(condition == conds) & indexer, :], axis=0)
+            # dict for creating dataframe
+            ampl_data = {}
+            for c, errset in enumerate(conds_to_check):
+                ampl_data[errset + '_' + stage] = conds_weights[c, :]
 
             # ------------- GET TUNING
 
@@ -1228,7 +1245,7 @@ def groupmouse_trialfac_summary_stages(
             running_data = {}
             running_data['running_modulation_' + stage] = running_mod
 
-            # ------------- EARLY/LATE RAMP INDEX for preferred ori
+            # ------------- EARLY/LATE RAMP INDEX within days for preferred ori
 
             oris_to_check = [0, 135, 270]
             pref_ori_idx = np.argmax(tuning_weights, axis=0)
@@ -1275,6 +1292,7 @@ def groupmouse_trialfac_summary_stages(
             error_df = pd.DataFrame(error_data, index=index)
             running_df = pd.DataFrame(running_data, index=index)
             ramp_df = pd.DataFrame(ramp_data, index=index)
+            ampl_df = pd.DataFrame(ampl_data, index=index)
 
             # create lists of dfs for concatenation
             df_mouse_tuning.append(tuning_df)
@@ -1285,6 +1303,7 @@ def groupmouse_trialfac_summary_stages(
             conds_by_day.append(condition)
             oris_by_day.append(orientation)
             trialerr_by_day.append(trialerror)
+            df_mouse_amplitude.append(ampl_df)
 
         # only get the temporal factors once
         tempo_df = pd.DataFrame(
@@ -1366,6 +1385,7 @@ def groupmouse_trialfac_summary_stages(
         speed_learning_df = pd.DataFrame(data=data, index=index)
 
         # concatenate different columns per mouse
+        df_list_amplitude.append(pd.concat(df_mouse_amplitude, axis=1))
         df_list_tempo.append(tempo_df)
         df_list_index.append(pd.DataFrame(index=index))
         df_list_tuning.append(pd.concat(df_mouse_tuning, axis=1))
@@ -1378,6 +1398,7 @@ def groupmouse_trialfac_summary_stages(
         df_list_speed_learning.append(speed_learning_df)
 
     # concatenate all mice/runs together in final dataframe
+    all_amplitude_df = pd.concat(df_list_amplitude, axis=0)
     all_tempo_df = pd.concat(df_list_tempo, axis=0)
     all_tuning_df = pd.concat(df_list_tuning, axis=0)
     all_conds_df = pd.concat(df_list_conds, axis=0)
@@ -1389,7 +1410,7 @@ def groupmouse_trialfac_summary_stages(
     all_speed_learning_df = pd.concat(df_list_speed_learning, axis=0)
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df,
                                 all_cm_learning_df, all_ramp_learning_df,
-                                all_speed_learning_df,
+                                all_speed_learning_df, all_amplitude_df,
                                 all_runmod_df, all_ramp_df], axis=1)
 
     # calculate center of mass amd ramp index for your temporal components
