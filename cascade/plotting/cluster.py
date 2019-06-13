@@ -804,8 +804,8 @@ def hierclus_on_trials_learning_stages(
             'neutral_amp_high_dp_learning',
             'neutral_amp_low_dp_rev1', 'neutral_amp_high_dp_rev1',
             'minus_amp_naive',
-            'minus_amp_low_dp_learning', 'minus_high_dp_learning',
-            'minus_low_dp_rev1', 'minus_high_dp_rev1']
+            'minus_amp_low_dp_learning', 'minus_amp_high_dp_learning',
+            'minus_amp_low_dp_rev1', 'minus_amp_high_dp_rev1']
         drop_inds3 = ~clustering_df3.columns.isin(keep_cols3)
         drop_cols3 = clustering_df3.columns[drop_inds3]
         clustering_df3 = clustering_df3.drop(columns=drop_cols3)
