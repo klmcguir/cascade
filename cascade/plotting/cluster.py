@@ -974,7 +974,8 @@ def hierclus_on_trials_learning_stages(
         clustering_df3.iloc[row_sorter, :], figsize=(13, 13),
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
         xticklabels=True, yticklabels=True, col_cluster=False,
-        row_cluster=False, expected_size_colors=0.5, method=cluster_method)
+        row_cluster=False, expected_size_colors=0.5, method=cluster_method,
+        standard_scale=0)
     fig6.savefig(
         var_path_prefix + '_5ptstages_amp.png', bbox_inches='tight')
 
@@ -985,7 +986,8 @@ def hierclus_on_trials_learning_stages(
         row_colors=color_df.iloc[row_sorter, :],
         col_colors=[col_colors[s] for s in col_sorter],
         xticklabels=True, yticklabels=True, col_cluster=False,
-        row_cluster=False, expected_size_colors=0.5, method=cluster_method)
+        row_cluster=False, expected_size_colors=0.5, method=cluster_method,
+        standard_scale=0)
     fig7.savefig(
         var_path_prefix + '_5ptstages_amp_oricolsort.png', bbox_inches='tight')
 
@@ -993,7 +995,8 @@ def hierclus_on_trials_learning_stages(
         clustering_df3.iloc[row_sorter, :], figsize=(13, 13),
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
         xticklabels=True, yticklabels=True, col_cluster=False,
-        row_cluster=True, expected_size_colors=0.5, method=cluster_method)
+        row_cluster=True, expected_size_colors=0.5, method=cluster_method,
+        standard_scale=0)
     fig8.savefig(
         var_path_prefix + '_5ptstages_ampclus.png', bbox_inches='tight')
 
