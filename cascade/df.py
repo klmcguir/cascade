@@ -1152,7 +1152,7 @@ def groupmouse_trialfac_summary_stages(
             # dict for creating dataframe
             ampl_data = {}
             for c, errset in enumerate(conds_to_check):
-                ampl_data[errset + '_' + stage] = conds_weights[c, :]
+                ampl_data[errset + '_amp_' + stage] = conds_weights[c, :]
 
             # ------------- GET TUNING
 
