@@ -1121,9 +1121,9 @@ def groupmouse_trialfac_summary_stages(
             keepbool = (condition.values != 'preallocating')
             conds_to_check = ['plus', 'minus', 'neutral']
             for day in np.unique(dates):
-                indexer = dates.isin([day])
+                indexer = dates.isin([day]).values
                 for c, conds in enumerate(conds_to_check):
-                    if np.sum((condition == conds) & indexer) <= 0:
+                    if np.sum((condition.values == conds) & indexer) <= 0:
                         keepbool[indexer] = False
                         continue
             sort_ensemble.results[rank_num][0].factors[2][:, keepbool] = np.nan
