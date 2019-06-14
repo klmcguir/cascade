@@ -1214,15 +1214,15 @@ def groupday_longform_factors_annotated_clusfolders(
 
                 # plot cell factors
                 if not log_scale:
-                    ax[0, 0].bar(
+                    ax[0, 0].plot(
                         np.arange(0, len(U.factors[0][:, comp])),
-                        U.factors[0][:, comp], color='b')
+                        U.factors[0][:, comp], '.', color='b', alpha=0.7)
                     ax[0, 0].autoscale(enable=True, axis='both', tight=True)
                 else:
                     ax[0, 0].plot(
                         np.arange(0, len(U.factors[0][:, comp])),
                         np.log2(U.factors[0][:, comp]), '.', color='b',
-                        alpha= 0.7)
+                        alpha=0.7)
                     ax[0, 0].autoscale(enable=True, axis='both', tight=True)
 
                 # plot temporal factors
