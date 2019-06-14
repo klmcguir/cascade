@@ -1016,6 +1016,7 @@ def groupday_longform_factors_annotated_clusfolders(
         extra_col=1,
         alpha=0.6,
         plot_running=True,
+        log_scale=True,
         filetype='pdf',
         verbose=False):
 
