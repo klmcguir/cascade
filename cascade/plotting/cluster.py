@@ -1075,6 +1075,12 @@ def groupday_longform_factors_annotated_clusfolders(
         nt_tag = ''
         nt_save_tag = ''
 
+    # if cells were removed with too many nan trials
+    if log_scale:
+        log_tag = 'logsc '
+    else:
+        log_tag = ''
+
     # save dir
     group_word = paths.groupmouse_word({'mice': mice})
     mouse = 'Group-' + group_word
@@ -1170,7 +1176,7 @@ def groupday_longform_factors_annotated_clusfolders(
         for clus in range(1, clus_num+1):
 
             # save dir for that cluster
-            clus_dir = os.path.join(save_dir, 'cluster ' + str(clus))
+            clus_dir = os.path.join(save_dir, 'cluster ' + log_tag + str(clus))
             if not os.path.isdir(clus_dir): os.mkdir(clus_dir)
 
             rows = 5
@@ -1375,7 +1381,7 @@ def groupday_longform_factors_annotated_clusfolders(
                                 ax[i, col].plot(
                                     [k, k], y_lim,
                                     color=ls_colors[ls_vals.index(ls)],
-                                    linewidth=1.5)
+                                    linewidth=3)
 
                     # hide subplots that won't be used
                     if i > 0:
