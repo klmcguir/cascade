@@ -1398,7 +1398,7 @@ def groupday_longform_factors_annotated_clusfolders(
                                 ax[i, col].plot(
                                     [k, k], y_lim,
                                     color=ls_colors[ls_vals.index(ls)],
-                                    linewidth=3)
+                                    linewidth=3, alpha=0.7)
 
                     # hide subplots that won't be used
                     if i > 0:
