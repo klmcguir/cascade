@@ -1017,6 +1017,7 @@ def groupday_longform_factors_annotated_clusfolders(
         alpha=0.6,
         plot_running=True,
         log_scale=True,
+        cluster_method='ward',
         filetype='png',
         verbose=False):
 
@@ -1090,8 +1091,8 @@ def groupday_longform_factors_annotated_clusfolders(
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
 
     # get clusters
-    if use_dprime:
-        clus_df, temp_df = cluster.trial_factors_across_mice_dprime(
+    clus_df, temp_df = \
+        df.groupmouse_trialfac_summary_stages(
             mice=mice,
             trace_type=trace_type,
             method=method,
@@ -1100,22 +1101,37 @@ def groupday_longform_factors_annotated_clusfolders(
             words=words,
             group_by=group_by,
             nan_thresh=nan_thresh,
-            verbose=verbose,
-            rank_num=rank_num)
-    else:
-        clus_df, temp_df = cluster.trial_factors_across_mice(
-            mice=mice,
-            trace_type=trace_type,
-            method=method,
-            cs=cs,
-            warp=warp,
-            words=words,
-            group_by=group_by,
-            nan_thresh=nan_thresh,
-            verbose=verbose,
-            rank_num=rank_num)
-    clus_df = clus_df.dropna(axis='rows')
-    clus_df = cluster.get_component_clusters(clus_df, clus_num)
+            speed_thresh=speed_thresh,
+            rank_num=rank_num,
+            verbose=False)
+    # if use_dprime:
+    #     clus_df, temp_df = cluster.trial_factors_across_mice_dprime(
+    #         mice=mice,
+    #         trace_type=trace_type,
+    #         method=method,
+    #         cs=cs,
+    #         warp=warp,
+    #         words=words,
+    #         group_by=group_by,
+    #         nan_thresh=nan_thresh,
+    #         verbose=verbose,
+    #         rank_num=rank_num)
+    # else:
+    #     clus_df, temp_df = cluster.trial_factors_across_mice(
+    #         mice=mice,
+    #         trace_type=trace_type,
+    #         method=method,
+    #         cs=cs,
+    #         warp=warp,
+    #         words=words,
+    #         group_by=group_by,
+    #         nan_thresh=nan_thresh,
+    #         verbose=verbose,
+    #         rank_num=rank_num)
+    # clus_df = clus_df.dropna(axis='rows')
+    # clus_df = cluster.get_component_clusters(clus_df, clus_num)
+    clus_df = cluster.get_groupday_stage_clusters(
+        clus_df, clus_num, method=cluster_method)
 
     for mnum, mouse in enumerate(mice):
         # load dir
