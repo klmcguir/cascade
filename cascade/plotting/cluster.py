@@ -994,7 +994,7 @@ def hierclus_on_trials_learning_stages(
     fig8 = clustermap(
         clustering_df3.iloc[row_sorter, :], figsize=(13, 13),
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
-        xticklabels=True, yticklabels=True, col_cluster=False,
+        xticklabels=True, yticklabels=True, col_cluster=True,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
     fig8.savefig(
