@@ -1018,6 +1018,7 @@ def groupday_longform_factors_annotated_clusfolders(
         plot_running=True,
         log_scale=True,
         cluster_method='ward',
+        speed_thresh=5,
         filetype='png',
         verbose=False):
 
