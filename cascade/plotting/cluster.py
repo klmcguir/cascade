@@ -1206,10 +1206,16 @@ def groupday_longform_factors_annotated_clusfolders(
                     transform=ax[0, 0].transAxes, color='#969696')
 
                 # plot cell factors
-                ax[0, 0].bar(
-                    np.arange(0, len(U.factors[0][:, comp])),
-                    U.factors[0][:, comp], color='b')
-                ax[0, 0].autoscale(enable=True, axis='both', tight=True)
+                if not log_scale:
+                    ax[0, 0].bar(
+                        np.arange(0, len(U.factors[0][:, comp])),
+                        U.factors[0][:, comp], color='b')
+                    ax[0, 0].autoscale(enable=True, axis='both', tight=True)
+                else:
+                    ax[0, 0].plot(
+                        np.arange(0, len(U.factors[0][:, comp])),
+                        np.log10(U.factors[0][:, comp]), 'o', color='b')
+                    ax[0, 0].autoscale(enable=True, axis='both', tight=True)
 
                 # plot temporal factors
                 ax[0, 1].plot(U.factors[1][:, comp], color='r', linewidth=1.5)
