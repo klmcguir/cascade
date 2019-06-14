@@ -31,10 +31,6 @@ def get_groupday_stage_clusters(clustering_df, cluster_number, method='ward'):
     clustering_df = clustering_df.drop(columns=drop_cols)
     nan_indexer = clustering_df.isna().any(axis=1)  # this has to be here
     clustering_df = clustering_df.dropna(axis='rows')
-
-    clustering_df = deepcopy(
-        clustering_df.loc[:, ('plus', 'minus', 'neutral', 'hit',
-                          'miss', 'false_alarm', 'correct_reject')])
     g = sns.clustermap(clustering_df, method=method)
     row_sorter = g.dendrogram_row.reordered_ind
     clusters = hierarchy.fcluster(
