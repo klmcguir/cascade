@@ -15,6 +15,37 @@ from . import utils
 from .plotting import cluster
 
 
+def get_groupday_stage_clusters(clustering_df, cluster_number, method='ward'):
+    """
+    Get clustering df and annotated clusters for hierclus groupday df.
+    """
+
+    # create df only early and high dp learning stages
+    keep_cols = [
+        'plus_high_dp_learning', 'neutral_high_dp_learning',
+        'minus_high_dp_learning', 'plus_high_dp_rev1',
+        'minus_high_dp_rev1', 'neutral_high_dp_rev1',
+        'plus_naive', 'minus_naive', 'neutral_naive']
+    drop_inds = ~clustering_df.columns.isin(keep_cols)
+    drop_cols = clustering_df.columns[drop_inds]
+    clustering_df = clustering_df.drop(columns=drop_cols)
+    nan_indexer = clustering_df.isna().any(axis=1)  # this has to be here
+    clustering_df = clustering_df.dropna(axis='rows')
+
+    clustering_df = deepcopy(
+        clustering_df.loc[:, ('plus', 'minus', 'neutral', 'hit',
+                          'miss', 'false_alarm', 'correct_reject')])
+    g = sns.clustermap(clustering_df, method=method)
+    row_sorter = g.dendrogram_row.reordered_ind
+    clusters = hierarchy.fcluster(
+        g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
+    plt.close('all')
+    clustering_df['cluster'] = pd.Series(
+        clusters, index=clustering_df.index)
+
+    return clustering_df
+
+
 def get_component_clusters(clustering_df, cluster_number):
     """
     Plot your clustering df and annotated clusters for help choosing
