@@ -1017,7 +1017,7 @@ def groupday_longform_factors_annotated_clusfolders(
         alpha=0.6,
         plot_running=True,
         log_scale=True,
-        filetype='pdf',
+        filetype='png',
         verbose=False):
 
     """
@@ -1215,7 +1215,8 @@ def groupday_longform_factors_annotated_clusfolders(
                 else:
                     ax[0, 0].plot(
                         np.arange(0, len(U.factors[0][:, comp])),
-                        np.log10(U.factors[0][:, comp]), 'o', color='b')
+                        np.log2(U.factors[0][:, comp]), '.', color='b',
+                        alpha= 0.7)
                     ax[0, 0].autoscale(enable=True, axis='both', tight=True)
 
                 # plot temporal factors
