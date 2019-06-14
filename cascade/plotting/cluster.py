@@ -1088,7 +1088,8 @@ def groupday_longform_factors_annotated_clusfolders(
     mouse = 'Group-' + group_word
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
-    save_dir = os.path.join(save_dir, 'factors annotated long-form' + nt_save_tag)
+    save_dir = os.path.join(save_dir, 'factors annotated long-form'
+                            + nt_save_tag + ' nclus ' + str(clus_num))
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
 
     # get clusters
