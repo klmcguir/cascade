@@ -1127,7 +1127,7 @@ def groupmouse_trialfac_summary_stages(
                         keepbool[indexer] = False
                         continue
             sort_ensemble.results[rank_num][0].factors[2][keepbool, :] = np.nan
-            print('Removed ' + str(np.sum(keepbool == False)) + ' trials ' +
+            print('Removed ' + str(np.sum(keepbool == False)) + ' trials' +
                   ' from stimulus-unmatched days.')
 
         learning_stages = [
