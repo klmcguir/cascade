@@ -1008,7 +1008,8 @@ def groupmouse_trialfac_summary_stages(
         group_by='all',
         nan_thresh=0.85,
         speed_thresh=5,
-        rank_num=14,
+        rank_num=18,
+        matched_only=True,
         verbose=False):
 
     """
@@ -1114,6 +1115,20 @@ def groupmouse_trialfac_summary_stages(
         data = {'dprime': dprime_vec}
         dprime = pd.DataFrame(data=data, index=learning_state.index)
         dprime = dprime['dprime']  # make indices match to meta
+
+        # update trial weights to nan days when all three stim are not shown
+        if matched_only:
+            keepbool = (condition.values != 'preallocating')
+            conds_to_check = ['plus', 'minus', 'neutral']
+            for day in np.unique(dates):
+                indexer = dates.isin([day])
+                for c, conds in enumerate(conds_to_check):
+                    if np.sum((condition == conds) & indexer) <= 0:
+                        keepbool[indexer] = False
+                        continue
+            sort_ensemble.results[rank_num][0].factors[2][:, keepbool] = np.nan
+            print('Removed ' + str(np.sum(keepbool == False)) + 'trials ' +
+                  ' from stimulus-unmatched days.')
 
         learning_stages = [
             'naive', 'low_dp_learning', 'high_dp_learning', 'low_dp_rev1',
