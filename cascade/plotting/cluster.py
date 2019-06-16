@@ -437,6 +437,7 @@ def corr_ramp_indices(
     var_path_prefix = os.path.join(
         save_dir, str(mouse) + '_rank' + str(rank_num) + '_pearsonR_trialfac_bystage'
         + '_n' + str(len(mice)) + nt_tag + a_tag)
+    print(var_path_prefix)
 
     # create dataframes - ignore python and numpy divide by zero warnings
     with warnings.catch_warnings():
