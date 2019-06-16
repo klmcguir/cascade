@@ -516,7 +516,7 @@ def corr_ramp_indices(
     plt.xticks(rotation=45, ha='right')
     plt.title('Pearson-R corrcoef')
     plt.savefig(
-        var_path_prefix + '_corr.png', bbox_inches='tight')
+        var_path_prefix + '_corr.pdf', bbox_inches='tight')
 
     plt.figure()
     sns.heatmap(pmat, annot=annot, xticklabels=labels, yticklabels=labels,
@@ -524,7 +524,7 @@ def corr_ramp_indices(
     plt.xticks(rotation=45, ha='right')
     plt.title('Pearson-R p-values')
     plt.savefig(
-        var_path_prefix + '_pvals.png', bbox_inches='tight')
+        var_path_prefix + '_pvals.pdf', bbox_inches='tight')
 
     plt.figure()
     logger = np.log10(pmat).flatten()
@@ -536,7 +536,7 @@ def corr_ramp_indices(
     plt.xticks(rotation=45, ha='right')
     plt.title('Pearson-R log$_{10}$(p-values)')
     plt.savefig(
-        var_path_prefix + '_log10pvals.png', bbox_inches='tight')
+        var_path_prefix + '_log10pvals.pdf', bbox_inches='tight')
 
 
 def corr_ramp_indices_bymouse(
