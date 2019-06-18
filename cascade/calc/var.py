@@ -456,6 +456,117 @@ def groupday_varex_byday_bycomp_bycell(
 
     return dfvar
 
+
+@memoize(across='mouse', updated=190618, returns='other', large_output=True)
+def groupday_varex_bycomp_bycell(
+        mouse,
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        word=None,
+        group_by='all',
+        nan_thresh=0.85,
+        rectified=True,
+        verbose=False):
+    """
+    Plot reconstruction error as variance explained across all whole groupday
+    TCA decomposition ensemble.
+
+    Parameters:
+    -----------
+    mouse : str; mouse object
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../qc
+    """
+
+    mouse = mouse.mouse
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        nt_tag = '_nantrial' + str(nan_thresh)
+    else:
+        nt_tag = ''
+
+    # load dir
+    load_dir = paths.tca_path(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    tensor_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        + '_group_decomp_' + str(trace_type) + '.npy')
+    ids_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        + '_group_ids_' + str(trace_type) + '.npy')
+    input_tensor_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        + '_group_tensor_' + str(trace_type) + '.npy')
+    meta_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        + '_df_group_meta.pkl')
+
+    # load your data
+    ensemble = np.load(tensor_path)
+    ensemble = ensemble.item()
+    V = ensemble[method]
+    X = np.load(input_tensor_path)
+    ids = np.load(ids_path)
+    meta = pd.read_pickle(meta_path)
+    orientation = meta['orientation']
+    condition = meta['condition']
+    dates = meta.reset_index()['date']
+
+    # rectify input tensor (only look at nonnegative variance)
+    if rectified:
+        X[X < 0] = 0
+
+    # create vectors for dataframe
+    varex = []
+    rank = []
+    component = []
+    cell_idx = []
+    cell_id = []
+    for r in V.results:
+        for fac_num in range(np.shape(V.results[r][0].factors[0][:, :])[1]):
+            # reconstruct single component model
+            a = V.results[r][0].factors[0][:, fac_num]
+            b = V.results[r][0].factors[1][:, fac_num]
+            c = V.results[r][0].factors[2][:, fac_num]
+            ab = a[:, None] @ b[None, :]
+            abc = ab[:, :, None] @ c[None, :]
+            # calculate variance explained per cell
+            for cell_num in range(np.shape(V.results[r][0].factors[0][:, :])[0]):
+                cell_identity = ids[cell_num]
+                bX = X[cell_num, :, :]
+                bU = abc[cell_num, :, :]
+                rank.append(r)
+                component.append(fac_num+1)
+                cell_idx.append(cell_num)
+                cell_id.append(cell_identity)
+                varex.append(1 - (np.nanvar(bX - bU)/np.nanvar(bX)))
+
+    # make dataframe of data
+    # create your index out of relevant variables
+    index = pd.MultiIndex.from_arrays(
+        [[mouse]*len(varex)],
+        names=['mouse'])
+
+    data = {'rank': rank,
+            'cell_num': cell_idx,
+            'cell_id': cell_id,
+            'component': component,
+            'variance_explained_tcamodel': varex}
+
+    dfvar = pd.DataFrame(data, index=index)
+
+    return dfvar
+
+
 @memoize(across='mouse', updated=190529, returns='other', large_output=True)
 def groupday_varex_bycomp(
         mouse,
