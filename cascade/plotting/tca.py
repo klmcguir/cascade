@@ -258,7 +258,7 @@ def groupday_longform_factors_annotated(
         extra_col=1,
         alpha=0.6,
         plot_running=True,
-        filetype='pdf',
+        filetype='png',
         verbose=False):
 
     """
