@@ -1242,7 +1242,7 @@ def hierclus_simple_on_trials_learning_stages(
     plt.close('all')
 
     fig1 = clustermap(
-        clustering_df, row_colors=color_df, figsize=(13, 13),
+        clustering_df, row_colors=color_df, figsize=(12, 13),
         xticklabels=True, yticklabels=True, col_cluster=True,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method)
     fig1.savefig(
@@ -1250,21 +1250,21 @@ def hierclus_simple_on_trials_learning_stages(
 
     fig2 = clustermap(
         t_df.iloc[row_sorter, :], row_colors=color_df.iloc[row_sorter, :],
-        figsize=(13, 13), xticklabels=False, yticklabels=True,
+        figsize=(12, 13), xticklabels=False, yticklabels=True,
         col_cluster=False, row_cluster=False, expected_size_colors=0.5,
         method='ward')
     fig2.savefig(
         var_path_prefix + '_tempofac.png', bbox_inches='tight')
 
     fig3 = clustermap(
-        t_df, row_colors=color_df, figsize=(13, 13),
+        t_df, row_colors=color_df, figsize=(12, 13),
         xticklabels=False, yticklabels=True, col_cluster=False,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method)
     fig3.savefig(
         var_path_prefix + '_tempofac_sort.png', bbox_inches='tight')
 
     fig4 = clustermap(
-        clustering_df2.iloc[row_sorter, :], figsize=(13, 13),
+        clustering_df2.iloc[row_sorter, :], figsize=(12, 13),
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
         xticklabels=True, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method)
@@ -1274,7 +1274,7 @@ def hierclus_simple_on_trials_learning_stages(
     col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
     ori_col_df = clustering_df2.iloc[row_sorter, :]
     ori_col_df = ori_col_df.iloc[:, col_sorter]
-    fig5 = clustermap(ori_col_df, figsize=(13, 13),
+    fig5 = clustermap(ori_col_df, figsize=(12, 13),
         row_colors=color_df.iloc[row_sorter, :],
         col_colors=[col_colors[s] for s in col_sorter],
         xticklabels=True, yticklabels=True, col_cluster=False,
@@ -1283,7 +1283,7 @@ def hierclus_simple_on_trials_learning_stages(
         var_path_prefix + '_5ptstages_oricolsort.png', bbox_inches='tight')
 
     fig6 = clustermap(
-        clustering_df3.iloc[row_sorter, :], figsize=(13, 13),
+        clustering_df3.iloc[row_sorter, :], figsize=(12, 13),
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
         xticklabels=True, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method,
@@ -1294,7 +1294,7 @@ def hierclus_simple_on_trials_learning_stages(
     col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
     ori_col_df = clustering_df3.iloc[row_sorter, :]
     ori_col_df = ori_col_df.iloc[:, col_sorter]
-    fig7 = clustermap(ori_col_df, figsize=(13, 13),
+    fig7 = clustermap(ori_col_df, figsize=(12, 13),
         row_colors=color_df.iloc[row_sorter, :],
         col_colors=[col_colors[s] for s in col_sorter],
         xticklabels=True, yticklabels=True, col_cluster=False,
@@ -1304,13 +1304,15 @@ def hierclus_simple_on_trials_learning_stages(
         var_path_prefix + '_5ptstages_amp_oricolsort.png', bbox_inches='tight')
 
     fig8 = clustermap(
-        clustering_df3.iloc[row_sorter, :], figsize=(13, 13),
+        clustering_df3.iloc[row_sorter, :], figsize=(12, 13),
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
         xticklabels=True, yticklabels=True, col_cluster=True,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
     fig8.savefig(
         var_path_prefix + '_5ptstages_ampclus.png', bbox_inches='tight')
+
+
 def groupday_longform_factors_annotated_clusfolders(
         mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175'],
         trace_type='zscore_day',
