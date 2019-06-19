@@ -1077,7 +1077,7 @@ def groupday_longform_factors_annotated_clusfolders(
         nt_tag = ''
         nt_save_tag = ''
 
-    # if cells were removed with too many nan trials
+    # plot cell factors using a log scale
     if log_scale:
         log_tag = 'logsc '
     else:
