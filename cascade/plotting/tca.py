@@ -249,7 +249,7 @@ def groupmouse_varex_summary(
 def groupday_longform_factors_annotated(
         mouse,
         trace_type='zscore_day',
-        method='ncp_bcd',
+        method='mncp_hals',
         cs='',
         warp=False,
         word=None,
@@ -580,16 +580,16 @@ def groupday_longform_factors_annotated(
 def groupday_factors_annotated(
         mouse,
         trace_type='zscore_day',
-        method='ncp_bcd',
+        method='mncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by=None,
-        nan_thresh=None,
+        group_by='all',
+        nan_thresh=0.85,
         extra_col=4,
         alpha=0.6,
         plot_running=True,
-        filetype='pdf',
+        filetype='png',
         scale_y=False,
         verbose=False):
 
