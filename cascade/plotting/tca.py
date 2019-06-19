@@ -799,7 +799,6 @@ def groupday_factors_annotated(
         for i in range(U.rank):
             ax[i, 0].collections[0].set_color('blue')
 
-
         # rescale the y-axis for trials
         if scale_y:
             for i in range(U.rank):
