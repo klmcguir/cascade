@@ -738,6 +738,7 @@ def groupday_factors_annotated(
     ensemble = np.load(tensor_path)
     ensemble = ensemble.item()
     meta = pd.read_pickle(meta_path)
+    meta = utils.update_naive_cs(meta)
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))
     condition = meta['condition']
