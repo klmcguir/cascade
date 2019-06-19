@@ -391,9 +391,9 @@ def groupday_longform_factors_annotated(
                           transform=ax[0, 0].transAxes, color='#969696')
 
             # plot cell factors
-            ax[0, 0].bar(
+            ax[0, 0].plot(
                 np.arange(0, len(U.factors[0][:, comp])),
-                U.factors[0][:, comp], color='b')
+                U.factors[0][:, comp], '.', color='b', alpha=0.7)
             ax[0, 0].autoscale(enable=True, axis='both', tight=True)
 
             # plot temporal factors
@@ -774,7 +774,7 @@ def groupday_factors_annotated(
         U = sort_ensemble.results[r][0].factors
 
         fig, axes = plt.subplots(U.rank, U.ndim + extra_col, figsize=(9 + extra_col, U.rank))
-        figt = tt.plot_factors(U, plots=['bar', 'line', 'scatter'],
+        figt = tt.plot_factors(U, plots=['scatter', 'line', 'scatter'],
                         axes=None,
                         fig=fig,
                         scatter_kw=plot_options[method]['scatter_kw'],
@@ -793,6 +793,10 @@ def groupday_factors_annotated(
 
         # reshape for easier indexing
         ax = np.array(ax).reshape((U.rank, -1))
+
+        # change color of cell factors to blue
+        for i in range(U.rank):
+            ax[i, 0].set_color('b')
 
         # rescale the y-axis for trials
         if scale_y:
