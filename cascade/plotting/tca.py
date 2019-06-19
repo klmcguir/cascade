@@ -797,7 +797,8 @@ def groupday_factors_annotated(
 
         # change color of cell factors to blue
         for i in range(U.rank):
-            ax[i, 0].get_lines()[0].set_color('blue')
+            ax[i, 0].collections[0].set_cmap('Blues')
+        plt.draw()
 
         # rescale the y-axis for trials
         if scale_y:
