@@ -1260,7 +1260,7 @@ def hierclus_simple_on_trials_learning_stages(
             # 'ramp-index-trace': trace_ramp_colors,
             # 'ramp-index-trace-offset': offset_ramp_colors,
             # 'center-of-mass-trace': cm_colors,
-            'variance explained': varex_colors,
+            # 'variance explained': varex_colors,
             'cluster': cluster_colors}
     color_df = pd.DataFrame(data=data, index=clustering_df.index)
     data = {'mouse': mouse_colors}
