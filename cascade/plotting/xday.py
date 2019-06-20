@@ -204,9 +204,20 @@ def mean_response(
             print('Cell: ' + str(cell_idx) + ': done.')
 
 
-def heatmap(mouse, cell_id=None, trace_type='dff', cs_bar=True, day_bar=True,
-            day_line=True, run_line=False, match_clim=True,
-            vmin=None, vmax=None, smooth=False, word=None, verbose=False):
+def heatmap(
+        mouse,
+        cell_id=None,
+        trace_type='dff',
+        cs_bar=True,
+        day_bar=True,
+        day_line=True,
+        run_line=False,
+        match_clim=True,
+        vmin=None,
+        vmax=None,
+        smooth=False,
+        word=None,
+        verbose=False):
     """
     Create heatmap of each cell aligned across time.
 
