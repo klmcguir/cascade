@@ -1223,7 +1223,7 @@ def hierclus_simple_on_trials_learning_stages(
     mouse_list = clustering_df.reset_index().loc[:, 'mouse'].unique()
     var_list = []
     for mouse in mouse_list:
-        word = words[mice == mouse]
+        word = words[np.where(np.isin(mice, mouse))[0][0]]
         var_df = calc.var.groupday_varex_bycomp(
             flow.Mouse(mouse=mouse), word=word)
         var_df = var_df.loc[(var_df['rank'] == rank_num), :]
