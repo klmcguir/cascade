@@ -1243,7 +1243,7 @@ def hierclus_simple_on_trials_learning_stages(
     # plot
     plt.close('all')
     sns.set_context("talk")
-    figy = 15
+    figy = 17
     figx = 12
 
     fig1 = clustermap(
