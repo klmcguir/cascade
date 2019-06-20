@@ -1020,7 +1020,7 @@ def hierclus_simple_on_trials_learning_stages(
         cluster_number=8,
         cluster_method='ward',
         expected_size_colors=0.5,
-        filetype='png'
+        filetype='png',
         auto_drop=True):
 
     """
