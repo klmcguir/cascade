@@ -1217,6 +1217,10 @@ def hierclus_simple_on_trials_learning_stages(
     offset_ramp_colors = [ramp_color_dict[m] if ~np.isnan(m) else
                           [.5, .5, .5, 1.] for m in binned_ramp]
 
+    # create colormap for variance explained by each component (as a fraction
+    # of the total variance explained
+    # cas.calc.var.groupday_varex_bycomp(flow.Mouse(mouse='OA27'), word='orlando')
+
     # colors for columns learning stages
     col_colors = []
     for col_name in clustering_df2.columns:
@@ -1245,10 +1249,11 @@ def hierclus_simple_on_trials_learning_stages(
     sns.set_context("talk")
     figy = 15
     figx = 12
+    yfontsize = 12
     xlabl = ['naive', 'early learning', 'late learning',
              'early reversal', 'late reversal',
              'naive', 'early learning', 'late learning',
-             'early reversal', 'late reversal'
+             'early reversal', 'late reversal',
              'naive', 'early learning', 'late learning',
              'early reversal', 'late reversal']
 
@@ -1256,6 +1261,8 @@ def hierclus_simple_on_trials_learning_stages(
         clustering_df, row_colors=color_df, figsize=(figx, figy),
         xticklabels=True, yticklabels=True, col_cluster=True,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method)
+    fig1.ax_heatmap.set_yticklabels(
+        fig1.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig1.savefig(
         var_path_prefix + '_trialfac.png', bbox_inches='tight')
 
@@ -1264,6 +1271,8 @@ def hierclus_simple_on_trials_learning_stages(
         figsize=(figx, figy), xticklabels=False, yticklabels=True,
         col_cluster=False, row_cluster=False, expected_size_colors=0.5,
         method='ward')
+    fig2.ax_heatmap.set_yticklabels(
+        fig2.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig2.savefig(
         var_path_prefix + '_tempofac.png', bbox_inches='tight')
 
@@ -1271,6 +1280,8 @@ def hierclus_simple_on_trials_learning_stages(
         t_df, row_colors=color_df, figsize=(figx, figy),
         xticklabels=False, yticklabels=True, col_cluster=False,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method)
+    fig3.ax_heatmap.set_yticklabels(
+        fig3.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig3.savefig(
         var_path_prefix + '_tempofac_sort.png', bbox_inches='tight')
 
@@ -1279,6 +1290,8 @@ def hierclus_simple_on_trials_learning_stages(
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
         xticklabels=xlabl, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method)
+    fig4.ax_heatmap.set_yticklabels(
+        fig4.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig4.savefig(
         var_path_prefix + '_5ptstages.png', bbox_inches='tight')
 
@@ -1290,6 +1303,8 @@ def hierclus_simple_on_trials_learning_stages(
         col_colors=[col_colors[s] for s in col_sorter],
         xticklabels=xlabl, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method)
+    fig5.ax_heatmap.set_yticklabels(
+        fig5.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig5.savefig(
         var_path_prefix + '_5ptstages_oricolsort.png', bbox_inches='tight')
 
@@ -1299,6 +1314,8 @@ def hierclus_simple_on_trials_learning_stages(
         xticklabels=xlabl, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
+    fig6.ax_heatmap.set_yticklabels(
+        fig6.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig6.savefig(
         var_path_prefix + '_5ptstages_amp.png', bbox_inches='tight')
 
@@ -1311,6 +1328,8 @@ def hierclus_simple_on_trials_learning_stages(
         xticklabels=xlabl, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
+    fig7.ax_heatmap.set_yticklabels(
+        fig7.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig7.savefig(
         var_path_prefix + '_5ptstages_amp_oricolsort.png', bbox_inches='tight')
 
@@ -1320,6 +1339,8 @@ def hierclus_simple_on_trials_learning_stages(
         xticklabels=xlabl, yticklabels=True, col_cluster=True,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
+    fig8.ax_heatmap.set_yticklabels(
+        fig8.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig8.savefig(
         var_path_prefix + '_5ptstages_ampclus.png', bbox_inches='tight')
 
@@ -1331,7 +1352,8 @@ def hierclus_simple_on_trials_learning_stages(
         col_colors=[col_colors[s] for s in col_sorter],
         xticklabels=xlabl, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method)
-    fig9.set_yticklabels(fig9.get_yticklabels(), fontsize=12)
+    fig9.ax_heatmap.set_yticklabels(
+        fig9.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig9.savefig(
         var_path_prefix + '_5ptstages_oricolsort_nosort.png',
         bbox_inches='tight')
