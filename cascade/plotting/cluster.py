@@ -1230,8 +1230,9 @@ def hierclus_simple_on_trials_learning_stages(
         scalar = var_df.sum()['variance_explained_tcamodel']
         var_df = var_df['variance_explained_tcamodel'] / scalar
         var_list.append(var_df)
+    print(var_list)
     varex = pd.concat(var_list, axis=0)
-    bins = list(np.arange(0, 1, 0.05))
+    bins = list(np.arange(0, 0.5, 0.05))
     bins.append(np.inf)
     varex_color_options = sns.cubehelix_palette(
         len(bins)-1, start=.5, rot=-.75, reverse=True)
@@ -1380,7 +1381,7 @@ def hierclus_simple_on_trials_learning_stages(
         bbox_inches='tight')
 
     col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
-    row_indexer = (clustering_df2['mouse'] == 'OA27').values
+    row_indexer = (clustering_df2.reset_index()['mouse'] == 'OA27').values
     ori_col_df = clustering_df2.iloc[row_indexer, :]
     ori_col_df = ori_col_df.iloc[:, col_sorter]
     g = clustermap(ori_col_df,  # figsize=(figx, figy),
