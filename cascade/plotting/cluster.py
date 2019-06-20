@@ -1237,7 +1237,7 @@ def hierclus_simple_on_trials_learning_stages(
     varex_color_options = sns.cubehelix_palette(
         len(bins)-1, start=.5, rot=-.75, reverse=True)
     binned_varex = pd.cut(varex, bins, labels=range(0, len(bins)-1))
-    varex_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
+    varex_color_dict = {k: v for k, v in zip(np.unique(binned_varex),
                                              varex_color_options)}
     varex_colors = [varex_color_dict[m] if ~np.isnan(m) else
                     [.5, .5, .5, 1.] for m in binned_varex]
