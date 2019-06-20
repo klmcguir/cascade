@@ -1224,7 +1224,7 @@ def hierclus_simple_on_trials_learning_stages(
     var_list = []
     for mouse in mouse_list:
         word = words[mice == mouse]
-        var_df = cas.calc.var.groupday_varex_bycomp(
+        var_df = calc.var.groupday_varex_bycomp(
             flow.Mouse(mouse='OA27'), word=word)
         var_df = var_df.loc[(var_df['rank'] == rank_num), :]
         scalar = var_df.sum()['variance_explained_tcamodel']
