@@ -21,6 +21,7 @@ from .. import tca
 from .. import paths
 from .. import utils
 from .. import cluster
+from .. import calc
 
 
 # added functionality from https://github.com/mwaskom/seaborn/pull/1393/files
@@ -1376,6 +1377,21 @@ def hierclus_simple_on_trials_learning_stages(
         fig9.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig9.savefig(
         var_path_prefix + '_5ptstages_oricolsort_nosort.png',
+        bbox_inches='tight')
+
+    col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
+    row_indexer = (clustering_df2['mouse'] == 'OA27').values
+    ori_col_df = clustering_df2.iloc[row_indexer, :]
+    ori_col_df = ori_col_df.iloc[:, col_sorter]
+    g = clustermap(ori_col_df,  # figsize=(figx, figy),
+        row_colors=mcolor_df.iloc[row_indexer, :],
+        col_colors=[col_colors[s] for s in col_sorter],
+        xticklabels=xlabl, yticklabels=True, col_cluster=False,
+        row_cluster=False, expected_size_colors=0.5, method=cluster_method)
+    g.ax_heatmap.set_yticklabels(
+        g.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
+    g.savefig(
+        var_path_prefix + '_5ptstages_oricolsort_ex.png',
         bbox_inches='tight')
 
 
