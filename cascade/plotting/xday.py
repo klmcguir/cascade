@@ -327,12 +327,11 @@ def heatmap(
 
         # cbarlabel
         if label_cbar:
-            cbarlabel = r'$\DeltaF/F$'
+            cbarlabel = r'$\Delta$F/F'
         else:
             cbarlabel = None
 
         # plot main figure
-        sns.set_context('talk')
         toplot = dff.pivot_table(
             index=['date', 'run', 'trial_idx', 'orientation'],
             columns='timestamp', values='trace')
@@ -341,7 +340,7 @@ def heatmap(
             height=8, aspect=1, sharey=False, dropna=False)
         g.map_dataframe(
             _myheatmap, vmax=vmax, vmin=vmin, center=0,
-            xticklabels=31, cmap=cmap, cbarlabel=cbarlabel)
+            xticklabels=31, cmap=cmap, cbar_kws={'label': cbarlabel})
         g.fig.suptitle('Cell ' + str(cell_idx), x=0.98)
 
         # loop through axes and plot relevant metadata on top
