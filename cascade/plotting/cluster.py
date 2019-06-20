@@ -1232,7 +1232,7 @@ def hierclus_simple_on_trials_learning_stages(
         var_list.append(var_df)
     print(var_list)
     varex = pd.concat(var_list, axis=0)
-    bins = list(np.arange(0, 0.5, 0.05))
+    bins = list(np.arange(0, 0.2, 0.01))
     bins.append(np.inf)
     varex_color_options = sns.cubehelix_palette(
         len(bins)-1, start=.5, rot=-.75, reverse=True)
