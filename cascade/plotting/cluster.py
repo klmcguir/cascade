@@ -1243,8 +1243,14 @@ def hierclus_simple_on_trials_learning_stages(
     # plot
     plt.close('all')
     sns.set_context("talk")
-    figy = 17
+    figy = 15
     figx = 12
+    xlabl = ['naive', 'early learning', 'late learning',
+             'early reversal', 'late reversal',
+             'naive', 'early learning', 'late learning',
+             'early reversal', 'late reversal'
+             'naive', 'early learning', 'late learning',
+             'early reversal', 'late reversal']
 
     fig1 = clustermap(
         clustering_df, row_colors=color_df, figsize=(figx, figy),
@@ -1271,7 +1277,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig4 = clustermap(
         clustering_df2.iloc[row_sorter, :], figsize=(figx, figy),
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
-        xticklabels=True, yticklabels=True, col_cluster=False,
+        xticklabels=xlabl, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method)
     fig4.savefig(
         var_path_prefix + '_5ptstages.png', bbox_inches='tight')
@@ -1282,7 +1288,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig5 = clustermap(ori_col_df, figsize=(figx, figy),
         row_colors=color_df.iloc[row_sorter, :],
         col_colors=[col_colors[s] for s in col_sorter],
-        xticklabels=True, yticklabels=True, col_cluster=False,
+        xticklabels=xlabl, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method)
     fig5.savefig(
         var_path_prefix + '_5ptstages_oricolsort.png', bbox_inches='tight')
@@ -1290,7 +1296,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig6 = clustermap(
         clustering_df3.iloc[row_sorter, :], figsize=(figx, figy),
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
-        xticklabels=True, yticklabels=True, col_cluster=False,
+        xticklabels=xlabl, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
     fig6.savefig(
@@ -1302,7 +1308,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig7 = clustermap(ori_col_df, figsize=(figx, figy),
         row_colors=color_df.iloc[row_sorter, :],
         col_colors=[col_colors[s] for s in col_sorter],
-        xticklabels=True, yticklabels=True, col_cluster=False,
+        xticklabels=xlabl, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
     fig7.savefig(
@@ -1311,7 +1317,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig8 = clustermap(
         clustering_df3.iloc[row_sorter, :], figsize=(figx, figy),
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
-        xticklabels=True, yticklabels=True, col_cluster=True,
+        xticklabels=xlabl, yticklabels=True, col_cluster=True,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
     fig8.savefig(
@@ -1323,8 +1329,9 @@ def hierclus_simple_on_trials_learning_stages(
     fig9 = clustermap(ori_col_df, figsize=(figx, figy),
         row_colors=mcolor_df,
         col_colors=[col_colors[s] for s in col_sorter],
-        xticklabels=True, yticklabels=True, col_cluster=False,
+        xticklabels=xlabl, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method)
+    fig9.set_yticklabels(fig9.get_yticklabels(), fontsize=12)
     fig9.savefig(
         var_path_prefix + '_5ptstages_oricolsort_nosort.png',
         bbox_inches='tight')
