@@ -1240,6 +1240,7 @@ def hierclus_simple_on_trials_learning_stages(
 
     # plot
     plt.close('all')
+    sns.set_context("talk")
 
     fig1 = clustermap(
         clustering_df, row_colors=color_df, figsize=(12, 13),
