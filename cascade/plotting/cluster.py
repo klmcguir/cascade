@@ -1219,7 +1219,26 @@ def hierclus_simple_on_trials_learning_stages(
 
     # create colormap for variance explained by each component (as a fraction
     # of the total variance explained
-    # cas.calc.var.groupday_varex_bycomp(flow.Mouse(mouse='OA27'), word='orlando')
+    mouse_list = clustering_df.reset_index().loc[:, 'mouse'].unique()
+    var_list = []
+    for mouse in mouse_list:
+        word = words[mice == mouse]
+        var_df = cas.calc.var.groupday_varex_bycomp(
+            flow.Mouse(mouse='OA27'), word=word)
+        var_df = var_df.loc[(var_df['rank'] == rank_num), :]
+        scalar = var_df.sum()['variance_explained_tcamodel']
+        var_df = var_df['variance_explained_tcamodel'] / scalar
+        var_list.append(var_df)
+    varex = pd.concat(var_list, axis=0)
+    bins = list(np.arange(0, 1, 0.05))
+    bins.append(np.inf)
+    varex_color_options = sns.cubehelix_palette(
+        len(bins)-1, start=.5, rot=-.75, reverse=True)
+    binned_varex = pd.cut(varex, bins, labels=range(0, len(bins)-1))
+    varex_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
+                                             varex_color_options)}
+    varex_colors = [varex_color_dict[m] if ~np.isnan(m) else
+                    [.5, .5, .5, 1.] for m in binned_varex]
 
     # colors for columns learning stages
     col_colors = []
@@ -1239,6 +1258,7 @@ def hierclus_simple_on_trials_learning_stages(
             # 'ramp-index-trace': trace_ramp_colors,
             # 'ramp-index-trace-offset': offset_ramp_colors,
             # 'center-of-mass-trace': cm_colors,
+            'variance explained': varex_colors,
             'cluster': cluster_colors}
     color_df = pd.DataFrame(data=data, index=clustering_df.index)
     data = {'mouse': mouse_colors}
