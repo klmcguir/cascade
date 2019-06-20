@@ -1020,6 +1020,7 @@ def hierclus_simple_on_trials_learning_stages(
         cluster_number=8,
         cluster_method='ward',
         expected_size_colors=0.5,
+        filetype='png'
         auto_drop=True):
 
     """
@@ -1286,7 +1287,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig1.ax_heatmap.set_yticklabels(
         fig1.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig1.savefig(
-        var_path_prefix + '_trialfac.png', bbox_inches='tight')
+        var_path_prefix + '_trialfac.' + filetype, bbox_inches='tight')
 
     fig2 = clustermap(
         t_df.iloc[row_sorter, :], row_colors=color_df.iloc[row_sorter, :],
@@ -1296,7 +1297,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig2.ax_heatmap.set_yticklabels(
         fig2.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig2.savefig(
-        var_path_prefix + '_tempofac.png', bbox_inches='tight')
+        var_path_prefix + '_tempofac.' + filetype, bbox_inches='tight')
 
     fig3 = clustermap(
         t_df, row_colors=color_df, figsize=(figx, figy),
@@ -1305,7 +1306,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig3.ax_heatmap.set_yticklabels(
         fig3.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig3.savefig(
-        var_path_prefix + '_tempofac_sort.png', bbox_inches='tight')
+        var_path_prefix + '_tempofac_sort.' + filetype, bbox_inches='tight')
 
     fig4 = clustermap(
         clustering_df2.iloc[row_sorter, :], figsize=(figx, figy),
@@ -1315,7 +1316,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig4.ax_heatmap.set_yticklabels(
         fig4.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig4.savefig(
-        var_path_prefix + '_5ptstages.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages.' filetype, bbox_inches='tight')
 
     col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
     ori_col_df = clustering_df2.iloc[row_sorter, :]
@@ -1328,7 +1329,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig5.ax_heatmap.set_yticklabels(
         fig5.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig5.savefig(
-        var_path_prefix + '_5ptstages_oricolsort.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages_oricolsort.' + filetype, bbox_inches='tight')
 
     fig6 = clustermap(
         clustering_df3.iloc[row_sorter, :], figsize=(figx, figy),
@@ -1339,7 +1340,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig6.ax_heatmap.set_yticklabels(
         fig6.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig6.savefig(
-        var_path_prefix + '_5ptstages_amp.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages_amp.' + filetype, bbox_inches='tight')
 
     col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
     ori_col_df = clustering_df3.iloc[row_sorter, :]
@@ -1353,7 +1354,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig7.ax_heatmap.set_yticklabels(
         fig7.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig7.savefig(
-        var_path_prefix + '_5ptstages_amp_oricolsort.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages_amp_oricolsort.' + filetype, bbox_inches='tight')
 
     fig8 = clustermap(
         clustering_df3.iloc[row_sorter, :], figsize=(figx, figy),
@@ -1364,7 +1365,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig8.ax_heatmap.set_yticklabels(
         fig8.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig8.savefig(
-        var_path_prefix + '_5ptstages_ampclus.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages_ampclus.' + filetype, bbox_inches='tight')
 
     col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
     ori_col_df = clustering_df2
@@ -1377,7 +1378,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig9.ax_heatmap.set_yticklabels(
         fig9.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig9.savefig(
-        var_path_prefix + '_5ptstages_oricolsort_nosort.png',
+        var_path_prefix + '_5ptstages_oricolsort_nosort.' + filetype,
         bbox_inches='tight')
 
     col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
@@ -1392,7 +1393,7 @@ def hierclus_simple_on_trials_learning_stages(
     g.ax_heatmap.set_yticklabels(
         g.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     g.savefig(
-        var_path_prefix + '_5ptstages_oricolsort_ex.png',
+        var_path_prefix + '_5ptstages_oricolsort_ex.' + filetype,
         bbox_inches='tight')
 
 
