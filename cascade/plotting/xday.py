@@ -213,9 +213,14 @@ def heatmap(
         day_line=True,
         run_line=False,
         match_clim=True,
+        quinine_ticks=False,
+        ensure_ticks=False,
+        lick_ticks=False,
+        label_cbar=True,
         vmin=None,
         vmax=None,
         smooth=False,
+        save_tag='',
         word=None,
         verbose=False):
     """
@@ -265,7 +270,7 @@ def heatmap(
     }
 
     # red=high, white=middle, blue=low colormap
-    cmap = sns.diverging_palette(220, 10, as_cmap=True)
+    cmap = sns.diverging_palette(220, 10, sep=30, as_cmap=True)
 
     # load metadata
     save_dir = os.path.join(flow.paths.outd, str(mouse))
@@ -320,7 +325,14 @@ def heatmap(
         # oris
         oris = np.array([0, 135, 270])
 
+        # cbarlabel
+        if label_cbar:
+            cbarlabel = r'$\DeltaF/F$'
+        else:
+            cbarlabel = None
+
         # plot main figure
+        sns.set_context('talk')
         toplot = dff.pivot_table(
             index=['date', 'run', 'trial_idx', 'orientation'],
             columns='timestamp', values='trace')
@@ -329,7 +341,7 @@ def heatmap(
             height=8, aspect=1, sharey=False, dropna=False)
         g.map_dataframe(
             _myheatmap, vmax=vmax, vmin=vmin, center=0,
-            xticklabels=31, cmap=cmap)
+            xticklabels=31, cmap=cmap, cbarlabel=cbarlabel)
         g.fig.suptitle('Cell ' + str(cell_idx), x=0.98)
 
         # loop through axes and plot relevant metadata on top
@@ -425,28 +437,31 @@ def heatmap(
                 tick_alpha = 1
 
             # plot quinine
-            for l in range(len(quinine)):
-                if np.isfinite(quinine[l]):
-                    x = [quinine[l], quinine[l]]
-                    y = [l+0.5, l+0.5]
-                    ax.plot(x, y, color='#0fffc3', ls='',
-                            marker='.', markersize=2, alpha=tick_alpha)
+            if quinine_ticks:
+                for l in range(len(quinine)):
+                    if np.isfinite(quinine[l]):
+                        x = [quinine[l], quinine[l]]
+                        y = [l+0.5, l+0.5]
+                        ax.plot(x, y, color='#0fffc3', ls='',
+                                marker='.', markersize=2, alpha=tick_alpha)
 
             # plot ensure
-            for l in range(len(ensure)):
-                if np.isfinite(ensure[l]):
-                    x = [ensure[l], ensure[l]]
-                    y = [l+0.5, l+0.5]
-                    ax.plot(x, y, color='#ffb30f', ls='',
-                            marker='.', markersize=2, alpha=tick_alpha)
+            if ensure_ticks:
+                for l in range(len(ensure)):
+                    if np.isfinite(ensure[l]):
+                        x = [ensure[l], ensure[l]]
+                        y = [l+0.5, l+0.5]
+                        ax.plot(x, y, color='#ffb30f', ls='',
+                                marker='.', markersize=2, alpha=tick_alpha)
 
             # plot licks
-            for l in range(len(firstlick)):
-                if np.isfinite(firstlick[l]):
-                    x = [firstlick[l], firstlick[l]]
-                    y = [l+0.5, l+0.5]
-                    ax.plot(x, y, color='#7237f2', ls='',
-                            marker='.', markersize=2, alpha=tick_alpha)
+            if lick_ticks:
+                for l in range(len(firstlick)):
+                    if np.isfinite(firstlick[l]):
+                        x = [firstlick[l], firstlick[l]]
+                        y = [l+0.5, l+0.5]
+                        ax.plot(x, y, color='#7237f2', ls='',
+                                marker='.', markersize=2, alpha=tick_alpha)
 
             # reset yticklabels
             if y_lim[0] < 100:
@@ -535,6 +550,8 @@ def heatmap(
         # save figures into folder structure
         save_dir = paths.df_plots(mouse, pars={'trace_type': trace_type},
                                   word=word)
+        save_dir = os.path.join(save_dir, 'basic heatmaps' + save_tag)
+        if not os.path.isdir(save_dir): os.mkdir(save_dir)
         path = os.path.join(save_dir, str(mouse) + '_cell_' + str(cell_idx) + '_' + trace_type + '.png')
         print('Cell: ' + str(cell_idx) + ': done.')
         g.savefig(path)
