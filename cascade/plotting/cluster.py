@@ -1316,7 +1316,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig4.ax_heatmap.set_yticklabels(
         fig4.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
     fig4.savefig(
-        var_path_prefix + '_5ptstages.' filetype, bbox_inches='tight')
+        var_path_prefix + '_5ptstages.' + filetype, bbox_inches='tight')
 
     col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
     ori_col_df = clustering_df2.iloc[row_sorter, :]
