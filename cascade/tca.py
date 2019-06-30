@@ -678,7 +678,7 @@ def groupday_tca(
 
         # TCA params
         rank=20,
-        method=('ncp_bcd',),
+        method=('mncp_hals',),
         replicates=3,
         fit_options=None,
 
