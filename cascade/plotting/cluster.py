@@ -1356,11 +1356,15 @@ def hierclus_simple_on_trials_learning_stages(
     fig7.savefig(
         var_path_prefix + '_5ptstages_amp_oricolsort.' + filetype, bbox_inches='tight')
 
+    col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
     fig8 = clustermap(
-        clustering_df3.iloc[row_sorter, :], figsize=(figx, figy),
-        row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
+        clustering_df3.iloc[row_sorter, col_sorter],
+        figsize=(figx, figy),
+        row_colors=color_df.iloc[row_sorter, col_sorter],
+        col_colors=col_colors[col_sorter],
         xticklabels=xlabl, yticklabels=True, col_cluster=False,
-        row_cluster=True, expected_size_colors=0.5, method=cluster_method,
+        row_cluster=True, expected_size_colors=0.5,
+        method=cluster_method,
         standard_scale=0)
     fig8.ax_heatmap.set_yticklabels(
         fig8.ax_heatmap.get_yticklabels(), fontsize=yfontsize)
