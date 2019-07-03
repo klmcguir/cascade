@@ -1360,7 +1360,7 @@ def hierclus_simple_on_trials_learning_stages(
     fig8 = clustermap(
         clustering_df3.iloc[row_sorter, col_sorter],
         figsize=(figx, figy),
-        row_colors=color_df.iloc[row_sorter, col_sorter],
+        row_colors=color_df.iloc[row_sorter, :],
         col_colors=[col_colors[s] for s in col_sorter],
         xticklabels=xlabl, yticklabels=True, col_cluster=False,
         row_cluster=True, expected_size_colors=0.5,
