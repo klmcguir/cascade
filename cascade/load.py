@@ -164,3 +164,97 @@ def singleday_tensor(
             print('Day: ' + str(day1.date) + ': ' + str(day1.mouse) + ': done.')
 
         return tensor, meta, ids
+
+
+def groupday_tca(
+        mouse='OA27',
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        rank=18,
+        word='orlando',
+        group_by='all',
+        nan_thresh=0.85,
+        rectified=False,
+        verbose=False):
+    """
+    Load existing tensor component analysis (TCA).
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+
+    mouse = mouse
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        nt_tag = '_nantrial' + str(nan_thresh)
+    else:
+        nt_tag = ''
+
+    # load dir
+    load_dir = paths.tca_path(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    tensor_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        + '_group_decomp_' + str(trace_type) + '.npy')
+    ids_path = os.path.join(
+                load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+                + '_group_ids_' + str(trace_type) + '.npy')
+    input_tensor_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        + '_group_tensor_' + str(trace_type) + '.npy')
+    meta_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        + '_df_group_meta.pkl')
+
+    # load your data
+    ensemble = np.load(tensor_path, allow_pickle=True)
+    ensemble = ensemble.item()
+    meta = pd.read_pickle(meta_path)
+    meta = utils.update_naive_cs(meta)
+    # X = np.load(input_tensor_path)
+    ids = np.load(ids_path)
+    orientation = meta['orientation']
+    condition = meta['condition']
+    trialerror = meta['trialerror']
+    hunger = deepcopy(meta['hunger'])
+    speed = meta['speed']
+    dates = pd.DataFrame(data={'date': meta.index.get_level_values('date')}, index=meta.index)
+    dates = dates['date']  # turn into series for index matching for bool
+    learning_state = meta['learning_state']
+
+    # re-balance your factors ()
+    print('Re-balancing factors.')
+    for r in ensemble[method].results:
+        for i in range(len(ensemble[method].results[r])):
+            ensemble[method].results[r][i].factors.rebalance()
+
+    # sort neuron factors by component they belong to most
+    sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
+    # X = X[my_sorts[rank - 1], :, :]
+    # Xhat = sort_ensemble.results[rank][0].factors.full()
+
+    cell_ids = {}  # keys are rank
+    cell_clusters = {}
+    itr_num = 0  # use only best iteration of TCA, index 0
+    for k in sort_ensemble.results.keys():
+        # factors are already sorted, so these will define
+        # clusters, no need to sort again
+        factors = sort_ensemble.results[k][itr_num].factors[0]
+        max_fac = np.argmax(factors, axis=1)
+        cell_clusters[k] = max_fac
+        cell_ids[k] = ids[my_sorts[k-1]]
+
+    # get boolean indexer for period stim is on screen
+    # stim_window = np.arange(-1, 7, 1/15.5)[0:108]
+    # stim_window = (stim_window > 0) & (stim_window < 3)
+
+    return sort_ensemble, cell_ids[rank], cell_clusters[rank]
