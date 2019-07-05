@@ -1,4 +1,4 @@
-"""Functions for running tensor compenent analysis (TCA)."""
+"""Functions for running tensor component analysis (TCA)."""
 import tensortools as tt
 import numpy as np
 import flow
