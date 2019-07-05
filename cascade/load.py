@@ -161,7 +161,6 @@ def singleday_tensor(
 
         # print output so you don't go crazy waiting
         if verbose:
-            print('Day: ' + str(c+1) + ': ' + str(day1.mouse) + ': ' +
-                  str(day1.date) + ': done.')
+            print('Day: ' + str(day1.date) + ': ' + str(day1.mouse) + ': done.')
 
         return tensor, meta, ids
