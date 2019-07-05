@@ -8,7 +8,7 @@ import pandas as pd
 import os
 from . import utils
 from . import paths
-from .tca import _trialmetafromrun
+from .tca import _trialmetafromrun, _sortfactors
 from copy import deepcopy
 
 
@@ -238,7 +238,7 @@ def groupday_tca(
             ensemble[method].results[r][i].factors.rebalance()
 
     # sort neuron factors by component they belong to most
-    sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
+    sort_ensemble, my_sorts = _sortfactors(ensemble[method])
     # X = X[my_sorts[rank - 1], :, :]
     # Xhat = sort_ensemble.results[rank][0].factors.full()
 
