@@ -8,6 +8,7 @@ import pandas as pd
 import os
 from . import utils
 from . import paths
+from .tca import _trialmetafromrun
 from copy import deepcopy
 
 
