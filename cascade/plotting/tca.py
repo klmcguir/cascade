@@ -87,7 +87,7 @@ def singleday_shortlist(
 def groupmouse_varex_summary(
         mice,
         trace_type='zscore_day',
-        method='ncp_bcd',
+        method='mncp_hals',
         cs='',
         warp=False,
         words=None,
