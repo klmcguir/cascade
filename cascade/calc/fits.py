@@ -63,7 +63,7 @@ def fit_disengaged_sated(
     for c, day in enumerate(all_dates):
 
         # load single day tensor with dis trials
-        X, meta, ids = cas.load.singleday_tensor(mouse, day.date)
+        X, meta, ids = load.singleday_tensor(mouse, day.date)
 
         # only include matched cells, no empties
         good_ids = ids[np.isin(ids, ids2)]
