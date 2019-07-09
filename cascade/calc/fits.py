@@ -6,6 +6,7 @@ import pandas as pd
 import os
 import flow
 from .. import load
+from copy import deepcopy
 from scipy import linalg
 from tensortools.operations import unfold, khatri_rao
 from tensortools.tensors import KTensor
