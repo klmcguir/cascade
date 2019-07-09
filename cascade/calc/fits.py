@@ -5,6 +5,7 @@ import scipy as sci
 import pandas as pd
 import os
 import flow
+from .. import load
 from scipy import linalg
 from tensortools.operations import unfold, khatri_rao
 from tensortools.tensors import KTensor
@@ -37,7 +38,7 @@ def fit_disengaged_sated(
 
     # load full-size TCA results
     mouse = mouse.mouse
-    ensemble, ids2, clus = cas.load.groupday_tca(
+    ensemble, ids2, clus = load.groupday_tca(
         mouse=mouse, word=word, nan_thresh=nan_thresh, group_by=group_by)
 
     # get all days with disengaged or sated trials
