@@ -1,2 +1,2 @@
 # Files
-from . import var
+from . import var, fits
