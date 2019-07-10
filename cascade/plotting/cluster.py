@@ -457,6 +457,24 @@ def corr_ramp_indices(
                     rank_num=rank_num,
                     verbose=False)
 
+    # create dis/sated modulation index (ramp index) df
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        with np.errstate(invalid='ignore', divide='ignore'):
+            dfdis = calc.fits.groupmouse_fit_disengaged_sated_mean_per_comp(
+                mice=mice,
+                trace_type=trace_type,
+                method=method,
+                cs=cs,
+                warp=warp,
+                words=words,
+                group_by=group_by,
+                nan_thresh=nan_thresh,
+                rank=rank_num,
+                verbose=True)
+    # just use index
+    ri_dis = dfdis.loc[:, 'dis_index']
+
     # if running mod, center of mass, or ramp indices are included, remove
     # from columns (make these into a color df for annotating y-axis)
     learning_stages = ['pre_rev1']
@@ -493,24 +511,25 @@ def corr_ramp_indices(
         ri_speed = ri_speed.loc[~nan_indexer, :]
         center_of_mass = center_of_mass.loc[~nan_indexer, :]
         t_df = t_df.loc[~nan_indexer, :]
-
+        ri_dis = ri_dis[~nan_indexer, :]
 
     corr_df = pd.concat(
         [mean_running_mod, ri_speed, ri_learning, ri_trials, ri_trace,
-         ri_offset], axis=1)
+         ri_offset, ri_dis], axis=1)
     with pd.option_context('mode.use_inf_as_null', True):
         corr_df[corr_df.isna()] = 0
 
-    corrmat = np.zeros((6, 6))
-    pmat = np.zeros((6, 6))
-    for i in range(6):
-        for k in range(6):
+    num_corr = 7
+    corrmat = np.zeros((num_corr, num_corr))
+    pmat = np.zeros((num_corr, num_corr))
+    for i in range(num_corr):
+        for k in range(num_corr):
             corA, corP = pearsonr(corr_df.values[:, i], corr_df.values[:, k])
             corrmat[i, k] = corA
             pmat[i, k] = corP
 
     labels = ['running modulation', 'speed RI', 'learning RI',
-              'daily trial RI', 'trace RI', 'trace offset RI']
+              'daily trial RI', 'trace RI', 'trace offset RI', 'disengaged I']
     plt.figure()
     sns.heatmap(corrmat, annot=annot, xticklabels=labels, yticklabels=labels,
                 square=True, cbar_kws={'label': 'correlation (R)'})
