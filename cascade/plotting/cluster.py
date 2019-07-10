@@ -907,7 +907,7 @@ def hierclus_on_trials_learning_stages(
                           [.5, .5, .5, 1.] for m in binned_ramp]
 
     # create color vector for dis/sated modulation index (ramp index)
-    dfdis = fits.groupmouse_fit_disengaged_sated_mean_per_comp(
+    dfdis = calc.fits.groupmouse_fit_disengaged_sated_mean_per_comp(
         mice=mice,
         trace_type=trace_type,
         method=method,
