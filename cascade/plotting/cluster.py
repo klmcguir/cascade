@@ -907,17 +907,20 @@ def hierclus_on_trials_learning_stages(
                           [.5, .5, .5, 1.] for m in binned_ramp]
 
     # create color vector for dis/sated modulation index (ramp index)
-    dfdis = calc.fits.groupmouse_fit_disengaged_sated_mean_per_comp(
-        mice=mice,
-        trace_type=trace_type,
-        method=method,
-        cs=cs,
-        warp=warp,
-        words=words,
-        group_by=group_by,
-        nan_thresh=nan_thresh,
-        rank=rank_num,
-        verbose=True)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        with np.errstate(invalid='ignore', divide='ignore'):
+            dfdis = calc.fits.groupmouse_fit_disengaged_sated_mean_per_comp(
+                mice=mice,
+                trace_type=trace_type,
+                method=method,
+                cs=cs,
+                warp=warp,
+                words=words,
+                group_by=group_by,
+                nan_thresh=nan_thresh,
+                rank=rank_num,
+                verbose=True)
     # just use index
     dis = dfdis.loc[:, 'dis_index']
     # removes rows that were already dropped
