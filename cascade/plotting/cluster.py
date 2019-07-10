@@ -917,7 +917,7 @@ def hierclus_on_trials_learning_stages(
         group_by=group_by,
         nan_thresh=nan_thresh,
         rank=rank_num,
-        verbose=verbose)
+        verbose=True)
     # just use index
     dis = dfdis.loc[:, 'dis_index']
     # removes rows that were already dropped
