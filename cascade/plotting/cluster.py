@@ -511,7 +511,7 @@ def corr_ramp_indices(
         ri_speed = ri_speed.loc[~nan_indexer, :]
         center_of_mass = center_of_mass.loc[~nan_indexer, :]
         t_df = t_df.loc[~nan_indexer, :]
-        ri_dis = ri_dis[~nan_indexer, :]
+        ri_dis = ri_dis.loc[~nan_indexer, :]
 
     corr_df = pd.concat(
         [mean_running_mod, ri_speed, ri_learning, ri_trials, ri_trace,
