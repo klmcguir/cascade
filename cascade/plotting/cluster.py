@@ -906,6 +906,29 @@ def hierclus_on_trials_learning_stages(
     offset_ramp_colors = [ramp_color_dict[m] if ~np.isnan(m) else
                           [.5, .5, .5, 1.] for m in binned_ramp]
 
+    # create color vector for dis/sated modulation index (ramp index)
+    dfdis = fits.groupmouse_fit_disengaged_sated_mean_per_comp(
+        mice=mice,
+        trace_type=trace_type,
+        method=method,
+        cs=cs,
+        warp=warp,
+        words=words,
+        group_by=group_by,
+        nan_thresh=nan_thresh,
+        rank=rank_num,
+        verbose=verbose)
+    # just use index
+    dis = dfdis.loc[:, 'dis_index']
+    # removes rows that were already dropped
+    dis = dis.loc[~nan_indexer, :]
+    binned_dis = pd.cut(dis, bins, labels=range(0, len(bins)-1))
+    dis_color_options = sns.diverging_palette(220, 10, n=(len(bins)-1))
+    dis_color_dict = {k: v for k, v in zip(np.unique(binned_dis),
+                                           dis_color_options)}
+    dis_colors = [dis_color_dict[m] if ~np.isnan(m) else
+                  [.5, .5, .5, 1.] for m in binned_dis]
+
     # colors for columns learning stages
     col_colors = []
     for col_name in clustering_df2.columns:
@@ -920,6 +943,7 @@ def hierclus_on_trials_learning_stages(
     data = {'mouse': mouse_colors,
             'running-modulation': run_colors,
             'ramp-index-learning': learning_ramp_colors,
+            'dis-index': dis_colors,
             'ramp-index-daily-trials': trial_ramp_colors,
             'ramp-index-trace': trace_ramp_colors,
             'ramp-index-trace-offset': offset_ramp_colors,
