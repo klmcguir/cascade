@@ -335,3 +335,37 @@ def fit_disengaged_sated_mean_per_comp(
     dfdis = pd.DataFrame(data, index=index)
 
     return dfdis
+
+
+def groupmouse_fit_disengaged_sated_mean_per_comp(
+        mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175'],
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        words=['orlando', 'already', 'already', 'already', 'already'],
+        group_by='all',
+        nan_thresh=0.85,
+        random_state=None,
+        init='rand',
+        rank=18,
+        verbose=False):
+
+    """
+    Wrapper function for fit_disengaged_sated_mean_per_comp. Gets a dataframe
+    of all mice.
+    """
+
+    mouse_list = []
+    for m, w in zip(mice, words):
+        mouse = flow.Mouse(mouse=m)
+        mouse_list.append(
+            fit_disengaged_sated_mean_per_comp(
+                mouse, word=w, rank=rank, nan_thresh=nan_thresh,
+                method=method, cs=cs, warp=warp, group_by=group_by,
+                trace_type=trace_type, random_state=random_state, init=init,
+                verbose=verbose))
+
+    dfmouse = pd.concat(mouse_list, axis=0)
+
+    return dfmouse
