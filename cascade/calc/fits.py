@@ -176,7 +176,7 @@ def fit_disengaged_sated(
     return dfdis
 
 
-@memoize(across='mouse', updated=190709, returns='other', large_output=False)
+@memoize(across='mouse', updated=190710, returns='other', large_output=False)
 def fit_disengaged_sated_mean_per_comp(
         mouse,
         trace_type='zscore_day',
@@ -316,7 +316,11 @@ def fit_disengaged_sated_mean_per_comp(
     mat = np.zeros((len(fits.keys()), rank))
     for c, V in enumerate(fits.keys()):
         mat[c, :] = fits[V]
-    mean_fits = np.nanmean(mat, axis=0)
+    # deal with divide by zeros etc
+    mat[~np.isfinite(mat)] = np.nan
+    # if a day is mostly nans, skip whole day
+    nan_vec = np.sum(np.isnan(mat), axis=1)
+    mean_fits = np.nanmean(mat[nan_vec <= rank/2, :], axis=0)
 
     # make dataframe of data
     # create your index out of relevant variables
