@@ -473,7 +473,7 @@ def corr_ramp_indices(
                 rank=rank_num,
                 verbose=True)
     # just use index
-    ri_dis = dfdis.loc[:, 'dis_index']
+    ri_dis = dfdis.set_index('component', append=True).loc[:, 'dis_index']
 
     # if running mod, center of mass, or ramp indices are included, remove
     # from columns (make these into a color df for annotating y-axis)
