@@ -178,14 +178,22 @@ def trialmeta(mouse, downsample=True, verbose=True):
 
         # get the number of trials in your run
         try:
-            trial_idx = range(t2p.ntrials)
+            ntrials = t2p.ntrials
+            trial_idx = range(ntrials)
         except:
             run_traces = t2p.cstraces(
                 '', start_s=-1, end_s=6,
                 trace_type='dff', cutoff_before_lick_ms=-1,
                 errortrials=-1, baseline=(-1, 0),
                 baseline_to_stimulus=True)
-            trial_idx = range(np.shape(run_traces)[2])
+            ntrials = np.shape(run_traces)[2]
+            trial_idx = range(ntrials)
+
+        # if there are no stimulus presentations skip "trials"
+        if ntrials == 0:
+            if verbose:
+                print('No CS presentations on ', run)
+            continue
 
         # get your learning-state
         run_tags = run.tags
