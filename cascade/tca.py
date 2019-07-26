@@ -83,7 +83,8 @@ def singleday_tca(
             'drive_threshold': drive_threshold}
     save_dir = paths.tca_path(mouse, 'single', pars=pars)
 
-    days = flow.DateSorter.frommeta(mice=[mouse], tags=tags)
+    days = flow.DateSorter.frommeta(
+        mice=[mouse], tags=tags, exclude_tags=['bad'])
 
     for c, day1 in enumerate(days, 0):
 
@@ -122,7 +123,7 @@ def singleday_tca(
         # TODO add in additional filter for being able to check for quality of xday alignment
 
         # get all runs for both days
-        d1_runs = day1.runs()
+        d1_runs = day1.runs(exclude_tags=['bad'])
 
         # filter for only runs without certain tags
         d1_runs = [run for run in d1_runs if not any(np.isin(run.tags, exclude_tags))]
@@ -274,7 +275,8 @@ def pairday_tca(
             'drive_threshold': drive_threshold}
     save_dir = paths.tca_path(mouse, 'pair', pars=pars)
 
-    days = flow.DateSorter.frommeta(mice=[mouse], tags=tags)
+    days = flow.DateSorter.frommeta(
+        mice=[mouse], tags=tags, exclude_tags=['bad'])
 
     for c, day1 in enumerate(days, 0):
 
@@ -352,8 +354,8 @@ def pairday_tca(
         # TODO add in additional filter for being able to check for quality of xday alignment
 
         # get all runs for both days
-        d1_runs = day1.runs()
-        d2_runs = day2.runs()
+        d1_runs = day1.runs(exclude_tags=['bad'])
+        d2_runs = day2.runs(exclude_tags=['bad'])
         # filter for only runs without certain tags
         d1_runs = [run for run in d1_runs if not any(np.isin(run.tags, exclude_tags))]
         d2_runs = [run for run in d2_runs if not any(np.isin(run.tags, exclude_tags))]
@@ -533,7 +535,8 @@ def pairday_tca_2(
             'drive_css': drive_css, 'drive_threshold': drive_threshold}
     save_dir = paths.tca_path(mouse, 'pair', pars=pars)
 
-    days = flow.DatePairSorter.frommeta(mice=[mouse], day_distance=(0, 7))
+    days = flow.DatePairSorter.frommeta(
+        mice=[mouse], day_distance=(0, 7), exclude_tags=['bad'])
 
     for c, (day1, day2) in enumerate(days):
 
@@ -566,8 +569,8 @@ def pairday_tca_2(
         # TODO add in additional filter for being able to check for quality of xday alignment
 
         # get all runs for both days
-        d1_runs = day1.runs()
-        d2_runs = day2.runs() # TODO add in training run_type as option
+        d1_runs = day1.runs(exclude_tags=['bad'])
+        d2_runs = day2.runs(exclude_tags=['bad']) # TODO add in training run_type as option
         # filter for only runs without certain tags
         d1_runs = [run for run in d1_runs if not any(np.isin(run.tags, exclude_tags))]
         d2_runs = [run for run in d2_runs if not any(np.isin(run.tags, exclude_tags))]
@@ -845,9 +848,11 @@ def groupday_tca(
 
     # get DateSorter object
     if np.isin(group_by.lower(), ['naive_vs_high_dprime', 'l_vs_r1']):
-        days = flow.DateSorter(dates=dates)
+        days = flow.DateSorter(
+            dates=dates, exclude_tags=['bad'])
     else:
-        days = flow.DateSorter.frommeta(mice=[mouse], tags=tags)
+        days = flow.DateSorter.frommeta(
+            mice=[mouse], tags=tags, exclude_tags=['bad'])
 
     # filter DateSorter object if you are filtering on dprime
     if use_dprime:
@@ -892,7 +897,7 @@ def groupday_tca(
         # TODO add in additional filter for being able to check for quality of xday alignment
 
         # get all runs for both days
-        d1_runs = day1.runs()
+        d1_runs = day1.runs(exclude_tags=['bad'])
 
         # filter for only runs without certain tags
         d1_runs = [run for run in d1_runs if not
