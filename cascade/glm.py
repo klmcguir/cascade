@@ -68,7 +68,7 @@ def fit_trial_factors(
     # create dataframe of dprime values
     dprime_vec = []
     for date in dates:
-        date_obj = flow.Date(mouse, date=date)
+        date_obj = flow.Date(mouse, date=date, exclude_tags=['bad'])
         dprime_vec.append(pool.calc.performance.dprime(date_obj))
     data = {'dprime': dprime_vec}
     dprime = pd.DataFrame(data=data, index=speed.index)
@@ -245,7 +245,7 @@ def fit_cells(
     # create dataframe of dprime values
     dprime_vec = []
     for date in dates:
-        date_obj = flow.Date(mouse, date=date)
+        date_obj = flow.Date(mouse, date=date, exclude_tags=['bad'])
         dprime_vec.append(pool.calc.performance.dprime(date_obj))
     data = {'dprime': dprime_vec}
     dprime = pd.DataFrame(data=data, index=speed.index)
