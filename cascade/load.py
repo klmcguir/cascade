@@ -59,7 +59,7 @@ def singleday_tensor(
     save_dir = paths.tca_path(mouse, 'single', pars=pars)
 
     day1 = flow.DateSorter.frommeta(
-        mice=[mouse], dates=[date], tags=tags)[0]
+        mice=[mouse], dates=[date], tags=tags, exclude_tags=['bad'])[0]
 
     # get cell_ids
     d1_ids = flow.xday._read_crossday_ids(day1.mouse, day1.date)
@@ -96,7 +96,7 @@ def singleday_tensor(
     # TODO add in additional filter for being able to check for quality of xday alignment
 
     # get all runs for both days
-    d1_runs = day1.runs()
+    d1_runs = day1.runs(exclude_tags=['bad'])
 
     # filter for only runs without certain tags
     d1_runs = [run for run in d1_runs if not any(np.isin(run.tags, exclude_tags))]
