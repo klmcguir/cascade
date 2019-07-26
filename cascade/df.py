@@ -168,7 +168,7 @@ def trialmeta(mouse, downsample=True, verbose=True):
     # time before stimulus in triggered data, relative to onset
     start_time = -1
 
-    runs = flow.RunSorter.frommeta(mice=[mouse])
+    runs = flow.RunSorter.frommeta(mice=[mouse], exclude_tags=['bad'])
 
     trial_list = []
     for run in runs:
@@ -432,7 +432,7 @@ def trialbhv(mouse, start_time=-1, end_time=6, verbose=True):
     """
 
     # build your runs object
-    runs = flow.RunSorter.frommeta(mice=[mouse])
+    runs = flow.RunSorter.frommeta(mice=[mouse], exclude_tags=['bad'])
 
     trial_list = []
     for r in range(len(runs)):
