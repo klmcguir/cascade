@@ -97,7 +97,8 @@ def match_singleday_to_groupday(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
     # create datesorter
-    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(
+        mice=[mouse], tags=None, exclude_tags=['bad'])
 
     conds_by_day = []
     oris_by_day = []
@@ -313,7 +314,8 @@ def factor_squid(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
     # create datesorter
-    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(
+        mice=[mouse], tags=None, exclude_tags=['bad'])
 
     conds_by_day = []
     oris_by_day = []
@@ -632,7 +634,8 @@ def tri_factor_similarity(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
     # create datesorter
-    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(
+        mice=[mouse], tags=None, exclude_tags=['bad'])
 
     conds_by_day = []
     oris_by_day = []
@@ -908,7 +911,8 @@ def neuron_similarity(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
     # create datesorter
-    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(
+        mice=[mouse], tags=None, exclude_tags=['bad'])
 
     conds_by_day = []
     trialerr_by_day = []
