@@ -66,7 +66,8 @@ def getdailycstraces(
     """
 
     if isinstance(DateSorter, flow.sorters.Date):
-        runs = DateSorter.runs(run_types='training', tags='hungry')
+        runs = DateSorter.runs(
+            run_types='training', tags='hungry', exclude_tags=['bad'])
 
     runlist = []
     for run in runs:
@@ -91,7 +92,8 @@ def getdailymeta(
     DateSorter object.
     """
     if isinstance(DateSorter, flow.sorters.Date):
-        runs = DateSorter.runs(run_types=run_types, tags=tags)
+        runs = DateSorter.runs(
+            run_types=run_types, tags=tags, exclude_tags=['bad'])
 
     metalist = []
     for run in runs:
