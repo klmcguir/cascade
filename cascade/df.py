@@ -192,7 +192,7 @@ def trialmeta(mouse, downsample=True, verbose=True):
         # if there are no stimulus presentations skip "trials"
         if ntrials == 0:
             if verbose:
-                print('No CS presentations on ', run)
+                print('No CS presentations on', run)
             continue
 
         # get your learning-state
