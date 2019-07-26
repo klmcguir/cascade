@@ -62,14 +62,14 @@ def trigger(mouse, trace_type='zscore_day', cs='', downsample=True,
     save_dir = paths.df_path(mouse, pars=pars)
 
     # build your runs object
-    dates = flow.DateSorter.frommeta(mice=[mouse])
+    dates = flow.DateSorter.frommeta(mice=[mouse], exclude_tags=['bad'])
 
     trial_list = []
     # loop through all days for a mouse, build and save pandas df
     for count, d in enumerate(dates):
 
         # loop through runs on a particular day
-        for run in d.runs():
+        for run in d.runs(exclude_tags=['bad']):
 
             # get your t2p object
             t2p = run.trace2p()
@@ -342,7 +342,7 @@ def get_xdaymap(mouse):
     """
 
     # get all days for a mouse
-    days = flow.DateSorter.frommeta(mice=[mouse])
+    days = flow.DateSorter.frommeta(mice=[mouse], exclude_tags=['bad'])
 
     # check all cell ids and build a list for looping over ids
     cell_mat = []
@@ -385,7 +385,7 @@ def singlecell(mouse, trace_type, cell_idx, xmap=None, word=None):
     """
 
     # get all days for mouse
-    days = flow.DateSorter.frommeta(mice=[mouse])
+    days = flow.DateSorter.frommeta(mice=[mouse], exclude_tags=['bad'])
 
     # build crossday binary map to use for efficient loading/indexing.
     if xmap is None:
@@ -685,7 +685,7 @@ def groupmouse_trialfac_summary_days(
 
             # ------------ GET DPRIME
 
-            date_obj = flow.Date(mouse, date=day)
+            date_obj = flow.Date(mouse, date=day, exclude_tags=['bad'])
             data = [pool.calc.performance.dprime(date_obj)]*rank_num
             dprime_data = {}
             dprime_data['dprime'] = data
@@ -1118,7 +1118,7 @@ def groupmouse_trialfac_summary_stages(
         # create dataframe of dprime values
         dprime_vec = []
         for date in dates:
-            date_obj = flow.Date(mouse, date=date)
+            date_obj = flow.Date(mouse, date=date, exclude_tags=['bad'])
             dprime_vec.append(pool.calc.performance.dprime(date_obj))
         data = {'dprime': dprime_vec}
         dprime = pd.DataFrame(data=data, index=learning_state.index)
