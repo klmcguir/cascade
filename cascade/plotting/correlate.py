@@ -87,7 +87,8 @@ def singleday_noisecorr(
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
-    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(
+        mice=[mouse], tags=None, exclude_tags=['bad'])
 
     clus_daily = []
     acorr_daily = []
@@ -358,7 +359,8 @@ def singleday_signalcorr(
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
 
-    days = flow.DateSorter.frommeta(mice=[mouse], tags=None)
+    days = flow.DateSorter.frommeta(
+        mice=[mouse], tags=None, exclude_tags=['bad'])
 
     clus_daily = []
     acorr_daily = []
