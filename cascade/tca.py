@@ -1270,7 +1270,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         if verbose:
             print('No CS presentations on', run)
         index = pd.MultiIndex.from_arrays(
-            [run.mouse, run.date, run.run, 0],
+            [[run.mouse], [run.date], [run.run], [0]],
             names=['mouse', 'date', 'run', 'trial_idx'])
         dfr = pd.DataFrame(
             columns=['orientation', 'condition', 'trialerror', 'hunger',
