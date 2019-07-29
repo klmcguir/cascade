@@ -796,8 +796,11 @@ def groupday_tca(
         use_dprime = True
         up_or_down = 'up'
         tags = None
-        days = flow.DateSorter.frommeta(mice=[mouse], tags='naive')
-        days.extend(flow.DateSorter.frommeta(mice=[mouse], tags='learning'))
+        days = flow.DateSorter.frommeta(
+            mice=[mouse], tags='naive', exclude_tags=['bad'])
+        days.extend(
+            flow.DateSorter.frommeta(
+                mice=[mouse], tags='learning', exclude_tags=['bad']))
         dates = set(days)
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start',
@@ -807,8 +810,11 @@ def groupday_tca(
         use_dprime = True
         up_or_down = 'up'
         tags = None
-        days = flow.DateSorter.frommeta(mice=[mouse], tags='learning')
-        days.extend(flow.DateSorter.frommeta(mice=[mouse], tags='reversal1'))
+        days = flow.DateSorter.frommeta(
+            mice=[mouse], tags='learning', exclude_tags=['bad'])
+        days.extend(
+            flow.DateSorter.frommeta(
+                mice=[mouse], tags='reversal1', exclude_tags=['bad']))
         dates = set(days)
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start',
