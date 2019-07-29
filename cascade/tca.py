@@ -887,6 +887,9 @@ def groupday_tca(
 
         # get cell_ids
         d1_ids = flow.xday._read_crossday_ids(day1.mouse, day1.date)
+        # skip empty if there is no crossday alignment file
+        if len(d1_ids) == 0:
+            continue
         d1_ids = np.array([int(s) for s in d1_ids])
 
         # filter cells based on visual/trial drive across all cs, prevent
@@ -1051,6 +1054,9 @@ def _group_drive_ids(days, drive_css, drive_threshold, drive_type='trial'):
     for day1 in days:
         # get cell_ids
         d1_ids = flow.xday._read_crossday_ids(day1.mouse, day1.date)
+        # skip empty if there is no crossday alignment file
+        if len(d1_ids) == 0:
+            continue
         d1_ids = np.array([int(s) for s in d1_ids])
         # filter cells based on visual/trial drive across all cs
         d1_drive = []
