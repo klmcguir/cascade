@@ -43,8 +43,10 @@ def fit_disengaged_sated(
         mouse=mouse, word=word, nan_thresh=nan_thresh, group_by=group_by)
 
     # get all days with disengaged or sated trials
-    dis_dates = flow.DateSorter.frommeta(mice=[mouse], tags='disengaged')
-    sated_dates = flow.DateSorter.frommeta(mice=[mouse], tags='sated')
+    dis_dates = flow.DateSorter.frommeta(
+        mice=[mouse], tags='disengaged', exclude_tags=['bad'])
+    sated_dates = flow.DateSorter.frommeta(
+        mice=[mouse], tags='sated', exclude_tags=['bad'])
     all_dates = []
     day_type = []
     for day in dis_dates:
@@ -205,8 +207,10 @@ def fit_disengaged_sated_mean_per_comp(
         mouse=mouse, word=word, nan_thresh=nan_thresh, group_by=group_by)
 
     # get all days with disengaged or sated trials
-    dis_dates = flow.DateSorter.frommeta(mice=[mouse], tags='disengaged')
-    sated_dates = flow.DateSorter.frommeta(mice=[mouse], tags='sated')
+    dis_dates = flow.DateSorter.frommeta(
+        mice=[mouse], tags='disengaged', exclude_tags=['bad'])
+    sated_dates = flow.DateSorter.frommeta(
+        mice=[mouse], tags='sated', exclude_tags=['bad'])
     all_dates = []
     day_type = []
     for day in dis_dates:
@@ -358,7 +362,7 @@ def groupmouse_fit_disengaged_sated_mean_per_comp(
 
     mouse_list = []
     for m, w in zip(mice, words):
-        mouse = flow.Mouse(mouse=m)
+        mouse = flow.Mouse(mouse=m, exclude_tags=['bad'])
         mouse_list.append(
             fit_disengaged_sated_mean_per_comp(
                 mouse, word=w, rank=rank, nan_thresh=nan_thresh,
