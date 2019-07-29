@@ -1269,10 +1269,14 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     if ntrials == 0:
         if verbose:
             print('No CS presentations on', run)
+        index = pd.MultiIndex.from_arrays(
+            [run.mouse, run.date, run.run, 0],
+            names=['mouse', 'date', 'run', 'trial_idx'])
         dfr = pd.DataFrame(
             columns=['orientation', 'condition', 'trialerror', 'hunger',
                      'learning_state', 'tag', 'firstlick', 'ensure',
-                     'quinine', 'speed', 'brainmotion'])
+                     'quinine', 'speed', 'brainmotion'],
+            index=index)
         return dfr
 
     # get your learning-state
