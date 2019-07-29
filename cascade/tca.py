@@ -1269,7 +1269,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     if ntrials == 0:
         if verbose:
             print('No CS presentations on', run)
-        continue
+        return []
 
     # get your learning-state
     run_tags = [str(s) for s in run.tags]
