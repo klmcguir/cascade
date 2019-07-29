@@ -926,6 +926,9 @@ def groupday_tca(
                 run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
                 # get matched trial metadata/variables
                 dfr = _trialmetafromrun(run)
+                # skip runs with no stimulus presentations
+                if len(dfr) == 0:
+                    continue
                 # subselect metadata if you are only running certain cs
                 if cs != '':
                     if cs == 'plus' or cs == 'minus' or cs == 'neutral':
@@ -1269,15 +1272,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     if ntrials == 0:
         if verbose:
             print('No CS presentations on', run)
-        index = pd.MultiIndex.from_arrays(
-            [[run.mouse], [run.date], [run.run], [0]],
-            names=['mouse', 'date', 'run', 'trial_idx'])
-        dfr = pd.DataFrame(
-            columns=['orientation', 'condition', 'trialerror', 'hunger',
-                     'learning_state', 'tag', 'firstlick', 'ensure',
-                     'quinine', 'speed', 'brainmotion'],
-            index=index)
-        return dfr
+        return []
 
     # get your learning-state
     run_tags = [str(s) for s in run.tags]
