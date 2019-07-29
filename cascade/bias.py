@@ -68,7 +68,8 @@ def get_bias(
         ls_list.append(ls)
 
         # dprime
-        dp = pool.calc.performance.dprime(flow.Date(mouse, date=day))
+        dp = pool.calc.performance.dprime(
+            flow.Date(mouse, date=day, exclude_tags=['bad']))
         dprime_list.append(dp)
 
     FC_mean = np.nanmean(FC_ten[:, stim_window, :], axis=1)
@@ -141,7 +142,8 @@ def get_mean_response(
         ls_list.append(ls)
 
         # dprime
-        dp = pool.calc.performance.dprime(flow.Date(mouse, date=day))
+        dp = pool.calc.performance.dprime(
+            flow.Date(mouse, date=day, exclude_tags=['bad']))
         dprime_list.append(dp)
 
     FC_mean = np.nanmean(FC_ten[:, stim_window, :], axis=1)
@@ -335,8 +337,11 @@ def build_tensor(
         use_dprime = True
         up_or_down = 'up'
         tags = None
-        days = flow.DateSorter.frommeta(mice=[mouse], tags='naive')
-        days.extend(flow.DateSorter.frommeta(mice=[mouse], tags='learning'))
+        days = flow.DateSorter.frommeta(
+            mice=[mouse], tags='naive', exclude_tags=['bad'])
+        days.extend(
+            flow.DateSorter.frommeta(
+                mice=[mouse], tags='learning', exclude_tags=['bad']))
         dates = set(days)
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start',
@@ -346,8 +351,11 @@ def build_tensor(
         use_dprime = True
         up_or_down = 'up'
         tags = None
-        days = flow.DateSorter.frommeta(mice=[mouse], tags='learning')
-        days.extend(flow.DateSorter.frommeta(mice=[mouse], tags='reversal1'))
+        days = flow.DateSorter.frommeta(
+            mice=[mouse], tags='learning', exclude_tags=['bad'])
+        days.extend(
+            flow.DateSorter.frommeta(
+                mice=[mouse], tags='reversal1', exclude_tags=['bad']))
         dates = set(days)
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start',
@@ -384,9 +392,11 @@ def build_tensor(
 
     # get DateSorter object
     if np.isin(group_by.lower(), ['naive_vs_high_dprime', 'l_vs_r1']):
-        days = flow.DateSorter(dates=dates)
+        days = flow.DateSorter(
+            dates=dates, exclude_tags=['bad'])
     else:
-        days = flow.DateSorter.frommeta(mice=[mouse], tags=tags)
+        days = flow.DateSorter.frommeta(
+            mice=[mouse], tags=tags, exclude_tags=['bad'])
 
     # filter DateSorter object if you are filtering on dprime
     if use_dprime:
