@@ -48,7 +48,8 @@ def mean_response(
     sns.set()
 
     # get drive across all days
-    days = flow.DateSorter.frommeta(mice=[mouse], tags=tags)
+    days = flow.DateSorter.frommeta(
+        mice=[mouse], tags=tags, exclude_tags=['bad'])
     all_driven_trial = tca._group_drive_ids(
         days, drive_css, drive_threshold, drive_type='trial')
     all_driven_vis = tca._group_drive_ids(
@@ -484,7 +485,8 @@ def heatmap(
             date_yticks = []
             date_label = []
 
-            date_rel = flow.DateSorter.frommeta(mice=[mouse])
+            date_rel = flow.DateSorter.frommeta(
+                mice=[mouse], exclude_tags=['bad'])
             date_rel = [s.date for s in date_rel]
 
             for day in np.unique(dates):
