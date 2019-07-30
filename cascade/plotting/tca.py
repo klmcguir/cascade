@@ -402,7 +402,7 @@ def groupday_longform_factors_annotated(
 
             # add a line for stim onset and offset
             # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
-            if mouse in ['OA32', 'OA34']:
+            if mouse in ['OA32', 'OA34', 'OA36', 'CB173', 'AS20']:
                 off_time = 2
             else:
                 off_time = 3
@@ -817,7 +817,7 @@ def groupday_factors_annotated(
 
         # add a line for stim onset and offset
         # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
-        if mouse in ['OA32', 'OA34']:
+        if mouse in ['OA32', 'OA34', 'OA36', 'CB173', 'AS20']:
             off_time = 2
         else:
             off_time = 3
