@@ -93,7 +93,7 @@ def groupmouse_varex_summary(
         words=None,
         group_by='all',
         nan_thresh=0.85,
-        rectified=False,
+        rectified=True,
         verbose=True):
     """
     Plot reconstruction error as variance explained across all whole groupday
@@ -966,13 +966,13 @@ def groupday_factors_annotated(
 def groupday_varex_summary(
         mouse,
         trace_type='zscore_day',
-        method='ncp_bcd',
+        method='mncp_hals',
         cs='',
         warp=False,
         word=None,
         group_by=None,
-        nan_thresh=None,
-        rectified=False,
+        nan_thresh=0.85,
+        rectified=True,
         verbose=False):
     """
     Plot reconstruction error as variance explained across all whole groupday
