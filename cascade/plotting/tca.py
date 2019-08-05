@@ -978,6 +978,14 @@ def groupday_varex_summary(
         nt_tag = ''
         nt_save_tag = ''
 
+    # save tag for rectification
+    if rectified:
+        r_tag = ' rectified'
+        r_save_tag = '_rectified'
+    else:
+        r_tag = ''
+        r_save_tag = ''
+
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
@@ -1057,7 +1065,7 @@ def groupday_varex_summary(
     ax.set_xlabel('model rank')
     ax.set_ylabel('fractional variance explained')
     ax.set_title(
-        'Variance Explained: ' + str(method) + r_tag + ', ' + str(mice))
+        'Variance Explained: ' + str(method) + r_tag + ', ' + str(mouse))
     ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
 
     fig.savefig(var_path, bbox_inches='tight')
