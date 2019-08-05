@@ -4,12 +4,13 @@ from .. import paths
 import tensortools as tt
 import numpy as np
 import pandas as pd
+import bottleneck as bn
 import os
 from sklearn.decomposition import PCA
 from copy import deepcopy
 
 
-@memoize(across='mouse', updated=190605, returns='other', large_output=True)
+@memoize(across='mouse', updated=190805, returns='other', large_output=True)
 def groupday_varex(
         mouse,
         trace_type='zscore_day',
@@ -77,37 +78,41 @@ def groupday_varex(
     for r in V.results:
         for it in range(0, len(V.results[r])):
             U = V.results[r][it].factors.full()
-            varex.append(1 - (np.nanvar(X - U)/np.nanvar(X)))
+            varex.append(1 - (bn.nanvar(X - U)/bn.nanvar(X)))
             rank.append(r)
             iteration.append(it)
 
     # mean response of neuron across trials
-    mU = np.nanmean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
-    varex_mu = 1 - (np.nanvar(X - mU)/np.nanvar(X))
+    mU = bn.nanmean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
+    varex_mu = 1 - (bn.nanvar(X - mU)/bn.nanvar(X))
 
     # smoothed response of neuron across time
-    smU = np.convolve(
-        X.reshape((X.size)),
-        np.ones(5, dtype=np.float64)/5, 'same').reshape(np.shape(X))
-    varex_smu = 1 - (np.nanvar(X - smU)/np.nanvar(X))
+    sm_window = 5  # This should always be odd or there will be a frame shift
+    assert sm_window % 2 == 1
+    sm_shift = int(np.floor((sm_window - 1)/2) + sm_window*2)
+    pad = np.zeros((np.shape(X)[0], sm_window*2, np.shape(X)[2]))
+    smU_in = np.concatenate((pad, X, pad), axis=1)
+    smU = bn.move_mean(smU_in, 5, axis=1)
+    smU = smU[:, sm_shift:(np.shape(X)[1] + sm_shift), :]
+    varex_smu = 1 - (bn.nanvar(X - smU)/bn.nanvar(X))
 
     # calculate trial concatenated PCA reconstruction of data, this is
     # the upper bound of performance we could expect
     if verbose:
         print('Calculating trial concatenated PCA control: ' + mouse)
     iX = deepcopy(X)
-    iX[np.isnan(iX)] = np.nanmean(iX[:])  # impute empties w/ mean of data
+    iX[np.isnan(iX)] = bn.nanmean(iX[:])  # impute empties w/ mean of data
     sz = np.shape(iX)
     iX = iX.reshape(sz[0], sz[1]*sz[2])
-    mu = np.nanmean(iX, axis=0)
+    mu = bn.nanmean(iX, axis=0)
     catPCA = PCA()
     catPCA.fit(iX)
     nComp = len(V.results)
     Xhat = np.dot(catPCA.transform(iX)[:, :nComp],
                   catPCA.components_[:nComp, :])
     Xhat += mu
-    varex_PCA = [1 - (np.nanvar(X.reshape(sz[0], sz[1]*sz[2]) - Xhat)
-                 / np.nanvar(X.reshape(sz[0], sz[1]*sz[2])))]
+    varex_PCA = [1 - (bn.nanvar(X.reshape(sz[0], sz[1]*sz[2]) - Xhat)
+                 / bn.nanvar(X.reshape(sz[0], sz[1]*sz[2])))]
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -127,7 +132,7 @@ def groupday_varex(
     return dfvar
 
 
-@memoize(across='mouse', updated=190507, returns='other', large_output=True)
+@memoize(across='mouse', updated=190805, returns='other', large_output=True)
 def groupday_varex_byday(
         mouse,
         trace_type='zscore_day',
@@ -201,12 +206,17 @@ def groupday_varex_byday(
         # model
         bU = V.results[r][0].factors.full()
         # mean response of neuron across trials
-        mU = np.nanmean(
+        mU = bn.nanmean(
             X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
         # smoothed response of neuron across time
-        smU = np.convolve(
-            X.reshape((X.size)),
-            np.ones(5, dtype=np.float64)/5, 'same').reshape(np.shape(X))
+        sm_window = 5  # should always be odd or there will be a frame shift
+        assert sm_window % 2 == 1
+        sm_shift = int(np.floor((sm_window - 1)/2) + sm_window*2)
+        pad = np.zeros((np.shape(X)[0], sm_window*2, np.shape(X)[2]))
+        smU_in = np.concatenate((pad, X, pad), axis=1)
+        smU = bn.move_mean(smU_in, 5, axis=1)
+        smU = smU[:, sm_shift:(np.shape(X)[1] + sm_shift), :]
+        varex_smu = 1 - (bn.nanvar(X - smU)/bn.nanvar(X))
         # calculate variance explained per day
         for day in np.unique(dates):
             day_bool = dates.isin([day])
@@ -216,9 +226,9 @@ def groupday_varex_byday(
             bX = X[:, :, day_bool]
             rank.append(r)
             date.append(day)
-            varex.append(1 - (np.nanvar(bX - bUd)/np.nanvar(bX)))
-            varex_mu.append(1 - (np.nanvar(bX - mUd)/np.nanvar(bX)))
-            varex_smu.append(1 - (np.nanvar(bX - smUd)/np.nanvar(bX)))
+            varex.append(1 - (bn.nanvar(bX - bUd)/bn.nanvar(bX)))
+            varex_mu.append(1 - (bn.nanvar(bX - mUd)/bn.nanvar(bX)))
+            varex_smu.append(1 - (bn.nanvar(bX - smUd)/bn.nanvar(bX)))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -237,7 +247,7 @@ def groupday_varex_byday(
     return dfvar
 
 
-@memoize(across='mouse', updated=190507, returns='other', large_output=True)
+@memoize(across='mouse', updated=190805, returns='other', large_output=True)
 def groupday_varex_byday_bycomp(
         mouse,
         trace_type='zscore_day',
@@ -322,7 +332,7 @@ def groupday_varex_byday_bycomp(
                 rank.append(r)
                 date.append(day)
                 component.append(fac_num+1)
-                varex.append(1 - (np.nanvar(bX - bUd)/np.nanvar(bX)))
+                varex.append(1 - (bn.nanvar(bX - bUd)/bn.nanvar(bX)))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -340,7 +350,7 @@ def groupday_varex_byday_bycomp(
     return dfvar
 
 
-@memoize(across='mouse', updated=190605, returns='other', large_output=True)
+@memoize(across='mouse', updated=190805, returns='other', large_output=True)
 def groupday_varex_byday_bycomp_bycell(
         mouse,
         trace_type='zscore_day',
@@ -437,7 +447,7 @@ def groupday_varex_byday_bycomp_bycell(
                     component.append(fac_num+1)
                     cell_idx.append(cell_num)
                     cell_id.append(cell_identity)
-                    varex.append(1 - (np.nanvar(bX - bU)/np.nanvar(bX)))
+                    varex.append(1 - (bn.nanvar(bX - bU)/bn.nanvar(bX)))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -457,7 +467,7 @@ def groupday_varex_byday_bycomp_bycell(
     return dfvar
 
 
-@memoize(across='mouse', updated=190618, returns='other', large_output=True)
+@memoize(across='mouse', updated=190805, returns='other', large_output=True)
 def groupday_varex_bycomp_bycell(
         mouse,
         trace_type='zscore_day',
@@ -548,7 +558,7 @@ def groupday_varex_bycomp_bycell(
                 component.append(fac_num+1)
                 cell_idx.append(cell_num)
                 cell_id.append(cell_identity)
-                varex.append(1 - (np.nanvar(bX - bU)/np.nanvar(bX)))
+                varex.append(1 - (bn.nanvar(bX - bU)/bn.nanvar(bX)))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -567,7 +577,7 @@ def groupday_varex_bycomp_bycell(
     return dfvar
 
 
-@memoize(across='mouse', updated=190529, returns='other', large_output=True)
+@memoize(across='mouse', updated=190805, returns='other', large_output=True)
 def groupday_varex_bycomp(
         mouse,
         trace_type='zscore_day',
@@ -645,7 +655,7 @@ def groupday_varex_bycomp(
             bUd = ab[:, :, None] @ c[None, :]
             rank.append(r)
             component.append(fac_num+1)
-            varex.append(1 - (np.nanvar(X - bUd)/np.nanvar(X)))
+            varex.append(1 - (bn.nanvar(X - bUd)/bn.nanvar(X)))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -661,7 +671,7 @@ def groupday_varex_bycomp(
 
     return dfvar
 
-@memoize(across='mouse', updated=190605, returns='other', large_output=True)
+@memoize(across='mouse', updated=190805, returns='other', large_output=True)
 def groupday_varex_byday_bycell(
         mouse,
         trace_type='zscore_day',
@@ -742,12 +752,17 @@ def groupday_varex_byday_bycell(
         # model
         bU = V.results[r][0].factors.full()
         # mean response of neuron across trials
-        mU = np.nanmean(
+        mU = bn.nanmean(
             X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
         # smoothed response of neuron across time
-        smU = np.convolve(
-            X.reshape((X.size)),
-            np.ones(5, dtype=np.float64)/5, 'same').reshape(np.shape(X))
+        sm_window = 5  # should always be odd or there will be a frame shift
+        assert sm_window % 2 == 1
+        sm_shift = int(np.floor((sm_window - 1)/2) + sm_window*2)
+        pad = np.zeros((np.shape(X)[0], sm_window*2, np.shape(X)[2]))
+        smU_in = np.concatenate((pad, X, pad), axis=1)
+        smU = bn.move_mean(smU_in, 5, axis=1)
+        smU = smU[:, sm_shift:(np.shape(X)[1] + sm_shift), :]
+        varex_smu = 1 - (bn.nanvar(X - smU)/bn.nanvar(X))
         # calculate variance explained per day
         for day in np.unique(dates):
             day_bool = dates.isin([day])
@@ -762,14 +777,14 @@ def groupday_varex_byday_bycell(
                 rank.append(r)
                 date.append(day)
                 varex.append(
-                    1 - (np.nanvar(bX[cell_num, :, :] - bUd[cell_num, :, :])
-                         / np.nanvar(bX[cell_num, :, :])))
+                    1 - (bn.nanvar(bX[cell_num, :, :] - bUd[cell_num, :, :])
+                         / bn.nanvar(bX[cell_num, :, :])))
                 varex_mu.append(
-                    1 - (np.nanvar(bX[cell_num, :, :] - mUd[cell_num, :, :])
-                         / np.nanvar(bX[cell_num, :, :])))
+                    1 - (bn.nanvar(bX[cell_num, :, :] - mUd[cell_num, :, :])
+                         / bn.nanvar(bX[cell_num, :, :])))
                 varex_smu.append(
-                    1 - (np.nanvar(bX[cell_num, :, :] - smUd[cell_num, :, :])
-                         / np.nanvar(bX[cell_num, :, :])))
+                    1 - (bn.nanvar(bX[cell_num, :, :] - smUd[cell_num, :, :])
+                         / bn.nanvar(bX[cell_num, :, :])))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -787,7 +802,7 @@ def groupday_varex_byday_bycell(
 
     return dfvar
 
-@memoize(across='mouse', updated=190606, returns='other', large_output=True)
+@memoize(across='mouse', updated=190805, returns='other', large_output=True)
 def groupday_varex_bycell(
         mouse,
         trace_type='zscore_day',
@@ -868,17 +883,22 @@ def groupday_varex_bycell(
         # model
         bU = V.results[r][0].factors.full()
         # mean response of neuron across trials
-        mU = np.nanmean(
+        mU = bn.nanmean(
             X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
         # smoothed response of neuron across time
-        smU = np.convolve(
-            X.reshape((X.size)),
-            np.ones(5, dtype=np.float64)/5, 'same').reshape(np.shape(X))
+        sm_window = 5  # should always be odd or there will be a frame shift
+        assert sm_window % 2 == 1
+        sm_shift = int(np.floor((sm_window - 1)/2) + sm_window*2)
+        pad = np.zeros((np.shape(X)[0], sm_window*2, np.shape(X)[2]))
+        smU_in = np.concatenate((pad, X, pad), axis=1)
+        smU = bn.move_mean(smU_in, 5, axis=1)
+        smU = smU[:, sm_shift:(np.shape(X)[1] + sm_shift), :]
+        varex_smu = 1 - (bn.nanvar(X - smU)/bn.nanvar(X))
         # mean response of neurons per day recreating full tensor
         dmU = deepcopy(X)
         for day in np.unique(dates):
             day_bool = dates.isin([day])
-            bX = (np.nanmean(X[:, :, day_bool], axis=2, keepdims=True)
+            bX = (bn.nanmean(X[:, :, day_bool], axis=2, keepdims=True)
                   * np.ones((1, 1, np.shape(X[:, :, day_bool])[2])))
             dmU[:, :, day_bool] = bX
         for cell_num in range(np.shape(X)[0]):
@@ -888,17 +908,17 @@ def groupday_varex_bycell(
             rank.append(r)
             date.append(day)
             varex.append(
-                1 - (np.nanvar(X[cell_num, :, :] - bU[cell_num, :, :])
-                     / np.nanvar(X[cell_num, :, :])))
+                1 - (bn.nanvar(X[cell_num, :, :] - bU[cell_num, :, :])
+                     / bn.nanvar(X[cell_num, :, :])))
             varex_mu.append(
-                1 - (np.nanvar(X[cell_num, :, :] - mU[cell_num, :, :])
-                     / np.nanvar(X[cell_num, :, :])))
+                1 - (bn.nanvar(X[cell_num, :, :] - mU[cell_num, :, :])
+                     / bn.nanvar(X[cell_num, :, :])))
             varex_smu.append(
-                1 - (np.nanvar(X[cell_num, :, :] - smU[cell_num, :, :])
-                     / np.nanvar(X[cell_num, :, :])))
+                1 - (bn.nanvar(X[cell_num, :, :] - smU[cell_num, :, :])
+                     / bn.nanvar(X[cell_num, :, :])))
             varex_daily_mu.append(
-                1 - (np.nanvar(X[cell_num, :, :] - dmU[cell_num, :, :])
-                     / np.nanvar(X[cell_num, :, :])))
+                1 - (bn.nanvar(X[cell_num, :, :] - dmU[cell_num, :, :])
+                     / bn.nanvar(X[cell_num, :, :])))
 
     # make dataframe of data
     # create your index out of relevant variables
