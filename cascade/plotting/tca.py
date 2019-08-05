@@ -185,8 +185,8 @@ def groupmouse_varex_summary(
             verbose=verbose)
         x_s = df_var['rank'].values
         var_s = df_var['variance_explained_tcamodel'].values
-        x = x_s[df_var['iteration'].values == 0]
-        var = var_s[df_var['iteration'].values == 0]
+        x0 = x_s[df_var['iteration'].values == 0]
+        var0 = var_s[df_var['iteration'].values == 0]
         var_mean = df_var['variance_explained_meanmodel'].values[0]
         var_smooth = df_var['variance_explained_smoothmodel'].values[0]
         var_PCA = df_var['variance_explained_PCA'].values[0]
@@ -197,7 +197,7 @@ def groupmouse_varex_summary(
         ax.scatter([R+2], var_mean, color=cmap[c], alpha=0.5)
         ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
         ax.scatter([R+6], var_PCA, color=cmap[c], alpha=0.5)
-        ax.plot(x, var, label=('mouse ' + mouse), color=cmap[c])
+        ax.plot(x0, var0, label=('mouse ' + mouse), color=cmap[c])
         ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c])
         ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
         ax.plot([R+5.5, R+6.5], [var_PCA, var_PCA], color=cmap[c])
@@ -1019,8 +1019,8 @@ def groupday_varex_summary(
         verbose=verbose)
     x_s = df_var['rank'].values
     var_s = df_var['variance_explained_tcamodel'].values
-    x = x_s[df_var['iteration'].values == 0]
-    var = var_s[df_var['iteration'].values == 0]
+    x0 = x_s[df_var['iteration'].values == 0]
+    var0 = var_s[df_var['iteration'].values == 0]
     var_mean = df_var['variance_explained_meanmodel'].values[0]
     var_smooth = df_var['variance_explained_smoothmodel'].values[0]
     var_PCA = df_var['variance_explained_PCA'].values[0]
@@ -1041,7 +1041,7 @@ def groupday_varex_summary(
     ax.scatter([R+2], var_mean, color=cmap[c], alpha=0.5)
     ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
     ax.scatter([R+6], var_PCA, color=cmap[c], alpha=0.5)
-    ax.plot(x, var, label=('mouse ' + mouse), color=cmap[c])
+    ax.plot(x0, var0, label=('mouse ' + mouse), color=cmap[c])
     ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c])
     ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
     ax.plot([R+5.5, R+6.5], [var_PCA, var_PCA], color=cmap[c])
