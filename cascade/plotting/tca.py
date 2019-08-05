@@ -173,7 +173,7 @@ def groupmouse_varex_summary(
 
         # get reconstruction error as variance explained
         df_var = var.groupday_varex(
-            flow.Mouse(mouse=[mouse]),
+            flow.Mouse(mouse=mouse),
             trace_type=trace_type,
             method=method,
             cs=cs,
@@ -1005,7 +1005,7 @@ def groupday_varex_summary(
 
     # get reconstruction error as variance explained
     df_var = var.groupday_varex(
-        flow.Mouse(mouse=[mouse]),
+        flow.Mouse(mouse=mouse),
         trace_type=trace_type,
         method=method,
         cs=cs,
