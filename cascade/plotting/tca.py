@@ -183,8 +183,10 @@ def groupmouse_varex_summary(
             nan_thresh=nan_thresh,
             rectified=rectified,
             verbose=verbose)
-        x_s = df_var['rank'].values()
+        x_s = df_var['rank'].values
         var_s = df_var['variance_explained_tcamodel'].values
+        x = x_s[df_var['iteration'].values == 0]
+        var = var_s[df_var['iteration'].values == 0]
         var_mean = df_var['variance_explained_meanmodel'].values[0]
         var_smooth = df_var['variance_explained_smoothmodel'].values[0]
         var_PCA = df_var['variance_explained_PCA'].values[0]
@@ -1017,6 +1019,8 @@ def groupday_varex_summary(
         verbose=verbose)
     x_s = df_var['rank'].values
     var_s = df_var['variance_explained_tcamodel'].values
+    x = x_s[df_var['iteration'].values == 0]
+    var = var_s[df_var['iteration'].values == 0]
     var_mean = df_var['variance_explained_meanmodel'].values[0]
     var_smooth = df_var['variance_explained_smoothmodel'].values[0]
     var_PCA = df_var['variance_explained_PCA'].values[0]
