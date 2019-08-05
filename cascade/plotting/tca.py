@@ -178,7 +178,7 @@ def groupmouse_varex_summary(
             method=method,
             cs=cs,
             warp=warp,
-            word=word,
+            word=words[c],
             group_by=group_by,
             nan_thresh=nan_thresh,
             rectified=rectified,
