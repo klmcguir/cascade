@@ -83,7 +83,7 @@ def groupday_varex(
             iteration.append(it)
 
     # mean response of neuron across trials
-    mU = bn.nanmean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
+    mU = np.nanmean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
     varex_mu = 1 - (bn.nanvar(X - mU)/bn.nanvar(X))
 
     # smoothed response of neuron across time
@@ -206,7 +206,7 @@ def groupday_varex_byday(
         # model
         bU = V.results[r][0].factors.full()
         # mean response of neuron across trials
-        mU = bn.nanmean(
+        mU = np.nanmean(
             X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
         # smoothed response of neuron across time
         sm_window = 5  # should always be odd or there will be a frame shift
@@ -752,7 +752,7 @@ def groupday_varex_byday_bycell(
         # model
         bU = V.results[r][0].factors.full()
         # mean response of neuron across trials
-        mU = bn.nanmean(
+        mU = np.nanmean(
             X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
         # smoothed response of neuron across time
         sm_window = 5  # should always be odd or there will be a frame shift
@@ -883,7 +883,7 @@ def groupday_varex_bycell(
         # model
         bU = V.results[r][0].factors.full()
         # mean response of neuron across trials
-        mU = bn.nanmean(
+        mU = np.nanmean(
             X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
         # smoothed response of neuron across time
         sm_window = 5  # should always be odd or there will be a frame shift
@@ -898,7 +898,7 @@ def groupday_varex_bycell(
         dmU = deepcopy(X)
         for day in np.unique(dates):
             day_bool = dates.isin([day])
-            bX = (bn.nanmean(X[:, :, day_bool], axis=2, keepdims=True)
+            bX = (np.nanmean(X[:, :, day_bool], axis=2, keepdims=True)
                   * np.ones((1, 1, np.shape(X[:, :, day_bool])[2])))
             dmU[:, :, day_bool] = bX
         for cell_num in range(np.shape(X)[0]):
