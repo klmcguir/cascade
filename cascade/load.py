@@ -257,4 +257,4 @@ def groupday_tca(
     # stim_window = np.arange(-1, 7, 1/15.5)[0:108]
     # stim_window = (stim_window > 0) & (stim_window < 3)
 
-    return sort_ensemble, cell_ids[rank], cell_clusters[rank]
+    return sort_ensemble, cell_ids[rank], cell_clusters[rank], meta
