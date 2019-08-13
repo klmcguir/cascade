@@ -72,9 +72,15 @@ def tca_path(mouse, grouping, pars=None, word=None, group_pars=None):
         group_tag = ''
 
     # create folder structure and save dir
-    cs_tag = '' if len(pars['cs']) == 0 else '-' + str(pars['cs'])
-    warp_tag = '' if pars['warp'] is False else '-warp'
-    trace_tag = '-' + pars['trace_type']
+    if not pars:
+        print("Assuming default pars: cs: '', warp: '', trace_type: zscore_day")
+        cs_tag = ''
+        warp_tag = ''
+        trace_tag = '-zscore_day'
+    else:
+        cs_tag = '' if len(pars['cs']) == 0 else '-' + str(pars['cs'])
+        warp_tag = '' if pars['warp'] is False else '-warp'
+        trace_tag = '-' + pars['trace_type']
     pars_tag = '-' + pars_word
     tca_tag = 'tensors-' + grouping
     folder_name = tca_tag + trace_tag + cs_tag + warp_tag + group_tag + pars_tag
@@ -137,9 +143,15 @@ def tca_plots(mouse, grouping, pars=None, word=None, group_pars=None):
         group_tag = ''
 
     # create folder structure and save dir
-    cs_tag = '' if len(pars['cs']) == 0 else '-' + str(pars['cs'])
-    warp_tag = '' if pars['warp'] is False else '-warp'
-    trace_tag = '-' + pars['trace_type']
+    if not pars:
+        print("Assuming default pars: cs: '', warp: '', trace_type: zscore_day")
+        cs_tag = ''
+        warp_tag = ''
+        trace_tag = '-zscore_day'
+    else:
+        cs_tag = '' if len(pars['cs']) == 0 else '-' + str(pars['cs'])
+        warp_tag = '' if pars['warp'] is False else '-warp'
+        trace_tag = '-' + pars['trace_type']
     pars_tag = '-' + pars_word
     tca_tag = 'tensors-' + grouping
     folder_name = tca_tag + trace_tag + cs_tag + warp_tag + group_tag + pars_tag
