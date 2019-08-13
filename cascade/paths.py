@@ -130,7 +130,7 @@ def tca_plots(mouse, grouping, pars=None, word=None, group_pars=None):
         return
 
     # get word
-    if pars and word:
+    if (pars and word) or (word and not pars):
         pars_word = word
     else:
         print('ERROR: Word was not passed to tca_plots.')
