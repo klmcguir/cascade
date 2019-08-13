@@ -73,7 +73,7 @@ def tca_path(mouse, grouping, pars=None, word=None, group_pars=None):
 
     # create folder structure and save dir
     if not pars:
-        print("Assuming default pars: cs: '', warp: '', trace_type: zscore_day")
+        print("cascade.paths: Assuming default pars: cs: '', warp: '', trace_type: zscore_day")
         cs_tag = ''
         warp_tag = ''
         trace_tag = '-zscore_day'
@@ -144,7 +144,7 @@ def tca_plots(mouse, grouping, pars=None, word=None, group_pars=None):
 
     # create folder structure and save dir
     if not pars:
-        print("Assuming default pars: cs: '', warp: '', trace_type: zscore_day")
+        print("cascade.paths: Assuming default pars: cs: '', warp: '', trace_type: zscore_day")
         cs_tag = ''
         warp_tag = ''
         trace_tag = '-zscore_day'
