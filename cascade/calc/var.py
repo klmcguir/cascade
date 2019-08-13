@@ -112,7 +112,7 @@ def groupday_varex(
                   catPCA.components_[:nComp, :])
     Xhat += mu
     varex_PCA = [1 - (bn.nanvar(X.reshape(sz[0], sz[1]*sz[2]) - Xhat)
-                 / bn.nanvar(X.reshape(sz[0], sz[1]*sz[2])))]
+                 / bn.nanvar(X.reshape(sz[0], sz[1]*sz[2])))][0]
 
     # make dataframe of data
     # create your index out of relevant variables
