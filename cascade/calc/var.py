@@ -762,7 +762,6 @@ def groupday_varex_byday_bycell(
         smU_in = np.concatenate((pad, X, pad), axis=1)
         smU = bn.move_mean(smU_in, 5, axis=1)
         smU = smU[:, sm_shift:(np.shape(X)[1] + sm_shift), :]
-        varex_smu = 1 - (bn.nanvar(X - smU)/bn.nanvar(X))
         # calculate variance explained per day
         for day in np.unique(dates):
             day_bool = dates.isin([day])
