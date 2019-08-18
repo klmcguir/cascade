@@ -332,7 +332,7 @@ def groupday_var_byday(
     # make dataframe of data
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays(
-        [[mouse]*len(varex)],
+        [[mouse]*len(var)],
         names=['mouse'])
 
     data = {'rank': rank,
