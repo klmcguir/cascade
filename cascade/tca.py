@@ -31,7 +31,7 @@ def singleday_tca(
         thresh=20,
         warp=False,
         smooth=True,
-        smooth_win=5,
+        smooth_win=6,
         verbose=True,
 
         # filtering params
@@ -228,7 +228,7 @@ def pairday_tca(
         thresh=20,
         warp=False,
         smooth=True,
-        smooth_win=5,
+        smooth_win=6,
         verbose=True,
 
         # filtering params
@@ -458,7 +458,7 @@ def pairday_tca_2(
         thresh=20,
         warp=False,
         smooth=True,
-        smooth_win=5,
+        smooth_win=6,
         verbose=True,
 
         # filtering params
@@ -669,7 +669,7 @@ def triday_tca(
         thresh=20,
         warp=False,
         smooth=True,
-        smooth_win=5,
+        smooth_win=6,
         verbose=True,
 
         # filtering params
@@ -877,7 +877,7 @@ def groupday_tca(
         thresh=20,
         warp=False,
         smooth=True,
-        smooth_win=5,
+        smooth_win=6,
         nan_trial_threshold=None,
         verbose=True,
 
@@ -1325,7 +1325,7 @@ def _sortfactors(my_method):
 
 def _triggerfromrun(run, trace_type='zscore_day', cs='', downsample=True,
             start_time=-1, end_time=6, clean_artifacts='interp',
-            thresh=20, warp=False, smooth=True, smooth_win=5,
+            thresh=20, warp=False, smooth=True, smooth_win=6,
             verbose=True):
     """
     Create a pandas dataframe of all of your triggered traces for a mouse.
@@ -1589,7 +1589,7 @@ def _getcstraces_filtered(
         thresh=20,
         warp=False,
         smooth=True,
-        smooth_win=5):
+        smooth_win=6):
     """
     Build a tensor and matching metadata dataframe from list of run objects.
 
