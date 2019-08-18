@@ -1580,16 +1580,16 @@ def _getcstraces_filtered(
         runs_list,
         d_ids_bool,
         d_sorter,
-        cs=cs,
-        trace_type=trace_type,
-        start_time=start_time,
-        end_time=end_time,
+        cs='',
+        trace_type='zscore_day',
+        start_time=-1,
+        end_time=6,
         downsample=True,
-        clean_artifacts=clean_artifacts,
-        thresh=thresh,
-        warp=warp,
-        smooth=smooth,
-        smooth_win=smooth_win):
+        clean_artifacts=None,
+        thresh=20,
+        warp=False,
+        smooth=True,
+        smooth_win=5):
     """
     Build a tensor and matching metadata dataframe from list of run objects.
 
