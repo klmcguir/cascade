@@ -135,11 +135,12 @@ def singleday_tca(
             for run in d1_runs:
                 t2p = run.trace2p()
                 # trigger all trials around stimulus onsets
-                run_traces = utils.getcstraces(run, cs=cs, trace_type=trace_type,
-                                         start_time=start_time, end_time=end_time,
-                                         downsample=True, clean_artifacts=clean_artifacts,
-                                         thresh=thresh, warp=warp, smooth=smooth,
-                                         smooth_win=smooth_win)
+                run_traces = utils.getcstraces(
+                    run, cs=cs, trace_type=trace_type,
+                    start_time=start_time, end_time=end_time,
+                    downsample=True, clean_artifacts=clean_artifacts,
+                    thresh=thresh, warp=warp, smooth=smooth,
+                    smooth_win=smooth_win)
                 # filter and sort
                 run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
                 # get matched trial metadata/variables
@@ -189,11 +190,16 @@ def singleday_tca(
             np.save(input_ids_path, ids)
 
             # run TCA - iterate over different fitting methods
+            if np.isin('mcp_als', method) | np.isin('mncp_hals', method):
+                mask = ~np.isnan(group_tensor)
+                fit_options['mask'] = mask
+            group_tensor[np.isnan(group_tensor)] = 0
             ensemble = {}
             for m in method:
                 ensemble[m] = tt.Ensemble(
                     fit_method=m, fit_options=deepcopy(fit_options))
-                ensemble[m].fit(tensor, ranks=range(1, rank+1), replicates=replicates, verbose=False)
+                ensemble[m].fit(group_tensor, ranks=range(1, rank+1),
+                                replicates=replicates, verbose=False)
             np.save(output_tensor_path, ensemble)
 
             # print output so you don't go crazy waiting
@@ -363,80 +369,43 @@ def pairday_tca(
         # build tensors for all correct runs and trials if you still have trials after filtering
         # day 1
         if d1_runs and d2_runs:
-            d1_tensor_list = []
-            d1_meta = []
-            d2_tensor_list = []
-            d2_meta = []
-            for run in d1_runs:
-                t2p = run.trace2p()
-                # trigger all trials around stimulus onsets
-                run_traces = utils.getcstraces(run, cs=cs, trace_type=trace_type,
-                                         start_time=start_time, end_time=end_time,
-                                         downsample=True, clean_artifacts=clean_artifacts,
-                                         thresh=thresh, warp=warp, smooth=smooth,
-                                         smooth_win=smooth_win)
 
-                # filter and sort
-                run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
-                # get matched trial metadata/variables
-                dfr = _trialmetafromrun(run)
-                # subselect metadata if you are only running certain cs
-                if cs != '':
-                    if cs == 'plus' or cs == 'minus' or cs == 'neutral':
-                        dfr = dfr.loc[(dfr['condition'].isin([cs])), :]
-                    elif cs == '0' or cs == '135' or cs == '270':
-                        dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
-                    else:
-                        print('ERROR: cs called - "' + cs + '" - is not\
-                              a valid option.')
-                # subselect metadata to remove certain conditions
-                if len(exclude_conds) > 0:
-                    run_traces = run_traces[:, :, (~dfr['condition'].isin(exclude_conds))]
-                    dfr = dfr.loc[(~dfr['condition'].isin(exclude_conds)), :]
-                # drop trials with nans and add to lists
-                keep = np.sum(np.sum(np.isnan(run_traces), axis=0, keepdims=True),
-                              axis=1, keepdims=True).flatten() == 0
-                dfr = dfr.iloc[keep, :]
-                d1_tensor_list.append(run_traces[:, :, keep])
-                d1_meta.append(dfr)
+            d1_tensor, d1_meta = _getcstraces_filtered(
+                d1_runs,
+                d1_ids_bool,
+                d1_sorter,
+                cs=cs,
+                trace_type=trace_type,
+                start_time=start_time,
+                end_time=end_time,
+                downsample=True,
+                clean_artifacts=clean_artifacts,
+                thresh=thresh,
+                warp=warp,
+                smooth=smooth,
+                smooth_win=smooth_win)
 
             # day 2
-            for run in d2_runs:
-                t2p = run.trace2p()
-                # trigger all trials around stimulus onsets
-                run_traces = utils.getcstraces(run, cs=cs, trace_type=trace_type,
-                                         start_time=start_time, end_time=end_time,
-                                         downsample=True, clean_artifacts=clean_artifacts,
-                                         thresh=thresh, warp=warp, smooth=smooth,
-                                         smooth_win=smooth_win)
-                # filter and sort
-                run_traces = run_traces[d2_ids_bool, :, :][d2_sorter, :, :]
-                # get matched trial metadata/variables
-                dfr = _trialmetafromrun(run)
-                # subselect metadata if you are only running certain cs
-                if cs != '':
-                    if cs == 'plus' or cs == 'minus' or cs == 'neutral':
-                        dfr = dfr.loc[(dfr['condition'].isin([cs])), :]
-                    elif cs == '0' or cs == '135' or cs == '270':
-                        dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
-                    else:
-                        print('ERROR: cs called - "' + cs + '" - is not\
-                              a valid option.')
-                # drop trials with nans and add to lists
-                keep = np.sum(np.sum(np.isnan(run_traces), axis=0, keepdims=True),
-                              axis=1, keepdims=True).flatten() == 0
-                dfr = dfr.iloc[keep, :]
-                d2_tensor_list.append(run_traces[:, :, keep])
-                d2_meta.append(dfr)
+            d2_tensor, d2_meta = _getcstraces_filtered(
+                d2_runs,
+                d2_ids_bool,
+                d2_sorter,
+                cs=cs,
+                trace_type=trace_type,
+                start_time=start_time,
+                end_time=end_time,
+                downsample=True,
+                clean_artifacts=clean_artifacts,
+                thresh=thresh,
+                warp=warp,
+                smooth=smooth,
+                smooth_win=smooth_win)
 
             # concatenate matched cells across trials 3rd dim (aka, 2)
-            d1_tensor = np.concatenate(d1_tensor_list, axis=2)
-            d2_tensor = np.concatenate(d2_tensor_list, axis=2)
             tensor = np.concatenate((d1_tensor, d2_tensor), axis=2)
 
             # concatenate all trial metadata in pd dataframe
-            d1_meta.extend(d2_meta)
-            pair_meta = pd.concat(d1_meta, axis=0)
+            pair_meta = pd.concat([d1_meta, d2_meta], axis=0)
 
             # concatenate and save df for the day
             meta_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
@@ -452,11 +421,16 @@ def pairday_tca(
             np.save(input_ids_path, ids)
 
             # run TCA - iterate over different fitting methods
+            if np.isin('mcp_als', method) | np.isin('mncp_hals', method):
+                mask = ~np.isnan(group_tensor)
+                fit_options['mask'] = mask
+            group_tensor[np.isnan(group_tensor)] = 0
             ensemble = {}
             for m in method:
                 ensemble[m] = tt.Ensemble(
                     fit_method=m, fit_options=deepcopy(fit_options))
-                ensemble[m].fit(tensor, ranks=range(1, rank+1), replicates=replicates, verbose=False)
+                ensemble[m].fit(group_tensor, ranks=range(1, rank+1),
+                                replicates=replicates, verbose=False)
             np.save(output_tensor_path, ensemble)
 
             # print output so you don't go crazy waiting
@@ -1398,3 +1372,63 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     dfr = pd.DataFrame(data, index=index)
 
     return dfr
+
+
+def _getcstraces_filtered(
+        runs_list,
+        d_ids_bool,
+        d_sorter,
+        cs=cs,
+        trace_type=trace_type,
+        start_time=start_time,
+        end_time=end_time,
+        downsample=True,
+        clean_artifacts=clean_artifacts,
+        thresh=thresh,
+        warp=warp,
+        smooth=smooth,
+        smooth_win=smooth_win):
+    """
+    Build a tensor and matching metadata dataframe from list of run objects.
+
+    """
+
+    # preallocate lists
+    tensor_list = []
+    meta_list = []
+
+    # loop over all runs
+    for run in runs_list:
+        t2p = run.trace2p()
+        # trigger all trials around stimulus onsets
+        run_traces = utils.getcstraces(
+            run, cs=cs, trace_type=trace_type,
+            start_time=start_time, end_time=end_time,
+            downsample=True, clean_artifacts=clean_artifacts,
+            thresh=thresh, warp=warp, smooth=smooth,
+            smooth_win=smooth_win)
+        # filter and sort
+        run_traces = run_traces[d_ids_bool, :, :][d_sorter, :, :]
+        # get matched trial metadata/variables
+        dfr = _trialmetafromrun(run)
+        # subselect metadata if you are only running certain cs
+        if cs != '':
+            if cs == 'plus' or cs == 'minus' or cs == 'neutral':
+                dfr = dfr.loc[(dfr['condition'].isin([cs])), :]
+            elif cs == '0' or cs == '135' or cs == '270':
+                dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
+            else:
+                print('ERROR: cs called - "' + cs + '" - is not\
+                      a valid option.')
+        # drop trials with nans and add to lists
+        keep = np.sum(np.sum(np.isnan(run_traces), axis=0, keepdims=True),
+                      axis=1, keepdims=True).flatten() == 0
+        dfr = dfr.iloc[keep, :]
+        tensor_list.append(run_traces[:, :, keep])
+        meta_list.append(dfr)
+
+    # concatenate matched cells across trials 3rd dim (aka, 2)
+    tensor = np.concatenate(tensor_list, axis=2)
+    meta_df = pd.concat(meta_list, axis=0)
+
+    return tensor, meta_df
