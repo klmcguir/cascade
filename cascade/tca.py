@@ -649,6 +649,208 @@ def pairday_tca_2(
                       str(day1.date) + ', ' + str(day2.date) + ': done.')
 
 
+def triday_tca(
+        mouse,
+        tags=None,
+
+        # TCA params
+        rank=20,
+        method=('mncp_hals',),
+        replicates=3,
+        fit_options=None,
+
+        # tensor params
+        trace_type='zscore_day',
+        cs='',
+        downsample=True,
+        start_time=-1,
+        end_time=6,
+        clean_artifacts=None,
+        thresh=20,
+        warp=False,
+        smooth=True,
+        smooth_win=5,
+        verbose=True,
+
+        # filtering params
+        exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy', 'sated'),
+        exclude_conds=('blank', 'blank_reward', 'pavlovian'),
+        driven=True,
+        drive_css=('0', '135', '270'),
+        drive_threshold=15):
+    """
+    Perform tensor component analysis (TCA) on data aligned
+    across three days.
+
+    Algorithms from https://github.com/ahwillia/tensortools.
+
+    Parameters
+    -------
+    methods, tuple of str
+        'cp_als', fits CP Decomposition using Alternating
+            Least Squares (ALS).
+        'ncp_bcd', fits nonnegative CP Decomposition using
+            the Block Coordinate Descent (BCD) Method.
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method.
+        'mcp_als', fits CP Decomposition with missing data using
+            Alternating Least Squares (ALS).
+        'mncp_hals', fits nonnegative CP Decomposition with missing data using
+            Alternating Least Squares (ALS).
+
+    rank, int
+        number of components you wish to fit
+
+    replicates, int
+        number of initializations/iterations fitting for each rank
+
+    Returns
+    -------
+
+    """
+
+    # create folder structure and save dir
+    if fit_options is None:
+        fit_options = {'tol': 0.0001, 'max_iter': 500, 'verbose': False}
+    pars = {'tags': tags, 'rank': rank, 'method': method,
+            'replicates': replicates, 'fit_options': fit_options,
+            'trace_type': trace_type, 'cs': cs, 'downsample': downsample,
+            'start_time': start_time, 'end_time': end_time,
+            'clean_artifacts': clean_artifacts, 'thresh': thresh,
+            'warp': warp, 'smooth': smooth, 'smooth_win': smooth_win,
+            'exclude_tags': exclude_tags, 'exclude_conds': exclude_conds,
+            'driven': driven, 'drive_css': drive_css,
+            'drive_threshold': drive_threshold}
+    save_dir = paths.tca_path(mouse, 'pair', pars=pars)
+
+    days = flow.DateSorter.frommeta(
+        mice=[mouse], tags=tags, exclude_tags=['bad'])
+
+    for c, day1 in enumerate(days, 0):
+
+        try:
+            day2 = days[c+1]
+            day3 = days[c+2]
+        except IndexError:
+            print('done.')
+            break
+
+        # get cell_ids for both days and create boolean vec for cells
+        # to use from each day
+        d1_ids = flow.xday._read_crossday_ids(day1.mouse, day1.date)
+        d1_ids = np.array([int(s) for s in d1_ids])
+        d2_ids = flow.xday._read_crossday_ids(day2.mouse, day2.date)
+        d2_ids = np.array([int(s) for s in d2_ids])
+        d3_ids = flow.xday._read_crossday_ids(day3.mouse, day3.date)
+        d3_ids = np.array([int(s) for s in d3_ids])
+
+        # filter cells based on visual/trial drive across all cs, prevent
+        # breaking when only pavs are shown
+        if driven:
+            good_ids = _group_drive_ids(days, drive_css, drive_threshold)
+            d1_ids_bool = np.isin(d1_ids, good_ids)
+            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
+            d2_ids_bool = np.isin(d2_ids, good_ids)
+            d2_sorter = np.argsort(d2_ids[d2_ids_bool])
+            d3_ids_bool = np.isin(d3_ids, good_ids)
+            d3_sorter = np.argsort(d3_ids[d3_ids_bool])
+        else:
+            d1_ids_bool = np.ones(np.shape(d1_ids)) > 0
+            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
+            d2_ids_bool = np.ones(np.shape(d2_ids)) > 0
+            d2_sorter = np.argsort(d2_ids[d2_ids_bool])
+            d3_ids_bool = np.ones(np.shape(d3_ids)) > 0
+            d3_sorter = np.argsort(d3_ids[d3_ids_bool])
+        ids = d1_ids[d1_ids_bool][d1_sorter]
+
+        # check that the sort worked
+        if np.nansum(np.sort(d1_ids[d1_ids_bool]) - np.sort(d2_ids[d2_ids_bool])) != 0:
+            print('Error: cell IDs were not matched between days: ' + str(day1) + ', ' + str(day2))
+            continue
+
+        # TODO add in additional filter for being able to check for quality of xday alignment
+
+        # get all runs for both days
+        d1_runs = day1.runs(exclude_tags=['bad'])
+        d2_runs = day2.runs(exclude_tags=['bad'])
+        # filter for only runs without certain tags
+        d1_runs = [run for run in d1_runs if not any(np.isin(run.tags, exclude_tags))]
+        d2_runs = [run for run in d2_runs if not any(np.isin(run.tags, exclude_tags))]
+
+        # build tensors for all correct runs and trials if you still have trials after filtering
+        # day 1
+        if d1_runs and d2_runs:
+
+            d1_tensor, d1_meta = _getcstraces_filtered(
+                d1_runs,
+                d1_ids_bool,
+                d1_sorter,
+                cs=cs,
+                trace_type=trace_type,
+                start_time=start_time,
+                end_time=end_time,
+                downsample=True,
+                clean_artifacts=clean_artifacts,
+                thresh=thresh,
+                warp=warp,
+                smooth=smooth,
+                smooth_win=smooth_win)
+
+            # day 2
+            d2_tensor, d2_meta = _getcstraces_filtered(
+                d2_runs,
+                d2_ids_bool,
+                d2_sorter,
+                cs=cs,
+                trace_type=trace_type,
+                start_time=start_time,
+                end_time=end_time,
+                downsample=True,
+                clean_artifacts=clean_artifacts,
+                thresh=thresh,
+                warp=warp,
+                smooth=smooth,
+                smooth_win=smooth_win)
+
+            # concatenate matched cells across trials 3rd dim (aka, 2)
+            tensor = np.concatenate((d1_tensor, d2_tensor), axis=2)
+
+            # concatenate all trial metadata in pd dataframe
+            pair_meta = pd.concat([d1_meta, d2_meta], axis=0)
+
+            # concatenate and save df for the day
+            meta_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
+                                     + '_' + str(day2.date) + '_df_pair_meta.pkl')
+            input_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
+                             + '_' + str(day2.date) + '_pair_tensor_' + str(trace_type) + '.npy')
+            input_ids_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
+                             + '_' + str(day2.date) + '_pair_ids_' + str(trace_type) + '.npy')
+            output_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
+                             + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
+            pair_meta.to_pickle(meta_path)
+            np.save(input_tensor_path, tensor, ids)
+            np.save(input_ids_path, ids)
+
+            # run TCA - iterate over different fitting methods
+            if np.isin('mcp_als', method) | np.isin('mncp_hals', method):
+                mask = ~np.isnan(group_tensor)
+                fit_options['mask'] = mask
+            group_tensor[np.isnan(group_tensor)] = 0
+            ensemble = {}
+            for m in method:
+                ensemble[m] = tt.Ensemble(
+                    fit_method=m, fit_options=deepcopy(fit_options))
+                ensemble[m].fit(group_tensor, ranks=range(1, rank+1),
+                                replicates=replicates, verbose=False)
+            np.save(output_tensor_path, ensemble)
+
+            # print output so you don't go crazy waiting
+            if verbose:
+                print('Pair: ' + str(c+1) + ': ' + str(day1.mouse) + ': ' +
+                      str(day1.date) + ', ' + str(day2.date) + ': done.')
+
+
 def groupday_tca(
         mouse,
         tags=None,
