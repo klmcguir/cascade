@@ -114,7 +114,7 @@ def getcstraces(
         thresh=17.5,
         warp=False,
         smooth=True,
-        smooth_win=5,
+        smooth_win=6,
         smooth_win_dec=3):
     """
     Wrapper function for flow.Trace2P.cstraces() or .warpsctraces().
@@ -210,11 +210,18 @@ def getcstraces(
             traces = ((traces.T - mu)/sigma).T
 
         # smooth data
-        if smooth:
+        # should always be even to treat both 15 and 30 Hz data equivalently
+        assert smooth_win % 2 == 0
+        if smooth and (t2p.d['framerate'] > 30):
             for cell in range(np.shape(traces)[0]):
                 traces[cell, :] = np.convolve(
                     traces[cell, :], np.ones(smooth_win,
                     dtype=np.float64)/smooth_win, 'same')
+        elif smooth and (t2p.d['framerate'] < 16):
+            for cell in range(np.shape(traces)[0]):
+                traces[cell, :] = np.convolve(
+                    traces[cell, :], np.ones((smooth_win/2),
+                    dtype=np.float64)/(smooth_win/2), 'same')
 
         # add new trace type into t2p
         t2p.add_trace(trace_type, traces)
@@ -234,11 +241,18 @@ def getcstraces(
         traces = ((traces.T - mn)/mx).T
 
         # smooth traces
-        if smooth:
+        # should always be even to treat both 15 and 30 Hz data equivalently
+        assert smooth_win % 2 == 0
+        if smooth and (t2p.d['framerate'] > 30):
             for cell in range(np.shape(traces)[0]):
                 traces[cell, :] = np.convolve(
                     traces[cell, :], np.ones(smooth_win,
                     dtype=np.float64)/smooth_win, 'same')
+        elif smooth and (t2p.d['framerate'] < 16):
+            for cell in range(np.shape(traces)[0]):
+                traces[cell, :] = np.convolve(
+                    traces[cell, :], np.ones((smooth_win/2),
+                    dtype=np.float64)/(smooth_win/2), 'same')
 
         # add new trace type into t2p
         t2p.add_trace(trace_type, traces)
