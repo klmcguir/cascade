@@ -220,7 +220,7 @@ def getcstraces(
         elif smooth and (t2p.d['framerate'] < 16):
             for cell in range(np.shape(traces)[0]):
                 traces[cell, :] = np.convolve(
-                    traces[cell, :], np.ones((smooth_win/2),
+                    traces[cell, :], np.ones(int(smooth_win/2),
                     dtype=np.float64)/(smooth_win/2), 'same')
 
         # add new trace type into t2p
@@ -251,7 +251,7 @@ def getcstraces(
         elif smooth and (t2p.d['framerate'] < 16):
             for cell in range(np.shape(traces)[0]):
                 traces[cell, :] = np.convolve(
-                    traces[cell, :], np.ones((smooth_win/2),
+                    traces[cell, :], np.ones(int(smooth_win/2),
                     dtype=np.float64)/(smooth_win/2), 'same')
 
         # add new trace type into t2p
