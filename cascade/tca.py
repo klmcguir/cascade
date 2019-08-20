@@ -1372,6 +1372,7 @@ def _group_ids_score(days, score_threshold):
         if len(d1_ids) == 0 or len(d1_scores) == 0:
             continue
         d1_ids = np.array([int(s) for s in d1_ids])
+        d1_scores = np.array([float(s) for s in d1_scores])
         # filter cells based on visual/trial drive across all cs
         d1_highscore_ids = d1_ids[np.array(d1_scores) > score_threshold]
         good_ids.extend(d1_highscore_ids)
