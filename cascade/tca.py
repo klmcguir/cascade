@@ -980,7 +980,6 @@ def groupday_tca(
         warp=False,
         smooth=True,
         smooth_win=6,
-        nan_trial_threshold=None,
         verbose=True,
 
         # filtering params
@@ -988,7 +987,9 @@ def groupday_tca(
         exclude_conds=('blank', 'blank_reward', 'pavlovian'),
         driven=True,
         drive_css=('0', '135', '270'),
-        drive_threshold=15):
+        drive_threshold=15,
+        nan_trial_threshold=None,
+        score_threshold=0):
 
     """
     Perform tensor component analysis (TCA) on data aligned
@@ -1174,10 +1175,39 @@ def groupday_tca(
         # breaking when only pavs are shown
         if driven:
             good_ids = _group_drive_ids(days, drive_css, drive_threshold)
+            # filter for being able to check for quality of xday alignment
+            if score_threshold > 0:
+                orig_num_ids = len(good_ids)
+                highscore_ids = _group_ids_score(days, score_threshold)
+                good_ids = np.intersect1d(good_ids, highscore_ids)
+                if verbose:
+                    print('Cell score threshold ' + str(score_threshold) + ':'
+                          + ' ' + str(len(highscore_ids)) + ' above threshold:'
+                          + ' good_ids updated to ' + str(len(good_ids)) + '/'
+                          + str(orig_num_ids) + ' cells.')
+                # update saving tag
+                score_tag = '_score0pt' + str(int(score_threshold*10))
+            else:
+                score_tag = ''
             d1_ids_bool = np.isin(d1_ids, good_ids)
             d1_sorter = np.argsort(d1_ids[d1_ids_bool])
         else:
-            d1_ids_bool = np.ones(np.shape(d1_ids)) > 0
+            good_ids = d1_ids
+            # filter for being able to check for quality of xday alignment
+            if score_threshold > 0:
+                orig_num_ids = len(good_ids)
+                highscore_ids = _group_ids_score(days, score_threshold)
+                good_ids = np.intersect1d(good_ids, highscore_ids)
+                if verbose:
+                    print('Cell score threshold ' + str(score_threshold) + ':'
+                          + ' ' + str(len(highscore_ids)) + ' above threshold:'
+                          + ' good_ids updated to ' + str(len(good_ids)) + '/'
+                          + str(orig_num_ids) + ' cells.')
+                # update saving tag
+                score_tag = '_score0pt' + str(int(score_threshold*10))
+            else:
+                score_tag = ''
+            d1_ids_bool = np.isin(d1_ids, good_ids)
             d1_sorter = np.argsort(d1_ids[d1_ids_bool])
         ids = d1_ids[d1_ids_bool][d1_sorter]
 
@@ -1290,16 +1320,16 @@ def groupday_tca(
 
     # concatenate and save df for the day
     meta_path = os.path.join(
-        save_dir, str(day1.mouse) + '_' + str(group_by) + nt_tag +
+        save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag +
         '_df_group_meta.pkl')
     input_tensor_path = os.path.join(
-        save_dir, str(day1.mouse) + '_' + str(group_by) + nt_tag +
+        save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag +
         '_group_tensor_' + str(trace_type) + '.npy')
     input_ids_path = os.path.join(
-        save_dir, str(day1.mouse) + '_' + str(group_by) + nt_tag +
+        save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag +
         '_group_ids_' + str(trace_type) + '.npy')
     output_tensor_path = os.path.join(
-        save_dir, str(day1.mouse) + '_' + str(group_by) + nt_tag +
+        save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag +
         '_group_decomp_' + str(trace_type) + '.npy')
     meta.to_pickle(meta_path)
     np.save(input_tensor_path, group_tensor)
