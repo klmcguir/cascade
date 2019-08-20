@@ -9,6 +9,7 @@ import os
 from . import utils
 from . import paths
 from copy import deepcopy
+from functools import reduce
 
 
 def singleday_tca(
@@ -677,7 +678,8 @@ def triday_tca(
         exclude_conds=('blank', 'blank_reward', 'pavlovian'),
         driven=True,
         drive_css=('0', '135', '270'),
-        drive_threshold=15):
+        drive_threshold=15,
+        score_threshold=0):
     """
     Perform tensor component analysis (TCA) on data aligned
     across three days.
@@ -722,7 +724,7 @@ def triday_tca(
             'exclude_tags': exclude_tags, 'exclude_conds': exclude_conds,
             'driven': driven, 'drive_css': drive_css,
             'drive_threshold': drive_threshold}
-    save_dir = paths.tca_path(mouse, 'pair', pars=pars)
+    save_dir = paths.tca_path(mouse, 'tri', pars=pars)
 
     days = flow.DateSorter.frommeta(
         mice=[mouse], tags=tags, exclude_tags=['bad'])
@@ -749,6 +751,19 @@ def triday_tca(
         # breaking when only pavs are shown
         if driven:
             good_ids = _group_drive_ids(days, drive_css, drive_threshold)
+            # filter for being able to check for quality of xday alignment
+            if score_threshold > 0:
+                highscore_ids = _group_ids_score(days, score_threshold)
+                good_ids = np.intersect1d(good_ids, highscore_ids)
+                if verbose:
+                    print('Cell score threshold ' + str(score_threshold) + ':'
+                          + ' ' + str(len(highscore_ids)) + ' above threshold:'
+                          + ' good_ids updated to ' + str(len(good_ids))
+                          + ' cells.')
+                # update saving tag
+                score_tag = '_score' + str(score_threshold)
+            else:
+                score_tag = ''
             d1_ids_bool = np.isin(d1_ids, good_ids)
             d1_sorter = np.argsort(d1_ids[d1_ids_bool])
             d2_ids_bool = np.isin(d2_ids, good_ids)
@@ -756,31 +771,47 @@ def triday_tca(
             d3_ids_bool = np.isin(d3_ids, good_ids)
             d3_sorter = np.argsort(d3_ids[d3_ids_bool])
         else:
-            d1_ids_bool = np.ones(np.shape(d1_ids)) > 0
+            good_ids = reduce(np.union1d, (d1_ids, d2_ids, d3_ids))
+            # filter for being able to check for quality of xday alignment
+            if score_threshold > 0:
+                highscore_ids = _group_ids_score(days, score_threshold)
+                good_ids = np.intersect1d(good_ids, highscore_ids)
+                if verbose:
+                    print('Cell score threshold ' + str(score_threshold) + ':'
+                          + ' ' + str(len(highscore_ids)) + ' above threshold:'
+                          + ' good_ids updated to ' + str(len(good_ids))
+                          + ' cells.')
+                # update saving tag
+                score_tag = '_score' + str(score_threshold)
+            else:
+                score_tag = ''
+            d1_ids_bool = np.isin(d1_ids, good_ids)
             d1_sorter = np.argsort(d1_ids[d1_ids_bool])
-            d2_ids_bool = np.ones(np.shape(d2_ids)) > 0
+            d2_ids_bool = np.isin(d2_ids, good_ids)
             d2_sorter = np.argsort(d2_ids[d2_ids_bool])
-            d3_ids_bool = np.ones(np.shape(d3_ids)) > 0
+            d3_ids_bool = np.isin(d3_ids, good_ids)
             d3_sorter = np.argsort(d3_ids[d3_ids_bool])
-        ids = d1_ids[d1_ids_bool][d1_sorter]
-
-        # check that the sort worked
-        if np.nansum(np.sort(d1_ids[d1_ids_bool]) - np.sort(d2_ids[d2_ids_bool])) != 0:
-            print('Error: cell IDs were not matched between days: ' + str(day1) + ', ' + str(day2))
-            continue
-
-        # TODO add in additional filter for being able to check for quality of xday alignment
+        # set final filtered and sorted ids
+        final1_ids = d1_ids[d1_ids_bool][d1_sorter]
+        final2_ids = d2_ids[d2_ids_bool][d2_sorter]
+        final3_ids = d3_ids[d3_ids_bool][d3_sorter]
 
         # get all runs for both days
         d1_runs = day1.runs(exclude_tags=['bad'])
         d2_runs = day2.runs(exclude_tags=['bad'])
-        # filter for only runs without certain tags
-        d1_runs = [run for run in d1_runs if not any(np.isin(run.tags, exclude_tags))]
-        d2_runs = [run for run in d2_runs if not any(np.isin(run.tags, exclude_tags))]
+        d3_runs = day3.runs(exclude_tags=['bad'])
 
-        # build tensors for all correct runs and trials if you still have trials after filtering
-        # day 1
-        if d1_runs and d2_runs:
+        # filter for only runs without certain tags
+        d1_runs = [
+            run for run in d1_runs if not any(np.isin(run.tags, exclude_tags))]
+        d2_runs = [
+            run for run in d2_runs if not any(np.isin(run.tags, exclude_tags))]
+        d3_runs = [
+            run for run in d3_runs if not any(np.isin(run.tags, exclude_tags))]
+
+        # build tensors for all correct runs and trials if you still have
+        # trials after filtering
+        if d1_runs and d2_runs and d3_runs:
 
             d1_tensor, d1_meta = _getcstraces_filtered(
                 d1_runs,
@@ -790,7 +821,7 @@ def triday_tca(
                 trace_type=trace_type,
                 start_time=start_time,
                 end_time=end_time,
-                downsample=True,
+                downsample=downsample,
                 clean_artifacts=clean_artifacts,
                 thresh=thresh,
                 warp=warp,
@@ -806,7 +837,23 @@ def triday_tca(
                 trace_type=trace_type,
                 start_time=start_time,
                 end_time=end_time,
-                downsample=True,
+                downsample=downsample,
+                clean_artifacts=clean_artifacts,
+                thresh=thresh,
+                warp=warp,
+                smooth=smooth,
+                smooth_win=smooth_win)
+
+            # day 3
+            d3_tensor, d3_meta = _getcstraces_filtered(
+                d3_runs,
+                d3_ids_bool,
+                d3_sorter,
+                cs=cs,
+                trace_type=trace_type,
+                start_time=start_time,
+                end_time=end_time,
+                downsample=downsample,
                 clean_artifacts=clean_artifacts,
                 thresh=thresh,
                 warp=warp,
@@ -814,41 +861,93 @@ def triday_tca(
                 smooth_win=smooth_win)
 
             # concatenate matched cells across trials 3rd dim (aka, 2)
-            tensor = np.concatenate((d1_tensor, d2_tensor), axis=2)
+            tensor_list = [d1_tensor, d2_tensor, d3_tensor]
+            meta_list = [d1_meta, d2_meta, d3_meta]
+            id_list = [final1_ids, final2_ids, final3_ids]
 
-            # concatenate all trial metadata in pd dataframe
-            pair_meta = pd.concat([d1_meta, d2_meta], axis=0)
+            # get total trial number across all days/runs
+            meta = pd.concat(meta_list, axis=0)
+            trial_num = len(meta.reset_index()['trial_idx'])
 
-            # concatenate and save df for the day
-            meta_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
-                                     + '_' + str(day2.date) + '_df_pair_meta.pkl')
-            input_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
-                             + '_' + str(day2.date) + '_pair_tensor_' + str(trace_type) + '.npy')
-            input_ids_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
-                             + '_' + str(day2.date) + '_pair_ids_' + str(trace_type) + '.npy')
-            output_tensor_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
-                             + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
-            pair_meta.to_pickle(meta_path)
-            np.save(input_tensor_path, tensor, ids)
-            np.save(input_ids_path, ids)
+            # get union of ids. Use these for indexing and splicing tensors together
+            id_union = np.unique(np.concatenate(id_list, axis=0))
+            cell_num = len(id_union)
 
-            # run TCA - iterate over different fitting methods
-            if np.isin('mcp_als', method) | np.isin('mncp_hals', method):
-                mask = ~np.isnan(group_tensor)
-                fit_options['mask'] = mask
-            group_tensor[np.isnan(group_tensor)] = 0
-            ensemble = {}
-            for m in method:
-                ensemble[m] = tt.Ensemble(
-                    fit_method=m, fit_options=deepcopy(fit_options))
-                ensemble[m].fit(group_tensor, ranks=range(1, rank+1),
-                                replicates=replicates, verbose=False)
-            np.save(output_tensor_path, ensemble)
+        # build a single large tensor leaving nans where cell is not found
+        trial_start = 0
+        trial_end = 0
+        group_tensor = np.zeros((cell_num, np.shape(tensor_list[0])[1], trial_num))
+        group_tensor[:] = np.nan
+        for i in range(len(tensor_list)):
+            trial_end += np.shape(tensor_list[i])[2]
+            for c, k in enumerate(id_list[i]):
+                celln_all_trials = tensor_list[i][c, :, :]
+                group_tensor[(id_union == k), :, trial_start:trial_end] = celln_all_trials
+            trial_start += np.shape(tensor_list[i])[2]
 
-            # print output so you don't go crazy waiting
+        # allow for cells with low number of trials to be dropped
+        if nan_trial_threshold:
+            # update saving tag
+            nt_tag = '_nantrial' + str(nan_trial_threshold)
+            # remove cells with too many nan trials
+            ntrials = np.shape(group_tensor)[2]
+            nbadtrials = np.sum(np.isnan(group_tensor[:, 0, :]), 1)
+            badtrialratio = nbadtrials/ntrials
+            badcell_indexer = badtrialratio < nan_trial_threshold
+            group_tensor = group_tensor[badcell_indexer, :, :]
             if verbose:
-                print('Pair: ' + str(c+1) + ': ' + str(day1.mouse) + ': ' +
-                      str(day1.date) + ', ' + str(day2.date) + ': done.')
+                print('Removed ' + str(np.sum(~badcell_indexer)) +
+                      ' cells from tensor:' + ' badtrialratio < ' +
+                      str(nan_trial_threshold))
+                print('Kept ' + str(np.sum(badcell_indexer)) +
+                      ' cells from tensor:' + ' badtrialratio < ' +
+                      str(nan_trial_threshold))
+        else:
+            nt_tag = ''
+
+        # just so you have a clue how big the tensor is
+        if verbose:
+            print('Tensor decomp about to begin: tensor shape = '
+                  + str(np.shape(group_tensor)))
+
+        # concatenate and save df for the day
+        meta_path = os.path.join(
+            save_dir, str(day1.mouse) + '_' + str(day1.date)
+            + '_' + str(day2.date) + '_' + str(day3.date) + nt_tag +
+            + score_tag + '_df_tri_meta.pkl')
+        input_tensor_path = os.path.join(
+            save_dir, str(day1.mouse) + '_' + str(day1.date)
+            + '_' + str(day2.date) + '_' + str(day3.date) + nt_tag +
+            + score_tag + '_tri_tensor_' + str(trace_type) + '.npy')
+        input_ids_path = os.path.join(
+            save_dir, str(day1.mouse) + '_' + str(day1.date)
+            + '_' + str(day2.date) + '_' + str(day3.date) + nt_tag +
+            + score_tag + '_tri_ids_' + str(trace_type) + '.npy')
+        output_tensor_path = os.path.join(
+            save_dir, str(day1.mouse) + '_' + str(day1.date)
+            + '_' + str(day2.date) + '_' + str(day3.date) + nt_tag +
+            + score_tag + '_tri_decomp_' + str(trace_type) + '.npy')
+        meta.to_pickle(meta_path)
+        np.save(input_tensor_path, group_tensor)
+        np.save(input_ids_path, id_union)
+
+        # run TCA - iterate over different fitting methods
+        if np.isin('mcp_als', method) | np.isin('mncp_hals', method):
+            mask = ~np.isnan(group_tensor)
+            fit_options['mask'] = mask
+        group_tensor[np.isnan(group_tensor)] = 0
+        ensemble = {}
+        for m in method:
+            ensemble[m] = tt.Ensemble(
+                fit_method=m, fit_options=deepcopy(fit_options))
+            ensemble[m].fit(group_tensor, ranks=range(1, rank+1),
+                            replicates=replicates, verbose=False)
+        np.save(output_tensor_path, ensemble)
+
+        # print output so you don't go crazy waiting
+        if verbose:
+            print(str(day1.mouse) + ': triplet ' + str(day1.date) + ', '
+                  + str(day2.date) + ', ' + str(day3.date) + ': done.')
 
 
 def groupday_tca(
@@ -1149,7 +1248,7 @@ def groupday_tca(
     id_union = np.unique(np.concatenate(id_list, axis=0))
     cell_num = len(id_union)
 
-    # build a single large tensor leaving zeros where cell is not found
+    # build a single large tensor leaving nans where cell is not found
     trial_start = 0
     trial_end = 0
     group_tensor = np.zeros((cell_num, np.shape(tensor_list[0])[1], trial_num))
@@ -1251,9 +1350,30 @@ def _group_drive_ids(days, drive_css, drive_threshold, drive_type='trial'):
                 print(str(day1) + ' requested ' + dcs + ' ' + drive_type +
                       ': no match to what was shown (probably pav only).')
         d1_drive = np.max(d1_drive, axis=0)
-        d1_ids_bool = np.array(d1_drive) > drive_threshold
         d1_drive_ids = d1_ids[np.array(d1_drive) > drive_threshold]
         good_ids.extend(d1_drive_ids)
+
+    return np.unique(good_ids)
+
+
+def _group_ids_score(days, score_threshold):
+    """
+    Get an array of all unique ids with an alignment cell score above threshold
+    on any day for a given DaySorter.
+    """
+
+    good_ids = []
+    for day1 in days:
+        # get cell_ids
+        d1_ids = flow.xday._read_crossday_ids(day1.mouse, day1.date)
+        d1_scores = flow.xday._read_crossday_scores(day1.mouse, day1.date)
+        # skip empty if there is no crossday alignment file
+        if len(d1_ids) == 0 or len(d1_scores) == 0:
+            continue
+        d1_ids = np.array([int(s) for s in d1_ids])
+        # filter cells based on visual/trial drive across all cs
+        d1_highscore_ids = d1_ids[np.array(d1_drive) > score_threshold]
+        good_ids.extend(d1_highscore_ids)
 
     return np.unique(good_ids)
 
