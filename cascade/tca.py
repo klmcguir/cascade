@@ -916,19 +916,19 @@ def triday_tca(
         # concatenate and save df for the day
         meta_path = os.path.join(
             save_dir, str(day1.mouse) + '_' + str(day1.date)
-            + '_' + str(day2.date) + '_' + str(day3.date) + nt_tag +
+            + '_' + str(day2.date) + '_' + str(day3.date) + nt_tag
             + score_tag + '_df_tri_meta.pkl')
         input_tensor_path = os.path.join(
             save_dir, str(day1.mouse) + '_' + str(day1.date)
-            + '_' + str(day2.date) + '_' + str(day3.date) + nt_tag +
+            + '_' + str(day2.date) + '_' + str(day3.date) + nt_tag
             + score_tag + '_tri_tensor_' + str(trace_type) + '.npy')
         input_ids_path = os.path.join(
             save_dir, str(day1.mouse) + '_' + str(day1.date)
-            + '_' + str(day2.date) + '_' + str(day3.date) + nt_tag +
+            + '_' + str(day2.date) + '_' + str(day3.date) + nt_tag
             + score_tag + '_tri_ids_' + str(trace_type) + '.npy')
         output_tensor_path = os.path.join(
             save_dir, str(day1.mouse) + '_' + str(day1.date)
-            + '_' + str(day2.date) + '_' + str(day3.date) + nt_tag +
+            + '_' + str(day2.date) + '_' + str(day3.date) + nt_tag
             + score_tag + '_tri_decomp_' + str(trace_type) + '.npy')
         meta.to_pickle(meta_path)
         np.save(input_tensor_path, group_tensor)
