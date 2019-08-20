@@ -761,7 +761,7 @@ def triday_tca(
                     print('Cell score threshold ' + str(score_threshold) + ':'
                           + ' ' + str(len(highscore_ids)) + ' above threshold:'
                           + ' good_ids updated to ' + str(len(good_ids)) + '/'
-                          + str(len(orig_num_ids)) + ' cells.')
+                          + str(orig_num_ids) + ' cells.')
                 # update saving tag
                 score_tag = '_score0pt' + str(int(score_threshold*10))
             else:
@@ -783,7 +783,7 @@ def triday_tca(
                     print('Cell score threshold ' + str(score_threshold) + ':'
                           + ' ' + str(len(highscore_ids)) + ' above threshold:'
                           + ' good_ids updated to ' + str(len(good_ids)) + '/'
-                          + str(len(orig_num_ids)) + ' cells.')
+                          + str(orig_num_ids) + ' cells.')
                 # update saving tag
                 score_tag = '_score0pt' + str(int(score_threshold*10))
             else:
