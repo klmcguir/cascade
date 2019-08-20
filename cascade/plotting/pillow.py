@@ -7,6 +7,7 @@ import pool
 import pandas as pd
 import numpy as np
 import os
+from .. import paths, load
 
 
 def correlate_pillow_tca(
@@ -63,9 +64,9 @@ def correlate_pillow_tca(
     dfr = pd.DataFrame(data, index=index)
 
     # Load TCA results
-    tensor, ids, clus, meta = cas.load.groupday_tca(
+    tensor, ids, clus, meta = load.groupday_tca(
         mouse, word=word, group_by=group_by)
-    savepath = cas.paths.tca_plots(
+    savepath = paths.tca_plots(
         mouse, 'group', word=word, group_pars={'group_by': group_by})
     savepath = os.path.join(savepath, 'psytrack-vs-tca')
     if not os.path.isdir(savepath): os.mkdir(savepath)
