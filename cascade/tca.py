@@ -754,13 +754,14 @@ def triday_tca(
             good_ids = _group_drive_ids(days, drive_css, drive_threshold)
             # filter for being able to check for quality of xday alignment
             if score_threshold > 0:
+                orig_num_ids = len(good_ids)
                 highscore_ids = _group_ids_score(days, score_threshold)
                 good_ids = np.intersect1d(good_ids, highscore_ids)
                 if verbose:
                     print('Cell score threshold ' + str(score_threshold) + ':'
                           + ' ' + str(len(highscore_ids)) + ' above threshold:'
-                          + ' good_ids updated to ' + str(len(good_ids))
-                          + ' cells.')
+                          + ' good_ids updated to ' + str(len(good_ids)) + '/'
+                          + str(len(orig_num_ids)) + ' cells.')
                 # update saving tag
                 score_tag = '_score0pt' + str(int(score_threshold*10))
             else:
@@ -775,13 +776,14 @@ def triday_tca(
             good_ids = reduce(np.union1d, (d1_ids, d2_ids, d3_ids))
             # filter for being able to check for quality of xday alignment
             if score_threshold > 0:
+                orig_num_ids = len(good_ids)
                 highscore_ids = _group_ids_score(days, score_threshold)
                 good_ids = np.intersect1d(good_ids, highscore_ids)
                 if verbose:
                     print('Cell score threshold ' + str(score_threshold) + ':'
                           + ' ' + str(len(highscore_ids)) + ' above threshold:'
-                          + ' good_ids updated to ' + str(len(good_ids))
-                          + ' cells.')
+                          + ' good_ids updated to ' + str(len(good_ids)) + '/'
+                          + str(len(orig_num_ids)) + ' cells.')
                 # update saving tag
                 score_tag = '_score0pt' + str(int(score_threshold*10))
             else:
