@@ -51,6 +51,7 @@ def tca_path(mouse, grouping, pars=None, word=None, group_pars=None):
     # check inputs
     if ('single' != grouping and
         'pair' != grouping and
+        'tri' != grouping and
         'group' != grouping):
         print('Unacceptable grouping: try: single or pair.')
         return
@@ -125,6 +126,7 @@ def tca_plots(mouse, grouping, pars=None, word=None, group_pars=None):
     # check inputs
     if ('single' != grouping and
         'pair' != grouping and
+        'tri' != grouping and
         'group' != grouping):
         print('Unacceptable grouping: try: single or pair.')
         return
