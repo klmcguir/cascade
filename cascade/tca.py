@@ -679,7 +679,8 @@ def triday_tca(
         driven=True,
         drive_css=('0', '135', '270'),
         drive_threshold=15,
-        score_threshold=0):
+        score_threshold=0,
+        nan_trial_threshold=None):
     """
     Perform tensor component analysis (TCA) on data aligned
     across three days.
