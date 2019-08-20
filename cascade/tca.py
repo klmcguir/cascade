@@ -1373,7 +1373,7 @@ def _group_ids_score(days, score_threshold):
             continue
         d1_ids = np.array([int(s) for s in d1_ids])
         # filter cells based on visual/trial drive across all cs
-        d1_highscore_ids = d1_ids[np.array(d1_drive) > score_threshold]
+        d1_highscore_ids = d1_ids[np.array(d1_scores) > score_threshold]
         good_ids.extend(d1_highscore_ids)
 
     return np.unique(good_ids)
