@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import os
 from .. import paths, load
+from scipy.stats import pearsonr
 
 
 def correlate_pillow_tca(
