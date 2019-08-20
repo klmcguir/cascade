@@ -762,7 +762,7 @@ def triday_tca(
                           + ' good_ids updated to ' + str(len(good_ids))
                           + ' cells.')
                 # update saving tag
-                score_tag = '_score' + str(score_threshold)
+                score_tag = '_score0pt' + str(int(score_threshold*10))
             else:
                 score_tag = ''
             d1_ids_bool = np.isin(d1_ids, good_ids)
@@ -783,7 +783,7 @@ def triday_tca(
                           + ' good_ids updated to ' + str(len(good_ids))
                           + ' cells.')
                 # update saving tag
-                score_tag = '_score' + str(score_threshold)
+                score_tag = '_score0pt' + str(int(score_threshold*10))
             else:
                 score_tag = ''
             d1_ids_bool = np.isin(d1_ids, good_ids)
