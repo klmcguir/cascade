@@ -322,7 +322,7 @@ def groupmouse_correlate_pillow_tca(
         ori = 'all'
         save_pls = False
         iteration = 0
-        for rank in tensor.results:
+        for rank in [18]:  # tensor.results
             data = {}
             for i in range(rank):
                 fac = tensor.results[rank][iteration].factors[2][:,i]
@@ -350,53 +350,53 @@ def groupmouse_correlate_pillow_tca(
             if mouse == mice[0]:
                 y_label = single_ori.columns
 
-            # stick chunks of corr matrix together
-            x_labels.append([mouse + ' ' + s for s in single_ori.columns[0:7]])
-            corr_list.append(corrmat[:, 0:7])
-            pmat_list.append(pmat[:, 0:7])
+        # stick chunks of corr matrix together
+        x_labels.append([mouse + ' ' + s for s in single_ori.columns[0:7]])
+        corr_list.append(corrmat[:, 0:7])
+        pmat_list.append(pmat[:, 0:7])
 
-        # concatenate final matrix together
-        corrmat = np.concatenate(corr_list, axis=1)
-        pmat = np.concatenate(pmat_list, axis=1)
-        annot = True
-        figsize = (16, 16)
+    # concatenate final matrix together
+    corrmat = np.concatenate(corr_list, axis=1)
+    pmat = np.concatenate(pmat_list, axis=1)
+    annot = True
+    figsize = (16, 16)
 
-        # create your path for saving
-        rankpath = os.path.join(savepath, 'rank ' + str(rank))
-        if not os.path.isdir(rankpath): os.mkdir(rankpath)
-        var_path_prefix = os.path.join(
-            rankpath, mouse + '_psytrack-vs-tca_ori-' + str(ori) +
-            '_rank-' + str(rank))
+    # create your path for saving
+    rankpath = os.path.join(savepath, 'rank ' + str(rank))
+    if not os.path.isdir(rankpath): os.mkdir(rankpath)
+    var_path_prefix = os.path.join(
+        rankpath, mouse + '_psytrack-vs-tca_ori-' + str(ori) +
+        '_rank-' + str(rank))
 
-        plt.figure(figsize=figsize)
-        sns.heatmap(corrmat, annot=annot, xticklabels=x_labels,
-                    yticklabels=y_label,
-                    square=True, cbar_kws={'label': 'correlation (R)'})
-        plt.xticks(rotation=45, ha='right')
-        plt.title('Pearson-R corrcoef: rank ' + str(rank))
-        if save_pls:
-            plt.savefig(var_path_prefix + '_corr.pdf', bbox_inches='tight')
+    plt.figure(figsize=figsize)
+    sns.heatmap(corrmat, annot=annot, xticklabels=x_labels,
+                yticklabels=y_label,
+                square=True, cbar_kws={'label': 'correlation (R)'})
+    plt.xticks(rotation=45, ha='right')
+    plt.title('Pearson-R corrcoef: rank ' + str(rank))
+    if save_pls:
+        plt.savefig(var_path_prefix + '_corr.pdf', bbox_inches='tight')
 
-        plt.figure(figsize=figsize)
-        sns.heatmap(pmat, annot=annot, xticklabels=x_labels, yticklabels=y_label,
-                    square=True, cbar_kws={'label': 'p-value'})
-        plt.xticks(rotation=45, ha='right')
-        plt.title('Pearson-R p-values: rank ' + str(rank))
-        if save_pls:
-            plt.savefig(var_path_prefix + '_pvals.pdf', bbox_inches='tight')
+    plt.figure(figsize=figsize)
+    sns.heatmap(pmat, annot=annot, xticklabels=x_labels, yticklabels=y_label,
+                square=True, cbar_kws={'label': 'p-value'})
+    plt.xticks(rotation=45, ha='right')
+    plt.title('Pearson-R p-values: rank ' + str(rank))
+    if save_pls:
+        plt.savefig(var_path_prefix + '_pvals.pdf', bbox_inches='tight')
 
-        plt.figure(figsize=figsize)
-        logger = np.log10(pmat).flatten()
-        vmin = np.nanmin(logger[np.isfinite(logger)])
-        vmax = 0
-        sns.heatmap(np.log10(pmat), annot=annot, xticklabels=y_labels,
-                    yticklabels=x_labels, vmin=vmin, vmax=vmax,
-                    square=True, cbar_kws={'label': 'log$_{10}$(p-value)'})
-        plt.xticks(rotation=45, ha='right')
-        plt.title('Pearson-R log$_{10}$(p-values): rank ' + str(rank))
-        if save_pls:
-            plt.savefig(var_path_prefix + '_log10pvals.pdf',
-                        bbox_inches='tight')
+    plt.figure(figsize=figsize)
+    logger = np.log10(pmat).flatten()
+    vmin = np.nanmin(logger[np.isfinite(logger)])
+    vmax = 0
+    sns.heatmap(np.log10(pmat), annot=annot, xticklabels=y_labels,
+                yticklabels=x_labels, vmin=vmin, vmax=vmax,
+                square=True, cbar_kws={'label': 'log$_{10}$(p-value)'})
+    plt.xticks(rotation=45, ha='right')
+    plt.title('Pearson-R log$_{10}$(p-values): rank ' + str(rank))
+    if save_pls:
+        plt.savefig(var_path_prefix + '_log10pvals.pdf',
+                    bbox_inches='tight')
 
-        # close plots after saving to save memory
-        plt.close('all')
+    # close plots after saving to save memory
+    plt.close('all')
