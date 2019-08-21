@@ -356,8 +356,8 @@ def groupmouse_correlate_pillow_tca(
             pmat_list.append(pmat[:, 0:7])
 
         # concatenate final matrix together
-        corrmat = np.concat(corr_list, axis=1)
-        pmat = np.concat(pmat_list, axis=1)
+        corrmat = np.concatenate(corr_list, axis=1)
+        pmat = np.concatenate(pmat_list, axis=1)
         annot = True
         figsize = (16, 16)
 
