@@ -389,8 +389,8 @@ def groupmouse_correlate_pillow_tca(
     logger = np.log10(pmat).flatten()
     vmin = np.nanmin(logger[np.isfinite(logger)])
     vmax = 0
-    sns.heatmap(np.log10(pmat), annot=annot, xticklabels=y_label,
-                yticklabels=x_labels, vmin=vmin, vmax=vmax,
+    sns.heatmap(np.log10(pmat), annot=annot, xticklabels=x_labels,
+                yticklabels=y_label, vmin=vmin, vmax=vmax,
                 square=False, cbar_kws={'label': 'log$_{10}$(p-value)'})
     plt.xticks(rotation=45, ha='right')
     plt.title('Pearson-R log$_{10}$(p-values): rank ' + str(rank))
