@@ -351,9 +351,9 @@ def groupmouse_correlate_pillow_tca(
                 y_label = single_ori.columns
 
         # stick chunks of corr matrix together
-        x_labels.extend([mouse + ' ' + s for s in single_ori.columns[0:7]])
-        corr_list.append(corrmat[:, 0:7])
-        pmat_list.append(pmat[:, 0:7])
+        x_labels.extend([mouse + ' ' + s for s in single_ori.columns[0:8]])
+        corr_list.append(corrmat[:, 0:8])
+        pmat_list.append(pmat[:, 0:8])
 
     # concatenate final matrix together
     corrmat = np.concatenate(corr_list, axis=1)
