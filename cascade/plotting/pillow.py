@@ -359,7 +359,7 @@ def groupmouse_correlate_pillow_tca(
     corrmat = np.concatenate(corr_list, axis=1)
     pmat = np.concatenate(pmat_list, axis=1)
     annot = True
-    figsize = (80, 10)
+    figsize = (80, 20)
 
     # create your path for saving
     rankpath = os.path.join(savepath, 'rank ' + str(rank))
