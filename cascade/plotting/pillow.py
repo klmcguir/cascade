@@ -359,7 +359,7 @@ def groupmouse_correlate_pillow_tca(
     corrmat = np.concatenate(corr_list, axis=1)
     pmat = np.concatenate(pmat_list, axis=1)
     annot = True
-    figsize = (10, 80)
+    figsize = (80, 10)
 
     # create your path for saving
     rankpath = os.path.join(savepath, 'rank ' + str(rank))
@@ -368,8 +368,8 @@ def groupmouse_correlate_pillow_tca(
         rankpath, mouse + '_psytrack-vs-tca_ori-' + str(ori) +
         '_rank-' + str(rank))
 
-    # plt.figure(figsize=figsize)
-    plt.figure()
+    plt.figure(figsize=figsize)
+    # plt.figure()
     sns.heatmap(corrmat, annot=annot, xticklabels=x_labels,
                 yticklabels=y_label,
                 square=False, cbar_kws={'label': 'correlation (R)'})
@@ -378,8 +378,8 @@ def groupmouse_correlate_pillow_tca(
     if save_pls:
         plt.savefig(var_path_prefix + '_corr.pdf', bbox_inches='tight')
 
-    # plt.figure(figsize=figsize)
-    plt.figure()
+    plt.figure(figsize=figsize)
+    # plt.figure()
     sns.heatmap(pmat, annot=annot, xticklabels=x_labels, yticklabels=y_label,
                 square=False, cbar_kws={'label': 'p-value'})
     plt.xticks(rotation=45, ha='right')
@@ -387,8 +387,8 @@ def groupmouse_correlate_pillow_tca(
     if save_pls:
         plt.savefig(var_path_prefix + '_pvals.pdf', bbox_inches='tight')
 
-    # plt.figure(figsize=figsize)
-    plt.figure()
+    plt.figure(figsize=figsize)
+    # plt.figure()
     logger = np.log10(pmat).flatten()
     vmin = np.nanmin(logger[np.isfinite(logger)])
     vmax = 0
