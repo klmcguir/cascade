@@ -389,7 +389,7 @@ def groupmouse_correlate_pillow_tca(
     logger = np.log10(pmat).flatten()
     vmin = np.nanmin(logger[np.isfinite(logger)])
     vmax = 0
-    sns.heatmap(np.log10(pmat), annot=annot, xticklabels=y_labels,
+    sns.heatmap(np.log10(pmat), annot=annot, xticklabels=y_label,
                 yticklabels=x_labels, vmin=vmin, vmax=vmax,
                 square=True, cbar_kws={'label': 'log$_{10}$(p-value)'})
     plt.xticks(rotation=45, ha='right')
