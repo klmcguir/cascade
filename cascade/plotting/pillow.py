@@ -351,7 +351,7 @@ def groupmouse_correlate_pillow_tca(
                 y_label = single_ori.columns
 
         # stick chunks of corr matrix together
-        x_labels.append([mouse + ' ' + s for s in single_ori.columns[0:7]])
+        x_labels.extend([mouse + ' ' + s for s in single_ori.columns[0:7]])
         corr_list.append(corrmat[:, 0:7])
         pmat_list.append(pmat[:, 0:7])
 
@@ -359,7 +359,7 @@ def groupmouse_correlate_pillow_tca(
     corrmat = np.concatenate(corr_list, axis=1)
     pmat = np.concatenate(pmat_list, axis=1)
     annot = True
-    figsize = (16, 16)
+    figsize = (20, 16)
 
     # create your path for saving
     rankpath = os.path.join(savepath, 'rank ' + str(rank))
