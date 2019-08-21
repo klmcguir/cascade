@@ -359,7 +359,7 @@ def groupmouse_correlate_pillow_tca(
     corrmat = np.concatenate(corr_list, axis=1)
     pmat = np.concatenate(pmat_list, axis=1)
     annot = True
-    figsize = (20, 16)
+    figsize = (16, 16*4)
 
     # create your path for saving
     rankpath = os.path.join(savepath, 'rank ' + str(rank))
@@ -371,7 +371,7 @@ def groupmouse_correlate_pillow_tca(
     plt.figure(figsize=figsize)
     sns.heatmap(corrmat, annot=annot, xticklabels=x_labels,
                 yticklabels=y_label,
-                square=True, cbar_kws={'label': 'correlation (R)'})
+                square=False, cbar_kws={'label': 'correlation (R)'})
     plt.xticks(rotation=45, ha='right')
     plt.title('Pearson-R corrcoef: rank ' + str(rank))
     if save_pls:
@@ -379,7 +379,7 @@ def groupmouse_correlate_pillow_tca(
 
     plt.figure(figsize=figsize)
     sns.heatmap(pmat, annot=annot, xticklabels=x_labels, yticklabels=y_label,
-                square=True, cbar_kws={'label': 'p-value'})
+                square=False, cbar_kws={'label': 'p-value'})
     plt.xticks(rotation=45, ha='right')
     plt.title('Pearson-R p-values: rank ' + str(rank))
     if save_pls:
@@ -391,7 +391,7 @@ def groupmouse_correlate_pillow_tca(
     vmax = 0
     sns.heatmap(np.log10(pmat), annot=annot, xticklabels=y_label,
                 yticklabels=x_labels, vmin=vmin, vmax=vmax,
-                square=True, cbar_kws={'label': 'log$_{10}$(p-value)'})
+                square=False, cbar_kws={'label': 'log$_{10}$(p-value)'})
     plt.xticks(rotation=45, ha='right')
     plt.title('Pearson-R log$_{10}$(p-values): rank ' + str(rank))
     if save_pls:
@@ -399,4 +399,5 @@ def groupmouse_correlate_pillow_tca(
                     bbox_inches='tight')
 
     # close plots after saving to save memory
-    # plt.close('all')
+    if save_pls:
+        plt.close('all')
