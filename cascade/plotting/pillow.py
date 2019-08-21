@@ -399,4 +399,4 @@ def groupmouse_correlate_pillow_tca(
                     bbox_inches='tight')
 
     # close plots after saving to save memory
-    plt.close('all')
+    # plt.close('all')
