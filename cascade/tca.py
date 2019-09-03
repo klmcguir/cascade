@@ -1028,6 +1028,13 @@ def groupday_tca(
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start')
 
+    elif group_by.lower() == 'learning':
+        use_dprime = False
+        tags = 'learning'
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated', 'learning_start',
+                        'reversal1_start')
+
     elif group_by.lower() == 'high_dprime_learning':
         use_dprime = True
         up_or_down = 'up'
@@ -1239,6 +1246,11 @@ def groupday_tca(
                 dfr = _trialmetafromrun(run)
                 # skip runs with no stimulus presentations
                 if len(dfr) == 0:
+                    continue
+                # skip runs with only one type of stimulus presentation
+                if len(np.unique(dfr['orientation'].values)) <= 1:
+                    if verbose:
+                        print('Skipping, only 1 ori presented: ', run)
                     continue
                 # subselect metadata if you are only running certain cs
                 if cs != '':
