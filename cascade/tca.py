@@ -1037,7 +1037,7 @@ def groupday_tca(
 
     elif group_by.lower() == 'naive_and_learning':
         use_dprime = False
-        tags = ('learning', 'naive')
+        tags = ['naive', 'learning']
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start',
                         'reversal1_start')
