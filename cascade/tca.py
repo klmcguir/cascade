@@ -1035,6 +1035,13 @@ def groupday_tca(
                         'retinotopy', 'sated', 'learning_start',
                         'reversal1_start')
 
+    elif group_by.lower() == 'naive_and_learning':
+        use_dprime = False
+        tags = ['learning', 'naive']
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated', 'learning_start',
+                        'reversal1_start')
+
     elif group_by.lower() == 'high_dprime_learning':
         use_dprime = True
         up_or_down = 'up'
