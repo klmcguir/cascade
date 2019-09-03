@@ -1038,6 +1038,12 @@ def groupday_tca(
     elif group_by.lower() == 'naive_and_learning':
         use_dprime = False
         tags = ['naive', 'learning']
+        days = flow.DateSorter.frommeta(
+            mice=[mouse], tags='naive', exclude_tags=['bad'])
+        days.extend(
+            flow.DateSorter.frommeta(
+                mice=[mouse], tags='learning', exclude_tags=['bad']))
+        dates = set(days)
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start',
                         'reversal1_start')
@@ -1146,7 +1152,8 @@ def groupday_tca(
     save_dir = paths.tca_path(mouse, 'group', pars=pars, group_pars=group_pars)
 
     # get DateSorter object
-    if np.isin(group_by.lower(), ['naive_vs_high_dprime', 'l_vs_r1']):
+    if np.isin(group_by.lower(),
+               ['naive_vs_high_dprime', 'l_vs_r1', 'naive_and_learning']):
         days = flow.DateSorter(
             dates=dates, exclude_tags=['bad'])
     else:
