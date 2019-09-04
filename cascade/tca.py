@@ -1291,6 +1291,10 @@ def groupday_tca(
                 d1_tensor_list.append(run_traces[:, :, keep])
                 d1_meta.append(dfr)
 
+            # if you did not add any runs for the day, continue
+            if len(d1_tensor_list) == 0:
+                continue
+
             # concatenate matched cells across trials 3rd dim (aka, 2)
             tensor = np.concatenate(d1_tensor_list, axis=2)
 
