@@ -233,6 +233,7 @@ def groupday_longform_factors_annotated(
         word=None,
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=0.8,
         extra_col=1,
         alpha=0.6,
         plot_running=True,
@@ -278,20 +279,25 @@ def groupday_longform_factors_annotated(
 
     # if cells were removed with too many nan trials
     if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
+        load_tag = '_nantrial' + str(nan_thresh)
         save_tag = ' nantrial ' + str(nan_thresh)
     else:
-        nt_tag = ''
+        load_tag = ''
         save_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
 
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_group_decomp_' + str(trace_type) + '.npy')
     meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_df_group_meta.pkl')
 
     # save dir
@@ -568,6 +574,7 @@ def groupday_factors_annotated(
         word=None,
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=0.8,
         extra_col=4,
         alpha=0.6,
         plot_running=True,
@@ -686,22 +693,27 @@ def groupday_factors_annotated(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
-    # if cells were removed with too many nan trials
+        # if cells were removed with too many nan trials
     if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
-        nt_save_tag = ' nantrial ' + str(nan_thresh)
+        load_tag = '_nantrial' + str(nan_thresh)
+        save_tag = ' nantrial ' + str(nan_thresh)
     else:
-        nt_tag = ''
-        nt_save_tag = ''
+        load_tag = ''
+        save_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
 
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_group_decomp_' + str(trace_type) + '.npy')
     meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_df_group_meta.pkl')
 
     # save dir
@@ -950,6 +962,7 @@ def groupday_varex_summary(
         word=None,
         group_by=None,
         nan_thresh=0.85,
+        score_threshold=0.8,
         rectified=True,
         verbose=False):
     """
@@ -972,37 +985,41 @@ def groupday_varex_summary(
 
     # if cells were removed with too many nan trials
     if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
-        nt_save_tag = ' nantrial ' + str(nan_thresh)
+        load_tag = '_nantrial' + str(nan_thresh)
+        save_tag = ' nantrial ' + str(nan_thresh)
     else:
-        nt_tag = ''
-        nt_save_tag = ''
+        load_tag = ''
+        save_tag = ''
 
-    # save tag for rectification
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
+
+    # title tag for rectification
     if rectified:
         r_tag = ' rectified'
-        r_save_tag = '_rectified'
+        save_tag = save_tag + '_rectified'
     else:
         r_tag = ''
-        r_save_tag = ''
 
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_group_decomp_' + str(trace_type) + '.npy')
     input_tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_group_tensor_' + str(trace_type) + '.npy')
     meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_df_group_meta.pkl')
 
     # save dir
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    save_dir = os.path.join(save_dir, 'qc' + nt_save_tag)
+    save_dir = os.path.join(save_dir, 'qc' + save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path = os.path.join(
         save_dir, str(mouse) + '_summary_variance_cubehelix.pdf')
