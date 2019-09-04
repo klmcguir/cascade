@@ -28,23 +28,27 @@ import warnings
 def groupday_shortlist(
         mouse,
         trace_type='zscore_day',
-        method='ncp_bcd',
+        method='mncp_hals',
         cs='',
         warp=False,
         word=None,
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=0.8,
         verbose=False):
 
-    groupday_varex_summary(mouse, trace_type=trace_type, method=method, cs=cs,
-                           warp=warp, word=word, group_by=group_by,
-                           nan_thresh=nan_thresh, verbose=verbose)
-    groupday_factors_annotated(mouse, trace_type=trace_type, method=method,
-                               cs=cs, warp=warp, word=word, group_by=group_by,
-                               nan_thresh=nan_thresh, verbose=verbose)
-    groupday_varex_percell(mouse, method=method, trace_type=trace_type, cs=cs,
-                           warp=warp, ve_min=0.05, word=word, group_by=group_by,
-                           nan_thresh=nan_thresh, verbose=verbose)
+    groupday_factors_annotated(
+        mouse, trace_type=trace_type, method=method, cs=cs, warp=warp,
+        word=word, group_by=group_by, nan_thresh=nan_thresh,
+        score_threshold=score_threshold, verbose=verbose)
+    groupday_longform_factors_annotated(
+        mouse, trace_type=trace_type, method=method, cs=cs, warp=warp,
+        word=word, group_by=group_by, nan_thresh=nan_thresh,
+        score_threshold=score_threshold, verbose=verbose)
+    groupday_varex_summary(
+        mouse, trace_type=trace_type, method=method, cs=cs, warp=warp,
+        word=word, group_by=group_by, nan_thresh=nan_thresh,
+        score_threshold=score_threshold, verbose=verbose)
 
 
 def pairday_shortlist(
