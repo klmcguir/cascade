@@ -1043,7 +1043,7 @@ def groupday_tca(
         days.extend(
             flow.DateSorter.frommeta(
                 mice=[mouse], tags='learning', exclude_tags=['bad']))
-        dates = set(days)
+        dates = [s.date for s in days]
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start',
                         'reversal1_start')
@@ -1100,7 +1100,7 @@ def groupday_tca(
         days.extend(
             flow.DateSorter.frommeta(
                 mice=[mouse], tags='learning', exclude_tags=['bad']))
-        dates = set(days)
+        dates = [s.date for s in days]
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start',
                         'reversal1_start')
@@ -1114,7 +1114,7 @@ def groupday_tca(
         days.extend(
             flow.DateSorter.frommeta(
                 mice=[mouse], tags='reversal1', exclude_tags=['bad']))
-        dates = set(days)
+        dates = [s.date for s in days]
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start',
                         'reversal1_start')
@@ -1154,8 +1154,8 @@ def groupday_tca(
     # get DateSorter object
     if np.isin(group_by.lower(),
                ['naive_vs_high_dprime', 'l_vs_r1', 'naive_and_learning']):
-        days = flow.DateSorter(
-            dates=dates, exclude_tags=['bad'])
+        days = flow.DateSorter.frommeta(
+            mice=[mouse], dates=dates, exclude_tags=['bad'])
     else:
         days = flow.DateSorter.frommeta(
             mice=[mouse], tags=tags, exclude_tags=['bad'])
