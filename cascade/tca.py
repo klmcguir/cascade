@@ -1262,7 +1262,9 @@ def groupday_tca(
                 if len(dfr) == 0:
                     continue
                 # skip runs with only one type of stimulus presentation
-                if len(np.unique(dfr['orientation'].values)) <= 1:
+                ori_to_match = np.unique(dfr['orientation'].values)
+                ori_wo_blanks = len(ori_to_match) - np.sum(ori_to_match == -1)
+                if ori_wo_blanks <= 1:
                     if verbose:
                         print('Skipping, only 1 ori presented: ', run)
                     continue
