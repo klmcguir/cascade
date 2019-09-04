@@ -1220,8 +1220,8 @@ def groupday_tca(
                 highscore_ids = _group_ids_score(days, score_threshold)
                 good_ids = np.intersect1d(good_ids, highscore_ids)
                 if verbose:
-                    print('Cell score threshold ' + str(score_threshold) + ':'
-                          + ' ' + str(len(highscore_ids)) + ' above threshold:'
+                    print('Cell score thresh ' + str(score_threshold) + ':'
+                          + ' ' + str(len(highscore_ids)) + ' above thresh:'
                           + ' good_ids updated to ' + str(len(good_ids)) + '/'
                           + str(orig_num_ids) + ' cells.')
                 # update saving tag
