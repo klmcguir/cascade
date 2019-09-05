@@ -404,6 +404,14 @@ def th_index_dataframe_byday(
                 if verbose:
                     print('Skipping day: ' + str(d) + ', no trials passed ' +
                           'filtering on learning_state & day.')
+
+            # make sure you have cues of all types left!
+            if len(meta1_day_df['orientation'].unique) < 3:
+                continue
+                if verbose:
+                    print('Skipping day: ' + str(d) + ', all cues were not ' +
+                          'presented.')
+
             # preallocate
             ori_vec, cond_vec, comp_vec = [], [], []
             trial_history = {}
