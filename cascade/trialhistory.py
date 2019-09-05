@@ -187,6 +187,7 @@ def th_index_dataframe(
             single_meta = meta1.loc[ori_bool]
             cond = single_meta['condition'].unique()
             assert len(cond) == 1
+            cond = cond[0]
 
             # get means for each factor for each type of trial history
             trial_history = {}
