@@ -10,7 +10,7 @@ import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 from .. import paths, load
-from .. import trialhistory as th
+from .. import trialhistory
 from scipy.stats import pearsonr
 
 
@@ -22,7 +22,7 @@ def groupmouse_index_heatmap(
         verbose=True):
 
     # get all dataframes
-    all_dfs = th.groupmouse_th_index_dataframe(
+    all_dfs = trialhistory.groupmouse_th_index_dataframe(
                 mice=mice,
                 words=words,
                 group_by=group_by,
