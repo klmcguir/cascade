@@ -188,8 +188,16 @@ def th_index_dataframe(
             # check the condition for this ori
             single_meta = meta1.loc[ori_bool]
             cond = single_meta['condition'].unique()
-            assert len(cond) == 1
-            cond = cond[0]
+            if len(cond) > 1:
+                cs_to_check = ['plus', 'minus', 'neutral']
+                multi_ori = []
+                for cs in cs_to_check:
+                    multi_ori.append(cs in cond)
+                assert np.sum(multi_ori) > 1
+                cond = cs_to_check[np.where(multi_ori)[0]]
+            else:
+                # assert len(cond) == 1
+                cond = cond[0]
 
             # get means for each factor for each type of trial history
             for i in range(rank):
