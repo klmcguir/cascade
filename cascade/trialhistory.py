@@ -193,8 +193,8 @@ def th_index_dataframe(
                 multi_ori = []
                 for cs in cs_to_check:
                     multi_ori.append(cs in cond)
-                assert np.sum(multi_ori) > 1
-                cond = cs_to_check[np.where(multi_ori)[0]]
+                assert np.sum(multi_ori) == 1
+                cond = cs_to_check[np.where(multi_ori)[0][0]]
             else:
                 # assert len(cond) == 1
                 cond = cond[0]
