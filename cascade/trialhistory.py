@@ -169,7 +169,9 @@ def th_index_dataframe(
     iteration = 0
     ori_to_check = [0, 135, 270]
     ori_vec, cond_vec, comp_vec = [], [], []
-    for ori in ori_to_check:
+    trial_history = {}
+    trial_hist_mod = np.zeros((rank_num*len(ori_to_check), 4))
+    for c, ori in enumerate(ori_to_check):
     # for rank in tensor.results:
         for rank in [rank_num]:
             data = {}
@@ -190,8 +192,6 @@ def th_index_dataframe(
             cond = cond[0]
 
             # get means for each factor for each type of trial history
-            trial_history = {}
-            trial_hist_mod = np.zeros((rank, 4))
             for i in range(rank):
                 single_factor = single_ori['factor_' + str(i+1)].values
                 bool_curr = single_ori['ori_' + str(ori)] == 1
@@ -209,19 +209,19 @@ def th_index_dataframe(
                 low_dp = np.nanmean(single_factor[single_ori['dprime'] < 2])
                 learning_idx = (high_dp - low_dp)/np.nanmean(single_factor)
 
-                trial_hist_mod[i, 0] = sensory_history
-                trial_hist_mod[i, 1] = reward_history
-                trial_hist_mod[i, 2] = reward_history - sensory_history
-                trial_hist_mod[i, 3] = learning_idx
-
-            trial_history['sensory_history'] = trial_hist_mod[:, 0]
-            trial_history['reward_history'] = trial_hist_mod[:, 1]
-            trial_history['diff_reward_sensory'] = trial_hist_mod[:, 2]
-            trial_history['learning_index'] = trial_hist_mod[:, 3]
+                trial_hist_mod[i + (rank*c), 0] = sensory_history
+                trial_hist_mod[i + (rank*c), 1] = reward_history
+                trial_hist_mod[i + (rank*c), 2] = reward_history - sensory_history
+                trial_hist_mod[i + (rank*c), 3] = learning_idx
 
         ori_vec.extend([ori]*rank_num)
         cond_vec.extend([cond]*rank_num)
         comp_vec.extend(list(np.arange(1, rank_num + 1)))
+
+    trial_history['sensory_history'] = trial_hist_mod[:, 0]
+    trial_history['reward_history'] = trial_hist_mod[:, 1]
+    trial_history['diff_reward_sensory'] = trial_hist_mod[:, 2]
+    trial_history['learning_index'] = trial_hist_mod[:, 3]
 
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays([
