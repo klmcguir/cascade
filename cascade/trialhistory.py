@@ -29,7 +29,7 @@ def groupmouse_th_index_dataframe(
     for m, w in zip(mice, words):
         th_df = th_index_dataframe(
                     m,
-                    words=w,
+                    word=w,
                     rank_num=rank_num,
                     group_by=group_by,
                     verbose=verbose)
