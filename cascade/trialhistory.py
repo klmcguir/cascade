@@ -57,7 +57,7 @@ def th_index_dataframe(
         else:
             word = 'already'  # should be updated to 'obligations'
         if verbose:
-            print('Creating dataframe for ' mouse + '-' + word)
+            print('Creating dataframe for ' + mouse + '-' + word)
 
     ms = flow.Mouse(mouse)
     psy = ms.psytracker(verbose=True)
