@@ -219,7 +219,8 @@ def th_index_dataframe(
             trial_history['learning_index'] = trial_hist_mod[:, 3]
 
         ori_vec.extend([ori]*rank_num)
-        cond_vec.extand([cond]*rank_num)
+        cond_vec.extend([cond]*rank_num)
+
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays([
                 [mouse]*rank_num,
