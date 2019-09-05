@@ -27,7 +27,7 @@ def groupmouse_th_index_dataframe(
     # get all single mouse dataframes
     df_list = []
     for m, w in zip(mice, words):
-        th_df = th.th_index_dataframe(
+        th_df = th_index_dataframe(
                     m,
                     words=w,
                     rank_num=rank_num,
