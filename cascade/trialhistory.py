@@ -398,6 +398,12 @@ def th_index_dataframe_byday(
             psy_fac = pd.concat(
                 [psy1_day_df, fac1_day_df], axis=1).drop(columns='orientation')
 
+            # make sure you have trials left! 
+            if len(meta1_day_df) == 0:
+                continue
+                if verbose:
+                    print('Skipping day: ' + str(d) + ', no trials passed ' +
+                          'filtering on learning_state & day.')
             # preallocate
             ori_vec, cond_vec, comp_vec = [], [], []
             trial_history = {}
@@ -408,10 +414,6 @@ def th_index_dataframe_byday(
 
                 # only look during initial learning
                 ori_bool = meta1_day_df['orientation'] == ori
-
-                # if a day is not part of learning skip
-                if np.sum(ori_bool) == 0:
-                    continue
 
                 # filter down to a single ori
                 single_ori = psy_fac.loc[ori_bool]
