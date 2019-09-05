@@ -112,6 +112,12 @@ def th_index_dataframe(
     # make master dataframe
     dfr = pd.DataFrame(data, index=index)
 
+    # load TCA data
+    tensor, ids, clus, meta = cas.load.groupday_tca(
+                                mouse,
+                                word=word,
+                                group_by=group_by)
+
     # add in continuous dprime
     dp = pool.calc.psytrack.dprime(flow.Mouse(mouse))
     dfr['dprime'] = dp
