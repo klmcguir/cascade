@@ -203,10 +203,15 @@ def th_index_dataframe(
                 low_dp = np.nanmean(single_factor[single_ori['dprime'] < 2])
                 learning_idx = (high_dp - low_dp)/np.nanmean(single_factor)
 
-                trial_history['sensory_history'] = sensory_history
-                trial_history['reward_history'] = reward_history
-                trial_history['diff_reward_sensory'] = reward_history - sensory_history
-                trial_history['learning_index'] = learning_idx
+                trial_hist_mod[i, 0] = sensory_history
+                trial_hist_mod[i, 1] = reward_history
+                trial_hist_mod[i, 2] = reward_history - sensory_history
+                trial_hist_mod[i, 3] = learning_idx
+
+            trial_history['sensory_history'] = trial_hist_mod[:, 0]
+            trial_history['reward_history'] = trial_hist_mod[:, 1]
+            trial_history['diff_reward_sensory'] = trial_hist_mod[:, 2]
+            trial_history['learning_index'] = trial_hist_mod[:, 3]
 
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays([
