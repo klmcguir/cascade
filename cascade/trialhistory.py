@@ -206,7 +206,7 @@ def th_index_dataframe(
                 trial_history['sensory_history'] = sensory_history
                 trial_history['reward_history'] = reward_history
                 trial_history['diff_reward_sensory'] = reward_history - sensory_history
-                trial_history['learning_index'] = learning_index
+                trial_history['learning_index'] = learning_idx
 
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays([
