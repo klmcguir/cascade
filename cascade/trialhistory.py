@@ -389,10 +389,12 @@ def th_index_dataframe_byday(
         for cc, d in enumerate(dates):
 
             # filter on days
+            ls_bool = (meta['learning_state'] == 'learning').values
             psy1_day_bool = psy_df.reset_index()['date'].isin([d]).values
-            psy1_day_df = psy_df.iloc[psy1_day_bool, :]
-            meta1_day_df = meta.iloc[psy1_day_bool, :]
-            fac1_day_df = fac_df.iloc[psy1_day_bool, :]
+            combined_bool = ls_bool & psy1_day_bool
+            psy1_day_df = psy_df.iloc[combined_bool, :]
+            meta1_day_df = meta.iloc[combined_bool, :]
+            fac1_day_df = fac_df.iloc[combined_bool, :]
             psy_fac = pd.concat(
                 [psy1_day_df, fac1_day_df], axis=1).drop(columns='orientation')
 
@@ -405,8 +407,11 @@ def th_index_dataframe_byday(
             for c, ori in enumerate(ori_to_check):
 
                 # only look during initial learning
-                ori_bool = [(meta1['orientation'] == ori)
-                            & (meta1['learning_state'] == 'learning')]
+                ori_bool = meta1_day_df['orientation'] == ori
+
+                # if a day is not part of learning skip
+                if np.sum(ori_bool) == 0:
+                    continue
 
                 # filter down to a single ori
                 single_ori = psy_fac.loc[ori_bool]
