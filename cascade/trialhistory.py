@@ -398,7 +398,7 @@ def th_index_dataframe_byday(
             psy_fac = pd.concat(
                 [psy1_day_df, fac1_day_df], axis=1).drop(columns='orientation')
 
-            # make sure you have trials left! 
+            # make sure you have trials left!
             if len(meta1_day_df) == 0:
                 continue
                 if verbose:
