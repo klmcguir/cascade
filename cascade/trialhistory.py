@@ -7,6 +7,7 @@ import pool
 import pandas as pd
 import numpy as np
 import os
+from . import load
 
 
 def groupmouse_th_index_dataframe(
@@ -113,7 +114,7 @@ def th_index_dataframe(
     dfr = pd.DataFrame(data, index=index)
 
     # load TCA data
-    tensor, ids, clus, meta = cas.load.groupday_tca(
+    tensor, ids, clus, meta = load.groupday_tca(
                                 mouse,
                                 word=word,
                                 group_by=group_by)
