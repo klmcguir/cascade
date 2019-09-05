@@ -389,11 +389,11 @@ def th_index_dataframe_byday(
         for cc, d in enumerate(dates):
 
             # filter on days
-            ls_bool = (meta['learning_state'] == 'learning').values
-            psy1_day_bool = psy_df.reset_index()['date'].isin([d]).values
+            ls_bool = (meta1['learning_state'] == 'learning').values
+            psy1_day_bool = psy1.reset_index()['date'].isin([d]).values
             combined_bool = ls_bool & psy1_day_bool
-            psy1_day_df = psy_df.iloc[combined_bool, :]
-            meta1_day_df = meta.iloc[combined_bool, :]
+            psy1_day_df = psy1.iloc[combined_bool, :]
+            meta1_day_df = meta1.iloc[combined_bool, :]
             fac1_day_df = fac_df.iloc[combined_bool, :]
             psy_fac = pd.concat(
                 [psy1_day_df, fac1_day_df], axis=1).drop(columns='orientation')
@@ -417,7 +417,7 @@ def th_index_dataframe_byday(
                 single_ori = psy_fac.loc[ori_bool]
 
                 # check the condition for this ori
-                single_meta = meta1.loc[ori_bool]
+                single_meta = meta1_day_df.loc[ori_bool]
                 cond = single_meta['condition'].unique()
                 if len(cond) > 1:
                     cs_to_check = ['plus', 'minus', 'neutral']
