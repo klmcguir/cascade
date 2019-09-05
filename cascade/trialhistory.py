@@ -406,7 +406,7 @@ def th_index_dataframe_byday(
                           'filtering on learning_state & day.')
 
             # make sure you have cues of all types left!
-            if len(meta1_day_df['orientation'].unique) < 3:
+            if len(meta1_day_df['orientation'].unique()) < 3:
                 continue
                 if verbose:
                     print('Skipping day: ' + str(d) + ', all cues were not ' +
