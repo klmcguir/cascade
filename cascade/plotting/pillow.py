@@ -83,7 +83,7 @@ def correlate_pillow_tca(
     # filter out blank trials
     psy_df = dfr.loc[(dfr['orientation'] >= 0), :]
 
-    # check that all runs have matched trial orienations
+    # check that all runs have matched trial orientations
     new_psy_df_list = []
     new_meta_df_list = []
     dates = meta.reset_index()['date'].unique()
@@ -101,7 +101,7 @@ def correlate_pillow_tca(
             psy_run_idx = psy_run_df.reset_index()['trial_idx'].values
             meta_run_idx = meta_run_df.reset_index()['trial_idx'].values
 
-            # drop extra trials from trace2P that don't have associated imaging 
+            # drop extra trials from trace2P that don't have associated imaging
             max_trials = np.min([len(psy_run_idx), len(meta_run_idx)])
 
             # get just your orientations for checking that trials are matched
@@ -123,7 +123,7 @@ def correlate_pillow_tca(
     meta1 = pd.concat(new_meta_df_list, axis=0)
     psy1 = pd.concat(new_psy_df_list, axis=0)
 
-    # NOW TAKE TCA TRIAL FACTORS AND TRY CORRELATING FOR WITH PILLOW
+    # NOW TAKE TCA TRIAL FACTORS AND TRY CORRELATING WITH PILLOW
     # put factors for a given rank into a dataframe
 
     ori = 'all'
