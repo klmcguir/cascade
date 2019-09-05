@@ -168,7 +168,7 @@ def th_index_dataframe(
 
     iteration = 0
     ori_to_check = [0, 135, 270]
-    ori_vec, cond_vec = [], []
+    ori_vec, cond_vec, comp_vec = [], [], []
     for ori in ori_to_check:
     # for rank in tensor.results:
         for rank in [rank_num]:
@@ -220,13 +220,14 @@ def th_index_dataframe(
 
         ori_vec.extend([ori]*rank_num)
         cond_vec.extend([cond]*rank_num)
+        comp_vec.extend(list(np.arange(1, rank_num) + 1))
 
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays([
-                [mouse]*rank_num,
+                [mouse]*(rank_num*len(ori_to_check)),
                 ori_vec,
                 cond_vec,
-                list(np.arange(1, rank_num) + 1)
+                comp_vec
                 ],
                 names=['mouse', 'orientation', 'condition', 'component'])
 
