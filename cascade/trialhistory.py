@@ -7,16 +7,57 @@ import pool
 import pandas as pd
 import numpy as np
 import os
-import matplotlib.pyplot as plt
-import seaborn as sns
-from .. import paths, load
-from scipy.stats import pearsonr
+
+
+def groupmouse_th_index_dataframe(
+        mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175', 'OA32', 'OA34', 'OA36'],
+        words=None,
+        group_by='all',
+        rank_num=18,
+        verbose=True):
+    """
+    Create a pandas dataframe of trial history modulation indices across all
+    mice.
+    """
+
+    # ensure that 'words=None' allows defaults to run in th_index_dataframe
+    if not words:
+        words = [words]*len(mice)
+
+    # get all single mouse dataframes
+    df_list = []
+    for m, w in zip(mice, words):
+        th_df = th.th_index_dataframe(
+                    m,
+                    words=w,
+                    rank_num=rank_num,
+                    group_by=group_by,
+                    verbose=verbose)
+        df_list.append(th_df)
+    all_dfs = pd.concat(df_list, axis=0)
+
+    return all_dfs
 
 
 def th_index_dataframe(
-    mouse='OA27',
-    word='tray',
-    group_by='all'):
+        mouse,
+        word=None,
+        rank_num=18,
+        group_by='all',
+        verbose=True):
+    """
+    Create a pandas dataframe of trial history modulation indices for one
+    mouse. Only looks at initial learning stage.
+    """
+
+    # default TCA params to use
+    if not word:
+        if mouse == 'OA27':
+            word = 'tray'
+        else:
+            word = 'already'  # should be updated to 'obligations'
+        if verbose:
+            print('Creating dataframe for ' mouse + '-' + word)
 
     ms = flow.Mouse(mouse)
     psy = ms.psytracker(verbose=True)
@@ -38,11 +79,14 @@ def th_index_dataframe(
     # create your data dict, transform from log odds to odds ratio
     data = {}
     for c, i in enumerate(psy.weight_labels):
-        data[i] = np.exp(psy.fits[c, :])*psy.inputs[:, c].T  # adding multiplication step here with binary vector
+        # adding multiplication step here with binary vector !!!!!!
+        data[i] = np.exp(psy.fits[c, :])*psy.inputs[:, c].T
     ori_0_in = [i[0] for i in psy.data['inputs']['ori_0']]
     ori_135_in = [i[0] for i in psy.data['inputs']['ori_135']]
     ori_270_in = [i[0] for i in psy.data['inputs']['ori_270']]
-    blank_in = [0 if i == 1 else 1 for i in np.sum((ori_0_in, ori_135_in, ori_270_in), axis=0)]
+    blank_in = [
+        0 if i == 1 else 1 for i in
+        np.sum((ori_0_in, ori_135_in, ori_270_in), axis=0)]
 
     # loop through psy data create a binary vectors for trial history
     binary_cat = ['ori_0', 'ori_135', 'ori_270', 'prev_reward']
@@ -92,17 +136,17 @@ def th_index_dataframe(
             meta_run_df = meta_day_df.iloc[meta_run_bool, :]
             psy_run_idx = psy_run_df.reset_index()['trial_idx'].values
             meta_run_idx = meta_run_df.reset_index()['trial_idx'].values
-            
-            # drop extra trials from trace2P that don't have associated imaging 
+
+            # drop extra trials from trace2P that don't have associated imaging
             max_trials = np.min([len(psy_run_idx), len(meta_run_idx)])
-            
+
             # get just your orientations for checking that trials are matched
             meta_ori = meta_run_df['orientation'].iloc[:max_trials]
             psy_ori = psy_run_df['orientation'].iloc[:max_trials]
-            
+
             # make sure all oris match between vectors of the same length each day
             assert np.all(psy_ori.values == meta_ori.values)
-            
+
             # if everything looks good, copy meta index into psy
             meta_new = meta_run_df.iloc[:max_trials]
             psy_new = psy_run_df.iloc[:max_trials]
@@ -115,13 +159,11 @@ def th_index_dataframe(
     meta1 = pd.concat(new_meta_df_list, axis=0)
     psy1 = pd.concat(new_psy_df_list, axis=0)
 
-    # ori = 'all'
-    # save_pls = True
     iteration = 0
     ori_to_check = [0, 135, 270]
     for ori in ori_to_check:
     # for rank in tensor.results:
-        for rank in [18]:
+        for rank in [rank_num]:
             data = {}
             for i in range(rank):
                 fac = tensor.results[rank][iteration].factors[2][:,i]
@@ -141,21 +183,32 @@ def th_index_dataframe(
                 single_factor = single_ori['factor_' + str(i+1)].values
                 bool_curr = single_ori['ori_' + str(ori)] == 1
                 bool_prev = single_ori['ori_' + str(ori) + '_th'] == 1
-                
-                prev_same = np.nanmean(single_factor[single_ori['ori_' + str(ori) + '_th_prev'] == 1]) 
+
+                prev_same = np.nanmean(single_factor[single_ori['ori_' + str(ori) + '_th_prev'] == 1])
                 prev_diff = np.nanmean(single_factor[single_ori['ori_' + str(ori) + '_th_prev'] == 0])
                 sensory_history = (prev_diff - prev_same)/np.nanmean(single_factor)
-                
-                prev_same = np.nanmean(single_factor[single_ori['prev_reward_th'] == 1]) 
+
+                prev_same = np.nanmean(single_factor[single_ori['prev_reward_th'] == 1])
                 prev_diff = np.nanmean(single_factor[single_ori['prev_reward_th'] == 0])
                 reward_history = (prev_diff - prev_same)/np.nanmean(single_factor)
-                
-                high_dp = np.nanmean(single_factor[single_ori['dprime'] >= 2]) 
+
+                high_dp = np.nanmean(single_factor[single_ori['dprime'] >= 2])
                 low_dp = np.nanmean(single_factor[single_ori['dprime'] < 2])
                 learning_idx = (high_dp - low_dp)/np.nanmean(single_factor)
-                
-                trial_hist_mod[i, 0] = sensory_history
-                trial_hist_mod[i, 1] = reward_history
-                trial_hist_mod[i, 2] = reward_history - sensory_history
-                trial_hist_mod[i, 3] = learning_idx
-                
+
+                trial_history['sensory_history'] = sensory_history
+                trial_history['reward_history'] = reward_history
+                trial_history['diff_reward_sensory'] = reward_history - sensory_history
+                trial_history['learning_index'] = learning_index
+
+    # create your index out of relevant variables
+    index = pd.MultiIndex.from_arrays([
+                [mouse]*len(sensory_history),
+                list(range(1, len(sensory_history)))
+                ],
+                names=['mouse', 'component'])
+
+    # make master dataframe
+    th_df = pd.DataFrame(trial_history, index=index)
+
+    return th_df
