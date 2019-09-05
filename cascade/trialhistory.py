@@ -216,7 +216,7 @@ def th_index_dataframe(
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays([
                 [mouse]*len(trial_hist_mod[:, 0]),
-                list(range(1, len(trial_hist_mod[:, 0])))
+                list(np.arange(1, len(trial_hist_mod[:, 0]) + 1))
                 ],
                 names=['mouse', 'component'])
 
