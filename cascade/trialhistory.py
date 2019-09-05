@@ -400,17 +400,17 @@ def th_index_dataframe_byday(
 
             # make sure you have trials left!
             if len(meta1_day_df) == 0:
-                continue
                 if verbose:
                     print('Skipping day: ' + str(d) + ', no trials passed ' +
                           'filtering on learning_state & day.')
+                continue
 
             # make sure you have cues of all types left!
             if len(meta1_day_df['orientation'].unique()) < 3:
-                continue
                 if verbose:
                     print('Skipping day: ' + str(d) + ', all cues were not ' +
                           'presented.')
+                continue
 
             # preallocate
             ori_vec, cond_vec, comp_vec = [], [], []
@@ -476,7 +476,7 @@ def th_index_dataframe_byday(
             index = pd.MultiIndex.from_arrays([
                         [mouse]*(rank_num*len(ori_to_check)),
                         [d]*(rank_num*len(ori_to_check)),
-                        list(np.arange(1, rank_num*len(ori_to_check) + 1)),
+                        [cc+1]*(rank_num*len(ori_to_check)),,
                         ori_vec,
                         cond_vec,
                         comp_vec
