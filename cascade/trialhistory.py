@@ -220,7 +220,7 @@ def th_index_dataframe(
 
         ori_vec.extend([ori]*rank_num)
         cond_vec.extend([cond]*rank_num)
-        comp_vec.extend(list(np.arange(1, rank_num) + 1))
+        comp_vec.extend(list(np.arange(1, rank_num)))
 
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays([
