@@ -465,7 +465,7 @@ def th_index_dataframe_byday(
             # create your index out of relevant variables
             index = pd.MultiIndex.from_arrays([
                         [mouse]*(rank_num*len(ori_to_check)),
-                        [date]*(rank_num*len(ori_to_check)),
+                        [d]*(rank_num*len(ori_to_check)),
                         list(np.arange(1, rank_num*len(ori_to_check) + 1)),
                         cond_vec,
                         comp_vec
