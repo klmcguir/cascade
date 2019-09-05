@@ -168,6 +168,7 @@ def th_index_dataframe(
 
     iteration = 0
     ori_to_check = [0, 135, 270]
+    ori_vec, cond_vec = [], []
     for ori in ori_to_check:
     # for rank in tensor.results:
         for rank in [rank_num]:
@@ -181,7 +182,11 @@ def th_index_dataframe(
             psy_fac = pd.concat([psy1, fac_df], axis=1).drop(columns='orientation')
             ori_bool = (meta1['orientation'] == ori)  & (meta1['learning_state'] == 'learning')  # only look during initial learning
             single_ori = psy_fac.loc[ori_bool]
-    #         single_meta = meta1.loc[ori_bool]
+
+            # check the condition for this ori
+            single_meta = meta1.loc[ori_bool]
+            cond = single_meta['condition'].unique()
+            assert len(cond) == 1
 
             # get means for each factor for each type of trial history
             trial_history = {}
@@ -213,12 +218,16 @@ def th_index_dataframe(
             trial_history['diff_reward_sensory'] = trial_hist_mod[:, 2]
             trial_history['learning_index'] = trial_hist_mod[:, 3]
 
+        ori_vec.extend([ori]*rank_num)
+        cond_vec.extand([cond]*rank_num)
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays([
-                [mouse]*len(trial_hist_mod[:, 0]),
-                list(np.arange(1, len(trial_hist_mod[:, 0]) + 1))
+                [mouse]*rank_num,
+                ori_vec,
+                cond_vec,
+                list(np.arange(1, rank_num) + 1)
                 ],
-                names=['mouse', 'component'])
+                names=['mouse', 'orientation', 'condition', 'component'])
 
     # make master dataframe
     th_df = pd.DataFrame(trial_history, index=index)
