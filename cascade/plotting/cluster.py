@@ -1048,6 +1048,357 @@ def hierclus_on_trials_learning_stages(
         var_path_prefix + '_5ptstages_ampclus.png', bbox_inches='tight')
 
 
+def hierclus_on_amp_trials_learning_stages(
+
+        # df params
+        mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175'],
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        words=['orlando', 'already', 'already', 'already', 'already'],
+        group_by='all',
+        nan_thresh=0.85,
+        speed_thresh=5,
+
+        # clustering/plotting params
+        rank_num=18,
+        cluster_number=7,
+        cluster_method='ward',
+        expected_size_colors=0.5,
+        auto_drop=True):
+
+    """
+    Cluster weights from your trial factors and hierarchically cluster using
+    seaborn.clustermap. Annotate plots with useful summary metrics.
+    """
+    # deal with saving dir
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+    if nan_thresh:
+        nt_tag = '_nantrial' + str(nan_thresh)
+        nt_save_tag = ' nantrial ' + str(nan_thresh)
+    else:
+        nt_tag = ''
+        nt_save_tag = ''
+    met_tag = '_' + cluster_method
+    group_word = paths.groupmouse_word({'mice': mice})
+    mouse = 'Group-' + group_word
+    save_dir = paths.tca_plots(
+        mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
+    save_dir = os.path.join(save_dir, 'clustering' + nt_save_tag)
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    var_path_prefix = os.path.join(
+        save_dir, str(mouse) + '_AMP' + met_tag + '_rank' + str(rank_num) +
+        '_clus' + str(cluster_number) + '_heirclus_trialfac_bystage'
+        + '_n' + str(len(mice)) + nt_tag)
+
+    # create dataframes - ignore python and numpy divide by zero warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        with np.errstate(invalid='ignore', divide='ignore'):
+            clustering_df, t_df = \
+                df.groupmouse_trialfac_summary_stages(
+                    mice=mice,
+                    trace_type=trace_type,
+                    method=method,
+                    cs=cs,
+                    warp=warp,
+                    words=words,
+                    group_by=group_by,
+                    nan_thresh=nan_thresh,
+                    speed_thresh=speed_thresh,
+                    rank_num=rank_num,
+                    verbose=False)
+    clustering_df2 = deepcopy(clustering_df)
+    clustering_df3 = deepcopy(clustering_df)
+
+    # if running mod, center of mass, or ramp indices are included, remove
+    # from columns (make these into a color df for annotating y-axis)
+    learning_stages = ['pre_rev1']
+    run_stage = ['running_modulation_' + stage for stage in learning_stages]
+    ramp_stage = ['ramp_index_trials_' + stage for stage in learning_stages]
+    mean_running_mod = clustering_df.loc[:, run_stage].mean(axis=1)
+    ri_trials = clustering_df.loc[:, ramp_stage].mean(axis=1)
+    ri_learning = clustering_df.loc[:, 'ramp_index_learning']
+    ri_trace = clustering_df.loc[:, 'ramp_index_trace']
+    ri_offset = clustering_df.loc[:, 'ramp_index_trace_offset']
+    ri_speed = clustering_df.loc[:, 'ramp_index_speed_learning']
+    center_of_mass = clustering_df.loc[:, 'center_of_mass']
+
+    if auto_drop:
+
+        # create df only early and high dp learning stages
+        keep_cols = [
+            'plus_high_dp_learning', 'neutral_high_dp_learning',
+            'minus_high_dp_learning', 'plus_high_dp_rev1',
+            'minus_high_dp_rev1', 'neutral_high_dp_rev1',
+            'plus_naive', 'minus_naive', 'neutral_naive']
+        drop_inds = ~clustering_df.columns.isin(keep_cols)
+        drop_cols = clustering_df.columns[drop_inds]
+        clustering_df = clustering_df.drop(columns=drop_cols)
+        nan_indexer = clustering_df.isna().any(axis=1)  # this has to be here
+        clustering_df = clustering_df.dropna(axis='rows')
+
+        # create df containing all learning stages through rev1
+        keep_cols2 = [
+            'plus_naive', 'plus_low_dp_learning', 'plus_high_dp_learning',
+            'plus_low_dp_rev1', 'plus_high_dp_rev1', 'neutral_naive',
+            'neutral_low_dp_learning', 'neutral_high_dp_learning',
+            'neutral_low_dp_rev1', 'neutral_high_dp_rev1', 'minus_naive',
+            'minus_low_dp_learning', 'minus_high_dp_learning',
+            'minus_low_dp_rev1', 'minus_high_dp_rev1']
+        drop_inds2 = ~clustering_df2.columns.isin(keep_cols2)
+        drop_cols2 = clustering_df2.columns[drop_inds2]
+        clustering_df2 = clustering_df2.drop(columns=drop_cols2)
+        clustering_df2 = clustering_df2.dropna(axis='rows')
+
+        # create df containing AMPLITUDE all learning stages through rev1
+        keep_cols3 = [
+            'plus_amp_naive', 'plus_amp_low_dp_learning',
+            'plus_amp_high_dp_learning',
+            'plus_amp_low_dp_rev1', 'plus_amp_high_dp_rev1',
+            'neutral_amp_naive',
+            'neutral_amp_low_dp_learning',
+            'neutral_amp_high_dp_learning',
+            'neutral_amp_low_dp_rev1', 'neutral_amp_high_dp_rev1',
+            'minus_amp_naive',
+            'minus_amp_low_dp_learning', 'minus_amp_high_dp_learning',
+            'minus_amp_low_dp_rev1', 'minus_amp_high_dp_rev1']
+        drop_inds3 = ~clustering_df3.columns.isin(keep_cols3)
+        drop_cols3 = clustering_df3.columns[drop_inds3]
+        clustering_df3 = clustering_df3.drop(columns=drop_cols3)
+        clustering_df3 = clustering_df3.dropna(axis='rows')
+
+        # remove nanned rows from other dfs
+        mean_running_mod = mean_running_mod.loc[~nan_indexer, :]
+        ri_trials = ri_trials.loc[~nan_indexer, :]
+        ri_learning = ri_learning.loc[~nan_indexer, :]
+        ri_trace = ri_trace.loc[~nan_indexer, :]
+        ri_offset = ri_offset.loc[~nan_indexer, :]
+        ri_speed = ri_speed.loc[~nan_indexer, :]
+        center_of_mass = center_of_mass.loc[~nan_indexer, :]
+        t_df = t_df.loc[~nan_indexer, :]
+
+        # reorder df columns for plots with no clustering on columns
+        clustering_df2 = clustering_df2[
+            ['plus_naive', 'plus_low_dp_learning', 'plus_high_dp_learning',
+             'plus_low_dp_rev1', 'plus_high_dp_rev1', 'neutral_naive',
+             'neutral_low_dp_learning', 'neutral_high_dp_learning',
+             'neutral_low_dp_rev1', 'neutral_high_dp_rev1',
+             'minus_naive', 'minus_low_dp_learning', 'minus_high_dp_learning',
+             'minus_low_dp_rev1', 'minus_high_dp_rev1']]
+
+        # reorder df columns for plots with no clustering on columns
+        clustering_df3 = clustering_df3[
+            ['plus_amp_naive', 'plus_amp_low_dp_learning',
+             'plus_amp_high_dp_learning',
+             'plus_amp_low_dp_rev1', 'plus_amp_high_dp_rev1',
+             'neutral_amp_naive',
+             'neutral_amp_low_dp_learning', 'neutral_amp_high_dp_learning',
+             'neutral_amp_low_dp_rev1', 'neutral_amp_high_dp_rev1',
+             'minus_amp_naive', 'minus_amp_low_dp_learning',
+             'minus_amp_high_dp_learning',
+             'minus_amp_low_dp_rev1', 'minus_amp_high_dp_rev1']]
+
+        # create an additional amplitude df
+        clustering_df4 = clustering_df3[
+            ['plus_amp_naive', '',
+             'plus_amp_high_dp_learning',
+             'plus_amp_high_dp_rev1',
+             'neutral_amp_naive',
+             'neutral_amp_high_dp_learning',
+             'neutral_amp_high_dp_rev1',
+             'minus_amp_naive',
+             'minus_amp_high_dp_learning',
+             'minus_amp_high_dp_rev1']]
+
+    # cluster to get cluster color labels for each component
+    g = sns.clustermap(clustering_df4, method=cluster_method)
+    row_sorter = g.dendrogram_row.reordered_ind
+    clusters = hierarchy.fcluster(
+        g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
+    cluster_color_options = sns.color_palette('hls', cluster_number)
+    cluster_colors = [cluster_color_options[i-1] for i in clusters]
+
+    # create mouse color labels
+    mouse_list = clustering_df.reset_index().loc[:, 'mouse']
+    mouse_color_options = sns.light_palette('navy', len(mouse_list.unique()))
+    mouse_color_dict = {k: v for k, v in zip(mouse_list.unique(),
+                                             mouse_color_options)}
+    mouse_colors = [mouse_color_dict[m] for m in mouse_list]
+
+    # create center of mass color labels
+    binned_cm = pd.cut(center_of_mass, 10, labels=range(0, 10))
+    cm_color_options = sns.light_palette('red', 10)
+    cm_color_dict = {k: v for k, v in zip(np.unique(binned_cm),
+                     cm_color_options)}
+    cm_colors = [cm_color_dict[m] for m in binned_cm]
+
+    # bins for creating custom heatmaps
+    bins = [
+        -np.inf, -1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1, np.inf]
+
+    # create running mod color labels
+    binned_run = pd.cut(mean_running_mod, bins, labels=range(0, len(bins)-1))
+    run_color_options = sns.diverging_palette(220, 10, n=(len(bins)-1))
+    run_color_dict = {k: v for k, v in zip(np.unique(binned_run),
+                      run_color_options)}
+    run_colors = [run_color_dict[m] for m in binned_run]
+
+    # create trial ramp index color labels
+    binned_ramp = pd.cut(ri_trials, bins, labels=range(0, len(bins)-1))
+    ramp_color_options = sns.diverging_palette(220, 10, n=(len(bins)-1))
+    ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
+                       ramp_color_options)}
+    trial_ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
+
+    # create learning ramp index color labels
+    binned_ramp = pd.cut(ri_learning, bins, labels=range(0, len(bins)-1))
+    ramp_color_options = sns.diverging_palette(220, 10, n=(len(bins)-1))
+    ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
+                       ramp_color_options)}
+    learning_ramp_colors = [ramp_color_dict[m] for m in binned_ramp]
+
+    # create trace ramp index color labels
+    binned_ramp = pd.cut(ri_trace, bins, labels=range(0, len(bins)-1))
+    ramp_color_options = sns.diverging_palette(220, 10, n=(len(bins)-1))
+    ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
+                       ramp_color_options)}
+    trace_ramp_colors = [ramp_color_dict[m] if ~np.isnan(m) else
+                         [.5, .5, .5, 1.] for m in binned_ramp]
+
+    # create trace ramp index color labels
+    binned_ramp = pd.cut(ri_offset, bins, labels=range(0, len(bins)-1))
+    ramp_color_options = sns.diverging_palette(220, 10, n=(len(bins)-1))
+    ramp_color_dict = {k: v for k, v in zip(np.unique(binned_ramp),
+                                            ramp_color_options)}
+    offset_ramp_colors = [ramp_color_dict[m] if ~np.isnan(m) else
+                          [.5, .5, .5, 1.] for m in binned_ramp]
+
+    # create color vector for dis/sated modulation index (ramp index)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        with np.errstate(invalid='ignore', divide='ignore'):
+            dfdis = calc.fits.groupmouse_fit_disengaged_sated_mean_per_comp(
+                mice=mice,
+                trace_type=trace_type,
+                method=method,
+                cs=cs,
+                warp=warp,
+                words=words,
+                group_by=group_by,
+                nan_thresh=nan_thresh,
+                rank=rank_num,
+                verbose=True)
+    # just use index
+    dis = dfdis.loc[:, 'dis_index']
+    # removes rows that were already dropped
+    dis = dis.loc[~nan_indexer, :]
+    binned_dis = pd.cut(dis, bins, labels=range(0, len(bins)-1))
+    dis_color_options = sns.diverging_palette(220, 10, n=(len(bins)-1))
+    dis_color_dict = {k: v for k, v in zip(np.unique(binned_dis),
+                                           dis_color_options)}
+    dis_colors = [dis_color_dict[m] if ~np.isnan(m) else
+                  [.5, .5, .5, 1.] for m in binned_dis]
+
+    # colors for columns learning stages
+    col_colors = []
+    for col_name in clustering_df2.columns:
+        if 'plus' in col_name.lower():
+            col_colors.append('lightgreen')
+        elif 'neutral' in col_name.lower():
+            col_colors.append('lightskyblue')
+        elif 'minus' in col_name.lower():
+            col_colors.append('lightcoral')
+
+    # create df of running colors for row colors
+    data = {'mouse': mouse_colors,
+            'running-modulation': run_colors,
+            'ramp-index-learning': learning_ramp_colors,
+            'dis-index': dis_colors,
+            'ramp-index-daily-trials': trial_ramp_colors,
+            'ramp-index-trace': trace_ramp_colors,
+            'ramp-index-trace-offset': offset_ramp_colors,
+            # 'center-of-mass-trace': cm_colors,
+            'cluster': cluster_colors}
+    color_df = pd.DataFrame(data=data, index=clustering_df.index)
+
+    # plot
+    plt.close('all')
+
+    fig1 = clustermap(
+        clustering_df, row_colors=color_df, figsize=(13, 13),
+        xticklabels=True, yticklabels=True, col_cluster=True,
+        row_cluster=True, expected_size_colors=0.5, method=cluster_method)
+    fig1.savefig(
+        var_path_prefix + '_trialfac.png', bbox_inches='tight')
+
+    fig2 = clustermap(
+        t_df.iloc[row_sorter, :], row_colors=color_df.iloc[row_sorter, :],
+        figsize=(13, 13), xticklabels=False, yticklabels=True,
+        col_cluster=False, row_cluster=False, expected_size_colors=0.5,
+        method='ward')
+    fig2.savefig(
+        var_path_prefix + '_tempofac.png', bbox_inches='tight')
+
+    fig3 = clustermap(
+        t_df, row_colors=color_df, figsize=(13, 13),
+        xticklabels=False, yticklabels=True, col_cluster=False,
+        row_cluster=True, expected_size_colors=0.5, method=cluster_method)
+    fig3.savefig(
+        var_path_prefix + '_tempofac_sort.png', bbox_inches='tight')
+
+    fig4 = clustermap(
+        clustering_df2.iloc[row_sorter, :], figsize=(13, 13),
+        row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
+        xticklabels=True, yticklabels=True, col_cluster=False,
+        row_cluster=False, expected_size_colors=0.5, method=cluster_method)
+    fig4.savefig(
+        var_path_prefix + '_5ptstages.png', bbox_inches='tight')
+
+    col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
+    ori_col_df = clustering_df2.iloc[row_sorter, :]
+    ori_col_df = ori_col_df.iloc[:, col_sorter]
+    fig5 = clustermap(ori_col_df, figsize=(13, 13),
+        row_colors=color_df.iloc[row_sorter, :],
+        col_colors=[col_colors[s] for s in col_sorter],
+        xticklabels=True, yticklabels=True, col_cluster=False,
+        row_cluster=False, expected_size_colors=0.5, method=cluster_method)
+    fig5.savefig(
+        var_path_prefix + '_5ptstages_oricolsort.png', bbox_inches='tight')
+
+    fig6 = clustermap(
+        clustering_df3.iloc[row_sorter, :], figsize=(13, 13),
+        row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
+        xticklabels=True, yticklabels=True, col_cluster=False,
+        row_cluster=False, expected_size_colors=0.5, method=cluster_method,
+        standard_scale=0)
+    fig6.savefig(
+        var_path_prefix + '_5ptstages_amp.png', bbox_inches='tight')
+
+    col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
+    ori_col_df = clustering_df3.iloc[row_sorter, :]
+    ori_col_df = ori_col_df.iloc[:, col_sorter]
+    fig7 = clustermap(ori_col_df, figsize=(13, 13),
+        row_colors=color_df.iloc[row_sorter, :],
+        col_colors=[col_colors[s] for s in col_sorter],
+        xticklabels=True, yticklabels=True, col_cluster=False,
+        row_cluster=False, expected_size_colors=0.5, method=cluster_method,
+        standard_scale=0)
+    fig7.savefig(
+        var_path_prefix + '_5ptstages_amp_oricolsort.png', bbox_inches='tight')
+
+    fig8 = clustermap(
+        clustering_df3.iloc[row_sorter, :], figsize=(13, 13),
+        row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
+        xticklabels=True, yticklabels=True, col_cluster=False,
+        row_cluster=True, expected_size_colors=0.5, method=cluster_method,
+        standard_scale=0)
+    fig8.savefig(
+        var_path_prefix + '_5ptstages_ampclus.png', bbox_inches='tight')
+
+
 def hierclus_simple_on_trials_learning_stages(
 
         # df params
