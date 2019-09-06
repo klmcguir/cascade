@@ -362,7 +362,7 @@ def groupmouse_fit_disengaged_sated_mean_per_comp(
 
     mouse_list = []
     for m, w in zip(mice, words):
-        mouse = flow.Mouse(mouse=m, exclude_tags=['bad'])
+        mouse = flow.Mouse(mouse=m)
         mouse_list.append(
             fit_disengaged_sated_mean_per_comp(
                 mouse, word=w, rank=rank, nan_thresh=nan_thresh,
