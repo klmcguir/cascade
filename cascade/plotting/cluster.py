@@ -1203,7 +1203,7 @@ def hierclus_on_amp_trials_learning_stages(
 
         # create an additional amplitude df
         clustering_df4 = clustering_df3[
-            ['plus_amp_naive', '',
+            ['plus_amp_naive',
              'plus_amp_high_dp_learning',
              'plus_amp_high_dp_rev1',
              'neutral_amp_naive',
