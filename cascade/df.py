@@ -1118,8 +1118,7 @@ def groupmouse_trialfac_summary_stages(
         # create dataframe of dprime values
         dprime_vec = []
         for date in dates:
-            date_obj = flow.DateSorter.frommeta(
-                            mice=[mouse], dates=[date], exclude_tags=['bad'])
+            date_obj = flow.Date(mouse, date=date)  # EXCLUDE TAGS??
             dprime_vec.append(pool.calc.performance.dprime(date_obj))
         data = {'dprime': dprime_vec}
         dprime = pd.DataFrame(data=data, index=learning_state.index)
