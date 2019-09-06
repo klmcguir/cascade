@@ -1328,7 +1328,7 @@ def hierclus_on_amp_trials_learning_stages(
     plt.close('all')
 
     fig1 = clustermap(
-        clustering_df, row_colors=color_df, figsize=(13, 13),
+        clustering_df4, row_colors=color_df, figsize=(13, 13),
         xticklabels=True, yticklabels=True, col_cluster=True,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method)
     fig1.savefig(
