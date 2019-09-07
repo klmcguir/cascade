@@ -9,9 +9,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from scipy.cluster import hierarchy
-from . import tca
-from . import paths
-from . import utils
+from . import tca, paths, utils, load
 from .plotting import cluster
 
 
@@ -306,6 +304,7 @@ def trial_factors_across_mice(
         words=['rochester', 'convinced', 'convinced', 'convinced', 'convinced'],
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=None,
         verbose=False,
         rank_num=14):
 

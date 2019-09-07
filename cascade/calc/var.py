@@ -256,6 +256,7 @@ def groupday_var_byday(
         word=None,
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=0.8,
         rectified=True,
         verbose=False):
     """

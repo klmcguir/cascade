@@ -32,12 +32,23 @@ def groupmouse_index_heatmap(
     # create colormap
     cmap = sns.diverging_palette(220, 10, sep=30, as_cmap=True)
 
+    # create x labels
+    xlab = ['sensory_history', 'reward_history',
+            'reward_history - sensory_history', 'learning_index']
+
     # sort according to degree of modulation by behavioral performance
     # a.k.a., learning
     sorter = np.argsort(all_dfs['learning_index'].values)
+    plt_df = all_dfs.reset_index(['component']).values
 
-    # sorter = np.arange(0,rank)
-    xlab = ['sensory_history', 'reward_history', 'reward_history - sensory_history', 'learning_idx']
-    plt.figure()
-    sns.heatmap(trial_hist_mod[sorter, :], center=0, vmax=1, vmin=-1, cmap=cmap, yticklabels=np.arange(1, rank+1)[sorter], xticklabels=xlab)
-    plt.title('Orientation ' + str(ori))
+    cs_to_check = ['plus', 'minus', 'neutral']
+    for cs in cs_to_check:
+        cs_bool = all_dfs.reset_index()['condition'].values == cs
+        sort_bool = cs_bool[sorter]
+        cs_plt_df = plt_df[sorter, 1:][sort_bool]
+        cs_y_label = plt_df[sorter, 0][sort_bool]
+
+        plt.figure()
+        sns.heatmap(cs_plt_df, center=0, vmax=1, vmin=-1, cmap=cmap,
+                    yticklabels=cs_y_label, xticklabels=xlab)
+        plt.title('Condition: ' + cs)

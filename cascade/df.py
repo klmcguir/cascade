@@ -6,9 +6,7 @@ import numpy as np
 import pandas as pd
 import warnings
 from copy import deepcopy
-from . import utils
-from . import paths
-from . import tca
+from . import utils, paths, tca, load
 
 # ----------------------- EARLY STAGE DFs -----------------------
 
@@ -618,7 +616,7 @@ def groupmouse_trialfac_summary_days(
                        'nan_thresh': nan_thresh,
                        'score_threshold': score_threshold,
                        'rank': rank_num}
-        ensemble, ids, clus = load.groupday_tca_model(
+        sort_ensemble, ids, clus = load.groupday_tca_model(
             load_kwargs, full_output=True)
         meta = load.groupday_tca_meta(load_kwargs)
         orientation = meta['orientation']
@@ -626,9 +624,12 @@ def groupmouse_trialfac_summary_days(
         trialerror = meta['trialerror']
         hunger = deepcopy(meta['hunger'])
         speed = meta['speed']
-        dates = pd.DataFrame(data={'date': meta.index.get_level_values('date')}, index=meta.index)
+        dates = pd.DataFrame(
+            data={'date': meta.index.get_level_values('date')},
+            index=meta.index)
         dates = dates['date']  # turn into series for index matching for bool
         learning_state = meta['learning_state']
+
 
         df_mouse_tuning = []
         df_mouse_tuning_scaled = []
@@ -1035,7 +1036,7 @@ def groupmouse_trialfac_summary_stages(
                        'nan_thresh': nan_thresh,
                        'score_threshold': score_threshold,
                        'rank': rank_num}
-        ensemble, ids, clus = load.groupday_tca_model(
+        sort_ensemble, cell_ids, cell_clusters = load.groupday_tca_model(
             load_kwargs, full_output=True)
         meta = load.groupday_tca_meta(load_kwargs)
         orientation = meta['orientation']
@@ -1045,27 +1046,6 @@ def groupmouse_trialfac_summary_stages(
         speed = meta['speed']
         dates = meta.reset_index()['date']
         learning_state = meta['learning_state']
-
-        # re-balance your factors ()
-        print('Re-balancing factors.')
-        for r in ensemble[method].results:
-            for i in range(len(ensemble[method].results[r])):
-                ensemble[method].results[r][i].factors.rebalance()
-
-        # sort neuron factors by component they belong to most
-        sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
-
-        cell_ids = {}  # keys are rank
-        cell_clusters = {}
-        itr_num = 0  # use only best iteration of TCA, index 0
-        for k in sort_ensemble.results.keys():
-            # factors are already sorted, so these will define
-            # clusters, no need to sort again
-            factors = sort_ensemble.results[k][itr_num].factors[0]
-            max_fac = np.argmax(factors, axis=1)
-            cell_clusters[k] = max_fac
-            cell_ids[k] = ids[my_sorts[k-1]]
-
 
         # create dataframe of dprime values
         dprime_vec = []
