@@ -286,7 +286,7 @@ def groupmouse_correlate_pillow_tca(
                        'cs': cs,
                        'warp': warp,
                        'word': word,
-                       'group_by': group_by
+                       'group_by': group_by,
                        'nan_thresh': nan_thresh,
                        'score_threshold': score_threshold}
         tensor = load.groupday_tca_model(**load_kwargs)
