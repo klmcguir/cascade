@@ -24,6 +24,7 @@ def fit_disengaged_sated(
         word=None,
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=None,
         random_state=None,
         init='rand',
         rank=18,
@@ -39,8 +40,16 @@ def fit_disengaged_sated(
 
     # load full-size TCA results
     mouse = mouse.mouse
-    ensemble, ids2, clus = load.groupday_tca(
-        mouse=mouse, word=word, nan_thresh=nan_thresh, group_by=group_by)
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'group_by': group_by
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold,
+                   'rank': rank}
+    ensemble, ids2, clus = load.groupday_tca_model(load_kwargs)
 
     # get all days with disengaged or sated trials
     dis_dates = flow.DateSorter.frommeta(
@@ -188,6 +197,7 @@ def fit_disengaged_sated_mean_per_comp(
         word=None,
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=None,
         random_state=None,
         init='rand',
         rank=18,
@@ -203,8 +213,16 @@ def fit_disengaged_sated_mean_per_comp(
 
     # load full-size TCA results
     mouse = mouse.mouse
-    ensemble, ids2, clus = load.groupday_tca(
-        mouse=mouse, word=word, nan_thresh=nan_thresh, group_by=group_by)
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'group_by': group_by
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold,
+                   'rank': rank}
+    ensemble, ids2, clus = load.groupday_tca_model(load_kwargs)
 
     # get all days with disengaged or sated trials
     dis_dates = flow.DateSorter.frommeta(
@@ -350,6 +368,7 @@ def groupmouse_fit_disengaged_sated_mean_per_comp(
         words=['orlando', 'already', 'already', 'already', 'already'],
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=None,
         random_state=None,
         init='rand',
         rank=18,
@@ -366,6 +385,7 @@ def groupmouse_fit_disengaged_sated_mean_per_comp(
         mouse_list.append(
             fit_disengaged_sated_mean_per_comp(
                 mouse, word=w, rank=rank, nan_thresh=nan_thresh,
+                score_threshold=score_threshold,
                 method=method, cs=cs, warp=warp, group_by=group_by,
                 trace_type=trace_type, random_state=random_state, init=init,
                 verbose=verbose))
