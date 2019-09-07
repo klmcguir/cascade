@@ -612,7 +612,7 @@ def groupmouse_trialfac_summary_days(
                        'cs': cs,
                        'warp': warp,
                        'word': words[mnum],
-                       'group_by': group_by
+                       'group_by': group_by,
                        'nan_thresh': nan_thresh,
                        'score_threshold': score_threshold,
                        'rank': rank_num}
@@ -1032,7 +1032,7 @@ def groupmouse_trialfac_summary_stages(
                        'cs': cs,
                        'warp': warp,
                        'word': words[mnum],
-                       'group_by': group_by
+                       'group_by': group_by,
                        'nan_thresh': nan_thresh,
                        'score_threshold': score_threshold,
                        'rank': rank_num}
