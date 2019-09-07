@@ -15,8 +15,14 @@ from scipy.stats import pearsonr
 
 def correlate_pillow_tca(
         mouse,
-        word='already',
-        group_by='all'):
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        word='tray',
+        group_by='all',
+        nan_thresh=0.85,
+        score_threshold=None):
 
     # LOADING
 
@@ -67,8 +73,17 @@ def correlate_pillow_tca(
     dfr = pd.DataFrame(data, index=index)
 
     # Load TCA results
-    tensor, ids, clus, meta = load.groupday_tca(
-        mouse, word=word, group_by=group_by)
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'group_by': group_by
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+    tensor = load.groupday_tca_model(load_kwargs)
+    meta = load.groupday_tca_meta(load_kwargs)
+
     savepath = paths.tca_plots(
         mouse, 'group', word=word, group_pars={'group_by': group_by})
     savepath = os.path.join(savepath, 'psytrack-vs-tca')
@@ -204,7 +219,13 @@ def groupmouse_correlate_pillow_tca(
               'VF226'],
         words=['orlando', 'already', 'already', 'already', 'already',
                'already', 'already', 'already'],
-        group_by='all'):
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        group_by='all',
+        nan_thresh=0.85,
+        score_threshold=None):
 
     # preallocate
     corr_list = []
@@ -260,8 +281,17 @@ def groupmouse_correlate_pillow_tca(
         dfr = pd.DataFrame(data, index=index)
 
         # Load TCA results
-        tensor, ids, clus, meta = load.groupday_tca(
-            mouse, word=word, group_by=group_by)
+        load_kwargs = {'mouse': mouse,
+                       'method': method,
+                       'cs': cs,
+                       'warp': warp,
+                       'word': word,
+                       'group_by': group_by
+                       'nan_thresh': nan_thresh,
+                       'score_threshold': score_threshold}
+        tensor = load.groupday_tca_model(load_kwargs)
+        meta = load.groupday_tca_meta(load_kwargs)
+
         savepath = paths.tca_plots(
             mouse, 'group', word=word, group_pars={'group_by': group_by})
         savepath = os.path.join(savepath, 'psytrack-vs-tca')
