@@ -22,6 +22,7 @@ from .. import paths
 from .. import utils
 from .. import cluster
 from .. import calc
+from .. import load
 
 
 # added functionality from https://github.com/mwaskom/seaborn/pull/1393/files
@@ -720,6 +721,7 @@ def hierclus_on_trials_learning_stages(
         words=['orlando', 'already', 'already', 'already', 'already'],
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=None,
         speed_thresh=5,
 
         # clustering/plotting params
@@ -736,23 +738,31 @@ def hierclus_on_trials_learning_stages(
     # deal with saving dir
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
     if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
-        nt_save_tag = ' nantrial ' + str(nan_thresh)
+        load_tag = '_nantrial' + str(nan_thresh)
+        save_tag = ' nantrial ' + str(nan_thresh)
     else:
-        nt_tag = ''
-        nt_save_tag = ''
+        load_tag = ''
+        save_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
+
     met_tag = '_' + cluster_method
     group_word = paths.groupmouse_word({'mice': mice})
     mouse = 'Group-' + group_word
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
-    save_dir = os.path.join(save_dir, 'clustering' + nt_save_tag)
+    save_dir = os.path.join(save_dir, 'clustering' + save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path_prefix = os.path.join(
         save_dir, str(mouse) + met_tag + '_rank' + str(rank_num) + '_clus' +
         str(cluster_number) + '_heirclus_trialfac_bystage'
-        + '_n' + str(len(mice)) + nt_tag)
+        + '_n' + str(len(mice)) + load_tag)
 
     # create dataframes - ignore python and numpy divide by zero warnings
     with warnings.catch_warnings():
@@ -768,6 +778,7 @@ def hierclus_on_trials_learning_stages(
                     words=words,
                     group_by=group_by,
                     nan_thresh=nan_thresh,
+                    score_threshold=score_threshold,
                     speed_thresh=speed_thresh,
                     rank_num=rank_num,
                     verbose=False)
@@ -938,6 +949,7 @@ def hierclus_on_trials_learning_stages(
                 words=words,
                 group_by=group_by,
                 nan_thresh=nan_thresh,
+                score_threshold=score_threshold,
                 rank=rank_num,
                 verbose=True)
     # just use index
@@ -1059,6 +1071,7 @@ def hierclus_on_amp_trials_learning_stages(
         words=['orlando', 'already', 'already', 'already', 'already'],
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=None,
         speed_thresh=5,
 
         # clustering/plotting params
@@ -1075,23 +1088,31 @@ def hierclus_on_amp_trials_learning_stages(
     # deal with saving dir
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
     if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
-        nt_save_tag = ' nantrial ' + str(nan_thresh)
+        load_tag = '_nantrial' + str(nan_thresh)
+        save_tag = ' nantrial ' + str(nan_thresh)
     else:
-        nt_tag = ''
-        nt_save_tag = ''
+        load_tag = ''
+        save_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
+
     met_tag = '_' + cluster_method
     group_word = paths.groupmouse_word({'mice': mice})
     mouse = 'Group-' + group_word
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
-    save_dir = os.path.join(save_dir, 'clustering' + nt_save_tag)
+    save_dir = os.path.join(save_dir, 'clustering' + save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path_prefix = os.path.join(
         save_dir, str(mouse) + '_AMP' + met_tag + '_rank' + str(rank_num) +
         '_clus' + str(cluster_number) + '_heirclus_trialfac_bystage'
-        + '_n' + str(len(mice)) + nt_tag)
+        + '_n' + str(len(mice)) + load_tag)
 
     # create dataframes - ignore python and numpy divide by zero warnings
     with warnings.catch_warnings():
@@ -1107,6 +1128,7 @@ def hierclus_on_amp_trials_learning_stages(
                     words=words,
                     group_by=group_by,
                     nan_thresh=nan_thresh,
+                    score_threshold=score_threshold,
                     speed_thresh=speed_thresh,
                     rank_num=rank_num,
                     verbose=False)
@@ -1214,7 +1236,8 @@ def hierclus_on_amp_trials_learning_stages(
              'minus_amp_high_dp_rev1']]
 
     # cluster to get cluster color labels for each component
-    g = sns.clustermap(clustering_df4, method=cluster_method, standard_scale=0)
+    g = sns.clustermap(clustering_df4, method=cluster_method,
+                       col_cluster=False, standard_scale=0)
     row_sorter = g.dendrogram_row.reordered_ind
     clusters = hierarchy.fcluster(
         g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
@@ -1289,6 +1312,7 @@ def hierclus_on_amp_trials_learning_stages(
                 words=words,
                 group_by=group_by,
                 nan_thresh=nan_thresh,
+                score_threshold=score_threshold,
                 rank=rank_num,
                 verbose=True)
     # just use index
@@ -1411,6 +1435,7 @@ def hierclus_simple_on_trials_learning_stages(
         words=['orlando', 'already', 'already', 'already', 'already'],
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=None,
         speed_thresh=5,
 
         # clustering/plotting params
@@ -1428,23 +1453,31 @@ def hierclus_simple_on_trials_learning_stages(
     # deal with saving dir
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
     if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
-        nt_save_tag = ' nantrial ' + str(nan_thresh)
+        load_tag = '_nantrial' + str(nan_thresh)
+        save_tag = ' nantrial ' + str(nan_thresh)
     else:
-        nt_tag = ''
-        nt_save_tag = ''
+        load_tag = ''
+        save_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
+
     met_tag = '_' + cluster_method
     group_word = paths.groupmouse_word({'mice': mice})
     mouse = 'Group-' + group_word
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
-    save_dir = os.path.join(save_dir, 'clustering simple' + nt_save_tag)
+    save_dir = os.path.join(save_dir, 'clustering simple' + save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path_prefix = os.path.join(
         save_dir, str(mouse) + met_tag + '_rank' + str(rank_num) + '_sclus' +
         str(cluster_number) + '_heirclus_trialfac_bystage'
-        + '_n' + str(len(mice)) + nt_tag)
+        + '_n' + str(len(mice)) + load_tag)
 
     # create dataframes - ignore python and numpy divide by zero warnings
     with warnings.catch_warnings():
@@ -1460,6 +1493,7 @@ def hierclus_simple_on_trials_learning_stages(
                     words=words,
                     group_by=group_by,
                     nan_thresh=nan_thresh,
+                    score_threshold=score_threshold,
                     speed_thresh=speed_thresh,
                     rank_num=rank_num,
                     verbose=False)
