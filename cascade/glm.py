@@ -5,8 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-from . import paths
-from . import utils
+from . import paths, utils, load
 from flow.misc import regression
 
 
@@ -19,6 +18,7 @@ def fit_trial_factors(
         word='orlando',
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=None,
         rank_num=18,
         historical_memory=5,
         rectified=False,
@@ -26,42 +26,28 @@ def fit_trial_factors(
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
-
-    # if cells were removed with too many nan trials
-    if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
-    else:
-        nt_tag = ''
-
-    # load dir
-    load_dir = paths.tca_path(
-        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_decomp_' + str(trace_type) + '.npy')
-    input_tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_tensor_' + str(trace_type) + '.npy')
-    meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_df_group_meta.pkl')
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'group_by': group_by
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold,
+                   'rank': rank_num}
 
     # load your data
-    ensemble = np.load(tensor_path)
-    ensemble = ensemble.item()
-    # re-balance your factors ()
-    print('Re-balancing factors.')
-    for r in ensemble[method].results:
-        for i in range(len(ensemble[method].results[r])):
-            ensemble[method].results[r][i].factors.rebalance()
+    ensemble, cell_ids, cell_clusters = load.groupday_tca_model(
+            load_kwargs, full_output=True)
+    meta = load.groupday_tca_meta(load_kwargs)
     V = ensemble[method]
-    meta = pd.read_pickle(meta_path)
-    meta = utils.update_naive_cs(meta)
     orientation = meta.reset_index()['orientation']
     condition = meta.reset_index()['condition']
     speed = meta.reset_index()['speed']
     dates = meta.reset_index()['date']
-    total_time = pd.DataFrame(data={'total_time': np.arange(len(time_in_trial))}, index=time_in_trial.index)
+    total_time = pd.DataFrame(
+        data={'total_time': np.arange(len(time_in_trial))},
+        index=time_in_trial.index)
     learning_state = meta['learning_state']
     trialerror = meta['trialerror']
 
