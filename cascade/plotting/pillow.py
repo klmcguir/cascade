@@ -81,8 +81,8 @@ def correlate_pillow_tca(
                    'group_by': group_by
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold}
-    tensor = load.groupday_tca_model(load_kwargs)
-    meta = load.groupday_tca_meta(load_kwargs)
+    tensor = load.groupday_tca_model(**load_kwargs)
+    meta = load.groupday_tca_meta(**load_kwargs)
 
     savepath = paths.tca_plots(
         mouse, 'group', word=word, group_pars={'group_by': group_by})
@@ -289,8 +289,8 @@ def groupmouse_correlate_pillow_tca(
                        'group_by': group_by
                        'nan_thresh': nan_thresh,
                        'score_threshold': score_threshold}
-        tensor = load.groupday_tca_model(load_kwargs)
-        meta = load.groupday_tca_meta(load_kwargs)
+        tensor = load.groupday_tca_model(**load_kwargs)
+        meta = load.groupday_tca_meta(**load_kwargs)
 
         savepath = paths.tca_plots(
             mouse, 'group', word=word, group_pars={'group_by': group_by})
