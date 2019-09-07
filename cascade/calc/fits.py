@@ -49,7 +49,7 @@ def fit_disengaged_sated(
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold,
                    'rank': rank}
-    ensemble, ids2, clus = load.groupday_tca_model(load_kwargs)
+    ensemble, ids2, clus = load.groupday_tca_model(**load_kwargs)
 
     # get all days with disengaged or sated trials
     dis_dates = flow.DateSorter.frommeta(
@@ -222,7 +222,7 @@ def fit_disengaged_sated_mean_per_comp(
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold,
                    'rank': rank}
-    ensemble, ids2, clus = load.groupday_tca_model(load_kwargs)
+    ensemble, ids2, clus = load.groupday_tca_model(**load_kwargs)
 
     # get all days with disengaged or sated trials
     dis_dates = flow.DateSorter.frommeta(
