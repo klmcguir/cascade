@@ -45,7 +45,7 @@ def fit_disengaged_sated(
                    'cs': cs,
                    'warp': warp,
                    'word': word,
-                   'group_by': group_by
+                   'group_by': group_by,
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold,
                    'rank': rank}
@@ -218,7 +218,7 @@ def fit_disengaged_sated_mean_per_comp(
                    'cs': cs,
                    'warp': warp,
                    'word': word,
-                   'group_by': group_by
+                   'group_by': group_by,
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold,
                    'rank': rank}
