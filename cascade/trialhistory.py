@@ -13,7 +13,13 @@ from . import load
 def groupmouse_th_index_dataframe(
         mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175', 'OA32', 'OA34', 'OA36'],
         words=None,
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
         group_by='all',
+        nan_thresh=0.85,
+        score_threshold=0.8,
         rank_num=18,
         verbose=True):
     """
@@ -31,6 +37,12 @@ def groupmouse_th_index_dataframe(
         th_df = th_index_dataframe(
                     m,
                     word=w,
+                    trace_type=trace_type,
+                    method=method,
+                    cs=cs,
+                    warp=warp,
+                    nan_thresh=nan_thresh,
+                    score_threshold=score_threshold,
                     rank_num=rank_num,
                     group_by=group_by,
                     verbose=verbose)
@@ -42,9 +54,15 @@ def groupmouse_th_index_dataframe(
 
 def th_index_dataframe(
         mouse,
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
         word=None,
-        rank_num=18,
         group_by='all',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        rank_num=18,
         verbose=True):
     """
     Create a pandas dataframe of trial history modulation indices for one
@@ -114,10 +132,17 @@ def th_index_dataframe(
     dfr = pd.DataFrame(data, index=index)
 
     # load TCA data
-    tensor, ids, clus, meta = load.groupday_tca(
-                                mouse,
-                                word=word,
-                                group_by=group_by)
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'group_by': group_by
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold,
+                   'rank': rank_num}
+    tensor = load.groupday_tca_model(load_kwargs)
+    meta = load.groupday_tca_meta(load_kwargs)
 
     # add in continuous dprime
     dp = pool.calc.psytrack.dprime(flow.Mouse(mouse))
@@ -248,9 +273,15 @@ def th_index_dataframe(
 
 def th_index_dataframe_byday(
         mouse,
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
         word=None,
-        rank_num=18,
         group_by='all',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        rank_num=18,
         verbose=True):
     """
     Create a pandas dataframe of trial history modulation indices for one
@@ -320,10 +351,18 @@ def th_index_dataframe_byday(
     dfr = pd.DataFrame(data, index=index)
 
     # load TCA data
-    tensor, ids, clus, meta = load.groupday_tca(
-                                mouse,
-                                word=word,
-                                group_by=group_by)
+    load_kwargs = {'mouse': mouse,
+               'method': method,
+               'cs': cs,
+               'warp': warp,
+               'word': word,
+               'group_by': group_by
+               'nan_thresh': nan_thresh,
+               'score_threshold': score_threshold,
+               'rank': rank_num}
+    tensor = load.groupday_tca_model(load_kwargs)
+    meta = load.groupday_tca_meta(load_kwargs)
+
 
     # add in continuous dprime
     dp = pool.calc.psytrack.dprime(flow.Mouse(mouse))
