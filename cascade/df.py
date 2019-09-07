@@ -890,7 +890,7 @@ def groupmouse_trialfac_summary_days(
         trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
         pref_ori_idx = np.argmax(tuning_weights, axis=0)
         pos = np.arange(1, len(orientation)+1)
-        cm_learning= []
+        cm_learning = []
         for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
             pref_indexer = (orientation == oris_to_check[ori])
             pos_pref = pos[learning_indexer & pref_indexer]
