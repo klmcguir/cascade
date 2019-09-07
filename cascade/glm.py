@@ -31,7 +31,7 @@ def fit_trial_factors(
                    'cs': cs,
                    'warp': warp,
                    'word': word,
-                   'group_by': group_by
+                   'group_by': group_by,
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold,
                    'rank': rank_num}
