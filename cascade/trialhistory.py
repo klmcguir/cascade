@@ -74,7 +74,7 @@ def th_index_dataframe(
         if mouse == 'OA27':
             word = 'tray'
         else:
-            word = 'already'  # should be updated to 'obligations'
+            word = 'obligations'  # should be updated to 'obligations'
         if verbose:
             print('Creating dataframe for ' + mouse + '-' + word)
 
