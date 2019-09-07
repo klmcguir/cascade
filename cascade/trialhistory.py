@@ -137,7 +137,7 @@ def th_index_dataframe(
                    'cs': cs,
                    'warp': warp,
                    'word': word,
-                   'group_by': group_by
+                   'group_by': group_by,
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold,
                    'rank': rank_num}
@@ -352,14 +352,14 @@ def th_index_dataframe_byday(
 
     # load TCA data
     load_kwargs = {'mouse': mouse,
-               'method': method,
-               'cs': cs,
-               'warp': warp,
-               'word': word,
-               'group_by': group_by
-               'nan_thresh': nan_thresh,
-               'score_threshold': score_threshold,
-               'rank': rank_num}
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold,
+                   'rank': rank_num}
     tensor = load.groupday_tca_model(load_kwargs)
     meta = load.groupday_tca_meta(load_kwargs)
 
