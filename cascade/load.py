@@ -27,7 +27,7 @@ def singleday_tensor(
         thresh=20,
         warp=False,
         smooth=True,
-        smooth_win=5,
+        smooth_win=6,
         verbose=True,
 
         # filtering params
