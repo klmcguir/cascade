@@ -141,8 +141,8 @@ def th_index_dataframe(
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold,
                    'rank': rank_num}
-    tensor = load.groupday_tca_model(load_kwargs)
-    meta = load.groupday_tca_meta(load_kwargs)
+    tensor = load.groupday_tca_model(**load_kwargs)
+    meta = load.groupday_tca_meta(**load_kwargs)
 
     # add in continuous dprime
     dp = pool.calc.psytrack.dprime(flow.Mouse(mouse))
@@ -360,8 +360,8 @@ def th_index_dataframe_byday(
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold,
                    'rank': rank_num}
-    tensor = load.groupday_tca_model(load_kwargs)
-    meta = load.groupday_tca_meta(load_kwargs)
+    tensor = load.groupday_tca_model(**load_kwargs)
+    meta = load.groupday_tca_meta(**load_kwargs)
 
 
     # add in continuous dprime
