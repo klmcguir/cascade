@@ -564,6 +564,7 @@ def groupmouse_trialfac_summary_days(
         words=['orlando', 'already', 'already', 'already', 'already'],
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=None,
         speed_thresh=5,
         rank_num=18,
         verbose=False):
@@ -586,12 +587,6 @@ def groupmouse_trialfac_summary_days(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
-    # if cells were removed with too many nan trials
-    if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
-    else:
-        nt_tag = ''
-
     conds_by_day = []
     oris_by_day = []
     trialerr_by_day = []
@@ -613,28 +608,19 @@ def groupmouse_trialfac_summary_days(
     df_list_bias = []
     for mnum, mouse in enumerate(mice):
 
-        # load dir
-        load_dir = paths.tca_path(
-            mouse, 'group', pars=pars, word=words[mnum], group_pars=group_pars)
-        tensor_path = os.path.join(
-            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-            + '_group_decomp_' + str(trace_type) + '.npy')
-        ids_path = os.path.join(
-            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-            + '_group_ids_' + str(trace_type) + '.npy')
-        input_tensor_path = os.path.join(
-            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-            + '_group_tensor_' + str(trace_type) + '.npy')
-        meta_path = os.path.join(
-            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-            + '_df_group_meta.pkl')
-
         # load your data
-        ensemble = np.load(tensor_path, allow_pickle=True)
-        ensemble = ensemble.item()
-        meta = pd.read_pickle(meta_path)
-        meta = utils.update_naive_cs(meta)
-        ids = np.load(ids_path)
+        load_kwargs = {'mouse': mouse,
+                       'method': method,
+                       'cs': cs,
+                       'warp': warp,
+                       'word': words[mnum],
+                       'group_by': group_by
+                       'nan_thresh': nan_thresh,
+                       'score_threshold': score_threshold,
+                       'rank': rank_num}
+        ensemble, ids, clus = load.groupday_tca_model(
+            load_kwargs, full_output=True)
+        meta = load.groupday_tca_meta(load_kwargs)
         orientation = meta['orientation']
         condition = meta['condition']
         trialerror = meta['trialerror']
@@ -643,26 +629,6 @@ def groupmouse_trialfac_summary_days(
         dates = pd.DataFrame(data={'date': meta.index.get_level_values('date')}, index=meta.index)
         dates = dates['date']  # turn into series for index matching for bool
         learning_state = meta['learning_state']
-
-        # re-balance your factors ()
-        print('Re-balancing factors.')
-        for r in ensemble[method].results:
-            for i in range(len(ensemble[method].results[r])):
-                ensemble[method].results[r][i].factors.rebalance()
-
-        # sort neuron factors by component they belong to most
-        sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
-
-        cell_ids = {}  # keys are rank
-        cell_clusters = {}
-        itr_num = 0  # use only best iteration of TCA, index 0
-        for k in sort_ensemble.results.keys():
-            # factors are already sorted, so these will define
-            # clusters, no need to sort again
-            factors = sort_ensemble.results[k][itr_num].factors[0]
-            max_fac = np.argmax(factors, axis=1)
-            cell_clusters[k] = max_fac
-            cell_ids[k] = ids[my_sorts[k-1]]
 
         df_mouse_tuning = []
         df_mouse_tuning_scaled = []
@@ -1015,6 +981,7 @@ def groupmouse_trialfac_summary_stages(
         words=['orlando', 'already', 'already', 'already', 'already'],
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=None,
         speed_thresh=5,
         rank_num=18,
         matched_only=True,
@@ -1038,12 +1005,6 @@ def groupmouse_trialfac_summary_stages(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
-    # if cells were removed with too many nan trials
-    if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
-    else:
-        nt_tag = ''
-
     conds_by_day = []
     oris_by_day = []
     trialerr_by_day = []
@@ -1064,28 +1025,19 @@ def groupmouse_trialfac_summary_stages(
     df_list_amplitude = []
     for mnum, mouse in enumerate(mice):
 
-        # load dir
-        load_dir = paths.tca_path(
-            mouse, 'group', pars=pars, word=words[mnum], group_pars=group_pars)
-        tensor_path = os.path.join(
-            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-            + '_group_decomp_' + str(trace_type) + '.npy')
-        ids_path = os.path.join(
-            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-            + '_group_ids_' + str(trace_type) + '.npy')
-        input_tensor_path = os.path.join(
-            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-            + '_group_tensor_' + str(trace_type) + '.npy')
-        meta_path = os.path.join(
-            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-            + '_df_group_meta.pkl')
-
         # load your data
-        ensemble = np.load(tensor_path, allow_pickle=True)
-        ensemble = ensemble.item()
-        meta = pd.read_pickle(meta_path)
-        meta = utils.update_naive_cs(meta)
-        ids = np.load(ids_path)
+        load_kwargs = {'mouse': mouse,
+                       'method': method,
+                       'cs': cs,
+                       'warp': warp,
+                       'word': words[mnum],
+                       'group_by': group_by
+                       'nan_thresh': nan_thresh,
+                       'score_threshold': score_threshold,
+                       'rank': rank_num}
+        ensemble, ids, clus = load.groupday_tca_model(
+            load_kwargs, full_output=True)
+        meta = load.groupday_tca_meta(load_kwargs)
         orientation = meta['orientation']
         condition = meta['condition']
         trialerror = meta['trialerror']
