@@ -166,20 +166,21 @@ def singleday_tensor(
         return tensor, meta, ids
 
 
-def groupday_tca(
+def groupday_tca_model(
         mouse='OA27',
         trace_type='zscore_day',
         method='mncp_hals',
         cs='',
         warp=False,
         rank=18,
-        word='orlando',
+        word='tray',
         group_by='all',
         nan_thresh=0.85,
-        rectified=False,
+        score_threshold=None,
+        full_output=False,
         verbose=False):
     """
-    Load existing tensor component analysis (TCA).
+    Load existing tensor component analysis (TCA) model and ids.
 
     Parameters
     ----------
@@ -195,52 +196,44 @@ def groupday_tca(
 
     # if cells were removed with too many nan trials
     if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
+        load_tag = '_nantrial' + str(nan_thresh)
     else:
-        nt_tag = ''
+        load_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
 
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_group_decomp_' + str(trace_type) + '.npy')
     ids_path = os.path.join(
-                load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+                load_dir, str(mouse) + '_' + str(group_by) + load_tag
                 + '_group_ids_' + str(trace_type) + '.npy')
     input_tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_group_tensor_' + str(trace_type) + '.npy')
     meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_df_group_meta.pkl')
 
     # load your data
     ensemble = np.load(tensor_path, allow_pickle=True)
     ensemble = ensemble.item()
-    meta = pd.read_pickle(meta_path)
-    meta = utils.update_naive_cs(meta)
-    # X = np.load(input_tensor_path)
     ids = np.load(ids_path)
-    orientation = meta['orientation']
-    condition = meta['condition']
-    trialerror = meta['trialerror']
-    hunger = deepcopy(meta['hunger'])
-    speed = meta['speed']
-    dates = pd.DataFrame(data={'date': meta.index.get_level_values('date')}, index=meta.index)
-    dates = dates['date']  # turn into series for index matching for bool
-    learning_state = meta['learning_state']
 
     # re-balance your factors ()
-    print('Re-balancing factors.')
+    if verbose:
+        print('Re-balancing factors.')
     for r in ensemble[method].results:
         for i in range(len(ensemble[method].results[r])):
             ensemble[method].results[r][i].factors.rebalance()
 
     # sort neuron factors by component they belong to most
     sort_ensemble, my_sorts = _sortfactors(ensemble[method])
-    # X = X[my_sorts[rank - 1], :, :]
-    # Xhat = sort_ensemble.results[rank][0].factors.full()
 
     cell_ids = {}  # keys are rank
     cell_clusters = {}
@@ -253,8 +246,106 @@ def groupday_tca(
         cell_clusters[k] = max_fac
         cell_ids[k] = ids[my_sorts[k-1]]
 
-    # get boolean indexer for period stim is on screen
-    # stim_window = np.arange(-1, 7, 1/15.5)[0:108]
-    # stim_window = (stim_window > 0) & (stim_window < 3)
+    # Return either output for one rank, or everything for all ranks
+    if not full_output:
+        return sort_ensemble, cell_ids[rank], cell_clusters[rank]
+    else:
+        return sort_ensemble, cell_ids, cell_clusters
 
-    return sort_ensemble, cell_ids[rank], cell_clusters[rank], meta
+
+def groupday_tca_meta(
+        mouse='OA27',
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        rank=18,
+        word='tray',
+        group_by='all',
+        nan_thresh=0.85,
+        score_threshold=None):
+    """
+    Load existing tensor component analysis (TCA) metadata.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+
+    mouse = mouse
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        load_tag = '_nantrial' + str(nan_thresh)
+    else:
+        load_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+
+    # load dir
+    load_dir = paths.tca_path(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    meta_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
+        + '_df_group_meta.pkl')
+
+    # load your data
+    meta = pd.read_pickle(meta_path)
+    meta = utils.update_naive_cs(meta)
+
+    return meta
+
+
+def groupday_tca_input_tensor(
+        mouse='OA27',
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        word='tray',
+        group_by='all',
+        nan_thresh=0.85,
+        score_threshold=None):
+    """
+    Load existing input tensor from tensor component analysis (TCA).
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+
+    mouse = mouse
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        load_tag = '_nantrial' + str(nan_thresh)
+    else:
+        load_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+
+    # load dir
+    load_dir = paths.tca_path(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    input_tensor_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
+        + '_group_tensor_' + str(trace_type) + '.npy')
+
+    # load your data
+    input_tensor = np.load(input_tensor_path)
+
+    return input_tensor
