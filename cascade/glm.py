@@ -38,7 +38,7 @@ def fit_trial_factors(
 
     # load your data
     ensemble, cell_ids, cell_clusters = load.groupday_tca_model(
-            **load_kwargs full_output=True)
+            **load_kwargs, full_output=True)
     meta = load.groupday_tca_meta(**load_kwargs)
     V = ensemble[method]
     orientation = meta.reset_index()['orientation']
