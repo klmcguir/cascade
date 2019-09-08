@@ -156,24 +156,17 @@ def groupmouse_varex_summary(
     cmap = sns.color_palette('hls', len(mice))
 
     for c, mouse in enumerate(mice):
-        # load dir
-        load_dir = paths.tca_path(
-            mouse, 'group', pars=pars, word=words[c], group_pars=group_pars)
-        tensor_path = os.path.join(
-            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-            + '_group_decomp_' + str(trace_type) + '.npy')
-        input_tensor_path = os.path.join(
-            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-            + '_group_tensor_' + str(trace_type) + '.npy')
-        meta_path = os.path.join(
-            load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-            + '_df_group_meta.pkl')
 
         # load your data
-        ensemble = np.load(tensor_path)
-        ensemble = ensemble.item()
-        V = ensemble[method]
-        X = np.load(input_tensor_path)
+        load_kwargs = {'mouse': mouse,
+                       'method': method,
+                       'cs': cs,
+                       'warp': warp,
+                       'word': words[c],
+                       'group_by': group_by,
+                       'nan_thresh': nan_thresh,
+                       'score_threshold': score_threshold}
+        V, _, _ = load.groupday_tca_model(**load_kwargs, full_output=True)
 
         # get reconstruction error as variance explained
         df_var = var.groupday_varex(
@@ -185,6 +178,7 @@ def groupmouse_varex_summary(
             word=words[c],
             group_by=group_by,
             nan_thresh=nan_thresh,
+            score_threshold=score_threshold,
             rectified=rectified,
             verbose=verbose)
         x_s = df_var['rank'].values
