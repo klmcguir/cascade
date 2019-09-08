@@ -271,7 +271,7 @@ def th_index_dataframe(
     return th_df
 
 
-def th_index_dataframe(
+def th_tuning_dataframe(
         mouse,
         trace_type='zscore_day',
         method='mncp_hals',
