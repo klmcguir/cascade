@@ -99,6 +99,7 @@ def groupmouse_varex_summary(
         words=None,
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=None,
         rectified=True,
         verbose=True):
     """
@@ -121,29 +122,34 @@ def groupmouse_varex_summary(
 
     # if cells were removed with too many nan trials
     if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
-        nt_save_tag = ' nantrial ' + str(nan_thresh)
+        file_tag = '_nantrial' + str(nan_thresh)
+        dir_tag = ' nantrial ' + str(nan_thresh)
     else:
-        nt_tag = ''
-        nt_save_tag = ''
+        save_tag = ''
+        dir_tag = ' nantrial ' + str(nan_thresh)
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        file_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        dir_tag = ' score0pt' + str(int(score_threshold*10)) + dir_tag
 
     # save tag for rectification
     if rectified:
         r_tag = ' rectified'
-        r_save_tag = '_rectified'
+        file_tag = file_tag + '_rectified'
+        dir_tag = dir_tag + r_tag
     else:
         r_tag = ''
-        r_save_tag = ''
 
     # save dir
     group_word = paths.groupmouse_word({'mice': mice})
     mouse = 'Group-' + group_word
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
-    save_dir = os.path.join(save_dir, 'qc' + nt_save_tag + r_tag)
+    save_dir = os.path.join(save_dir, 'qc' + dir_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path = os.path.join(
-        save_dir, str(mouse) + '_summary_variance_explained' + r_save_tag
+        save_dir, str(mouse) + '_summary_variance_explained' + file_tag
         + '_n' + str(len(mice)) + '.pdf')
 
     # create figure and axes
