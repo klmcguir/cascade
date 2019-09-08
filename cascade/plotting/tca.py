@@ -1047,6 +1047,7 @@ def groupday_varex_summary(
         word=word,
         group_by=group_by,
         nan_thresh=nan_thresh,
+        score_threshold=score_threshold,
         rectified=rectified,
         verbose=verbose)
     x_s = df_var['rank'].values
