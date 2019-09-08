@@ -20,6 +20,7 @@ def groupday_varex(
         word=None,
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=None,
         rectified=True,
         verbose=False):
     """
@@ -41,30 +42,17 @@ def groupday_varex(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
-    # if cells were removed with too many nan trials
-    if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
-    else:
-        nt_tag = ''
-
-    # load dir
-    load_dir = paths.tca_path(
-        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_decomp_' + str(trace_type) + '.npy')
-    input_tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_tensor_' + str(trace_type) + '.npy')
-    meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_df_group_meta.pkl')
-
     # load your data
-    ensemble = np.load(tensor_path)
-    ensemble = ensemble.item()
-    V = ensemble[method]
-    X = np.load(input_tensor_path)
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': words[c],
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+    V, _ = load.groupday_tca_model(**load_kwargs, unsorted=True)
+    X = load.groupday_tca_input_tensor(**load_kwargs)
 
     # rectify input tensor (only look at nonnegative variance)
     if rectified:
