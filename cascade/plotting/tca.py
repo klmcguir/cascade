@@ -91,15 +91,17 @@ def singleday_shortlist(
 
 
 def groupmouse_varex_summary(
-        mice,
+        mice=['OA27', 'OA67', 'OA32', 'OA34', 'CC175', 'OA36', 'OA26',
+              'VF226'],
         trace_type='zscore_day',
         method='mncp_hals',
         cs='',
         warp=False,
-        words=None,
+        words=['tray', 'obligations', 'obligations', 'obligations',
+               'obligations', 'obligations', 'obligations', 'obligations'],
         group_by='all',
         nan_thresh=0.85,
-        score_threshold=None,
+        score_threshold=0.8,
         rectified=True,
         verbose=True):
     """
@@ -125,12 +127,12 @@ def groupmouse_varex_summary(
         file_tag = '_nantrial' + str(nan_thresh)
         dir_tag = ' nantrial ' + str(nan_thresh)
     else:
-        save_tag = ''
+        file_tag = ''
         dir_tag = ' nantrial ' + str(nan_thresh)
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        file_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        file_tag = '_score0pt' + str(int(score_threshold*10)) + file_tag
         dir_tag = ' score0pt' + str(int(score_threshold*10)) + dir_tag
 
     # save tag for rectification
