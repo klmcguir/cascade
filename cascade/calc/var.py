@@ -47,7 +47,7 @@ def groupday_varex(
                    'method': method,
                    'cs': cs,
                    'warp': warp,
-                   'word': words[c],
+                   'word': word,
                    'group_by': group_by,
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold}
