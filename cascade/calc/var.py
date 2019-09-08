@@ -1,6 +1,6 @@
 """Calculations to be saved to mongoDB database"""
 from pool.database import memoize
-from .. import paths
+from .. import paths, load
 import tensortools as tt
 import numpy as np
 import pandas as pd
