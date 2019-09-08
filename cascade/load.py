@@ -178,6 +178,7 @@ def groupday_tca_model(
         nan_thresh=0.85,
         score_threshold=None,
         full_output=False,
+        unsorted=False,
         verbose=False):
     """
     Load existing tensor component analysis (TCA) model and ids.
@@ -247,10 +248,13 @@ def groupday_tca_model(
         cell_ids[k] = ids[my_sorts[k-1]]
 
     # Return either output for one rank, or everything for all ranks
-    if not full_output:
-        return sort_ensemble, cell_ids[rank], cell_clusters[rank]
+    if unsorted:
+        return ensemble[method], my_sorts
     else:
-        return sort_ensemble, cell_ids, cell_clusters
+        if not full_output:
+            return sort_ensemble, cell_ids[rank], cell_clusters[rank]
+        else:
+            return sort_ensemble, cell_ids, cell_clusters
 
 
 def groupday_tca_meta(
