@@ -104,7 +104,7 @@ def groupmouse_varex_summary(
         nan_thresh=0.85,
         score_threshold=0.8,
         rectified=True,
-        verbose=True):
+        verbose=False):
     """
     Plot reconstruction error as variance explained across all whole groupday
     TCA decomposition ensemble.
