@@ -80,14 +80,14 @@ def groupmouse_index_heatmap(
         cs_y_label = [s2 + '-' + str(int(s1)) for s1, s2 in
                       zip(cs_y_label, mouse_y_label)]
 
-        plt.figure(figsize=(10,10))
+        plt.figure(figsize=(15,10))
         group_word = paths.groupmouse_word({'mice': mice})
         file_name = group_word + '_th_' + str(ics) + '.pdf'
         sns.heatmap(cs_plt_df, center=0, vmax=1, vmin=-1, cmap=cmap,
                     yticklabels=cs_y_label, xticklabels=xlab)
         plt.title('Trial History Modulation, Condition: ' + ics)
         plt.ylabel('Component #')
-        plt.savefig(save_dir + file_name, bbox_inches='tight')
+        plt.savefig(os.path.join(save_dir, file_name), bbox_inches='tight')
         plt.close('all')
 
 
@@ -167,5 +167,5 @@ def groupday_index_heatmap(
                         yticklabels=cs_y_label, xticklabels=xlab)
             plt.title('Trial History Modulation, Condition: ' + ics)
             plt.ylabel('Component #')
-            plt.savefig(save_dir + file_name, bbox_inches='tight')
+            plt.savefig(os.path.join(save_dir, file_name), bbox_inches='tight')
             plt.close('all')
