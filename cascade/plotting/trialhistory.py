@@ -47,7 +47,14 @@ def groupmouse_index_heatmap(
     all_dfs = trialhistory.groupmouse_th_index_dataframe(
                 mice=mice,
                 words=words,
+                trace_type=trace_type,
+                method=method,
+                cs=cs,
+                warp=warp,
+                word=word,
                 group_by=group_by,
+                nan_thresh=nan_thresh,
+                score_threshold=score_threshold,
                 rank_num=rank_num,
                 verbose=verbose)
 
@@ -120,9 +127,16 @@ def groupday_index_heatmap(
 
         # get all dataframes
         all_dfs = trialhistory.th_index_dataframe(
-                    mice=mice,
-                    words=words,
+                    mouse=m,
+                    word=w,
+                    trace_type=trace_type,
+                    method=method,
+                    cs=cs,
+                    warp=warp,
+                    word=word,
                     group_by=group_by,
+                    nan_thresh=nan_thresh,
+                    score_threshold=score_threshold,
                     rank_num=rank_num,
                     verbose=verbose)
 
