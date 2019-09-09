@@ -39,7 +39,7 @@ def groupmouse_index_heatmap(
             nan_thresh=nan_thresh,
             score_threshold=score_threshold,
             pars=pars,
-            word=words,
+            words=words,
             grouping='group',
             group_pars=group_pars)
 
