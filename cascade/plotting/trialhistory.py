@@ -26,6 +26,7 @@ def groupmouse_index_heatmap(
         score_threshold=0.8,
         rank_num=18,
         preferred_tuning=False,
+        unpreferred_tuning=False,
         verbose=True):
 
     # set parameters used for setting up directories
@@ -80,7 +81,7 @@ def groupmouse_index_heatmap(
             com = mcomp[1]
             tun = cols['preferred_tuning']
 
-            # skip braodly tuned components
+            # skip broadly tuned components
             if tun == 'broad':
                 continue
 
@@ -94,6 +95,44 @@ def groupmouse_index_heatmap(
 
         all_dfs = all_dfs.iloc[(keep_vec == 1), :]
         pref_tag = '_preferred_tuning'
+    else:
+        pref_tag = ''
+
+    # unpreferred includes broadly tuned components
+    if unpreferred_tuning:
+        all_tuning_dfs = trialhistory.groupmouse_th_tuning_dataframe(
+                            mice=mice,
+                            words=words,
+                            trace_type=trace_type,
+                            method=method,
+                            cs=cs,
+                            warp=warp,
+                            group_by=group_by,
+                            nan_thresh=nan_thresh,
+                            score_threshold=score_threshold,
+                            rank_num=rank_num,
+                            verbose=verbose)
+
+        keep_vec = np.zeros((len(all_dfs)))
+        for mcomp, cols in all_tuning_dfs.iterrows():
+            mou = mcomp[0]
+            com = mcomp[1]
+            tun = cols['preferred_tuning']
+
+            # skip broadly tuned components
+            if tun == 'broad':
+                continue
+
+            # make a vector of df entries to keep
+            # (i.e., preferred tuning components only)
+            df_test = all_dfs.reset_index()
+            bool_yah = ((df_test['orientation'].values == int(tun))
+                        & (df_test['mouse'].values == mou)
+                        & (df_test['component'].values == com))
+            keep_vec[bool_yah] = 1
+
+        all_dfs = all_dfs.iloc[(keep_vec == 0), :]
+        pref_tag = '_unpreferred_tuning'
     else:
         pref_tag = ''
 
@@ -143,6 +182,7 @@ def groupday_index_heatmap(
         score_threshold=0.8,
         rank_num=18,
         preferred_tuning=False,
+        unpreferred_tuning=False,
         verbose=True):
 
     # set parameters used for setting up directories
@@ -218,6 +258,44 @@ def groupday_index_heatmap(
 
             all_dfs = all_dfs.iloc[(keep_vec == 1), :]
             pref_tag = '_preferred_tuning'
+        else:
+            pref_tag = ''
+
+        # unpreferred includes broadly tuned components
+        if unpreferred_tuning:
+            all_tuning_dfs = trialhistory.th_tuning_dataframe(
+                                mouse=mouse,
+                                word=word,
+                                trace_type=trace_type,
+                                method=method,
+                                cs=cs,
+                                warp=warp,
+                                group_by=group_by,
+                                nan_thresh=nan_thresh,
+                                score_threshold=score_threshold,
+                                rank_num=rank_num,
+                                verbose=verbose)
+
+            keep_vec = np.zeros((len(all_dfs)))
+            for mcomp, cols in all_tuning_dfs.iterrows():
+                mou = mcomp[0]
+                com = mcomp[1]
+                tun = cols['preferred_tuning']
+
+                # skip braodly tuned components
+                if tun == 'broad':
+                    continue
+
+                # make a vector of df entries to keep
+                # (i.e., preferred tuning components only)
+                df_test = all_dfs.reset_index()
+                bool_yah = ((df_test['orientation'].values == int(tun))
+                            & (df_test['mouse'].values == mou)
+                            & (df_test['component'].values == com))
+                keep_vec[bool_yah] = 1
+
+            all_dfs = all_dfs.iloc[(keep_vec == 0), :]
+            pref_tag = '_unpreferred_tuning'
         else:
             pref_tag = ''
 
