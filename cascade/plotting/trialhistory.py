@@ -93,7 +93,7 @@ def groupmouse_index_heatmap(
             keep_vec[bool_yah] = 1
 
         all_dfs = all_dfs.iloc[(keep_vec == 1), :]
-        pref_tag = 'preferred_tuning'
+        pref_tag = '_preferred_tuning'
     else:
         pref_tag = ''
 
@@ -186,8 +186,8 @@ def groupday_index_heatmap(
         # skips broadly tuned components
         if preferred_tuning:
             all_tuning_dfs = trialhistory.th_tuning_dataframe(
-                                mice=mice,
-                                words=words,
+                                mouse=mouse,
+                                word=word,
                                 trace_type=trace_type,
                                 method=method,
                                 cs=cs,
@@ -217,7 +217,7 @@ def groupday_index_heatmap(
                 keep_vec[bool_yah] = 1
 
             all_dfs = all_dfs.iloc[(keep_vec == 1), :]
-            pref_tag = 'preferred_tuning'
+            pref_tag = '_preferred_tuning'
         else:
             pref_tag = ''
 
