@@ -81,11 +81,11 @@ def save_dir_groupmouse(
     """
 
     # default TCA params to use
-    if not word:
+    if not words:
         if mouse == 'OA27':
-            word = 'orlando'
+            words = ['orlando']
         else:
-            word = 'already'
+            words = ['already']
 
     # if cells were removed with too many nan trials
     if nan_thresh:
