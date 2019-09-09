@@ -25,6 +25,7 @@ def groupmouse_index_heatmap(
         nan_thresh=0.85,
         score_threshold=0.8,
         rank_num=18,
+        preferred_tuning=False,
         verbose=True):
 
     # set parameters used for setting up directories
@@ -57,6 +58,45 @@ def groupmouse_index_heatmap(
                 rank_num=rank_num,
                 verbose=verbose)
 
+    # optionally filter components by their preferred tuning
+    # skips broadly tuned components
+    if preferred_tuning:
+        all_tuning_dfs = trialhistory.groupmouse_th_tuning_dataframe(
+                            mice=mice,
+                            words=words,
+                            trace_type=trace_type,
+                            method=method,
+                            cs=cs,
+                            warp=warp,
+                            group_by=group_by,
+                            nan_thresh=nan_thresh,
+                            score_threshold=score_threshold,
+                            rank_num=rank_num,
+                            verbose=verbose)
+
+        keep_vec = np.zeros((len(all_dfs)))
+        for mcomp, cols in all_tuning_dfs.iterrows():
+            mou = mcomp[0]
+            com = mcomp[1]
+            tun = cols['preferred_tuning']
+
+            # skip braodly tuned components
+            if tun == 'broad':
+                continue
+
+            # make a vector of df entries to keep
+            # (i.e., preferred tuning components only)
+            df_test = all_dfs.reset_index()
+            bool_yah = ((df_test['orientation'].values == int(tun))
+                        & (df_test['mouse'].values == mou)
+                        & (df_test['component'].values == com))
+            keep_vec[bool_yah] = 1
+
+        all_dfs = all_dfs.iloc[(keep_vec == 1), :]
+        pref_tag = 'preferred_tuning'
+    else:
+        pref_tag = ''
+
     # create colormap
     cmap = sns.diverging_palette(220, 10, sep=30, as_cmap=True)
 
@@ -82,7 +122,7 @@ def groupmouse_index_heatmap(
 
         plt.figure(figsize=(10,20))
         group_word = paths.groupmouse_word({'mice': mice})
-        file_name = group_word + '_th_' + str(ics) + '.pdf'
+        file_name = group_word + '_th_' + str(ics) + pref_tag + '.pdf'
         sns.heatmap(cs_plt_df, center=0, vmax=1, vmin=-1, cmap=cmap,
                     yticklabels=cs_y_label, xticklabels=xlab)
         plt.title('Trial History Modulation, Condition: ' + ics)
@@ -102,6 +142,7 @@ def groupday_index_heatmap(
         nan_thresh=0.85,
         score_threshold=0.8,
         rank_num=18,
+        preferred_tuning=False,
         verbose=True):
 
     # set parameters used for setting up directories
@@ -141,6 +182,45 @@ def groupday_index_heatmap(
                     rank_num=rank_num,
                     verbose=verbose)
 
+        # optionally filter components by their preferred tuning
+        # skips broadly tuned components
+        if preferred_tuning:
+            all_tuning_dfs = trialhistory.th_tuning_dataframe(
+                                mice=mice,
+                                words=words,
+                                trace_type=trace_type,
+                                method=method,
+                                cs=cs,
+                                warp=warp,
+                                group_by=group_by,
+                                nan_thresh=nan_thresh,
+                                score_threshold=score_threshold,
+                                rank_num=rank_num,
+                                verbose=verbose)
+
+            keep_vec = np.zeros((len(all_dfs)))
+            for mcomp, cols in all_tuning_dfs.iterrows():
+                mou = mcomp[0]
+                com = mcomp[1]
+                tun = cols['preferred_tuning']
+
+                # skip braodly tuned components
+                if tun == 'broad':
+                    continue
+
+                # make a vector of df entries to keep
+                # (i.e., preferred tuning components only)
+                df_test = all_dfs.reset_index()
+                bool_yah = ((df_test['orientation'].values == int(tun))
+                            & (df_test['mouse'].values == mou)
+                            & (df_test['component'].values == com))
+                keep_vec[bool_yah] = 1
+
+            all_dfs = all_dfs.iloc[(keep_vec == 1), :]
+            pref_tag = 'preferred_tuning'
+        else:
+            pref_tag = ''
+
         # create colormap
         cmap = sns.diverging_palette(220, 10, sep=30, as_cmap=True)
 
@@ -162,7 +242,7 @@ def groupday_index_heatmap(
             cs_y_label = [int(s) for s in cs_y_label]
 
             plt.figure()
-            file_name = m + '_th_' + str(ics) + '.pdf'
+            file_name = m + '_th_' + str(ics) + pref_tag + '.pdf'
             sns.heatmap(cs_plt_df, center=0, vmax=1, vmin=-1, cmap=cmap,
                         yticklabels=cs_y_label, xticklabels=xlab)
             plt.title('Trial History Modulation, Condition: ' + ics)
