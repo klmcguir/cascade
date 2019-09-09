@@ -68,15 +68,19 @@ def groupmouse_index_heatmap(
     # a.k.a., learning
     sorter = np.argsort(all_dfs['learning_index'].values)
     plt_df = all_dfs.reset_index(['component']).values
+    mouse_y_label = all_dfs.reset_index(['mouse'])['mouse'].values
 
     cs_to_check = ['plus', 'minus', 'neutral']
     for ics in cs_to_check:
         cs_bool = all_dfs.reset_index()['condition'].values == ics
         sort_bool = cs_bool[sorter]
         cs_plt_df = plt_df[sorter, 1:][sort_bool]
+        mouse_y_label = mouse_y_label[sorter, 0][sort_bool]
         cs_y_label = plt_df[sorter, 0][sort_bool]
+        cs_y_label = [s2 + '-' + str(int(s1)) for s1, s2 in
+                      zip(cs_y_label, mouse_y_label)]
 
-        plt.figure()
+        plt.figure(figsize=(10,10))
         group_word = paths.groupmouse_word({'mice': mice})
         file_name = group_word + '_th_' + str(ics) + '.pdf'
         sns.heatmap(cs_plt_df, center=0, vmax=1, vmin=-1, cmap=cmap,
@@ -155,6 +159,7 @@ def groupday_index_heatmap(
             sort_bool = cs_bool[sorter]
             cs_plt_df = plt_df[sorter, 1:][sort_bool]
             cs_y_label = plt_df[sorter, 0][sort_bool]
+            cs_y_label = [int(s) for s in cs_y_label]
 
             plt.figure()
             file_name = m + '_th_' + str(ics) + '.pdf'
