@@ -105,11 +105,10 @@ def groupday_index_heatmap(
     group_pars = {'group_by': group_by}
 
     # default TCA params to use
-    if not word:
-        if mouse == 'OA27':
-            word = 'orlando'
-        else:
-            word = 'already'  # should be updated to 'obligations'
+    if not words:
+        w1 = 'orlando'
+        w2 = 'already'  # should be updated to 'obligations'
+        words = [w1 if s == 'OA27' else w2 for s in mice]
 
     # loop over mice and make individual plots of trial history modulation
     for m, w in zip(mice, words):
