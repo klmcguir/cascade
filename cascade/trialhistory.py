@@ -92,6 +92,7 @@ def groupmouse_th_tuning_dataframe(
 
     return all_dfs
 
+
 def th_index_dataframe(
         mouse,
         trace_type='zscore_day',
@@ -256,8 +257,8 @@ def th_index_dataframe(
             if len(cond) > 1:
                 cs_to_check = ['plus', 'minus', 'neutral']
                 multi_ori = []
-                for cs in cs_to_check:
-                    multi_ori.append(cs in cond)
+                for ics in cs_to_check:
+                    multi_ori.append(ics in cond)
                 assert np.sum(multi_ori) == 1
                 cond = cs_to_check[np.where(multi_ori)[0][0]]
             else:
@@ -474,8 +475,8 @@ def th_tuning_dataframe(
             if len(cond) > 1:
                 cs_to_check = ['plus', 'minus', 'neutral']
                 multi_ori = []
-                for cs in cs_to_check:
-                    multi_ori.append(cs in cond)
+                for ics in cs_to_check:
+                    multi_ori.append(ics in cond)
                 assert np.sum(multi_ori) == 1
                 cond = cs_to_check[np.where(multi_ori)[0][0]]
             else:
@@ -741,8 +742,8 @@ def th_index_dataframe_byday(
                 if len(cond) > 1:
                     cs_to_check = ['plus', 'minus', 'neutral']
                     multi_ori = []
-                    for cs in cs_to_check:
-                        multi_ori.append(cs in cond)
+                    for ics in cs_to_check:
+                        multi_ori.append(ics in cond)
                     assert np.sum(multi_ori) == 1
                     cond = cs_to_check[np.where(multi_ori)[0][0]]
                 else:

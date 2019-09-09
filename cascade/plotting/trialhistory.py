@@ -75,7 +75,7 @@ def groupmouse_index_heatmap(
         cs_bool = all_dfs.reset_index()['condition'].values == ics
         sort_bool = cs_bool[sorter]
         cs_plt_df = plt_df[sorter, 1:][sort_bool]
-        mouse_y_label = mouse_y_label[sorter, 0][sort_bool]
+        mouse_y_label = mouse_y_label[sorter][sort_bool]
         cs_y_label = plt_df[sorter, 0][sort_bool]
         cs_y_label = [s2 + '-' + str(int(s1)) for s1, s2 in
                       zip(cs_y_label, mouse_y_label)]
