@@ -82,7 +82,7 @@ def save_dir_groupmouse(
 
     # default TCA params to use
     if not words:
-        if mouse == 'OA27':
+        if mice[0] == 'OA27':
             words = ['orlando']
         else:
             words = ['already']
