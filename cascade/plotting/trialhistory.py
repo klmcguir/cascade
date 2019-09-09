@@ -113,7 +113,7 @@ def groupday_index_heatmap(
     # loop over mice and make individual plots of trial history modulation
     for m, w in zip(mice, words):
         save_dir = paths.save_dir_mouse(
-            mice[m],
+            m,
             'trial history',
             method=method,
             nan_thresh=nan_thresh,
