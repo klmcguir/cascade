@@ -24,6 +24,89 @@ def groupmouse_word(mouse_dict):
     return word
 
 
+def save_dir_groupmouse(
+        mice,
+        trunk,
+        method='mncp_hals',
+        nan_thresh=0.85,
+        score_threshold=None,
+        pars=None,
+        words=None,
+        grouping='group',
+        group_pars=None):
+    """
+    Create directory for analysis files for a cohort of mice.
+
+    Parameters
+    ----------
+    mouse : str
+        Mouse.
+    trunk : str
+        Name of folder that will contain analysis.
+    method : str
+        Fit method from tensortools package:
+        'cp_als', fits CP Decomposition using Alternating
+            Least Squares (ALS).
+        'ncp_bcd', fits nonnegative CP Decomposition using
+            the Block Coordinate Descent (BCD) Method.
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method.
+        'mncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method with missing data.
+        'mcp_als', fits CP Decomposition with missing data using
+            Alternating Least Squares (ALS).
+    nan_thresh : float
+        Threshold from TCA for the maximum fraction of empty trials per cell.
+    score_threshold : float
+        Threshold from TCA for minimum quality of crossday alignment.
+    pars : dict
+        Dict of all parameters for TCA.
+    word : str
+        Word created by hashing pars. For loading pars can be
+        truncated to include only cs, warp, trace_type, AND
+        the pars word entered here.
+    grouping : str
+        Grouping of TCA being run. i.e., 'pair' or 'single' or 'group'
+        day TCA.
+    group_pars : dict
+        If days were grouped, which learning stage, or 'group_by' was used for
+        running TCA. i.e., 'all', 'learning'
+
+    Returns
+    -------
+    save_dir : str
+        Directory for saving analysis for specific TCA parameters.
+    """
+
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        save_tag = ' nantrial ' + str(nan_thresh)
+    else:
+        save_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
+
+    # save dir
+    group_word = groupmouse_word({'mice': mice})
+    mouse = 'Group-' + group_word
+    save_dir = tca_plots(
+        mouse, grouping, pars=pars, word=words[0], group_pars=group_pars)
+    save_dir = os.path.join(
+        save_dir, trunk + save_tag)
+    if not os.path.isdir(save_dir):
+        os.mkdir(save_dir)
+    save_dir = os.path.join(
+        save_dir, str(group_pars['group_by']) + ' ' + method)
+    if not os.path.isdir(save_dir):
+        os.mkdir(save_dir)
+
+    return save_dir
+
+
 def save_dir_mouse(
         mouse,
         trunk,
@@ -91,7 +174,7 @@ def save_dir_mouse(
         save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
 
     # save dir
-    save_dir = paths.tca_plots(
+    save_dir = tca_plots(
         mouse, grouping, pars=pars, word=word, group_pars=group_pars)
     save_dir = os.path.join(
         save_dir, trunk + save_tag)
