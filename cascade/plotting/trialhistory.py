@@ -68,14 +68,14 @@ def groupmouse_index_heatmap(
     # a.k.a., learning
     sorter = np.argsort(all_dfs['learning_index'].values)
     plt_df = all_dfs.reset_index(['component']).values
-    mouse_y_label = all_dfs.reset_index(['mouse'])['mouse'].values
+    plt_mouse = all_dfs.reset_index(['mouse'])['mouse'].values
 
     cs_to_check = ['plus', 'minus', 'neutral']
     for ics in cs_to_check:
         cs_bool = all_dfs.reset_index()['condition'].values == ics
         sort_bool = cs_bool[sorter]
         cs_plt_df = plt_df[sorter, 1:][sort_bool]
-        mouse_y_label = mouse_y_label[sorter][sort_bool]
+        mouse_y_label = plt_mouse[sorter][sort_bool]
         cs_y_label = plt_df[sorter, 0][sort_bool]
         cs_y_label = [s2 + '-' + str(int(s1)) for s1, s2 in
                       zip(cs_y_label, mouse_y_label)]
