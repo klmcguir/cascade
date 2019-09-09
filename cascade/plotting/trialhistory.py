@@ -32,7 +32,7 @@ def groupmouse_index_heatmap(
     group_pars = {'group_by': group_by}
 
     # set up save dir
-    save_dir = save_dir_groupmouse(
+    save_dir = paths.save_dir_groupmouse(
             mice,
             'trial history',
             method=method,
@@ -107,7 +107,7 @@ def groupday_index_heatmap(
 
     # loop over mice and make individual plots of trial history modulation
     for m, w in zip(mice, words):
-        save_dir = save_dir_mouse(
+        save_dir = paths.save_dir_mouse(
             mice[m],
             'trial history',
             method=method,
