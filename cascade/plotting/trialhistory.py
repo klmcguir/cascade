@@ -226,8 +226,8 @@ def groupday_index_heatmap(
         # skips broadly tuned components
         if preferred_tuning:
             all_tuning_dfs = trialhistory.th_tuning_dataframe(
-                                mouse=mouse,
-                                word=word,
+                                mouse=m,
+                                word=w,
                                 trace_type=trace_type,
                                 method=method,
                                 cs=cs,
@@ -244,7 +244,7 @@ def groupday_index_heatmap(
                 com = mcomp[1]
                 tun = cols['preferred_tuning']
 
-                # skip braodly tuned components
+                # skip broadly tuned components
                 if tun == 'broad':
                     continue
 
@@ -264,8 +264,8 @@ def groupday_index_heatmap(
         # unpreferred includes broadly tuned components
         if unpreferred_tuning:
             all_tuning_dfs = trialhistory.th_tuning_dataframe(
-                                mouse=mouse,
-                                word=word,
+                                mouse=m,
+                                word=w,
                                 trace_type=trace_type,
                                 method=method,
                                 cs=cs,
@@ -282,7 +282,7 @@ def groupday_index_heatmap(
                 com = mcomp[1]
                 tun = cols['preferred_tuning']
 
-                # skip braodly tuned components
+                # skip broadly tuned components
                 if tun == 'broad':
                     continue
 
