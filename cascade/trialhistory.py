@@ -149,7 +149,7 @@ def th_index_dataframe(
         np.sum((ori_0_in, ori_135_in, ori_270_in), axis=0)]
 
     # loop through psy data create a binary vectors for trial history
-    binary_cat = ['ori_0', 'ori_135', 'ori_270', 'prev_reward']
+    binary_cat = ['ori_0', 'ori_135', 'ori_270', 'prev_reward', 'prev_punish']
     for cat in binary_cat:
         data[cat + '_th'] = [i[0] for i in psy.data['inputs'][cat]]
         data[cat + '_th_prev'] = [i[1] for i in psy.data['inputs'][cat]]
@@ -232,6 +232,12 @@ def th_index_dataframe(
     meta1 = pd.concat(new_meta_df_list, axis=0)
     psy1 = pd.concat(new_psy_df_list, axis=0)
 
+    # check which stim
+    plus_ori = meta1['orientation'].loc((meta1['condition'] == 'plus') &
+                                        (meta1['learning_state'] == 'learning'))
+    plus_ori = plus_ori.unique().values
+    print('Plus orientation is: ' + plus_ori)
+
     iteration = 0
     ori_to_check = [0, 135, 270]
     ori_vec, cond_vec, comp_vec = [], [], []
@@ -274,18 +280,33 @@ def th_index_dataframe(
                 bool_prev = single_ori['ori_' + str(ori) + '_th'] == 1
 
                 # ori_X_th_prev is the one-back set of orientations. They
-                # define trials that were preceded by a given stimulus X
+                # define trials that were preceded by a given stimulus X.
+                # Avoid trials that were preceded by reward or punishment.
                 prev_same = np.nanmean(
                     single_factor[
-                        single_ori['ori_' + str(ori) + '_th_prev'] == 1])
+                        (single_ori['ori_' + str(ori) + '_th_prev'] == 1) &
+                        (single_ori['prev_reward_th'] == 0) &
+                        (single_ori['prev_punish_th'] == 0)
+                        ])
                 prev_diff = np.nanmean(
                     single_factor[
-                        single_ori['ori_' + str(ori) + '_th_prev'] == 0])
+                        (single_ori['ori_' + str(ori) + '_th_prev'] == 0) &
+                        (single_ori['prev_reward_th'] == 0) &
+                        (single_ori['prev_punish_th'] == 0)
+                        ])
                 sensory_history = (prev_diff - prev_same)/np.nanmean(single_factor)
 
                 # previously rewarded trials
-                prev_rew = np.nanmean(single_factor[single_ori['prev_reward_th'] == 1])
-                prev_unrew = np.nanmean(single_factor[single_ori['prev_reward_th'] == 0])
+                # only make the comparison between trials preceded by FC trials
+                prev_rew = np.nanmean(
+                    single_factor[
+                        (single_ori['prev_reward_th'] == 1)
+                        ])
+                prev_unrew = np.nanmean(
+                    single_factor[
+                        (single_ori['prev_reward_th'] == 0) &
+                        (single_ori['ori_' + str(plus_ori) + '_th_prev'] == 1)
+                        ])
                 reward_history = (prev_unrew - prev_rew)/np.nanmean(single_factor)
 
                 high_dp = np.nanmean(single_factor[single_ori['dprime'] >= 2])
