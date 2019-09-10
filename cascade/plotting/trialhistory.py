@@ -120,18 +120,19 @@ def groupmouse_index_heatmap(
             tun = cols['preferred_tuning']
 
             # skip broadly tuned components
+            # broadly are included in non-preferred however
             if tun == 'broad':
                 continue
 
             # make a vector of df entries to keep
             # (i.e., preferred tuning components only)
             df_test = all_dfs.reset_index()
-            bool_yah = ((df_test['orientation'].values == int(tun))
+            bool_yah = ((df_test['orientation'].values != int(tun))
                         & (df_test['mouse'].values == mou)
                         & (df_test['component'].values == com))
             keep_vec[bool_yah] = 1
 
-        all_dfs = all_dfs.iloc[(keep_vec == 0), :]
+        all_dfs = all_dfs.iloc[(keep_vec == 1), :]
         pref_tag = '_unpreferred_tuning'
     else:
         pref_tag = ''
@@ -282,19 +283,20 @@ def groupday_index_heatmap(
                 com = mcomp[1]
                 tun = cols['preferred_tuning']
 
-                # skip broadly tuned components
+                # skip broadly tuned components for checking CSs
+                # broadly are included in non-preferred however
                 if tun == 'broad':
                     continue
 
                 # make a vector of df entries to keep
                 # (i.e., preferred tuning components only)
                 df_test = all_dfs.reset_index()
-                bool_yah = ((df_test['orientation'].values == int(tun))
+                bool_yah = ((df_test['orientation'].values != int(tun))
                             & (df_test['mouse'].values == mou)
                             & (df_test['component'].values == com))
                 keep_vec[bool_yah] = 1
 
-            all_dfs = all_dfs.iloc[(keep_vec == 0), :]
+            all_dfs = all_dfs.iloc[(keep_vec == 1), :]
             pref_tag = '_unpreferred_tuning'
         else:
             pref_tag = ''
