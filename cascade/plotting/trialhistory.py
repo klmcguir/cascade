@@ -134,8 +134,6 @@ def groupmouse_index_heatmap(
 
         all_dfs = all_dfs.iloc[(keep_vec == 1), :]
         pref_tag = '_unpreferred_tuning'
-    else:
-        pref_tag = ''
 
     # create colormap
     cmap = sns.diverging_palette(220, 10, sep=30, as_cmap=True)
@@ -298,8 +296,6 @@ def groupday_index_heatmap(
 
             all_dfs = all_dfs.iloc[(keep_vec == 1), :]
             pref_tag = '_unpreferred_tuning'
-        else:
-            pref_tag = ''
 
         # create colormap
         cmap = sns.diverging_palette(220, 10, sep=30, as_cmap=True)
