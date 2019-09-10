@@ -235,7 +235,7 @@ def th_index_dataframe(
     # check which stim
     plus_ori = meta1.iloc[(meta1['condition'].values == 'plus') &
                           (meta1['learning_state'].values == 'learning'), :]
-    plus_ori = plus_ori['orientation'].unique().values
+    plus_ori = plus_ori['orientation'].unique()[0]
     print('Plus orientation is: ' + plus_ori)
 
     iteration = 0
