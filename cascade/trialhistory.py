@@ -248,7 +248,9 @@ def th_index_dataframe(
 
             # loop over single oris
             psy_fac = pd.concat([psy1, fac_df], axis=1).drop(columns='orientation')
-            ori_bool = (meta1['orientation'] == ori)  & (meta1['learning_state'] == 'learning')  # only look during initial learning
+            # only look during initial learning
+            ori_bool = ((meta1['orientation'] == ori) &
+                        (meta1['learning_state'] == 'learning'))
             single_ori = psy_fac.loc[ori_bool]
 
             # check the condition for this ori
@@ -271,13 +273,20 @@ def th_index_dataframe(
                 bool_curr = single_ori['ori_' + str(ori)] == 1
                 bool_prev = single_ori['ori_' + str(ori) + '_th'] == 1
 
-                prev_same = np.nanmean(single_factor[single_ori['ori_' + str(ori) + '_th_prev'] == 1])
-                prev_diff = np.nanmean(single_factor[single_ori['ori_' + str(ori) + '_th_prev'] == 0])
+                # ori_X_th_prev is the one-back set of orientations. They
+                # define trials that were preceded by a given stimulus X
+                prev_same = np.nanmean(
+                    single_factor[
+                        single_ori['ori_' + str(ori) + '_th_prev'] == 1])
+                prev_diff = np.nanmean(
+                    single_factor[
+                        single_ori['ori_' + str(ori) + '_th_prev'] == 0])
                 sensory_history = (prev_diff - prev_same)/np.nanmean(single_factor)
 
-                prev_same = np.nanmean(single_factor[single_ori['prev_reward_th'] == 1])
-                prev_diff = np.nanmean(single_factor[single_ori['prev_reward_th'] == 0])
-                reward_history = (prev_diff - prev_same)/np.nanmean(single_factor)
+                # previously rewarded trials
+                prev_rew = np.nanmean(single_factor[single_ori['prev_reward_th'] == 1])
+                prev_unrew = np.nanmean(single_factor[single_ori['prev_reward_th'] == 0])
+                reward_history = (prev_unrew - prev_rew)/np.nanmean(single_factor)
 
                 high_dp = np.nanmean(single_factor[single_ori['dprime'] >= 2])
                 low_dp = np.nanmean(single_factor[single_ori['dprime'] < 2])
