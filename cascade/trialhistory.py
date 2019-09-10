@@ -113,9 +113,9 @@ def th_index_dataframe(
     # default TCA params to use
     if not word:
         if mouse == 'OA27':
-            word = 'orlando'
+            word = 'tray'
         else:
-            word = 'already'  # should be updated to 'obligations'
+            word = 'obligations'  # should be updated to 'obligations'
         if verbose:
             print('Creating dataframe for ' + mouse + '-' + word)
 
@@ -332,9 +332,9 @@ def th_tuning_dataframe(
     # default TCA params to use
     if not word:
         if mouse == 'OA27':
-            word = 'orlando'
+            word = 'tray'
         else:
-            word = 'already'  # should be updated to 'obligations'
+            word = 'obligations'  # should be updated to 'obligations'
         if verbose:
             print('Creating dataframe for ' + mouse + '-' + word)
 
@@ -564,7 +564,7 @@ def th_index_dataframe_byday(
         if mouse == 'OA27':
             word = 'tray'
         else:
-            word = 'already'  # should be updated to 'obligations'
+            word = 'obligations'  # should be updated to 'obligations'
         if verbose:
             print('Creating dataframe for ' + mouse + '-' + word)
 
