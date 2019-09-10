@@ -233,9 +233,9 @@ def th_index_dataframe(
     psy1 = pd.concat(new_psy_df_list, axis=0)
 
     # check which stim
-    plus_ori = meta1['orientation'].loc((meta1['condition'] == 'plus') &
-                                        (meta1['learning_state'] == 'learning'))
-    plus_ori = plus_ori.unique().values
+    plus_ori = meta1.iloc[(meta1['condition'].values == 'plus') &
+                          (meta1['learning_state'].values == 'learning'), :]
+    plus_ori = plus_ori['orientation'].unique().values
     print('Plus orientation is: ' + plus_ori)
 
     iteration = 0
