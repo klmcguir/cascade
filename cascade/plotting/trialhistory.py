@@ -35,8 +35,8 @@ def groupmouse_index_heatmap(
 
     # default TCA params to use
     if not words:
-        w1 = 'orlando'
-        w2 = 'already'
+        w1 = 'tray'
+        w2 = 'obligations'
         words = [w1 if s == 'OA27' else w2 for s in mice]
 
     # set up save dir
@@ -196,8 +196,8 @@ def groupday_index_heatmap(
 
     # default TCA params to use
     if not words:
-        w1 = 'orlando'
-        w2 = 'already'  # should be updated to 'already'
+        w1 = 'tray'
+        w2 = 'obligations'  # should be updated to 'obligations'
         words = [w1 if s == 'OA27' else w2 for s in mice]
 
     # loop over mice and make individual plots of trial history modulation
