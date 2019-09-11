@@ -276,8 +276,6 @@ def th_index_dataframe(
             # get means for each factor for each type of trial history
             for i in range(rank):
                 single_factor = single_ori['factor_' + str(i+1)].values
-                bool_curr = single_ori['ori_' + str(ori)] == 1
-                bool_prev = single_ori['ori_' + str(ori) + '_th'] == 1
 
                 # ori_X_th_prev is the one-back set of orientations. They
                 # define trials that were preceded by a given stimulus X.
@@ -294,7 +292,7 @@ def th_index_dataframe(
                         (single_ori['prev_reward_th'] == 0) &
                         (single_ori['prev_punish_th'] == 0)
                         ])
-                sensory_history = (prev_diff - prev_same)/np.nanmean(single_factor)
+                sensory_history = (prev_diff - prev_same)/(prev_diff + prev_same)
 
                 # previously rewarded trials
                 # only make the comparison between trials preceded by FC trials
@@ -309,7 +307,8 @@ def th_index_dataframe(
                         (single_ori['prev_punish_th'] == 0) &
                         (single_ori['ori_' + str(plus_ori) + '_th_prev'] == 1)
                         ])
-                reward_history = (prev_unrew - prev_rew)/np.nanmean(single_factor)
+                # reward_history = (prev_unrew - prev_rew)/np.nanmean(single_factor)
+                reward_history = (prev_unrew - prev_rew)/(prev_unrew + prev_rew)
 
                 high_dp = np.nanmean(single_factor[single_ori['dprime'] >= 2])
                 low_dp = np.nanmean(single_factor[single_ori['dprime'] < 2])
