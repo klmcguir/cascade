@@ -7,6 +7,34 @@ import pandas as pd
 from . import tca
 
 
+def add_dprime_to_meta(meta):
+    """
+    Helper function that takes a pd metadata dataframe and adds in an extra
+    column of the dprime calculated per day.
+    """
+
+    # meta can only be a data frame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+
+    # collect useful variables
+    new_dprime = np.zeros(len(meta))
+    days = meta.reset_index()['date']
+    unique_days = days.unique()
+    mouse = meta.reset_index()['mouse']
+
+    # loop over unique days filling in dprime for all trial per day at once
+    for di in unique_days:
+        day_bool = days == di
+        mi = mouse[day_bool].unique()[0]
+        new_dprime[day_bool] = pool.calc.performance.dprime(
+                                flow.Date(mouse=mi, date=di))
+
+    # save new_dprime into meta
+    meta['dprime'] = new_dprime
+
+    return meta
+
+
 def update_naive_cs(meta, verbose=True):
     """
     Helper function that takes a pd metadata dataframe and makes sure that cses
