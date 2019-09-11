@@ -80,13 +80,6 @@ def save_dir_groupmouse(
         Directory for saving analysis for specific TCA parameters.
     """
 
-    # default TCA params to use
-    if not words:
-        if mice[0] == 'OA27':
-            words = ['orlando']
-        else:
-            words = ['already']
-
     # if cells were removed with too many nan trials
     if nan_thresh:
         save_tag = ' nantrial ' + str(nan_thresh)
