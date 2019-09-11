@@ -7,7 +7,7 @@ import pool
 import pandas as pd
 import numpy as np
 import os
-from . import load
+from . import load, utils
 
 
 def groupmouse_th_index_dataframe(
@@ -185,14 +185,17 @@ def th_index_dataframe(
     tensor, _, _ = load.groupday_tca_model(**load_kwargs)
     meta = load.groupday_tca_meta(**load_kwargs)
 
-    # add in continuous dprime
+    # add in continuous dprime so psytracker data frame
     dp = pool.calc.psytrack.dprime(flow.Mouse(mouse))
     dfr['dprime'] = dp
+
+    # add in non continuous dprime to meta dataframe
+    meta = utils.add_dprime_to_meta(meta)
 
     # filter out blank trials
     psy_df = dfr.loc[(dfr['orientation'] >= 0), :]
 
-    # check that all runs have matched trial orienations
+    # check that all runs have matched trial orientations
     new_psy_df_list = []
     new_meta_df_list = []
     dates = meta.reset_index()['date'].unique()
