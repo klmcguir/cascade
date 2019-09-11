@@ -33,6 +33,12 @@ def groupmouse_index_heatmap(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
+    # default TCA params to use
+    if not words:
+        w1 = 'tray'
+        w2 = 'obligations'
+        words = [w1 if s == 'OA27' else w2 for s in mice]
+
     # set up save dir
     save_dir = paths.save_dir_groupmouse(
             mice,
