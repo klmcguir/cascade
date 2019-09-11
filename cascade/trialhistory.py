@@ -300,11 +300,13 @@ def th_index_dataframe(
                 # only make the comparison between trials preceded by FC trials
                 prev_rew = np.nanmean(
                     single_factor[
-                        (single_ori['prev_reward_th'] == 1)
+                        (single_ori['prev_reward_th'] == 1) &
+                        (single_ori['ori_' + str(plus_ori) + '_th_prev'] == 1)
                         ])
                 prev_unrew = np.nanmean(
                     single_factor[
                         (single_ori['prev_reward_th'] == 0) &
+                        (single_ori['prev_punish_th'] == 0) &
                         (single_ori['ori_' + str(plus_ori) + '_th_prev'] == 1)
                         ])
                 reward_history = (prev_unrew - prev_rew)/np.nanmean(single_factor)
