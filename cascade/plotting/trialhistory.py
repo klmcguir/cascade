@@ -154,6 +154,8 @@ def groupmouse_index_heatmap(
     plt_df = all_dfs.reset_index(['component']).values
     plt_mouse = all_dfs.reset_index(['mouse'])['mouse'].values
 
+    pref_tag = pref_tag + '_smoothdp'
+
     cs_to_check = ['plus', 'minus', 'neutral']
     for ics in cs_to_check:
         cs_bool = all_dfs.reset_index()['condition'].values == ics
@@ -314,6 +316,8 @@ def groupday_index_heatmap(
         # a.k.a., learning
         sorter = np.argsort(all_dfs['learning_index'].values)
         plt_df = all_dfs.reset_index(['component']).values
+
+        pref_tag = pref_tag + '_smoothdp'
 
         cs_to_check = ['plus', 'minus', 'neutral']
         for ics in cs_to_check:
