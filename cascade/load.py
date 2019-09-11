@@ -208,7 +208,6 @@ def groupday_tca_model(
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    print(load_dir)
     tensor_path = os.path.join(
         load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_group_decomp_' + str(trace_type) + '.npy')
@@ -221,6 +220,8 @@ def groupday_tca_model(
     meta_path = os.path.join(
         load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_df_group_meta.pkl')
+    print(load_dir)
+    print(tensor_path)
 
     # load your data
     ensemble = np.load(tensor_path, allow_pickle=True)
