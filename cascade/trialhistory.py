@@ -113,9 +113,9 @@ def th_index_dataframe(
     # default TCA params to use
     if not word:
         if mouse == 'OA27':
-            word = 'orlando'
+            word = 'tray'
         else:
-            word = 'already'  # should be updated to 'already'
+            word = 'obligations'  # should be updated to 'obligations'
         if verbose:
             print('Creating dataframe for ' + mouse + '-' + word)
 
@@ -313,10 +313,10 @@ def th_index_dataframe(
                 # reward_history = (prev_unrew - prev_rew)/np.nanmean(single_factor)
                 reward_history = (prev_unrew - prev_rew)/(prev_unrew + prev_rew)
 
-                # high_dp = np.nanmean(single_factor[single_ori['dprime'] >= 2])
-                # low_dp = np.nanmean(single_factor[single_ori['dprime'] < 2])
-                high_dp = np.nanmean(single_factor[single_meta['dprime'] >= 2])
-                low_dp = np.nanmean(single_factor[single_meta['dprime'] < 2])
+                high_dp = np.nanmean(single_factor[single_ori['dprime'] >= 2])
+                low_dp = np.nanmean(single_factor[single_ori['dprime'] < 2])
+                # high_dp = np.nanmean(single_factor[single_meta['dprime'] >= 2])
+                # low_dp = np.nanmean(single_factor[single_meta['dprime'] < 2])
                 learning_idx = (high_dp - low_dp)/np.nanmean(single_factor)
 
                 trial_hist_mod[i + (rank*c), 0] = sensory_history
@@ -368,9 +368,9 @@ def th_tuning_dataframe(
     # default TCA params to use
     if not word:
         if mouse == 'OA27':
-            word = 'orlando'
+            word = 'tray'
         else:
-            word = 'already'  # should be updated to 'already'
+            word = 'obligations'  # should be updated to 'obligations'
         if verbose:
             print('Creating dataframe for ' + mouse + '-' + word)
 
@@ -598,9 +598,9 @@ def th_index_dataframe_byday(
     # default TCA params to use
     if not word:
         if mouse == 'OA27':
-            word = 'orlando'
+            word = 'tray'
         else:
-            word = 'already'  # should be updated to 'already'
+            word = 'obligations'  # should be updated to 'obligations'
         if verbose:
             print('Creating dataframe for ' + mouse + '-' + word)
 
