@@ -7,6 +7,7 @@ import pool
 import pandas as pd
 import numpy as np
 import os
+from copy import deepcopy
 from . import load, utils
 
 
@@ -347,6 +348,13 @@ def th_index_dataframe(
 
             # get means for each factor for each type of trial history
             for i in range(rank):
+
+                # save an unindexed unfiltered copy if you are using staging
+                if stage and i == range(rank)[0]:
+                    save_psy = deepcopy(single_psy)
+                elif stage:
+                    single_psy = deepcopy(save_psy)
+
                 single_factor = single_psy['factor_' + str(i+1)].values
 
                 # learning index
@@ -367,8 +375,7 @@ def th_index_dataframe(
                 # if you are filtering on a stage calculate learning index first
                 if stage:
                     stag_ori_bool = stage_bool[ori_bool]
-                    if i == 0:
-                        single_factor = single_factor[stag_ori_bool.values]
+                    single_factor = single_factor[stag_ori_bool.values]
                     single_psy = single_psy.loc[stag_ori_bool]
                     single_meta = single_meta.loc[stag_ori_bool]
 
