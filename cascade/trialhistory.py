@@ -369,6 +369,7 @@ def th_index_dataframe(
                     stag_ori_bool = stage_bool[ori_bool]
                     single_factor = single_factor[stag_ori_bool.values]
                     single_ori = single_ori.loc[stag_ori_bool]
+                    single_meta = single_meta.loc[stag_ori_bool]
 
                 # ori_X_th_prev is the one-back set of orientations. They
                 # define trials that were preceded by a given stimulus X.
