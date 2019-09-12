@@ -3,6 +3,7 @@ from pprint import pprint
 import time
 import pool
 import flow
+import pandas as pd
 from .. import utils, load
 
 from psytrack.helper.invBlkTriDiag import getCredibleInterval
