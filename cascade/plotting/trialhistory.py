@@ -25,6 +25,8 @@ def groupmouse_index_heatmap(
         nan_thresh=0.85,
         score_threshold=0.8,
         rank_num=18,
+        stage=None,
+        cont_dprime=False,
         preferred_tuning=False,
         unpreferred_tuning=False,
         verbose=True):
@@ -64,6 +66,8 @@ def groupmouse_index_heatmap(
                 nan_thresh=nan_thresh,
                 score_threshold=score_threshold,
                 rank_num=rank_num,
+                stage=stage,
+                cont_dprime=cont_dprime,
                 verbose=verbose)
 
     # optionally filter components by their preferred tuning
@@ -155,7 +159,11 @@ def groupmouse_index_heatmap(
     plt_df = all_dfs.reset_index(['component']).values
     plt_mouse = all_dfs.reset_index(['mouse'])['mouse'].values
 
-    # pref_tag = pref_tag + '_smoothdp'
+    # tags to add when saving
+    if cont_dprime:
+        pref_tag = pref_tag + '_contDP'
+    if stage:
+        pref_tag = pref_tag + '_' + stage
 
     cs_to_check = ['plus', 'minus', 'neutral']
     for ics in cs_to_check:
