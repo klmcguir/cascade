@@ -319,9 +319,9 @@ def th_index_dataframe(
             data = {}
             for i in range(rank):
                 fac = tensor.results[rank][iteration].factors[2][:,i]
+                if stage:
+                    fac = fac[stage_bool.values]
                 data['factor_' + str(i+1)] = fac
-            if stage:
-                fac = fac[stage_bool.values]
             fac_df = pd.DataFrame(data=data, index=meta1.index)
 
             # loop over single oris
