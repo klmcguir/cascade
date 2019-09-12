@@ -1,6 +1,8 @@
 import numpy as np
 from pprint import pprint
 import time
+import pool
+from .. import utils, load
 
 from psytrack.helper.invBlkTriDiag import getCredibleInterval
 from psytrack.hyperOpt import hyperOpt
