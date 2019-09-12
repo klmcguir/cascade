@@ -48,6 +48,7 @@ def groupmouse_index_heatmap(
             score_threshold=score_threshold,
             pars=pars,
             words=words,
+            rank_num=rank_num,
             grouping='group',
             group_pars=group_pars)
 
@@ -212,6 +213,7 @@ def groupday_index_heatmap(
             score_threshold=score_threshold,
             pars=pars,
             word=w,
+            rank_num=rank_num,
             grouping='group',
             group_pars=group_pars)
 
