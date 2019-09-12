@@ -352,8 +352,10 @@ def th_index_dataframe(
                 # save an unindexed unfiltered copy if you are using staging
                 if stage and i == range(rank)[0]:
                     save_psy = deepcopy(single_psy)
+                    save_meta = deepcopy(single_meta)
                 elif stage:
                     single_psy = deepcopy(save_psy)
+                    single_meta = deepcopy(save_meta)
 
                 single_factor = single_psy['factor_' + str(i+1)].values
 
