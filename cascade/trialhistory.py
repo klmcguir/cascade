@@ -329,7 +329,7 @@ def th_index_dataframe(
             # only look during initial learning
             ori_bool = ((meta1['orientation'] == ori) &
                         (meta1['learning_state'] == 'learning'))
-            single_ori = psy_fac.loc[ori_bool]
+            single_psy = psy_fac.loc[ori_bool]
 
             # check the condition for this ori
             single_meta = meta1.loc[ori_bool]
@@ -347,15 +347,15 @@ def th_index_dataframe(
 
             # get means for each factor for each type of trial history
             for i in range(rank):
-                single_factor = single_ori['factor_' + str(i+1)].values
+                single_factor = single_psy['factor_' + str(i+1)].values
 
                 # learning index
                 if cont_dprime:
                     # continuous smooth dprime from pillow
                     high_dp = np.nanmean(
-                        single_factor[single_ori['dprime'] >= 2])
+                        single_factor[single_psy['dprime'] >= 2])
                     low_dp = np.nanmean(
-                        single_factor[single_ori['dprime'] < 2])
+                        single_factor[single_psy['dprime'] < 2])
                 else:
                     # daily dprime
                     high_dp = np.nanmean(
@@ -367,8 +367,9 @@ def th_index_dataframe(
                 # if you are filtering on a stage calculate learning index first
                 if stage:
                     stag_ori_bool = stage_bool[ori_bool]
-                    single_factor = single_factor[stag_ori_bool.values]
-                    single_ori = single_ori.loc[stag_ori_bool]
+                    if i == 0:
+                        single_factor = single_factor[stag_ori_bool.values]
+                    single_psy = single_psy.loc[stag_ori_bool]
                     single_meta = single_meta.loc[stag_ori_bool]
 
                 # ori_X_th_prev is the one-back set of orientations. They
@@ -376,15 +377,15 @@ def th_index_dataframe(
                 # Avoid trials that were preceded by reward or punishment.
                 prev_same = np.nanmean(
                     single_factor[
-                        (single_ori['ori_' + str(ori) + '_th_prev'] == 1) &
-                        (single_ori['prev_reward_th'] == 0) &
-                        (single_ori['prev_punish_th'] == 0)
+                        (single_psy['ori_' + str(ori) + '_th_prev'] == 1) &
+                        (single_psy['prev_reward_th'] == 0) &
+                        (single_psy['prev_punish_th'] == 0)
                         ])
                 prev_diff = np.nanmean(
                     single_factor[
-                        (single_ori['ori_' + str(ori) + '_th_prev'] == 0) &
-                        (single_ori['prev_reward_th'] == 0) &
-                        (single_ori['prev_punish_th'] == 0)
+                        (single_psy['ori_' + str(ori) + '_th_prev'] == 0) &
+                        (single_psy['prev_reward_th'] == 0) &
+                        (single_psy['prev_punish_th'] == 0)
                         ])
                 sensory_history = (prev_diff - prev_same)/(prev_diff + prev_same)
 
@@ -392,14 +393,14 @@ def th_index_dataframe(
                 # only make the comparison between trials preceded by FC trials
                 prev_rew = np.nanmean(
                     single_factor[
-                        (single_ori['prev_reward_th'] == 1) &
-                        (single_ori['ori_' + str(plus_ori) + '_th_prev'] == 1)
+                        (single_psy['prev_reward_th'] == 1) &
+                        (single_psy['ori_' + str(plus_ori) + '_th_prev'] == 1)
                         ])
                 prev_unrew = np.nanmean(
                     single_factor[
-                        (single_ori['prev_reward_th'] == 0) &
-                        (single_ori['prev_punish_th'] == 0) &
-                        (single_ori['ori_' + str(plus_ori) + '_th_prev'] == 1)
+                        (single_psy['prev_reward_th'] == 0) &
+                        (single_psy['prev_punish_th'] == 0) &
+                        (single_psy['ori_' + str(plus_ori) + '_th_prev'] == 1)
                         ])
                 # reward_history = (prev_unrew - prev_rew)/np.nanmean(single_factor)
                 reward_history = (prev_unrew - prev_rew)/(prev_unrew + prev_rew)
@@ -602,7 +603,7 @@ def th_index_log2_dataframe(
             # only look during initial learning
             ori_bool = ((meta1['orientation'] == ori) &
                         (meta1['learning_state'] == 'learning'))
-            single_ori = psy_fac.loc[ori_bool]
+            single_psy = psy_fac.loc[ori_bool]
 
             # check the condition for this ori
             single_meta = meta1.loc[ori_bool]
@@ -620,22 +621,22 @@ def th_index_log2_dataframe(
 
             # get means for each factor for each type of trial history
             for i in range(rank):
-                single_factor = single_ori['factor_' + str(i+1)].values
+                single_factor = single_psy['factor_' + str(i+1)].values
 
                 # ori_X_th_prev is the one-back set of orientations. They
                 # define trials that were preceded by a given stimulus X.
                 # Avoid trials that were preceded by reward or punishment.
                 prev_same = np.nanmean(
                     single_factor[
-                        (single_ori['ori_' + str(ori) + '_th_prev'] == 1) &
-                        (single_ori['prev_reward_th'] == 0) &
-                        (single_ori['prev_punish_th'] == 0)
+                        (single_psy['ori_' + str(ori) + '_th_prev'] == 1) &
+                        (single_psy['prev_reward_th'] == 0) &
+                        (single_psy['prev_punish_th'] == 0)
                         ])
                 prev_diff = np.nanmean(
                     single_factor[
-                        (single_ori['ori_' + str(ori) + '_th_prev'] == 0) &
-                        (single_ori['prev_reward_th'] == 0) &
-                        (single_ori['prev_punish_th'] == 0)
+                        (single_psy['ori_' + str(ori) + '_th_prev'] == 0) &
+                        (single_psy['prev_reward_th'] == 0) &
+                        (single_psy['prev_punish_th'] == 0)
                         ])
                 sensory_history = np.log2(prev_diff/prev_same)
 
@@ -643,14 +644,14 @@ def th_index_log2_dataframe(
                 # only make the comparison between trials preceded by FC trials
                 prev_rew = np.nanmean(
                     single_factor[
-                        (single_ori['prev_reward_th'] == 1) &
-                        (single_ori['ori_' + str(plus_ori) + '_th_prev'] == 1)
+                        (single_psy['prev_reward_th'] == 1) &
+                        (single_psy['ori_' + str(plus_ori) + '_th_prev'] == 1)
                         ])
                 prev_unrew = np.nanmean(
                     single_factor[
-                        (single_ori['prev_reward_th'] == 0) &
-                        (single_ori['prev_punish_th'] == 0) &
-                        (single_ori['ori_' + str(plus_ori) + '_th_prev'] == 1)
+                        (single_psy['prev_reward_th'] == 0) &
+                        (single_psy['prev_punish_th'] == 0) &
+                        (single_psy['ori_' + str(plus_ori) + '_th_prev'] == 1)
                         ])
                 # reward_history = (prev_unrew - prev_rew)/np.nanmean(single_factor)
                 reward_history = np.log2(prev_unrew/prev_rew)
@@ -658,9 +659,9 @@ def th_index_log2_dataframe(
                 if cont_dprime:
                     # continuous smooth dprime from pillow
                     high_dp = np.nanmean(
-                        single_factor[single_ori['dprime'] >= 2])
+                        single_factor[single_psy['dprime'] >= 2])
                     low_dp = np.nanmean(
-                        single_factor[single_ori['dprime'] < 2])
+                        single_factor[single_psy['dprime'] < 2])
                 else:
                     # daily dprime
                     high_dp = np.nanmean(
@@ -853,7 +854,7 @@ def th_tuning_dataframe(
             # loop over single oris
             psy_fac = pd.concat([psy1, fac_df], axis=1).drop(columns='orientation')
             ori_bool = (meta1['orientation'] == ori)  & (meta1['learning_state'] == 'learning')  # only look during initial learning
-            single_ori = psy_fac.loc[ori_bool]
+            single_psy = psy_fac.loc[ori_bool]
 
             # check the condition for this ori
             single_meta = meta1.loc[ori_bool]
@@ -871,7 +872,7 @@ def th_tuning_dataframe(
 
             # get means for each factor for each type of trial history
             for i in range(rank):
-                single_factor = single_ori['factor_' + str(i+1)].values
+                single_factor = single_psy['factor_' + str(i+1)].values
                 mean_response = np.nanmean(single_factor)
                 mean_response_mat[i, c] = mean_response
 
@@ -1120,7 +1121,7 @@ def th_index_dataframe_byday(
                 ori_bool = meta1_day_df['orientation'] == ori
 
                 # filter down to a single ori
-                single_ori = psy_fac.loc[ori_bool]
+                single_psy = psy_fac.loc[ori_bool]
 
                 # check the condition for this ori
                 single_meta = meta1_day_df.loc[ori_bool]
@@ -1138,20 +1139,20 @@ def th_index_dataframe_byday(
 
                 # get means for each factor for each type of trial history
                 for i in range(rank):
-                    single_factor = single_ori['factor_' + str(i+1)].values
-                    bool_curr = single_ori['ori_' + str(ori)] == 1
-                    bool_prev = single_ori['ori_' + str(ori) + '_th'] == 1
+                    single_factor = single_psy['factor_' + str(i+1)].values
+                    bool_curr = single_psy['ori_' + str(ori)] == 1
+                    bool_prev = single_psy['ori_' + str(ori) + '_th'] == 1
 
-                    prev_same = np.nanmean(single_factor[single_ori['ori_' + str(ori) + '_th_prev'] == 1])
-                    prev_diff = np.nanmean(single_factor[single_ori['ori_' + str(ori) + '_th_prev'] == 0])
+                    prev_same = np.nanmean(single_factor[single_psy['ori_' + str(ori) + '_th_prev'] == 1])
+                    prev_diff = np.nanmean(single_factor[single_psy['ori_' + str(ori) + '_th_prev'] == 0])
                     sensory_history = (prev_diff - prev_same)/np.nanmean(single_factor)
 
-                    prev_same = np.nanmean(single_factor[single_ori['prev_reward_th'] == 1])
-                    prev_diff = np.nanmean(single_factor[single_ori['prev_reward_th'] == 0])
+                    prev_same = np.nanmean(single_factor[single_psy['prev_reward_th'] == 1])
+                    prev_diff = np.nanmean(single_factor[single_psy['prev_reward_th'] == 0])
                     reward_history = (prev_diff - prev_same)/np.nanmean(single_factor)
 
-                    high_dp = np.nanmean(single_factor[single_ori['dprime'] >= 2])
-                    low_dp = np.nanmean(single_factor[single_ori['dprime'] < 2])
+                    high_dp = np.nanmean(single_factor[single_psy['dprime'] >= 2])
+                    low_dp = np.nanmean(single_factor[single_psy['dprime'] < 2])
                     learning_idx = (high_dp - low_dp)/np.nanmean(single_factor)
 
                     trial_hist_mod[i + (rank*c), 0] = sensory_history
