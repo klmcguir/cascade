@@ -21,6 +21,7 @@ def groupmouse_th_index_dataframe(
         nan_thresh=0.85,
         score_threshold=0.8,
         rank_num=18,
+        cont_dprime=False,
         stage=None,
         verbose=True):
     """
@@ -47,6 +48,7 @@ def groupmouse_th_index_dataframe(
                     rank_num=rank_num,
                     stage=stage,
                     group_by=group_by,
+                    cont_dprime=cont_dprime,
                     verbose=verbose)
         df_list.append(th_df)
     all_dfs = pd.concat(df_list, axis=0)
