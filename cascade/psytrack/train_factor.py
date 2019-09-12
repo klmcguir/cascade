@@ -2,6 +2,7 @@ import numpy as np
 from pprint import pprint
 import time
 import pool
+import flow
 from .. import utils, load
 
 from psytrack.helper.invBlkTriDiag import getCredibleInterval
