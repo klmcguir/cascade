@@ -21,6 +21,7 @@ def groupmouse_th_index_dataframe(
         nan_thresh=0.85,
         score_threshold=0.8,
         rank_num=18,
+        stage=None,
         verbose=True):
     """
     Create a pandas dataframe of trial history modulation indices across all
@@ -44,6 +45,7 @@ def groupmouse_th_index_dataframe(
                     nan_thresh=nan_thresh,
                     score_threshold=score_threshold,
                     rank_num=rank_num,
+                    stage=stage,
                     group_by=group_by,
                     verbose=verbose)
         df_list.append(th_df)
@@ -87,51 +89,6 @@ def groupmouse_th_index_log2_dataframe(
                     score_threshold=score_threshold,
                     rank_num=rank_num,
                     group_by=group_by,
-                    verbose=verbose)
-        df_list.append(th_df)
-    all_dfs = pd.concat(df_list, axis=0)
-
-    return all_dfs
-
-
-def groupmouse_th_index_dataframe_stage(
-        mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175', 'OA32', 'OA34', 'OA36'],
-        words=None,
-        trace_type='zscore_day',
-        method='mncp_hals',
-        cs='',
-        warp=False,
-        group_by='all',
-        nan_thresh=0.85,
-        score_threshold=0.8,
-        stage=None,
-        rank_num=18,
-        verbose=True):
-    """
-    Create a pandas dataframe of trial history modulation indices across all
-    mice. Use a learning stage or performance stage defined in
-    th_index_dataframe.
-    """
-
-    # ensure that 'words=None' allows defaults to run in th_index_dataframe
-    if not words:
-        words = [words]*len(mice)
-
-    # get all single mouse dataframes
-    df_list = []
-    for m, w in zip(mice, words):
-        th_df = th_index_dataframe(
-                    m,
-                    word=w,
-                    trace_type=trace_type,
-                    method=method,
-                    cs=cs,
-                    warp=warp,
-                    nan_thresh=nan_thresh,
-                    score_threshold=score_threshold,
-                    rank_num=rank_num,
-                    group_by=group_by,
-                    stage=stage,
                     verbose=verbose)
         df_list.append(th_df)
     all_dfs = pd.concat(df_list, axis=0)
