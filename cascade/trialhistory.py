@@ -302,8 +302,8 @@ def th_index_dataframe(
                 stage_bool = psy1['dprime'] < 2
             else:
                 stage_bool = meta1['dprime'] < 2
-        meta1 = meta1.loc[stage_bool, :]
-        psy1 = psy1.loc[stage_bool, :]
+        # meta1 = meta1.loc[stage_bool, :]
+        # psy1 = psy1.loc[stage_bool, :]
         stage_tag = stage
         if verbose:
             print(mouse + ': Stage is set: ' + stage)
@@ -349,6 +349,27 @@ def th_index_dataframe(
             for i in range(rank):
                 single_factor = single_ori['factor_' + str(i+1)].values
 
+                # learning index
+                if cont_dprime:
+                    # continuous smooth dprime from pillow
+                    high_dp = np.nanmean(
+                        single_factor[single_ori['dprime'] >= 2])
+                    low_dp = np.nanmean(
+                        single_factor[single_ori['dprime'] < 2])
+                else:
+                    # daily dprime
+                    high_dp = np.nanmean(
+                        single_factor[single_meta['dprime'] >= 2])
+                    low_dp = np.nanmean(
+                        single_factor[single_meta['dprime'] < 2])
+                learning_idx = (high_dp - low_dp)/np.nanmean(single_factor)
+
+                # if you are filtering on a stage calculate learning index first
+                if stage:
+                    stag_ori_bool = stage_bool[ori_bool]
+                    single_factor = single_factor[stag_ori_bool.values]
+                    single_ori = single_ori.loc[stag_ori_bool]
+
                 # ori_X_th_prev is the one-back set of orientations. They
                 # define trials that were preceded by a given stimulus X.
                 # Avoid trials that were preceded by reward or punishment.
@@ -381,20 +402,6 @@ def th_index_dataframe(
                         ])
                 # reward_history = (prev_unrew - prev_rew)/np.nanmean(single_factor)
                 reward_history = (prev_unrew - prev_rew)/(prev_unrew + prev_rew)
-
-                if cont_dprime:
-                    # continuous smooth dprime from pillow
-                    high_dp = np.nanmean(
-                        single_factor[single_ori['dprime'] >= 2])
-                    low_dp = np.nanmean(
-                        single_factor[single_ori['dprime'] < 2])
-                else:
-                    # daily dprime
-                    high_dp = np.nanmean(
-                        single_factor[single_meta['dprime'] >= 2])
-                    low_dp = np.nanmean(
-                        single_factor[single_meta['dprime'] < 2])
-                learning_idx = (high_dp - low_dp)/np.nanmean(single_factor)
 
                 trial_hist_mod[i + (rank*c), 0] = sensory_history
                 trial_hist_mod[i + (rank*c), 1] = reward_history
