@@ -93,6 +93,52 @@ def groupmouse_th_index_log2_dataframe(
 
     return all_dfs
 
+
+def groupmouse_th_index_dataframe_stage(
+        mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175', 'OA32', 'OA34', 'OA36'],
+        words=None,
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        group_by='all',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        stage=None,
+        rank_num=18,
+        verbose=True):
+    """
+    Create a pandas dataframe of trial history modulation indices across all
+    mice. Use a learning stage or performance stage defined in
+    th_index_dataframe.
+    """
+
+    # ensure that 'words=None' allows defaults to run in th_index_dataframe
+    if not words:
+        words = [words]*len(mice)
+
+    # get all single mouse dataframes
+    df_list = []
+    for m, w in zip(mice, words):
+        th_df = th_index_dataframe(
+                    m,
+                    word=w,
+                    trace_type=trace_type,
+                    method=method,
+                    cs=cs,
+                    warp=warp,
+                    nan_thresh=nan_thresh,
+                    score_threshold=score_threshold,
+                    rank_num=rank_num,
+                    group_by=group_by,
+                    stage=stage,
+                    verbose=verbose)
+        df_list.append(th_df)
+    all_dfs = pd.concat(df_list, axis=0)
+
+    return all_dfs
+
+
 def groupmouse_th_tuning_dataframe(
         mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175', 'OA32', 'OA34', 'OA36'],
         words=None,
@@ -146,6 +192,7 @@ def th_index_dataframe(
         score_threshold=0.8,
         rank_num=18,
         cont_dprime=False,
+        stage=None,
         verbose=True):
     """
     Create a pandas dataframe of trial history modulation indices for one
@@ -284,6 +331,24 @@ def th_index_dataframe(
     if verbose:
         print(mouse + ': Plus orientation is: ' + str(plus_ori))
 
+    # filter on stage if you are going to
+    if stage:
+        if stage == 'high_dp':
+            if cont_dprime:
+                stage_bool = psy1['dprime'] >= 2
+            else:
+                stage_bool = meta1['dprime'] >= 2
+        elif stage == 'low_dp':
+            if cont_dprime:
+                stage_bool = psy1['dprime'] < 2
+            else:
+                stage_bool = meta1['dprime'] < 2
+        meta1 = meta1.loc[stage_bool, :]
+        psy1 = psy1.loc[stage_bool, :]
+        stage_tag = stage
+        if verbose:
+            print(mouse + ': Stage is set: ' + stage)
+
     iteration = 0
     ori_to_check = [0, 135, 270]
     ori_vec, cond_vec, comp_vec = [], [], []
@@ -296,6 +361,8 @@ def th_index_dataframe(
             for i in range(rank):
                 fac = tensor.results[rank][iteration].factors[2][:,i]
                 data['factor_' + str(i+1)] = fac
+            if stage:
+                fac = fac[stage_bool.values]
             fac_df = pd.DataFrame(data=data, index=meta1.index)
 
             # loop over single oris
