@@ -10,17 +10,20 @@ from psytrack.hyperOpt import hyperOpt
 
 def train(
         mouse,
+        runs,
+        weights,
         trace_type='zscore_day',
         method='mncp_hals',
         cs='',
         warp=False,
-        word=None,
+        word='tray',
         group_by='all',
         nan_thresh=0.85,
-        score_threshold=0.8,
+        score_threshold=None,
         rank_num=18,
-        runs, weights, include_pavlovian=False, separate_day_var=True,
-        rank_num=18, comp_num=1,
+        comp_num=1,
+        include_pavlovian=False,
+        separate_day_var=True,
         verbose=False):
     """Main function use to train the PsyTracker."""
 
@@ -55,16 +58,17 @@ def train(
     data = _splice_data(
             data,
             mouse,
-            trace_type='zscore_day',
-            method='mncp_hals',
-            cs='',
-            warp=False,
-            word=None,
-            group_by='all',
-            nan_thresh=0.85,
-            score_threshold=0.8,
-            rank_num=18,
-            verbose=True)
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            word=word,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold,
+            rank_num=rank_num,
+            comp_num=comp_num,
+            verbose=verbose)
 
     # Fit model
     if verbose:
@@ -277,6 +281,7 @@ def _splice_data(
         nan_thresh=0.85,
         score_threshold=0.8,
         rank_num=18,
+        comp_num=1,
         verbose=True):
     """
     Create a pandas dataframe of trial history modulation indices for one
