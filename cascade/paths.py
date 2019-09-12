@@ -32,6 +32,7 @@ def save_dir_groupmouse(
         score_threshold=None,
         pars=None,
         words=None,
+        rank_num=None,
         grouping='group',
         group_pars=None):
     """
@@ -39,7 +40,7 @@ def save_dir_groupmouse(
 
     Parameters
     ----------
-    mouse : str
+    mice : list of str
         Mouse.
     trunk : str
         Name of folder that will contain analysis.
@@ -63,10 +64,13 @@ def save_dir_groupmouse(
         Threshold from TCA for minimum quality of crossday alignment.
     pars : dict
         Dict of all parameters for TCA.
-    word : str
+    words : list of str
         Word created by hashing pars. For loading pars can be
         truncated to include only cs, warp, trace_type, AND
         the pars word entered here.
+    rank_num : int
+        Complexity (rank) of the model. Will be used to add info to the save
+        folder.
     grouping : str
         Grouping of TCA being run. i.e., 'pair' or 'single' or 'group'
         day TCA.
@@ -90,6 +94,12 @@ def save_dir_groupmouse(
     if score_threshold:
         save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
 
+    # you are making a folder for a specific rank number
+    if rank_num:
+        rank_tag = ' rank' + str(rank_num)
+    else:
+        rank_tag = ''
+
     # save dir
     group_word = groupmouse_word({'mice': mice})
     mouse = 'Group-' + group_word
@@ -100,7 +110,7 @@ def save_dir_groupmouse(
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
     save_dir = os.path.join(
-        save_dir, str(group_pars['group_by']) + ' ' + method)
+        save_dir, str(group_pars['group_by']) + ' ' + method + rank_tag)
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 
@@ -115,6 +125,7 @@ def save_dir_mouse(
         score_threshold=None,
         pars=None,
         word=None,
+        rank_num=None,
         grouping='group',
         group_pars=None):
     """
@@ -150,6 +161,9 @@ def save_dir_mouse(
         Word created by hashing pars. For loading pars can be
         truncated to include only cs, warp, trace_type, AND
         the pars word entered here.
+    rank_num : int
+        Complexity (rank) of the model. Will be used to add info to the save
+        folder.
     grouping : str
         Grouping of TCA being run. i.e., 'pair' or 'single' or 'group'
         day TCA.
@@ -173,6 +187,12 @@ def save_dir_mouse(
     if score_threshold:
         save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
 
+    # you are making a folder for a specific rank number
+    if rank_num:
+        rank_tag = ' rank' + str(rank_num)
+    else:
+        rank_tag = ''
+
     # save dir
     save_dir = tca_plots(
         mouse, grouping, pars=pars, word=word, group_pars=group_pars)
@@ -181,7 +201,7 @@ def save_dir_mouse(
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
     save_dir = os.path.join(
-        save_dir, str(group_pars['group_by']) + ' ' + method)
+        save_dir, str(group_pars['group_by']) + ' ' + method + rank_tag)
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 
