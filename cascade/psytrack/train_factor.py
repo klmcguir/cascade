@@ -428,7 +428,7 @@ def _splice_data(
     # you don't have any blank trials to avoid using them.
     data['y'][blank_trials_bool.values] = 1
     data['answer'][blank_trials_bool.values] = 1  # 1-2 binary not 0-1
-    data['y'][!blank_trials_bool.values] = clever_binary
-    data['answer'][!blank_trials_bool.values] = clever_binary
+    data['y'][not blank_trials_bool.values] = clever_binary
+    data['answer'][not blank_trials_bool.values] = clever_binary
 
     return data
