@@ -1156,6 +1156,13 @@ def th_index_dataframe_byday(
     meta1 = pd.concat(new_meta_df_list, axis=0)
     psy1 = pd.concat(new_psy_df_list, axis=0)
 
+    # check which stim
+    plus_ori = meta1.iloc[(meta1['condition'].values == 'plus') &
+                          (meta1['learning_state'].values == 'learning'), :]
+    plus_ori = plus_ori['orientation'].unique()[0]
+    if verbose:
+        print(mouse + ': Plus orientation is: ' + str(plus_ori))
+
     # preallocate
     ori_to_check = [0, 135, 270]
     day_rank_df_list = []
