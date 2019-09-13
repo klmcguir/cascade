@@ -1072,7 +1072,7 @@ def th_index_dataframe_byday(
         np.sum((ori_0_in, ori_135_in, ori_270_in), axis=0)]
 
     # loop through psy data create a binary vectors for trial history
-    binary_cat = ['ori_0', 'ori_135', 'ori_270', 'prev_reward']
+    binary_cat = ['ori_0', 'ori_135', 'ori_270', 'prev_reward', 'prev_punish']
     for cat in binary_cat:
         data[cat + '_th'] = [i[0] for i in psy.data['inputs'][cat]]
         data[cat + '_th_prev'] = [i[1] for i in psy.data['inputs'][cat]]
