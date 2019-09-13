@@ -150,7 +150,8 @@ def groupmouse_index_heatmap(
     cmap = sns.diverging_palette(220, 10, sep=30, as_cmap=True)
 
     # create x labels
-    xlab = ['sensory_history', 'reward_history',
+    xlab = ['sensory_history_2018',
+            'sensory_history', 'reward_history',
             'reward_history - sensory_history', 'learning_index']
 
     # sort according to degree of modulation by behavioral performance
@@ -183,7 +184,7 @@ def groupmouse_index_heatmap(
         plt.title('Trial History Modulation, Condition: ' + ics)
         plt.ylabel('Component #')
         plt.savefig(os.path.join(save_dir, file_name), bbox_inches='tight')
-        plt.close('all')
+        # plt.close('all')
 
 
 def groupday_index_heatmap(
@@ -319,7 +320,8 @@ def groupday_index_heatmap(
         cmap = sns.diverging_palette(220, 10, sep=30, as_cmap=True)
 
         # create x labels
-        xlab = ['sensory_history', 'reward_history',
+        xlab = ['sensory_history_2018', 'sensory_history',
+                'reward_history',
                 'reward_history - sensory_history', 'learning_index']
 
         # sort according to degree of modulation by behavioral performance
