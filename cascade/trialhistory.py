@@ -1356,7 +1356,8 @@ def _check_ntrial(trial_bool, category_thresh=8):
     is above a threshold. Returns True or False as to whether threshold was
     passed.
     """
-    print(str(np.sum(trial_bool) + 'above thresh. ' + str(np.sum(trial_bool) >= category_thresh)))
+    print(str(np.sum(trial_bool)) + 'above thresh. ' + str(np.sum(trial_bool) >= category_thresh))
+
     return np.sum(trial_bool) >= category_thresh
 
 
