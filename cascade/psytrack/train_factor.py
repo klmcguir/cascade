@@ -272,7 +272,7 @@ def _gather_data(runs, weights, include_pavlovian=True):
 
 
 def _splice_data(
-        data,
+        psydata,
         mouse,
         trace_type='zscore_day',
         method='mncp_hals',
@@ -418,7 +418,7 @@ def _splice_data(
 
     tca_data = {}
     fac = tensor.results[rank_num][0].factors[2][:, comp_num+1]
-    tca_data['factor_' + str(i+1)] = fac
+    tca_data['factor_' + str(comp_num+1)] = fac
     fac_df = pd.DataFrame(data=tca_data, index=meta1.index)
 
     # threshold your data in a clever way so that you are not only
@@ -428,9 +428,9 @@ def _splice_data(
     clever_binary[fac > thresh] = 2
 
     # you don't have any blank trials to avoid using them.
-    data['y'][blank_trials_bool.values] = 1
-    data['answer'][blank_trials_bool.values] = 1  # 1-2 binary not 0-1
-    data['y'][not blank_trials_bool.values] = clever_binary
-    data['answer'][not blank_trials_bool.values] = clever_binary
+    psydata['y'][blank_trials_bool.values] = 1
+    psydata['answer'][blank_trials_bool.values] = 1  # 1-2 binary not 0-1
+    psydata['y'][not blank_trials_bool.values] = clever_binary
+    psydata['answer'][not blank_trials_bool.values] = clever_binary
 
-    return data
+    return psydata
