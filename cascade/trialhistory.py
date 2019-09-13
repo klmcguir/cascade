@@ -1293,13 +1293,13 @@ def th_index_dataframe_byday(
                     reward_history = (prev_unrew - prev_rew)/(prev_unrew + prev_rew)
                     if not _check_ntrial(
                             (single_psy['prev_reward_th'] == 1) &
-                            (single_psy['ori_' + str(plus_ori) + '_th_prev'] == 1)
+                            (single_psy['ori_' + str(plus_ori) + '_th_prev'] == 1),
                             category_thresh):
                         reward_history = np.nan
                     if not _check_ntrial(
                             (single_psy['prev_reward_th'] == 0) &
                             (single_psy['prev_punish_th'] == 0) &
-                            (single_psy['ori_' + str(plus_ori) + '_th_prev'] == 1)
+                            (single_psy['ori_' + str(plus_ori) + '_th_prev'] == 1),
                             category_thresh):
                         reward_history = np.nan
 
