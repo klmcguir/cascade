@@ -53,7 +53,7 @@ def groupmouse_th_index_byday(
                     rank_num=rank_num,
                     # stage=stage,
                     group_by=group_by,
-                    cont_dprime=cont_dprime,
+                    # cont_dprime=cont_dprime,
                     verbose=verbose)
 
         df_list.append(th_df)
