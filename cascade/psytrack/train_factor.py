@@ -379,7 +379,7 @@ def _splice_data(
     # check that all runs have matched trial orientations
     new_psy_df_list = []
     new_meta_df_list = []
-    drop_trials_bin = np.zeros((len(dfr)))
+    drop_trials_bin = np.zeros((len(psy_df)))
     dates = meta.reset_index()['date'].unique()
     for d in dates:
         psy_day_bool = psy_df.reset_index()['date'].isin([d]).values
@@ -435,15 +435,20 @@ def _splice_data(
     clever_binary[fac > thresh] = 2
 
     # which values were dropped from the psydata. Use this to update psydata
-    keep_bool = np.logical_and(
-        drop_trials_bin == 0, blank_trials_bool.values == True)
-    drop_bool = np.logical_or(
-        drop_trials_bin == 1, blank_trials_bool.values == False)
+    blank_trials_bool[blank_trials_bool] = (drop_trials_bin == 0)
+    keep_bool = blank_trials_bool
+    drop_bool = blank_trials_bool == False
+    # keep_bool = np.logical_and(
+    #     drop_trials_bin == 0, blank_trials_bool.values == True)
+    # drop_bool = np.logical_or(
+    #     drop_trials_bin == 1, blank_trials_bool.values == False)
 
     # you don't have any blank trials to avoid using them.
     psydata['y'][drop_bool] = 1
     psydata['answer'][drop_bool] = 1  # 1-2 binary not 0-1
     psydata['y'][keep_bool] = clever_binary
     psydata['answer'][keep_bool] = clever_binary
+
+    print('cleared :)')
 
     return psydata
