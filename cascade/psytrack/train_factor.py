@@ -408,7 +408,7 @@ def _splice_data(
             assert np.all(psy_ori.values == meta_ori.values)
 
             # check which trials are dropped
-            drop_pos_run = drop_pos_day[psy_run_bool][max_trials:]
+            drop_pos_run = drop_pos_day[psy_run_bool][:max_trials]
             drop_trials_bin[drop_pos_run] = 1
 
             # if everything looks good, copy meta index into psy
@@ -435,7 +435,7 @@ def _splice_data(
     clever_binary[fac > thresh] = 2
 
     # which values were dropped from the psydata. Use this to update psydata
-    blank_trials_bool[blank_trials_bool] = (drop_trials_bin == 0)
+    blank_trials_bool[blank_trials_bool] = (drop_trials_bin == 1)
     keep_bool = blank_trials_bool
     drop_bool = blank_trials_bool == False
     # keep_bool = np.logical_and(
