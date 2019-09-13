@@ -51,7 +51,7 @@ def groupmouse_th_index_byday(
                     score_threshold=score_threshold,
                     category_thresh=category_thresh,
                     rank_num=rank_num,
-                    stage=stage,
+                    # stage=stage,
                     group_by=group_by,
                     cont_dprime=cont_dprime,
                     verbose=verbose)
