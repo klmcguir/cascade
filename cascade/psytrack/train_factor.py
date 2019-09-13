@@ -435,8 +435,10 @@ def _splice_data(
     clever_binary[fac > thresh] = 2
 
     # which values were dropped from the psydata. Use this to update psydata
-    keep_bool = (drop_trials_bin == 0) | (blank_trials_bool.values == False)
-    drop_bool = (drop_trials_bin == 1) | (blank_trials_bool.values)
+    keep_bool = np.logical_or(
+        drop_trials_bin == 0, blank_trials_bool.values == False)
+    drop_bool = np.logical_or(
+        drop_trials_bin == 1, blank_trials_bool.values)
 
     # you don't have any blank trials to avoid using them.
     psydata['y'][drop_bool] = 1
