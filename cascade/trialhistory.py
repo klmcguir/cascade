@@ -1314,7 +1314,7 @@ def th_index_dataframe_byday(
                     trial_hist_mod[i + (rank*c), 1] = sensory_history
                     trial_hist_mod[i + (rank*c), 2] = reward_history
                     trial_hist_mod[i + (rank*c), 3] = reward_history - sensory_history
-                    trial_hist_mod[i + (rank*c), 4] = learning_idx
+                    # trial_hist_mod[i + (rank*c), 4] = learning_idx
 
                 ori_vec.extend([ori]*rank_num)
                 cond_vec.extend([cond]*rank_num)
@@ -1324,7 +1324,7 @@ def th_index_dataframe_byday(
             trial_history['sensory_history'] = trial_hist_mod[:, 1]
             trial_history['reward_history'] = trial_hist_mod[:, 2]
             trial_history['diff_reward_sensory'] = trial_hist_mod[:, 3]
-            trial_history['learning_index'] = trial_hist_mod[:, 4]
+            # trial_history['learning_index'] = trial_hist_mod[:, 4]
 
             # create your index out of relevant variables
             index = pd.MultiIndex.from_arrays([
