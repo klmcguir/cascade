@@ -379,6 +379,7 @@ def _splice_data(
     # check that all runs have matched trial orientations
     new_psy_df_list = []
     new_meta_df_list = []
+    drop_trials_bin = np.zeroes((len(dfr)))
     dates = meta.reset_index()['date'].unique()
     for d in dates:
         psy_day_bool = psy_df.reset_index()['date'].isin([d]).values
@@ -386,6 +387,7 @@ def _splice_data(
         psy_day_df = psy_df.iloc[psy_day_bool, :]
         meta_day_df = meta.iloc[meta_day_bool, :]
         runs = meta_day_df.reset_index()['run'].unique()
+        drop_pos_day = np.where(psy_day_bool)[0]
         for r in runs:
             psy_run_bool = psy_day_df.reset_index()['run'].isin([r]).values
             meta_run_bool = meta_day_df.reset_index()['run'].isin([r]).values
@@ -393,6 +395,7 @@ def _splice_data(
             meta_run_df = meta_day_df.iloc[meta_run_bool, :]
             psy_run_idx = psy_run_df.reset_index()['trial_idx'].values
             meta_run_idx = meta_run_df.reset_index()['trial_idx'].values
+
 
             # drop extra trials from trace2P that don't have associated imaging
             max_trials = np.min([len(psy_run_idx), len(meta_run_idx)])
@@ -403,6 +406,10 @@ def _splice_data(
 
             # make sure all oris match between vectors of the same length each day
             assert np.all(psy_ori.values == meta_ori.values)
+
+            # check which trials are dropped
+            drop_pos_run = drop_pos_day[psy_run_bool][max_trials:]
+            drop_trials_bin[drop_pos_run] = 1
 
             # if everything looks good, copy meta index into psy
             meta_new = meta_run_df.iloc[:max_trials]
@@ -427,10 +434,14 @@ def _splice_data(
     thresh = np.nanmean(fac)*2
     clever_binary[fac > thresh] = 2
 
+    # which values were dropped from the psydata. Use this to update psydata
+    keep_bool = (drop_trials_bin == 0) | (blank_trials_bool.values == False)
+    drop_bool = (drop_trials_bin == 1) | (blank_trials_bool.values)
+
     # you don't have any blank trials to avoid using them.
-    psydata['y'][blank_trials_bool.values] = 1
-    psydata['answer'][blank_trials_bool.values] = 1  # 1-2 binary not 0-1
-    psydata['y'][not blank_trials_bool.values] = clever_binary
-    psydata['answer'][not blank_trials_bool.values] = clever_binary
+    psydata['y'][drop_bool] = 1
+    psydata['answer'][drop_bool] = 1  # 1-2 binary not 0-1
+    psydata['y'][keep_bool] = clever_binary
+    psydata['answer'][keep_bool] = clever_binary
 
     return psydata
