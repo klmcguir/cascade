@@ -11,6 +11,61 @@ from copy import deepcopy
 from . import load, utils
 
 
+def groupmouse_th_index_byday(
+        mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175', 'OA32', 'OA34', 'OA36'],
+        words=None,
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        group_by='all',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        category_thresh=8,
+        rank_num=18,
+        cont_dprime=False,
+        daymean=True,
+        stage=None,
+        verbose=True):
+    """
+    Create a pandas dataframe of trial history modulation indices across all
+    mice. Calculated as a mean per day. Only use days above a reasonable
+    number of trials in each category.
+    """
+
+    # ensure that 'words=None' allows defaults to run in th_index_dataframe
+    if not words:
+        words = [words]*len(mice)
+
+    # get all single mouse dataframes
+    df_list = []
+    for m, w in zip(mice, words):
+        th_df = th_index_dataframe_byday(
+                    m,
+                    word=w,
+                    trace_type=trace_type,
+                    method=method,
+                    cs=cs,
+                    warp=warp,
+                    nan_thresh=nan_thresh,
+                    score_threshold=score_threshold,
+                    category_thresh=category_thresh,
+                    rank_num=rank_num,
+                    stage=stage,
+                    group_by=group_by,
+                    cont_dprime=cont_dprime,
+                    verbose=verbose)
+
+        df_list.append(th_df)
+    all_dfs = pd.concat(df_list, axis=0)
+
+    # optionally take the means of indices across days
+    if daymean:
+        all_dfs = _get_means_across_days(all_dfs)
+
+    return all_dfs
+
+
 def groupmouse_th_index_dataframe(
         mice=['OA27', 'OA26', 'OA67', 'VF226', 'CC175', 'OA32', 'OA34', 'OA36'],
         words=None,
@@ -313,7 +368,7 @@ def th_index_dataframe(
     ori_to_check = [0, 135, 270]
     ori_vec, cond_vec, comp_vec = [], [], []
     trial_history = {}
-    trial_hist_mod = np.zeros((rank_num*len(ori_to_check), 4))
+    trial_hist_mod = np.zeros((rank_num*len(ori_to_check), 5))
     for c, ori in enumerate(ori_to_check):
     # for rank in tensor.results:
         for rank in [rank_num]:
@@ -381,6 +436,15 @@ def th_index_dataframe(
                     single_psy = single_psy.loc[stag_ori_bool]
                     single_meta = single_meta.loc[stag_ori_bool]
 
+                # Trial history calculated as in Ramesh and Burgess 2018
+                prev_same = np.nanmean(
+                    single_factor[
+                        single_psy['ori_' + str(ori) + '_th_prev'] == 1])
+                prev_diff = np.nanmean(
+                    single_factor[
+                        single_psy['ori_' + str(ori) + '_th_prev'] == 0])
+                sensory_history_2018 = (prev_diff - prev_same)/np.nanmean(single_factor)
+
                 # ori_X_th_prev is the one-back set of orientations. They
                 # define trials that were preceded by a given stimulus X.
                 # Avoid trials that were preceded by reward or punishment.
@@ -414,19 +478,21 @@ def th_index_dataframe(
                 # reward_history = (prev_unrew - prev_rew)/np.nanmean(single_factor)
                 reward_history = (prev_unrew - prev_rew)/(prev_unrew + prev_rew)
 
-                trial_hist_mod[i + (rank*c), 0] = sensory_history
-                trial_hist_mod[i + (rank*c), 1] = reward_history
-                trial_hist_mod[i + (rank*c), 2] = reward_history - sensory_history
-                trial_hist_mod[i + (rank*c), 3] = learning_idx
+                trial_hist_mod[i + (rank*c), 0] = sensory_history_2018
+                trial_hist_mod[i + (rank*c), 1] = sensory_history
+                trial_hist_mod[i + (rank*c), 2] = reward_history
+                trial_hist_mod[i + (rank*c), 3] = reward_history - sensory_history
+                trial_hist_mod[i + (rank*c), 4] = learning_idx
 
         ori_vec.extend([ori]*rank_num)
         cond_vec.extend([cond]*rank_num)
         comp_vec.extend(list(np.arange(1, rank_num + 1)))
 
-    trial_history['sensory_history'] = trial_hist_mod[:, 0]
-    trial_history['reward_history'] = trial_hist_mod[:, 1]
-    trial_history['diff_reward_sensory'] = trial_hist_mod[:, 2]
-    trial_history['learning_index'] = trial_hist_mod[:, 3]
+    trial_history['sensory_history_2018'] = trial_hist_mod[:, 0]
+    trial_history['sensory_history'] = trial_hist_mod[:, 1]
+    trial_history['reward_history'] = trial_hist_mod[:, 2]
+    trial_history['diff_reward_sensory'] = trial_hist_mod[:, 3]
+    trial_history['learning_index'] = trial_hist_mod[:, 4]
 
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays([
@@ -597,7 +663,7 @@ def th_index_log2_dataframe(
     ori_to_check = [0, 135, 270]
     ori_vec, cond_vec, comp_vec = [], [], []
     trial_history = {}
-    trial_hist_mod = np.zeros((rank_num*len(ori_to_check), 4))
+    trial_hist_mod = np.zeros((rank_num*len(ori_to_check), 5))
     for c, ori in enumerate(ori_to_check):
     # for rank in tensor.results:
         for rank in [rank_num]:
@@ -631,6 +697,15 @@ def th_index_log2_dataframe(
             # get means for each factor for each type of trial history
             for i in range(rank):
                 single_factor = single_psy['factor_' + str(i+1)].values
+
+                # Trial history calculated as in Ramesh and Burgess 2018
+                prev_same = np.nanmean(
+                    single_factor[
+                        single_psy['ori_' + str(ori) + '_th_prev'] == 1])
+                prev_diff = np.nanmean(
+                    single_factor[
+                        single_psy['ori_' + str(ori) + '_th_prev'] == 0])
+                sensory_history_2018 = np.log2(prev_diff/prev_same)
 
                 # ori_X_th_prev is the one-back set of orientations. They
                 # define trials that were preceded by a given stimulus X.
@@ -679,19 +754,21 @@ def th_index_log2_dataframe(
                         single_factor[single_meta['dprime'] < 2])
                 learning_idx = np.log2(high_dp/low_dp)
 
-                trial_hist_mod[i + (rank*c), 0] = sensory_history
-                trial_hist_mod[i + (rank*c), 1] = reward_history
-                trial_hist_mod[i + (rank*c), 2] = reward_history - sensory_history
-                trial_hist_mod[i + (rank*c), 3] = learning_idx
+                trial_hist_mod[i + (rank*c), 1] = sensory_history_2018
+                trial_hist_mod[i + (rank*c), 1] = sensory_history
+                trial_hist_mod[i + (rank*c), 2] = reward_history
+                trial_hist_mod[i + (rank*c), 3] = reward_history - sensory_history
+                trial_hist_mod[i + (rank*c), 4] = learning_idx
 
         ori_vec.extend([ori]*rank_num)
         cond_vec.extend([cond]*rank_num)
         comp_vec.extend(list(np.arange(1, rank_num + 1)))
 
-    trial_history['sensory_history_log2'] = trial_hist_mod[:, 0]
-    trial_history['reward_history_log2'] = trial_hist_mod[:, 1]
-    trial_history['diff_reward_sensory_log2'] = trial_hist_mod[:, 2]
-    trial_history['learning_index_log2'] = trial_hist_mod[:, 3]
+    trial_history['sensory_history_2018'] = trial_hist_mod[:, 0]
+    trial_history['sensory_history'] = trial_hist_mod[:, 1]
+    trial_history['reward_history'] = trial_hist_mod[:, 2]
+    trial_history['diff_reward_sensory'] = trial_hist_mod[:, 3]
+    trial_history['learning_index'] = trial_hist_mod[:, 4]
 
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays([
@@ -948,6 +1025,7 @@ def th_index_dataframe_byday(
         group_by='all',
         nan_thresh=0.85,
         score_threshold=0.8,
+        category_thresh=8,
         rank_num=18,
         verbose=True):
     """
@@ -1121,7 +1199,7 @@ def th_index_dataframe_byday(
             # preallocate
             ori_vec, cond_vec, comp_vec = [], [], []
             trial_history = {}
-            trial_hist_mod = np.zeros((rank_num*len(ori_to_check), 4))
+            trial_hist_mod = np.zeros((rank_num*len(ori_to_check), 5))
 
             # loop over single oris
             for c, ori in enumerate(ori_to_check):
@@ -1152,31 +1230,94 @@ def th_index_dataframe_byday(
                     bool_curr = single_psy['ori_' + str(ori)] == 1
                     bool_prev = single_psy['ori_' + str(ori) + '_th'] == 1
 
-                    prev_same = np.nanmean(single_factor[single_psy['ori_' + str(ori) + '_th_prev'] == 1])
-                    prev_diff = np.nanmean(single_factor[single_psy['ori_' + str(ori) + '_th_prev'] == 0])
-                    sensory_history = (prev_diff - prev_same)/np.nanmean(single_factor)
+                    # Trial history calculated as in Ramesh and Burgess 2018
+                    prev_same = np.nanmean(
+                        single_factor[
+                            single_psy['ori_' + str(ori) + '_th_prev'] == 1])
+                    prev_diff = np.nanmean(
+                        single_factor[
+                            single_psy['ori_' + str(ori) + '_th_prev'] == 0])
+                    sensory_history_2018 = (prev_diff - prev_same)/(prev_diff + prev_same)
+                    if not _check_ntrial(
+                        single_psy['ori_' + str(ori) + '_th_prev'] == 1,
+                            category_thresh):
+                        sensory_history_2018 = np.nan
+                    if not _check_ntrial(
+                        single_psy['ori_' + str(ori) + '_th_prev'] == 0,
+                            category_thresh):
+                        sensory_history_2018 = np.nan
 
-                    prev_same = np.nanmean(single_factor[single_psy['prev_reward_th'] == 1])
-                    prev_diff = np.nanmean(single_factor[single_psy['prev_reward_th'] == 0])
-                    reward_history = (prev_diff - prev_same)/np.nanmean(single_factor)
 
-                    high_dp = np.nanmean(single_factor[single_psy['dprime'] >= 2])
-                    low_dp = np.nanmean(single_factor[single_psy['dprime'] < 2])
-                    learning_idx = (high_dp - low_dp)/np.nanmean(single_factor)
+                    # ori_X_th_prev is the one-back set of orientations. They
+                    # define trials that were preceded by a given stimulus X.
+                    # Avoid trials that were preceded by reward or punishment.
+                    prev_same = np.nanmean(
+                        single_factor[
+                            (single_psy['ori_' + str(ori) + '_th_prev'] == 1) &
+                            (single_psy['prev_reward_th'] == 0) &
+                            (single_psy['prev_punish_th'] == 0)
+                            ])
+                    prev_diff = np.nanmean(
+                        single_factor[
+                            (single_psy['ori_' + str(ori) + '_th_prev'] == 0) &
+                            (single_psy['prev_reward_th'] == 0) &
+                            (single_psy['prev_punish_th'] == 0)
+                            ])
+                    sensory_history = (prev_diff - prev_same)/(prev_diff + prev_same)
+                    if not _check_ntrial(
+                            (single_psy['ori_' + str(ori) + '_th_prev'] == 1) &
+                            (single_psy['prev_reward_th'] == 0) &
+                            (single_psy['prev_punish_th'] == 0),
+                            category_thresh):
+                        sensory_history = np.nan
+                    if not _check_ntrial(
+                            (single_psy['ori_' + str(ori) + '_th_prev'] == 0) &
+                            (single_psy['prev_reward_th'] == 0) &
+                            (single_psy['prev_punish_th'] == 0),
+                            category_thresh):
+                        sensory_history = np.nan
 
-                    trial_hist_mod[i + (rank*c), 0] = sensory_history
-                    trial_hist_mod[i + (rank*c), 1] = reward_history
-                    trial_hist_mod[i + (rank*c), 2] = reward_history - sensory_history
-                    trial_hist_mod[i + (rank*c), 3] = learning_idx
+                    # previously rewarded trials
+                    # only make the comparison between trials preceded by FC trials
+                    prev_rew = np.nanmean(
+                        single_factor[
+                            (single_psy['prev_reward_th'] == 1) &
+                            (single_psy['ori_' + str(plus_ori) + '_th_prev'] == 1)
+                            ])
+                    prev_unrew = np.nanmean(
+                        single_factor[
+                            (single_psy['prev_reward_th'] == 0) &
+                            (single_psy['prev_punish_th'] == 0) &
+                            (single_psy['ori_' + str(plus_ori) + '_th_prev'] == 1)
+                            ])
+                    reward_history = (prev_unrew - prev_rew)/(prev_unrew + prev_rew)
+                    if not _check_ntrial(
+                            (single_psy['prev_reward_th'] == 1) &
+                            (single_psy['ori_' + str(plus_ori) + '_th_prev'] == 1)
+                            category_thresh):
+                        reward_history = np.nan
+                    if not _check_ntrial(
+                            (single_psy['prev_reward_th'] == 0) &
+                            (single_psy['prev_punish_th'] == 0) &
+                            (single_psy['ori_' + str(plus_ori) + '_th_prev'] == 1)
+                            category_thresh):
+                        reward_history = np.nan
+
+                    trial_hist_mod[i + (rank*c), 0] = sensory_history_2018
+                    trial_hist_mod[i + (rank*c), 1] = sensory_history
+                    trial_hist_mod[i + (rank*c), 2] = reward_history
+                    trial_hist_mod[i + (rank*c), 3] = reward_history - sensory_history
+                    trial_hist_mod[i + (rank*c), 4] = learning_idx
 
                 ori_vec.extend([ori]*rank_num)
                 cond_vec.extend([cond]*rank_num)
                 comp_vec.extend(list(np.arange(1, rank_num + 1)))
 
-            trial_history['sensory_history'] = trial_hist_mod[:, 0]
-            trial_history['reward_history'] = trial_hist_mod[:, 1]
-            trial_history['diff_reward_sensory'] = trial_hist_mod[:, 2]
-            trial_history['learning_index'] = trial_hist_mod[:, 3]
+            trial_history['sensory_history_2018'] = trial_hist_mod[:, 0]
+            trial_history['sensory_history'] = trial_hist_mod[:, 1]
+            trial_history['reward_history'] = trial_hist_mod[:, 2]
+            trial_history['diff_reward_sensory'] = trial_hist_mod[:, 3]
+            trial_history['learning_index'] = trial_hist_mod[:, 4]
 
             # create your index out of relevant variables
             index = pd.MultiIndex.from_arrays([
@@ -1200,3 +1341,25 @@ def th_index_dataframe_byday(
     final_df = pd.concat(day_rank_df_list, axis=0)
 
     return final_df
+
+
+def _check_ntrial(trial_bool, category_thresh=8):
+    """
+    Helper function to check the number of trials being used in a calculation
+    is above a threshold. Returns True or False as to whether threshold was
+    passed.
+    """
+    return np.sum(trial_bool) >= category_thresh
+
+
+def _get_means_across_days(df_byday):
+    """
+    Helper function to take the mean of each type of index across a day.
+    """
+
+    # loop over each day, component, and orientation/condition
+    df_byday = (df_byday
+                .groupby(['mouse', 'orientation', 'condition', 'component'])
+                .mean())
+
+    return df_byday
