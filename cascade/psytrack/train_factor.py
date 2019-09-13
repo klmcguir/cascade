@@ -431,7 +431,7 @@ def _splice_data(
     # threshold your data in a clever way so that you are not only
     # looking at orientation trials
     clever_binary = np.ones((len(fac)))
-    thresh = np.nanmean(fac)*2
+    thresh = np.nanstd(fac)*1
     clever_binary[fac > thresh] = 2
 
     # which values were dropped from the psydata. Use this to update psydata
