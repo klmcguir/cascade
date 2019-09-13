@@ -379,7 +379,7 @@ def _splice_data(
     # check that all runs have matched trial orientations
     new_psy_df_list = []
     new_meta_df_list = []
-    drop_trials_bin = np.zeroes((len(dfr)))
+    drop_trials_bin = np.zeros((len(dfr)))
     dates = meta.reset_index()['date'].unique()
     for d in dates:
         psy_day_bool = psy_df.reset_index()['date'].isin([d]).values
