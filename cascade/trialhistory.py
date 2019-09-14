@@ -764,11 +764,11 @@ def th_index_log2_dataframe(
         cond_vec.extend([cond]*rank_num)
         comp_vec.extend(list(np.arange(1, rank_num + 1)))
 
-    trial_history['sensory_history_2018'] = trial_hist_mod[:, 0]
-    trial_history['sensory_history'] = trial_hist_mod[:, 1]
-    trial_history['reward_history'] = trial_hist_mod[:, 2]
-    trial_history['diff_reward_sensory'] = trial_hist_mod[:, 3]
-    trial_history['learning_index'] = trial_hist_mod[:, 4]
+    trial_history['sensory_history_2018_log2'] = trial_hist_mod[:, 0]
+    trial_history['sensory_history_log2'] = trial_hist_mod[:, 1]
+    trial_history['reward_history_log2'] = trial_hist_mod[:, 2]
+    trial_history['diff_reward_sensory_log2'] = trial_hist_mod[:, 3]
+    trial_history['learning_index_log2'] = trial_hist_mod[:, 4]
 
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays([
