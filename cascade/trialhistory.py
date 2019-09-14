@@ -706,7 +706,6 @@ def th_index_log2_dataframe(
                     single_factor[
                         single_psy['ori_' + str(ori) + '_th_prev'] == 0])
                 sensory_history_2018 = np.log2(prev_diff/prev_same)
-                print(prev_diff, prev_same, prev_diff/prev_same, sensory_history_2018)
 
                 # ori_X_th_prev is the one-back set of orientations. They
                 # define trials that were preceded by a given stimulus X.
@@ -755,7 +754,7 @@ def th_index_log2_dataframe(
                         single_factor[single_meta['dprime'] < 2])
                 learning_idx = np.log2(high_dp/low_dp)
 
-                trial_hist_mod[i + (rank*c), 1] = sensory_history_2018
+                trial_hist_mod[i + (rank*c), 0] = sensory_history_2018
                 trial_hist_mod[i + (rank*c), 1] = sensory_history
                 trial_hist_mod[i + (rank*c), 2] = reward_history
                 trial_hist_mod[i + (rank*c), 3] = reward_history - sensory_history
