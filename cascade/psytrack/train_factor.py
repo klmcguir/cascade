@@ -425,7 +425,7 @@ def sync_tca_pillow(
 
     tca_data = {}
     for comp_num in tensor.results:
-        fac = tensor.results[rank_num][0].factors[2][:, comp_num]
+        fac = tensor.results[rank_num][0].factors[2][:, comp_num-1]
         tca_data['factor_' + str(comp_num)] = fac
     fac_df = pd.DataFrame(data=tca_data, index=meta1.index)
 
@@ -585,8 +585,8 @@ def _splice_data(
     psy1 = pd.concat(new_psy_df_list, axis=0)
 
     tca_data = {}
-    fac = tensor.results[rank_num][0].factors[2][:, comp_num+1]
-    tca_data['factor_' + str(comp_num+1)] = fac
+    fac = tensor.results[rank_num][0].factors[2][:, comp_num-1]
+    tca_data['factor_' + str(comp_num)] = fac
     fac_df = pd.DataFrame(data=tca_data, index=meta1.index)
 
     # threshold your data in a clever way so that you are not only
