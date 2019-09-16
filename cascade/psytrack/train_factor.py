@@ -320,7 +320,7 @@ def sync_tca_pillow(
     for c, i in enumerate(psy.weight_labels):
         # adding multiplication step here with binary vector !!!!!!
         data[i + '_interaction'] = np.exp(psy.fits[c, :])*psy.inputs[:, c].T
-        data[i] = np.exp(psy.fits[c, :])*psy.inputs[:, c].T
+        data[i] = np.exp(psy.fits[c, :])
         data[i + '_input'] = psy.inputs[:, c].T
     ori_0_in = [i[0] for i in psy.data['inputs']['ori_0']]
     ori_135_in = [i[0] for i in psy.data['inputs']['ori_135']]
