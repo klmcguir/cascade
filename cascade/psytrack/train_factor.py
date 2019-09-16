@@ -282,7 +282,6 @@ def sync_tca_pillow(
         nan_thresh=0.85,
         score_threshold=0.8,
         rank_num=18,
-        comp_num=1,
         verbose=True):
     """
     Create a pandas dataframe of pillow and TCA results with indices
@@ -425,8 +424,9 @@ def sync_tca_pillow(
     psy1 = pd.concat(new_psy_df_list, axis=0)
 
     tca_data = {}
-    fac = tensor.results[rank_num][0].factors[2][:, comp_num+1]
-    tca_data['factor_' + str(comp_num+1)] = fac
+    for comp_num in tensor.results:
+        fac = tensor.results[rank_num][0].factors[2][:, comp_num+1]
+        tca_data['factor_' + str(comp_num+1)] = fac
     fac_df = pd.DataFrame(data=tca_data, index=meta1.index)
 
     return psy1, meta1, fac_df
