@@ -424,7 +424,7 @@ def sync_tca_pillow(
     psy1 = pd.concat(new_psy_df_list, axis=0)
 
     tca_data = {}
-    for comp_num in tensor.results:
+    for comp_num in range(1, rank_num + 1):
         fac = tensor.results[rank_num][0].factors[2][:, comp_num-1]
         tca_data['factor_' + str(comp_num)] = fac
     fac_df = pd.DataFrame(data=tca_data, index=meta1.index)
