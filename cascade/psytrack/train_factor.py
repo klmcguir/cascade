@@ -328,7 +328,7 @@ def sync_tca_pillow(
         0 if i == 1 else 1 for i in
         np.sum((ori_0_in, ori_135_in, ori_270_in), axis=0)]
 
-    loop through psy data create a binary vectors for trial history
+    # loop through psy data create a binary vectors for trial history
     binary_cat = ['ori_0', 'ori_135', 'ori_270', 'prev_reward', 'prev_punish']
     for cat in binary_cat:
         data[cat + '_th'] = [i[0] for i in psy.data['inputs'][cat]]
