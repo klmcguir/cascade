@@ -22,7 +22,8 @@ def correlate_pillow_tca(
         word='tray',
         group_by='all',
         nan_thresh=0.85,
-        score_threshold=None):
+        score_threshold=None,
+        learning_only=False):
 
     # LOADING
 
@@ -86,7 +87,10 @@ def correlate_pillow_tca(
 
     savepath = paths.tca_plots(
         mouse, 'group', word=word, group_pars={'group_by': group_by})
-    savepath = os.path.join(savepath, 'psytrack-vs-tca')
+    if learning_only:
+        savepath = os.path.join(savepath, 'psytrack-vs-tca learning')
+    else
+        savepath = os.path.join(savepath, 'psytrack-vs-tca')
     if not os.path.isdir(savepath): os.mkdir(savepath)
 
     # Load smooth dprime
@@ -159,6 +163,9 @@ def correlate_pillow_tca(
         for c, i in enumerate(single_ori.columns):
             single_data[i] = corr[:, c]
         corr_plt = pd.DataFrame(data=single_data, index=single_ori.columns)
+
+        if learning_only:
+            single_ori = single_ori.loc[meta1['learning_state'].isin(['learning', 'naive']), :]
 
         num_corr = np.shape(single_ori)[1]
         corrmat = np.zeros((num_corr, num_corr))
