@@ -89,7 +89,7 @@ def correlate_pillow_tca(
         mouse, 'group', word=word, group_pars={'group_by': group_by})
     if learning_only:
         savepath = os.path.join(savepath, 'psytrack-vs-tca learning')
-    else
+    else:
         savepath = os.path.join(savepath, 'psytrack-vs-tca')
     if not os.path.isdir(savepath): os.mkdir(savepath)
 
