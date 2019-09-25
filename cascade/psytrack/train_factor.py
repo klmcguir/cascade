@@ -9,6 +9,17 @@ from .. import utils, load
 from psytrack.helper.invBlkTriDiag import getCredibleInterval
 from psytrack.hyperOpt import hyperOpt
 
+"""
+Define hyperparameters that are annoying to calculate and worth
+keeping track of.
+"""
+default_pars = {
+    'fixed_sigmas':
+        [0.098, 0.185, 0.185, 0.185, 0.0166, 0.1128, 0.0457],
+    'fixed_sigma_day':
+        [1.3003, 2.1746, 2.1746, 2.1746, 0.1195, 0.3035, 0.6393]
+                }
+
 
 def train(
         mouse,
@@ -26,8 +37,11 @@ def train(
         comp_num=1,
         include_pavlovian=False,
         separate_day_var=True,
+        fixed_sigma=None,
+        fixed_sigma_day=None,
+        TCA_inputs=True,
         verbose=False):
-    """Main function use to train the PsyTracker."""
+    """Main function use to train a bastardized PsyTracker."""
 
     k = np.sum([weights[i] for i in weights.keys()])
     if verbose:
@@ -37,14 +51,21 @@ def train(
         print(' Fitting {} total hyper-parameters'.format(k))
 
     # Initialize hyperparameters
-    hyper = {'sigInit': 2**4.,
-             'sigma': [2**-4.]*k}
-    opt_list = ['sigma']
+    hyper = {'sigInit': 2**4.}
+    opt_list = []
+    if fixed_sigma is None:
+        hyper['sigma'] = [2**-4.]*k
+        opt_list.append('sigma')
+    else:
+        hyper['sigma'] = fixed_sigma
 
     # Add in parameters for each day if needed
     if separate_day_var:
-        hyper['sigDay'] = [2**-4.]*k
-        opt_list.append('sigDay')
+        if fixed_sigma_day is None:
+            hyper['sigDay'] = [2**-4.]*k
+            opt_list.append('sigDay')
+        else:
+            hyper['sigDay'] = fixed_sigma_day
 
     # Extract data from our simpcells and convert to format for PsyTrack
     if verbose:
@@ -56,8 +77,24 @@ def train(
         print(' Inputs:\n  {}'.format(sorted(data['inputs'].keys())))
         print(' Total trials:\n  {}'.format(len(data['y'])))
 
-    # add 'y' but now it is a 1-2 binary vector of a TCA trial factor
-    data = _splice_data(
+    if TCA_inputs:
+        # add in TCA factors as inputs to pillow
+        data = _splice_data_inputs(
+            data,
+            mouse,
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            word=word,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold,
+            rank_num=rank_num,
+            verbose=verbose)
+    else:
+        # add 'y' but now it is a 1-2 binary vector of a TCA trial factor
+        data = _splice_data_y(
             data,
             mouse,
             trace_type=trace_type,
@@ -432,7 +469,7 @@ def sync_tca_pillow(
     return psy1, meta1, fac_df
 
 
-def _splice_data(
+def _splice_data_y(
         psydata,
         mouse,
         trace_type='zscore_day',
@@ -609,6 +646,182 @@ def _splice_data(
     psydata['answer'][drop_bool] = 1  # 1-2 binary not 0-1
     psydata['y'][keep_bool] = clever_binary
     psydata['answer'][keep_bool] = clever_binary
+
+    print('cleared :)')
+
+    return psydata
+
+
+def _splice_data_inputs(
+        psydata,
+        mouse,
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        word=None,
+        group_by='all',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        rank_num=18,
+        verbose=True):
+    """
+    Create dict used for fitting Pillow model. Main purpose of function
+    is to align indices from Pillow and TCA since they often sub-select
+    different trials. This forces Pillow 'y' and 'answer' to have same
+    trials as TCA and uses TCA trial factors as 'inputs'.
+    """
+
+    # default TCA params to use
+    if not word:
+        if mouse == 'OA27':
+            word = 'tray'
+        else:
+            word = 'obligations'  # should be updated to 'obligations'
+        if verbose:
+            print('Creating dataframe for ' + mouse + '-' + word)
+
+    ms = flow.Mouse(mouse)
+    psy = ms.psytracker(verbose=True)
+    dateRuns = psy.data['dateRuns']
+    trialRuns = psy.data['runLength']
+
+    # create your trial indices per day and run
+    trial_idx = []
+    for i in trialRuns:
+        trial_idx.extend(range(i))
+
+    # get date and run vectors
+    date_vec = []
+    run_vec = []
+    for c, i in enumerate(dateRuns):
+        date_vec.extend([i[0]]*trialRuns[c])
+        run_vec.extend([i[1]]*trialRuns[c])
+
+    # create your data dict, transform from log odds to odds ratio
+    data = {}
+    for c, i in enumerate(psy.weight_labels):
+        # adding multiplication step here with binary vector !!!!!!
+        data[i] = np.exp(psy.fits[c, :])*psy.inputs[:, c].T
+    ori_0_in = [i[0] for i in psy.data['inputs']['ori_0']]
+    ori_135_in = [i[0] for i in psy.data['inputs']['ori_135']]
+    ori_270_in = [i[0] for i in psy.data['inputs']['ori_270']]
+    blank_in = [
+        0 if i == 1 else 1 for i in
+        np.sum((ori_0_in, ori_135_in, ori_270_in), axis=0)]
+
+    # loop through psy data create a binary vectors for trial history
+    binary_cat = ['ori_0', 'ori_135', 'ori_270', 'prev_reward', 'prev_punish']
+    for cat in binary_cat:
+        data[cat + '_th'] = [i[0] for i in psy.data['inputs'][cat]]
+        data[cat + '_th_prev'] = [i[1] for i in psy.data['inputs'][cat]]
+
+    # create a single list of orientations to match format of meta
+    ori_order = [0, 135, 270, -1]
+    data['orientation'] = [
+        ori_order[np.where(np.isin(i, 1))[0][0]]
+        for i in zip(ori_0_in, ori_135_in, ori_270_in, blank_in)]
+
+    # create your index out of relevant variables
+    index = pd.MultiIndex.from_arrays([
+                [mouse]*len(trial_idx),
+                date_vec,
+                run_vec,
+                trial_idx
+                ],
+                names=['mouse', 'date', 'run', 'trial_idx'])
+
+    # make master dataframe
+    dfr = pd.DataFrame(data, index=index)
+
+    # load TCA data
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold,
+                   'rank': rank_num}
+    tensor, _, _ = load.groupday_tca_model(**load_kwargs)
+    meta = load.groupday_tca_meta(**load_kwargs)
+
+    # add in continuous dprime so psytracker data frame
+    dp = pool.calc.psytrack.dprime(flow.Mouse(mouse))
+    dfr['dprime'] = dp
+
+    # add in non continuous dprime to meta dataframe
+    meta = utils.add_dprime_to_meta(meta)
+
+    # filter out blank trials
+    blank_trials_bool = (dfr['orientation'] >= 0)
+    psy_df = dfr.loc[blank_trials_bool, :]
+
+    # check that all runs have matched trial orientations
+    new_psy_df_list = []
+    new_meta_df_list = []
+    drop_trials_bin = np.zeros((len(psy_df)))
+    dates = meta.reset_index()['date'].unique()
+    for d in dates:
+        psy_day_bool = psy_df.reset_index()['date'].isin([d]).values
+        meta_day_bool = meta.reset_index()['date'].isin([d]).values
+        psy_day_df = psy_df.iloc[psy_day_bool, :]
+        meta_day_df = meta.iloc[meta_day_bool, :]
+        runs = meta_day_df.reset_index()['run'].unique()
+        drop_pos_day = np.where(psy_day_bool)[0]
+        for r in runs:
+            psy_run_bool = psy_day_df.reset_index()['run'].isin([r]).values
+            meta_run_bool = meta_day_df.reset_index()['run'].isin([r]).values
+            psy_run_df = psy_day_df.iloc[psy_run_bool, :]
+            meta_run_df = meta_day_df.iloc[meta_run_bool, :]
+            psy_run_idx = psy_run_df.reset_index()['trial_idx'].values
+            meta_run_idx = meta_run_df.reset_index()['trial_idx'].values
+
+
+            # drop extra trials from trace2P that don't have associated imaging
+            max_trials = np.min([len(psy_run_idx), len(meta_run_idx)])
+
+            # get just your orientations for checking that trials are matched
+            meta_ori = meta_run_df['orientation'].iloc[:max_trials]
+            psy_ori = psy_run_df['orientation'].iloc[:max_trials]
+
+            # make sure all oris match between vectors of the same length each day
+            assert np.all(psy_ori.values == meta_ori.values)
+
+            # check which trials are dropped
+            drop_pos_run = drop_pos_day[psy_run_bool][:max_trials]
+            drop_trials_bin[drop_pos_run] = 1
+
+            # if everything looks good, copy meta index into psy
+            meta_new = meta_run_df.iloc[:max_trials]
+            psy_new = psy_run_df.iloc[:max_trials]
+            data = {}
+            for i in psy_new.columns:
+                data[i] = psy_new[i].values
+            new_psy_df_list.append(pd.DataFrame(data=data, index=meta_new.index))
+            new_meta_df_list.append(meta_new)
+
+    meta1 = pd.concat(new_meta_df_list, axis=0)
+    psy1 = pd.concat(new_psy_df_list, axis=0)
+
+    tca_data = {}
+    for comp_num in range(1, rank_num+1):
+        fac = tensor.results[rank_num][0].factors[2][:, comp_num-1]
+        tca_data['factor_' + str(comp_num)] = fac
+    fac_df = pd.DataFrame(data=tca_data, index=meta1.index)
+
+    # which values were dropped from the psydata. Use this to update psydata
+    blank_trials_bool[blank_trials_bool] = (drop_trials_bin == 1)
+    keep_bool = blank_trials_bool
+    drop_bool = blank_trials_bool == False
+
+    # you don't have any blank trials so drop them.
+    psydata['y'] = psydata['y'][keep_bool]  # 1-2 binary not 0-1
+    psydata['answer'] = psydata['answer'][keep_bool]
+
+    # reset inputs
+    psydata['inputs'] = tca_data
 
     print('cleared :)')
 
