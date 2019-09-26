@@ -815,8 +815,7 @@ def _splice_data_inputs(
     tca_data = {}
     for comp_num in range(1, rank_num+1):
         fac = tensor.results[rank_num][0].factors[2][:, comp_num-1]
-        tca_data['factor_' + str(comp_num)] = fac.reshape(len(fac), -1)
-    # fac_df = pd.DataFrame(data=tca_data, index=meta1.index)
+        tca_data['factor_' + str(comp_num)] = fac[:, None]
 
     # which values were dropped from the psydata. Use this to update psydata
     blank_trials_bool[blank_trials_bool] = (drop_trials_bin == 1)
@@ -841,6 +840,13 @@ def _splice_data_inputs(
             new_runLength.append(np.sum(run_bool))
     psydata['dayLength'] = new_dayLength
     psydata['runLength'] = new_runLength
+
+    # update dateRuns and days
+    clean_days = np.unique(psydata['dateRunTrials'][:, 0])
+    clean_day_bool = np.isin(psydata['days'], clean_days)
+    psydata['days'] = psydata['days'][clean_day_bool]
+    clean_run_bool = np.isin(psydata['days'], psydata['dateRuns'][:, 0])
+    psydata['dateRuns'] = psydata['dateRuns'][clean_run_bool]
 
     # ensure that you still have the same number of runs
     assert len(psydata['runLength']) == len(psydata['dateRuns'])
