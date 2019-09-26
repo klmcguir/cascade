@@ -475,7 +475,7 @@ def sync_tca_pillow(
     for comp_num in range(1, rank_num + 1):
         fac = tensor.results[rank_num][0].factors[2][:, comp_num-1]
         tca_data['factor_' + str(comp_num)] = fac
-    fac1_df = pd.DataFrame(data=tca_data, index=meta1.index)
+    fac1_df = pd.DataFrame(data=tca_data, index=meta1_df.index)
 
     # which values were dropped from the psydata. Use this to update psydata
     blank_trials_bool[blank_trials_bool] = (drop_trials_bin == 1)
