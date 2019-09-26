@@ -829,9 +829,33 @@ def _splice_data_inputs(
     psydata['correct'] = psydata['correct'][keep_bool]
     psydata['dateRunTrials'] = psydata['dateRunTrials'][keep_bool]
 
+    # recalculate dayLength and runLength
+    new_runLength = []
+    new_dayLength = []
+    for di in psydata['dateRunTrials'][:, 0]:
+        day_bool = psydata['dateRunTrials'][:, 0] == di
+        new_dayLength.append(np.sum(day_bool))
+        day_runs = psydata['dateRunTrials'][day_bool, 1]
+        for ri in np.unique(day_runs):
+            run_bool = psydata['dateRunTrials'][:, 1] == ri
+            new_runLength.append(np.sum(run_bool))
+    psydata['dayLength'] = new_dayLength
+    psydata['runLength'] = new_runLength
+
+    # ensure that you still have the same number of runs
+    assert len(psydata['runLength']) == len(psydata['dateRuns'])
+
+    # ensure that you still have the same number of days
+    assert len(psydata['dayLength']) == len(psydata['days'])
+
     # reset inputs
     psydata['inputs'] = tca_data
 
-    print('cleared :)')
+    if verbose:
+        print('Successful sync of psytracker and TCA data :)')
+        print(' Fitting {} days'.format(psydata['days']))
+        print(' Fitting {} runs'.format(psydata['dateRuns']))
+        print(' Fitting {} runs'.format(psydata['dateRunTrials']))
+        print(' Fitting {} total hyper-parameters'.format(rank_num))
 
     return psydata
