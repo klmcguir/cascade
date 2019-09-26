@@ -820,7 +820,6 @@ def _splice_data_inputs(
     # which values were dropped from the psydata. Use this to update psydata
     blank_trials_bool[blank_trials_bool] = (drop_trials_bin == 1)
     keep_bool = blank_trials_bool
-    drop_bool = blank_trials_bool == False
 
     # you don't have any blank trials so drop them.
     psydata['y'] = psydata['y'][keep_bool]  # 1-2 binary not 0-1
@@ -845,7 +844,7 @@ def _splice_data_inputs(
     clean_days = np.unique(psydata['dateRunTrials'][:, 0])
     clean_day_bool = np.isin(psydata['days'], clean_days)
     psydata['days'] = psydata['days'][clean_day_bool]
-    clean_run_bool = np.isin(psydata['days'], psydata['dateRuns'][:, 0])
+    clean_run_bool = np.isin(psydata['dateRuns'][:, 0], psydata['days'])
     psydata['dateRuns'] = psydata['dateRuns'][clean_run_bool]
 
     # ensure that you still have the same number of runs
