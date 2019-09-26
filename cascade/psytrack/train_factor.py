@@ -823,9 +823,6 @@ def _splice_data_inputs(
     keep_bool = blank_trials_bool
     drop_bool = blank_trials_bool == False
 
-    from pdb import set_trace as bp
-    bp()
-
     # you don't have any blank trials so drop them.
     psydata['y'] = psydata['y'][keep_bool]  # 1-2 binary not 0-1
     psydata['answer'] = psydata['answer'][keep_bool]
