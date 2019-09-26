@@ -27,7 +27,8 @@ def add_dprime_to_meta(meta):
         day_bool = days == di
         mi = mouse[day_bool].unique()[0]
         new_dprime[day_bool] = pool.calc.performance.dprime(
-                                flow.Date(mouse=mi, date=di))
+                                flow.Date(mouse=mi, date=di),
+                                hmm_engaged=True)
 
     # save new_dprime into meta
     meta['dprime'] = new_dprime
