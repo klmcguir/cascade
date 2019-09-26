@@ -343,10 +343,11 @@ def sync_tca_pillow(
         if verbose:
             print('Creating dataframe for ' + mouse + '-' + word)
 
+    pars = {'fixed_sigma': fixed_sigma, 'fixed_sigma_day': fixed_sigma_day}
     ms = flow.Mouse(mouse)
     psy = ms.psytracker(
         verbose=True,
-        pars={'fixed_sigma': fixed_sigma, 'fixed_sigma_day': fixed_sigma_day})
+        pars=pars)
     dateRuns = psy.data['dateRuns']
     trialRuns = psy.data['runLength']
 
@@ -414,7 +415,7 @@ def sync_tca_pillow(
     meta = load.groupday_tca_meta(**load_kwargs)
 
     # add in continuous dprime so psytracker data frame
-    dp = pool.calc.psytrack.dprime(flow.Mouse(mouse))
+    dp = pool.calc.psytrack.dprime(flow.Mouse(mouse), pars=pars)
     dfr['dprime'] = dp
 
     # add in non continuous dprime to meta dataframe
