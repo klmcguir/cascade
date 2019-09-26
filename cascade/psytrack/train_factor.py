@@ -468,16 +468,53 @@ def sync_tca_pillow(
             new_psy_df_list.append(pd.DataFrame(data=data, index=meta_new.index))
             new_meta_df_list.append(meta_new)
 
-    meta1 = pd.concat(new_meta_df_list, axis=0)
-    psy1 = pd.concat(new_psy_df_list, axis=0)
+    meta1_df = pd.concat(new_meta_df_list, axis=0)
+    psy1_df = pd.concat(new_psy_df_list, axis=0)
 
     tca_data = {}
     for comp_num in range(1, rank_num + 1):
         fac = tensor.results[rank_num][0].factors[2][:, comp_num-1]
         tca_data['factor_' + str(comp_num)] = fac
-    fac_df = pd.DataFrame(data=tca_data, index=meta1.index)
+    fac1_df = pd.DataFrame(data=tca_data, index=meta1.index)
 
-    return psy1, meta1, fac_df
+    # which values were dropped from the psydata. Use this to update psydata
+    blank_trials_bool[blank_trials_bool] = (drop_trials_bin == 1)
+    keep_bool = blank_trials_bool
+
+    # you don't have any blank trials so drop them
+    psydata = psy.data
+    psydata['y'] = psydata['y'][keep_bool]  # 1-2 binary not 0-1
+    psydata['answer'] = psydata['answer'][keep_bool]
+    psydata['correct'] = psydata['correct'][keep_bool]
+    psydata['dateRunTrials'] = psydata['dateRunTrials'][keep_bool]
+
+    # recalculate dayLength and runLength
+    new_runLength = []
+    new_dayLength = []
+    for di in np.unique(psydata['dateRunTrials'][:, 0]):
+        day_bool = psydata['dateRunTrials'][:, 0] == di
+        new_dayLength.append(np.sum(day_bool))
+        day_runs = psydata['dateRunTrials'][day_bool, 1]
+        for ri in np.unique(day_runs):
+            run_bool = psydata['dateRunTrials'][:, 1] == ri
+            new_runLength.append(np.sum(run_bool))
+    psydata['dayLength'] = new_dayLength
+    psydata['runLength'] = new_runLength
+
+    # update dateRuns and days
+    clean_days = np.unique(psydata['dateRunTrials'][:, 0])
+    clean_day_bool = np.isin(psydata['days'], clean_days)
+    psydata['days'] = psydata['days'][clean_day_bool]
+    clean_run_bool = np.isin(psydata['dateRuns'][:, 0], psydata['days'])
+    psydata['dateRuns'] = psydata['dateRuns'][clean_run_bool]
+
+    # ensure that you still have the same number of runs
+    assert len(psydata['runLength']) == len(psydata['dateRuns'])
+
+    # ensure that you still have the same number of days
+    assert len(psydata['dayLength']) == len(psydata['days'])
+
+    return psy1_df, meta1_df, fac1_df, psydata
 
 
 def _splice_data_y(
