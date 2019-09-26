@@ -488,9 +488,10 @@ def sync_tca_pillow(
     psydata['correct'] = psydata['correct'][keep_bool]
     psydata['dateRunTrials'] = psydata['dateRunTrials'][keep_bool]
 
-    # recalculate dayLength and runLength
+    # recalculate dayLength and runLength and dateRuns
     new_runLength = []
     new_dayLength = []
+    new_dateRuns = []
     for di in np.unique(psydata['dateRunTrials'][:, 0]):
         day_bool = psydata['dateRunTrials'][:, 0] == di
         new_dayLength.append(np.sum(day_bool))
@@ -498,16 +499,15 @@ def sync_tca_pillow(
         for ri in np.unique(day_runs):
             run_bool = day_runs == ri
             new_runLength.append(np.sum(run_bool))
-            print(di, ri, np.sum(run_bool))
+            new_dateRuns.append([di, ri])
     psydata['dayLength'] = new_dayLength
     psydata['runLength'] = new_runLength
+    psydata['dateRuns'] = np.array(new_dateRuns)
 
-    # update dateRuns and days
+    # update days
     clean_days = np.unique(psydata['dateRunTrials'][:, 0])
     clean_day_bool = np.isin(psydata['days'], clean_days)
     psydata['days'] = psydata['days'][clean_day_bool]
-    clean_run_bool = np.isin(psydata['dateRuns'][:, 0], psydata['days'])
-    psydata['dateRuns'] = psydata['dateRuns'][clean_run_bool]
 
     # ensure that you still have the same number of runs
     assert len(psydata['runLength']) == len(psydata['dateRuns'])
@@ -869,9 +869,10 @@ def _splice_data_inputs(
     psydata['correct'] = psydata['correct'][keep_bool]
     psydata['dateRunTrials'] = psydata['dateRunTrials'][keep_bool]
 
-    # recalculate dayLength and runLength
+    # recalculate dayLength and runLength and dateRuns
     new_runLength = []
     new_dayLength = []
+    new_dateRuns = []
     for di in np.unique(psydata['dateRunTrials'][:, 0]):
         day_bool = psydata['dateRunTrials'][:, 0] == di
         new_dayLength.append(np.sum(day_bool))
@@ -879,15 +880,15 @@ def _splice_data_inputs(
         for ri in np.unique(day_runs):
             run_bool = day_runs == ri
             new_runLength.append(np.sum(run_bool))
+            new_dateRuns.append([di, ri])
     psydata['dayLength'] = new_dayLength
     psydata['runLength'] = new_runLength
+    psydata['dateRuns'] = np.array(new_dateRuns)
 
-    # update dateRuns and days
+    # update days
     clean_days = np.unique(psydata['dateRunTrials'][:, 0])
     clean_day_bool = np.isin(psydata['days'], clean_days)
     psydata['days'] = psydata['days'][clean_day_bool]
-    clean_run_bool = np.isin(psydata['dateRuns'][:, 0], psydata['days'])
-    psydata['dateRuns'] = psydata['dateRuns'][clean_run_bool]
 
     # ensure that you still have the same number of runs
     assert len(psydata['runLength']) == len(psydata['dateRuns'])
