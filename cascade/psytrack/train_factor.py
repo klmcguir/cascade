@@ -326,6 +326,8 @@ def sync_tca_pillow(
         nan_thresh=0.85,
         score_threshold=0.8,
         rank_num=18,
+        fixed_sigma=None,
+        fixed_sigma_day=None,
         verbose=True):
     """
     Create a pandas dataframe of pillow and TCA results with indices
@@ -342,7 +344,9 @@ def sync_tca_pillow(
             print('Creating dataframe for ' + mouse + '-' + word)
 
     ms = flow.Mouse(mouse)
-    psy = ms.psytracker(verbose=True)
+    psy = ms.psytracker(
+        verbose=True,
+        pars={'fixed_sigma': fixed_sigma, 'fixed_sigma_day': fixed_sigma_day})
     dateRuns = psy.data['dateRuns']
     trialRuns = psy.data['runLength']
 
