@@ -829,6 +829,8 @@ def _splice_data_inputs(
     # you don't have any blank trials so drop them.
     psydata['y'] = psydata['y'][keep_bool]  # 1-2 binary not 0-1
     psydata['answer'] = psydata['answer'][keep_bool]
+    psydata['correct'] = psydata['correct'][keep_bool]
+    psydata['dateRunTrials'] = psydata['dateRunTrials'][keep_bool]
 
     # reset inputs
     psydata['inputs'] = tca_data
