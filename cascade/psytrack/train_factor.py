@@ -498,6 +498,7 @@ def sync_tca_pillow(
         for ri in np.unique(day_runs):
             run_bool = day_runs == ri
             new_runLength.append(np.sum(run_bool))
+            print(di, ri, np.sum(run_bool))
     psydata['dayLength'] = new_dayLength
     psydata['runLength'] = new_runLength
 
