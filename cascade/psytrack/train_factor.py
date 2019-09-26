@@ -860,7 +860,7 @@ def _splice_data_inputs(
         print('Successful sync of psytracker and TCA data :)')
         print(' Fitting {} days'.format(psydata['days']))
         print(' Fitting {} runs'.format(psydata['dateRuns']))
-        print(' Fitting {} runs'.format(psydata['dateRunTrials']))
+        print(' Fitting {} trials'.format(psydata['dateRunTrials']))
         print(' Fitting {} total hyper-parameters'.format(rank_num))
 
     return psydata
