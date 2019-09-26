@@ -496,7 +496,7 @@ def sync_tca_pillow(
         new_dayLength.append(np.sum(day_bool))
         day_runs = psydata['dateRunTrials'][day_bool, 1]
         for ri in np.unique(day_runs):
-            run_bool = psydata['dateRunTrials'][:, 1] == ri
+            run_bool = day_runs == ri
             new_runLength.append(np.sum(run_bool))
     psydata['dayLength'] = new_dayLength
     psydata['runLength'] = new_runLength
@@ -876,7 +876,7 @@ def _splice_data_inputs(
         new_dayLength.append(np.sum(day_bool))
         day_runs = psydata['dateRunTrials'][day_bool, 1]
         for ri in np.unique(day_runs):
-            run_bool = psydata['dateRunTrials'][:, 1] == ri
+            run_bool = day_runs == ri
             new_runLength.append(np.sum(run_bool))
     psydata['dayLength'] = new_dayLength
     psydata['runLength'] = new_runLength
