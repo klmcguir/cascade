@@ -832,7 +832,7 @@ def _splice_data_inputs(
     # recalculate dayLength and runLength
     new_runLength = []
     new_dayLength = []
-    for di in psydata['dateRunTrials'][:, 0]:
+    for di in np.unique(psydata['dateRunTrials'][:, 0]):
         day_bool = psydata['dateRunTrials'][:, 0] == di
         new_dayLength.append(np.sum(day_bool))
         day_runs = psydata['dateRunTrials'][day_bool, 1]
