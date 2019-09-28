@@ -49,7 +49,7 @@ def fit(
     mouse_runs = Mouse(mouse=mouse).runs(
         dates=dates, run_types=run_types, runs=runs, tags=tags,
         exclude_tags=exclude_tags)
-    return mouse_runs.factracker(facpars=facpars, verbose=verbose, force=force)
+    return FacTracker(mouse_runs, facpars=facpars, verbose=verbose, force=force)
 
 
 class FacTracker(object):
