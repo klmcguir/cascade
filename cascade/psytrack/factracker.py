@@ -139,9 +139,9 @@ class FacTracker(object):
     @property
     def facpars_word(self):
         """Return the hash word of the current parameters."""
-        if self._pars_word is None:
-            self._pars_word = wordhash.word(self.facpars, use_new=True)
-        return self._pars_word
+        if self._facpars_word is None:
+            self._facpars_word = wordhash.word(self.facpars, use_new=True)
+        return self._facpars_word
 
     @property
     def runs_word(self):
