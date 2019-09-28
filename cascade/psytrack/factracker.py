@@ -279,7 +279,7 @@ class FacTracker(object):
             self.d = {
                 'data': data,
                 'initialization': initialization,
-                'pars': self.pars,
+                'pars': self.facpars,
                 'results': results,
                 'timestamp': timestamp()}
             mkdir_p(opath.dirname(self.path))
