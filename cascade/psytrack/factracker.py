@@ -5,6 +5,7 @@ import os.path as opath
 import yaml
 
 from flow import config, paths
+from flow.sorters import Mouse
 from flow.misc import loadmat, matlabifypars, mkdir_p, savemat, timestamp
 from flow.misc import wordhash
 try:
@@ -45,7 +46,7 @@ def fit(
         If True, ignore saved PsyTracker and re-calculate.
 
     """
-    mouse_runs = flow.Mouse(mouse=mouse).runs(
+    mouse_runs = Mouse(mouse=mouse).runs(
         dates=dates, run_types=run_types, runs=runs, tags=tags,
         exclude_tags=exclude_tags)
     return mouse_runs.factracker(facpars=facpars, verbose=verbose, force=force)
