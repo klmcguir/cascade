@@ -92,10 +92,10 @@ def train(
             score_threshold=score_threshold,
             rank_num=rank_num,
             verbose=verbose)
-        # update weights
-        weights = {}
-        for ci in range(1, rank_num + 1):
-            weights['factor_' + str(ci)] = 1
+        # # update weights
+        # weights = {}
+        # for ci in range(1, rank_num + 1):
+        #     weights['factor_' + str(ci)] = 1
         # update sigmas
         hyper['sigma'] = [2**-4.]*rank_num
         hyper['sigDay'] = [2**-4.]*rank_num
