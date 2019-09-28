@@ -14,26 +14,26 @@ Define hyperparameters that are annoying to calculate and worth
 keeping track of.
 """
 default_pars = {
-    'fixed_sigmas':
-        [0.098, 0.185, 0.185, 0.185, 0.0166, 0.1128, 0.0457],
+    'fixed_sigma':
+        np.array([0.098, 0.185, 0.185, 0.185, 0.0166, 0.1128, 0.0457]),
     'fixed_sigma_day':
-        [1.3003, 2.1746, 2.1746, 2.1746, 0.1195, 0.3035, 0.6393]
+        np.array([1.3003, 2.1746, 2.1746, 2.1746, 0.1195, 0.3035, 0.6393])
                 }
 
 
 def train(
-        mouse,
         runs,
         weights,
+        psyweights,
         trace_type='zscore_day',
         method='mncp_hals',
         cs='',
         warp=False,
-        word='tray',
+        word='restaurant',
         group_by='all',
         nan_thresh=0.85,
-        score_threshold=None,
-        rank_num=18,
+        score_threshold=0.8,
+        rank_num=15,
         comp_num=1,
         include_pavlovian=False,
         separate_day_var=True,
@@ -71,7 +71,7 @@ def train(
     if verbose:
         print('- Collecting data')
     data = _gather_data(
-        runs, include_pavlovian=include_pavlovian, weights=weights)
+        runs, include_pavlovian=include_pavlovian, weights=psyweights)
     if verbose:
         print(' Data keys:\n  {}'.format(sorted(data.keys())))
         print(' Inputs:\n  {}'.format(sorted(data['inputs'].keys())))
@@ -81,7 +81,7 @@ def train(
         # add in TCA factors as inputs to pillow
         data = _splice_data_inputs(
             data,
-            mouse,
+            runs.mouse,
             trace_type=trace_type,
             method=method,
             cs=cs,
@@ -103,7 +103,7 @@ def train(
         # add 'y' but now it is a 1-2 binary vector of a TCA trial factor
         data = _splice_data_y(
             data,
-            mouse,
+            runs.mouse,
             trace_type=trace_type,
             method=method,
             cs=cs,
