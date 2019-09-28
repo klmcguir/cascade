@@ -15,8 +15,44 @@ except ImportError:
     pass
 
 
+def fit(
+        mouse, dates=None, run_types=('training',), runs=None,
+        tags=('hungry',), exclude_tags=None, facpars=None, verbose=False,
+        force=False):
+    """Load or calculate a FacTracker for this mouse.
+
+    Parameters
+    ----------
+    mouse : str
+        Mouse name
+    dates : list of int, optional
+        List of dates to include. Can also be a single date.
+    run_types : list of str, optional
+        List of run_types to include. Can also be a single type.
+    runs : list of int, optional
+        List of run indices to include. Can also be a single index.
+    tags : list of str, optional
+        List of tags to filter on. Can also be a single tag.
+    exclude_tags : list of str, optional
+        List of tags to exclude. See flow.metadata.metadata.meta() for
+        default excluded tags. Can also be a single tag.
+    pars : dict, optional
+        Override default parameters for the PsyTracker. See
+        flow.psytrack.train.train for options.
+    verbose : bool
+        Be verbose.
+    force : bool
+        If True, ignore saved PsyTracker and re-calculate.
+
+    """
+    mouse_runs = flow.Mouse(mouse=mouse).runs(
+        dates=dates, run_types=run_types, runs=runs, tags=tags,
+        exclude_tags=exclude_tags)
+    return mouse_runs.factracker(facpars=facpars, verbose=verbose, force=force)
+
+
 class FacTracker(object):
-    """PsyTracker."""
+    """FacTracker."""
 
     def __init__(self, runs, facpars=None, verbose=False, force=False):
         """Init."""
