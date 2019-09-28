@@ -3,6 +3,9 @@ from copy import deepcopy
 import numpy as np
 import os.path as opath
 import yaml
+import matplotlib.pyplot as plt
+import seaborn as sns
+from psytrack.plot import analysisFunctions as af
 
 from flow import config, paths
 from flow.sorters import Mouse
@@ -50,6 +53,86 @@ def fit(
         dates=dates, run_types=run_types, runs=runs, tags=tags,
         exclude_tags=exclude_tags)
     return FacTracker(mouse_runs, facpars=facpars, verbose=verbose, force=force)
+
+
+def plot(
+        mouse, dates=None, run_types=('training',), runs=None,
+        tags=('hungry',), exclude_tags=None, facpars=None, verbose=False,
+        force=False, plot_errorbars=False, save_plot=False):
+    """Plot a FacTracker for this mouse.
+
+    Parameters
+    ----------
+    mouse : str
+        Mouse name
+    dates : list of int, optional
+        List of dates to include. Can also be a single date.
+    run_types : list of str, optional
+        List of run_types to include. Can also be a single type.
+    runs : list of int, optional
+        List of run indices to include. Can also be a single index.
+    tags : list of str, optional
+        List of tags to filter on. Can also be a single tag.
+    exclude_tags : list of str, optional
+        List of tags to exclude. See flow.metadata.metadata.meta() for
+        default excluded tags. Can also be a single tag.
+    pars : dict, optional
+        Override default parameters for the PsyTracker. See
+        flow.psytrack.train.train for options.
+    verbose : bool
+        Be verbose.
+    force : bool
+        If True, ignore saved PsyTracker and re-calculate.
+
+    """
+
+    # load (or fit) a FacTracker model
+    fac = fit(mouse, dates=dates, run_types=run_types, runs=runs,
+              tags=tags, exclude_tags=exclude_tags, facpars=facpars,
+              verbose=verbose, force=force)
+
+    # define data variable for cleanliness
+    data = fac['data']
+    results = fac['results']
+    pars_weights = fac['pars']['weights']
+
+    # get labels and names from data
+    label_names = {
+        k: 'Factor ' + str(c+1) for c, k in enumerate(data['inputs'].keys())}
+    label_order = {
+        k: c + 1 for c, k in enumerate(data['inputs'].keys())}
+
+    # define a colormap
+    if len(data['inputs'].keys()) < 10:
+        cmap = cmap = sns.color_palette("muted", len(data['inputs'].keys()))
+    else:
+        cmap1 = sns.color_palette("pastel", 8)
+        cmap2 = sns.color_palette("dark", 7)
+        cmap3 = sns.color_palette("bright", 6)
+        cmap = cmap + cmap2 + cmap2
+    colors = {k: cmap[c] for c, k in enumerate(data['inputs'].keys())}
+
+    # plot
+    if plot_errorbars:
+        fig = af.makeWeightPlot(
+            results['model_weights'], data, pars_weights,
+            perf_plot=True, bias_plot=False,
+            errorbar=results['credible_intervals'],
+            label_names=label_names, label_order=label_order, colors=colors)
+    else:
+        fig = af.makeWeightPlot(
+            results['model_weights'], data, pars_weights,
+            perf_plot=True, bias_plot=False,
+            errorbar=results['credible_intervals'],
+            label_names=label_names, label_order=label_order, colors=colors)
+
+    # save your figure
+    if save_plot:
+        spath = opath.join(
+            paths.graphd, 'psytrack-tca', mouse, fac.facpars_word,
+            '{}_{}_{}_plot.pdf'.format(mouse, fac.facpars_word, fac.runs_word))
+        mkdir_p(opath.dirname(spath))
+        fig.savefig(spath, bbox_inches='tight')
 
 
 class FacTracker(object):
