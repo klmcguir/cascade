@@ -92,9 +92,9 @@ def plot(
               verbose=verbose, force=force)
 
     # define data variable for cleanliness
-    data = fac['data']
-    results = fac['results']
-    pars_weights = fac['pars']['weights']
+    data = fac.d['data']
+    results = fac.d['results']
+    pars_weights = fac.d['pars']['weights']
 
     # get labels and names from data
     label_names = {
