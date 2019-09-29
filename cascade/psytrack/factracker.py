@@ -151,7 +151,7 @@ class FacTracker(object):
             facpars = {}
         self._facpars = config.params()['factrack_defaults']
         self._facpars.update(facpars)
-        self._update_facpars_weights
+        self._update_facpars_weights()
         print(self.facpars['weights'])
         self._facpars_word = None
         self._runs_word = None
