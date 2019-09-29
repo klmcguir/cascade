@@ -128,7 +128,6 @@ def plot(
         fig = af.makeWeightPlot(
             results['model_weights'], data, pars_weights,
             perf_plot=True, bias_plot=False,
-            errorbar=results['credible_intervals'],
             label_names=label_names, label_order=label_order, colors=colors)
 
     # save your figure
