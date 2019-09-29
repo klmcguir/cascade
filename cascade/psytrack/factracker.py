@@ -345,7 +345,7 @@ class FacTracker(object):
             weights = {}
             weights['bias'] = 1
             for ci in range(1, rank_num + 1):
-                weights['factor_' + str(ci)] = 1()
+                weights['factor_' + str(ci)] = 1
             facpars['weights'] = weights
             self._facpars.update(facpars)
             print('made it')
