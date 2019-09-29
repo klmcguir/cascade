@@ -151,6 +151,7 @@ class FacTracker(object):
             facpars = {}
         self._facpars = config.params()['factrack_defaults']
         self._facpars.update(facpars)
+        self._update_facpars_weights
         self._facpars_word = None
         self._runs_word = None
 
@@ -206,7 +207,7 @@ class FacTracker(object):
     @property
     def weights_dict(self):
         """Return the dictionary of weights that were fit."""
-        return self.pars['weights']
+        return self.facpars['weights']
 
     @property
     def weight_labels(self):
@@ -330,6 +331,20 @@ class FacTracker(object):
         """
         return 2 * (self.precision() * self.recall()) / \
             (self.precision() + self.recall())
+
+    def _update_facpars_weights(self):
+        """
+        Update facpars weights based on rank_num inputs.
+        """
+        rank_num = self.facpars['rank_num']
+
+        if self.facpars['TCA_inputs']:
+            # update weights
+            weights = {}
+            weights['bias'] = 1
+            for ci in range(1, rank_num + 1):
+                weights['factor_' + str(ci)] = 1
+            self._facpars['weights'] = weights
 
     def _load_or_train(self, verbose=False, force=False):
         if not force:
