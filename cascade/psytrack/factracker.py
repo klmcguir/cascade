@@ -338,14 +338,16 @@ class FacTracker(object):
         Update facpars weights based on rank_num inputs.
         """
         rank_num = self.facpars['rank_num']
+        facpars = deepcopy(self.facpars)
 
         if self.facpars['TCA_inputs']:
             # update weights
             weights = {}
             weights['bias'] = 1
             for ci in range(1, rank_num + 1):
-                weights['factor_' + str(ci)] = 1
-            self._facpars['weights'] = weights
+                weights['factor_' + str(ci)] = 1()
+            facpars['weights'] = weights
+            self._facpars.update(facpars)
 
     def _load_or_train(self, verbose=False, force=False):
         if not force:
