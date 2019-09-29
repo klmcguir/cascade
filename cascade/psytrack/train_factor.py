@@ -92,16 +92,14 @@ def train(
             score_threshold=score_threshold,
             rank_num=rank_num,
             verbose=verbose)
-        # update weights
-        weights = {}
-        weights['bias'] = 1
-        for ci in range(1, rank_num + 1):
-            weights['factor_' + str(ci)] = 1
+        # # update weights
+        # weights = {}
+        # weights['bias'] = 1
+        # for ci in range(1, rank_num + 1):
+        #     weights['factor_' + str(ci)] = 1
         # update sigmas
         hyper['sigma'] = [2**-4.]*(rank_num + 1)
         hyper['sigDay'] = [2**-4.]*(rank_num + 1)
-        from IPython.core.debugger import Tracer; Tracer()()
-
     else:
         # add 'y' but now it is a 1-2 binary vector of a TCA trial factor
         data = _splice_data_y(
