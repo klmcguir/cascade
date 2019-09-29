@@ -348,6 +348,7 @@ class FacTracker(object):
                 weights['factor_' + str(ci)] = 1()
             facpars['weights'] = weights
             self._facpars.update(facpars)
+            print('made it')
 
     def _load_or_train(self, verbose=False, force=False):
         if not force:
