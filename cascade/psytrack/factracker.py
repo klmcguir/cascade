@@ -99,7 +99,7 @@ def plot(
     # get labels and names from data
     label_names = {}
     label_order = {}
-    for c, k in enumerate(data['inputs'].keys()):
+    for c, k in enumerate(fac.weight_labels):
         if k == 'bias':
             label_names[k] = 'bias'
             label_order[k] = 1
@@ -108,7 +108,7 @@ def plot(
             label_order[k] = 1 + int(''.join([s for s in k if s.isdigit()]))
 
     # define a colormap
-    if len(data['inputs'].keys()) < 10:
+    if len(fac.weight_labels) < 10:
         cmap = cmap = sns.color_palette("muted", len(data['inputs'].keys()))
     else:
         cmap1 = sns.color_palette("pastel", 8)
@@ -152,6 +152,7 @@ class FacTracker(object):
         self._facpars = config.params()['factrack_defaults']
         self._facpars.update(facpars)
         self._update_facpars_weights
+        print(self.facpars['weights'])
         self._facpars_word = None
         self._runs_word = None
 
