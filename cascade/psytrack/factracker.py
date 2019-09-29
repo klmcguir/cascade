@@ -97,10 +97,15 @@ def plot(
     pars_weights = fac.d['pars']['weights']
 
     # get labels and names from data
-    label_names = {
-        k: 'Factor ' + str(c+1) for c, k in enumerate(data['inputs'].keys())}
-    label_order = {
-        k: c + 1 for c, k in enumerate(data['inputs'].keys())}
+    label_names = {}
+    label_order = {}
+    for c, k in enumerate(data['inputs'].keys()):
+        if k == 'bias':
+            label_names[k] = 'bias'
+            label_order[k] = 1
+        else:
+            label_names[k] = 'Factor ' + ''.join([s for s in k if s.isdigit()])
+            label_order[k] = 1 + int(''.join([s for s in k if s.isdigit()]))
 
     # define a colormap
     if len(data['inputs'].keys()) < 10:
