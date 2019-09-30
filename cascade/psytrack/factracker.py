@@ -109,12 +109,12 @@ def plot(
 
     # define a colormap
     if len(fac.weight_labels) < 10:
-        cmap = cmap = sns.color_palette("muted", len(fac.weight_labels))
+        cmap = sns.color_palette("muted", len(fac.weight_labels))
     else:
         cmap1 = sns.color_palette("pastel", 8)
         cmap2 = sns.color_palette("dark", 7)
         cmap3 = sns.color_palette("bright", 6)
-        cmap = cmap + cmap2 + cmap2
+        cmap = cmap1 + cmap2 + cmap3
     colors = {k: cmap[c] for c, k in enumerate(fac.weight_labels)}
 
     # plot
