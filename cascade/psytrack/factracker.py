@@ -364,11 +364,9 @@ class FacTracker(object):
         Check that you have column vectors in self.d['data']['inputs'].
         """
         ldata_ins = deepcopy(self.d['data']['inputs'])
-        data = deepcopy(self.d['data'])
         for k in ldata_ins.keys():
             if len(ldata_ins[k].shape) == 1:
-                data['data']['inputs'][k] = ldata_ins[k][:, None]
-        return data
+                self.d['data']['inputs'][k] = ldata_ins[k][:, None]
 
     def _load_or_train(self, verbose=False, force=False):
         if not force:
