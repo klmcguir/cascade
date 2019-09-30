@@ -115,7 +115,7 @@ def plot(
         cmap2 = sns.color_palette("dark", 7)
         cmap3 = sns.color_palette("bright", 6)
         cmap = cmap + cmap2 + cmap2
-    colors = {k: cmap[c] for c, k in enumerate(data['inputs'].keys())}
+    colors = {k: cmap[c] for c, k in enumerate(fac.weight_labels)}
 
     # plot
     if plot_errorbars:
