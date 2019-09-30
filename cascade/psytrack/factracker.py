@@ -372,7 +372,7 @@ class FacTracker(object):
         if not force:
             try:
                 self.d = loadmat(self.path)
-                self.d = self._check_loaded_data()
+                self._check_loaded_data()
                 found = True
             except IOError:
                 found = False
