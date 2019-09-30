@@ -109,7 +109,7 @@ def plot(
 
     # define a colormap
     if len(fac.weight_labels) < 10:
-        cmap = cmap = sns.color_palette("muted", len(data['inputs'].keys()))
+        cmap = cmap = sns.color_palette("muted", len(fac.weight_labels))
     else:
         cmap1 = sns.color_palette("pastel", 8)
         cmap2 = sns.color_palette("dark", 7)
