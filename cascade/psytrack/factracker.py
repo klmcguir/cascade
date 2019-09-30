@@ -390,7 +390,6 @@ class FacTracker(object):
                         np.isnan(self.d['data']['missing_trials']):
                     self.d['data']['missing_trials'] = None
 
-        import pdb; pdb.set_trace()
         if force or not found:
             if self.facpars['updated'] != \
                     config.params()['factrack_defaults']['updated']:
@@ -402,7 +401,6 @@ class FacTracker(object):
             data, results, initialization = \
                 train(self.runs, verbose=verbose, **facpars)
 
-            import pdb; pdb.set_trace()
             self.d = {
                 'data': data,
                 'initialization': initialization,
