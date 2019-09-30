@@ -359,10 +359,21 @@ class FacTracker(object):
             self._facpars.update(facpars)
             print('made it')
 
+    def _check_loaded_data(data):
+        """
+        Check that you have column vectors in self.d['data']['inputs'].
+        """
+        ldata_ins = deepcopy(loaded_data['data']['inputs'])
+        for k in ldata_ins.keys():
+            if len(ldata_ins[k].shape == 1):
+                data['data']['inputs'][k] = ldata_ins[k][:, None]
+        return data
+
     def _load_or_train(self, verbose=False, force=False):
         if not force:
             try:
                 self.d = loadmat(self.path)
+                self.d = _check_loaded_data(self.d)
                 found = True
             except IOError:
                 found = False
