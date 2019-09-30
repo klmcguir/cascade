@@ -366,7 +366,7 @@ class FacTracker(object):
         ldata_ins = deepcopy(self.d['data']['inputs'])
         data = deepcopy(self.d['data'])
         for k in ldata_ins.keys():
-            if len(ldata_ins[k].shape == 1):
+            if len(ldata_ins[k].shape) == 1:
                 data['data']['inputs'][k] = ldata_ins[k][:, None]
         return data
 
@@ -374,7 +374,7 @@ class FacTracker(object):
         if not force:
             try:
                 self.d = loadmat(self.path)
-                self.d = _check_loaded_data()
+                self.d = self._check_loaded_data()
                 found = True
             except IOError:
                 found = False
