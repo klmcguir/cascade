@@ -247,7 +247,7 @@ class FacTracker(object):
         """Return rank of the TCA model being fit."""
         if self._rank is None:
             self._rank = self.facpars['rank_num']
-        return self._runs_word
+        return self._runs_rank
 
     def predict(self, data=None):
         """Return predicted lick probability for every trial.
