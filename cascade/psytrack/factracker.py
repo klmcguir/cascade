@@ -58,7 +58,7 @@ def fit(
 def plot(
         mouse, dates=None, run_types=('training',), runs=None,
         tags=('hungry',), exclude_tags=None, facpars=None, verbose=False,
-        force=False, plot_errorbars=False, save_plot=False):
+        force=False, plot_errorbars=False, save_plot=True):
     """Plot a FacTracker for this mouse.
 
     Parameters
