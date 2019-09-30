@@ -134,7 +134,8 @@ def plot(
     if save_plot:
         spath = opath.join(
             paths.graphd, 'psytrack-tca', mouse, fac.facpars_word,
-            '{}_{}_{}_plot.pdf'.format(mouse, fac.facpars_word, fac.runs_word))
+            '{}_{}_{}_plot_rank{}.pdf'.format(
+                mouse, fac.facpars_word, fac.runs_word, fac.rank))
         mkdir_p(opath.dirname(spath))
         fig.savefig(spath, bbox_inches='tight')
 
@@ -155,6 +156,7 @@ class FacTracker(object):
         print(self.facpars['weights'])
         self._facpars_word = None
         self._runs_word = None
+        self._rank = None
 
         self._path = paths.factrack(
             self.mouse.mouse, self.facpars_word, self.runs_word)
@@ -238,6 +240,13 @@ class FacTracker(object):
         if self._runs_word is None:
             runs_list = [str(r) for r in self.runs]
             self._runs_word = wordhash.word(runs_list, use_new=True)
+        return self._runs_word
+
+    @property
+    def rank(self):
+        """Return rank of the TCA model being fit."""
+        if self._rank is None:
+            self._rank = self.facpars['rank_num']
         return self._runs_word
 
     def predict(self, data=None):
