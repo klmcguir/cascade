@@ -78,7 +78,7 @@ def is_center_of_mass_visual(
                  'word': word,
                  'group_by': group_by,
                  'nan_thresh': nan_thresh,
-                 'score_threshold': score_threshold
+                 'score_threshold': score_threshold,
                  'rank_num': rank_num}
     cm_df = center_of_mass_tempofac(**cm_kwargs)
     breakpoint
