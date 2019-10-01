@@ -50,7 +50,7 @@ def center_of_mass_tempofac(
     # put center of mass into dataframe
     data = {'center_of_mass': center_of_mass, 'factor': factors}
     cm_df = pd.DataFrame(data=data)
-
+    breakpoint
     return cm_df
 
 
