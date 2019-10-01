@@ -23,7 +23,7 @@ except ImportError:
 def fit(
         mouse, dates=None, run_types=('training',), runs=None,
         tags=('hungry',), exclude_tags=None, facpars=None, verbose=False,
-        force=False):
+        force=False, drop_offs=False):
     """Load or calculate a FacTracker for this mouse.
 
     Parameters
@@ -59,7 +59,7 @@ def fit(
 def plot(
         mouse, dates=None, run_types=('training',), runs=None,
         tags=('hungry',), exclude_tags=None, facpars=None, verbose=False,
-        force=False, plot_errorbars=False, save_plot=True):
+        force=False, plot_errorbars=False, save_plot=True, drop_offs=False):
     """Plot a FacTracker for this mouse.
 
     Parameters
@@ -90,7 +90,7 @@ def plot(
     # load (or fit) a FacTracker model
     fac = fit(mouse, dates=dates, run_types=run_types, runs=runs,
               tags=tags, exclude_tags=exclude_tags, facpars=facpars,
-              verbose=verbose, force=force)
+              verbose=verbose, force=force, drop_offs=drop_offs)
 
     # define data variable for cleanliness
     data = fac.d['data']
