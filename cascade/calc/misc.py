@@ -34,7 +34,7 @@ def center_of_mass_tempofac(
     V, _, _ = load.groupday_tca_model(**load_kwargs, full_output=True)
 
     # get array of temporal factors
-    tr = V.results[rank_num][0].factors[0][:, :].T
+    tr = V.results[rank_num][0].factors[1][:, :].T
 
     # create array of the total number of time points
     pos = np.arange(1, tr.shape[1]+1)
@@ -50,7 +50,7 @@ def center_of_mass_tempofac(
     # put center of mass into dataframe
     data = {'center_of_mass': center_of_mass, 'factor': factors}
     cm_df = pd.DataFrame(data=data)
-    breakpoint
+
     return cm_df
 
 
@@ -81,7 +81,7 @@ def is_center_of_mass_visual(
                  'score_threshold': score_threshold,
                  'rank_num': rank_num}
     cm_df = center_of_mass_tempofac(**cm_kwargs)
-    breakpoint
+
     # set the stimulus offset time (stimulus length + baseline length)
     if mouse in ['OA32', 'OA34', 'OA37', 'OA36', 'CB173', 'AS20', 'AS41']:
         off_time = 2 + 1  # add 1 for the second before stimulus onset
