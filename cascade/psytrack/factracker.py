@@ -154,7 +154,7 @@ class FacTracker(object):
         self._facpars = config.params()['factrack_defaults']
         self._facpars.update(facpars)
         self._update_facpars_weights()
-        self_update_facpars_drop_offset_factors(drop=drop_offs)
+        self._update_facpars_drop_offset_factors(drop=drop_offs)
         self._facpars_word = None
         self._runs_word = None
         self._rank = None
