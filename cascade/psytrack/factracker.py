@@ -357,7 +357,6 @@ class FacTracker(object):
                 weights['factor_' + str(ci)] = 1
             facpars['weights'] = weights
             self._facpars.update(facpars)
-            print('made it')
 
     def _check_loaded_data(self):
         """
