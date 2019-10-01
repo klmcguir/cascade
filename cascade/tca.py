@@ -1816,7 +1816,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         else:
             nframe_back = np.round(t2p.d['framerate'])
             div = 1
-        pre_pupil = []
+        pupil = []
         for s in trial_idx:
             try:
                 nbefore = np.round(all_onsets[s]/div)
