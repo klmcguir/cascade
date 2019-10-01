@@ -989,7 +989,10 @@ def groupday_tca(
         drive_css=('0', '135', '270'),
         drive_threshold=15,
         nan_trial_threshold=0.85,
-        score_threshold=0.8):
+        score_threshold=0.8,
+
+        # other params
+        update_meta=False):
 
     """
     Perform tensor component analysis (TCA) on data aligned
@@ -1368,17 +1371,18 @@ def groupday_tca(
     np.save(input_ids_path, id_union)
 
     # run TCA - iterate over different fitting methods
-    if np.isin('mcp_als', method) | np.isin('mncp_hals', method):
-        mask = ~np.isnan(group_tensor)
-        fit_options['mask'] = mask
-    group_tensor[np.isnan(group_tensor)] = 0
-    ensemble = {}
-    for m in method:
-        ensemble[m] = tt.Ensemble(
-            fit_method=m, fit_options=deepcopy(fit_options))
-        ensemble[m].fit(group_tensor, ranks=range(1, rank+1),
-                        replicates=replicates, verbose=False)
-    np.save(output_tensor_path, ensemble)
+    if not update_meta:  # only run full TCA when not updating metadata
+        if np.isin('mcp_als', method) | np.isin('mncp_hals', method):
+            mask = ~np.isnan(group_tensor)
+            fit_options['mask'] = mask
+        group_tensor[np.isnan(group_tensor)] = 0
+        ensemble = {}
+        for m in method:
+            ensemble[m] = tt.Ensemble(
+                fit_method=m, fit_options=deepcopy(fit_options))
+            ensemble[m].fit(group_tensor, ranks=range(1, rank+1),
+                            replicates=replicates, verbose=False)
+        np.save(output_tensor_path, ensemble)
 
     # print output so you don't go crazy waiting
     if verbose:
@@ -1694,18 +1698,40 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         all_offsets = all_onsets + (np.round(t2p.d['framerate'])*3)
         if all_offsets[-1] > t2p.nframes:
             all_offsets[-1] = t2p.nframes
+
+    # calculate running speed during trial
     if t2p.d['running'].size > 0:
         speed_vec = t2p.speed()
         speed_vec = speed_vec.astype('float')
         speed = []
         for s in trial_idx:
             try:
-                speed.append(np.nanmean(speed_vec[all_onsets[s]:all_offsets[s]]))
+                speed.append(
+                    np.nanmean(
+                        speed_vec[all_onsets[s]:all_offsets[s]]))
             except:
                 speed.append(np.nan)
         speed = np.array(speed)
     else:
         speed = np.full(len(trial_idx), np.nan)
+
+    # calculate running speed preceding trial
+    if t2p.d['running'].size > 0:
+        pre_speed_vec = t2p.speed()
+        pre_speed_vec = pre_speed_vec.astype('float')
+        nframe_back = np.round(t2p.d['framerate'])
+        pre_speed = []
+        for s in trial_idx:
+            try:
+                pre_speed.append(
+                    np.nanmean(
+                        pre_speed_vec[(all_onsets[s] - nframe_back):all_onsets[s]]))
+            except:
+                pre_speed.append(np.nan)
+        pre_speed = np.array(pre_speed)
+    else:
+        pre_speed = np.full(len(trial_idx), np.nan)
+
     # get mean brainmotion for time stim is on screen
     # use first 3 seconds after onset if there is no offset
     if t2p.d['brainmotion'].size > 0:
@@ -1720,6 +1746,88 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         brainmotion = np.array(speed)
     else:
         brainmotion = np.full(len(trial_idx), np.nan)
+
+    # count anticipatory licks during stimulus presentation
+    if 'licking' in t2p.d.keys() and (t2p.d['licking'].size > 0):
+        lick_vec = t2p.d['licking']
+        lick_vec = lick_vec.astype('float')
+        antic_lick = []
+        for s in trial_idx:
+            try:
+                lick_bool = (lick_vec > all_onsets[s]) & \
+                            (lick_vec < all_offsets[s])
+                antic_lick.append(np.sum(lick_bool))
+            except:
+                antic_lick.append(np.nan)
+        antic_lick = np.array(antic_lick)
+    else:
+        antic_lick = np.full(len(trial_idx), np.nan)
+
+    # count licks 1 second before stimulus presentation
+    if 'licking' in t2p.d.keys() and (t2p.d['licking'].size > 0):
+        pre_lick_vec = t2p.d['licking']
+        pre_lick_vec = pre_lick_vec.astype('float')
+        nframe_back = np.round(t2p.d['framerate'])
+        pre_lick = []
+        for s in trial_idx:
+            try:
+                pre_lick_bool = (lick_vec < all_onsets[s]) & \
+                                (lick_vec > (all_onsets[s] - nframe_back))
+                pre_lick.append(np.sum(pre_lick_bool))
+            except:
+                pre_lick.append(np.nan)
+        pre_lick = np.array(pre_lick)
+    else:
+        pre_lick = np.full(len(trial_idx), np.nan)
+
+    # calculate pupil diameter preceding trial
+    if 'pupil' in t2p.d.keys() and (t2p.d['pupil'].size > 0):
+        pre_pupil_vec = t2p.d['pupil']
+        pre_pupil_vec = pre_pupil_vec.astype('float')
+        # account for fact that pupillometry is always at 15 Hz
+        # divide onsets and offsets by 2 if the framerate is 30Hz
+        if t2p.d['framerate'] > 30:
+            nframe_back = np.round(t2p.d['framerate']/2)
+            div = 2  # divisor for onsets and offsets
+        else:
+            nframe_back = np.round(t2p.d['framerate'])
+            div = 1
+        pre_pupil = []
+        for s in trial_idx:
+            try:
+                nbefore = np.round(all_onsets[s]/div) - nframe_back
+                nafter = np.round(all_onsets[s]/div)
+                pre_pupil.append(np.nanmean(pre_pupil_vec[nbefore:nafter]))
+            except:
+                pre_pupil.append(np.nan)
+        pre_pupil = np.array(pre_speed)
+    else:
+        pre_pupil = np.full(len(trial_idx), np.nan)
+
+    # calculate pupil diameter during stimulus presentation
+    if 'pupil' in t2p.d.keys() and (t2p.d['pupil'].size > 0):
+        pupil_vec = t2p.d['pupil']
+        pupil_vec = pupil_vec.astype('float')
+        # account for fact that pupillometry is always at 15 Hz
+        # divide onsets and offsets by 2 if the framerate is 30Hz
+        if t2p.d['framerate'] > 30:
+            nframe_back = np.round(t2p.d['framerate']/2)
+            div = 2  # divisor for onsets and offsets
+        else:
+            nframe_back = np.round(t2p.d['framerate'])
+            div = 1
+        pre_pupil = []
+        for s in trial_idx:
+            try:
+                nbefore = np.round(all_onsets[s]/div)
+                nafter = np.round(all_offsets[s]/div)
+                pupil.append(np.nanmean(pupil_vec[nbefore:nafter]))
+            except:
+                pupil.append(np.nan)
+        pupil = np.array(pre_speed)
+    else:
+        pupil = np.full(len(trial_idx), np.nan)
+
 
     # get ensure/ensure/firstlick relative to triggered data
     ensure = t2p.ensure()
@@ -1754,7 +1862,9 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
             'trialerror': trialerror, 'hunger': hunger,
             'learning_state': learning_state, 'tag': tags,
             'firstlick': firstlick, 'ensure': ensure,
-            'quinine': quinine, 'speed': speed,
+            'quinine': quinine, 'speed': speed, 'pre_speed': pre_speed,
+            'anticipatory_licks': antic_lick, 'pre_licks': pre_lick,
+            'pupil': pupil, 'pre_pupil': pre_pupil,
             'brainmotion': brainmotion}
 
     dfr = pd.DataFrame(data, index=index)
