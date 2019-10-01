@@ -54,7 +54,7 @@ def center_of_mass_tempofac(
     return cm_df
 
 
-def center_of_mass_beyond_visual_offset(
+def is_center_of_mass_visual(
         mouse,
         trace_type='zscore_day',
         method='mncp_hals',
@@ -87,4 +87,4 @@ def center_of_mass_beyond_visual_offset(
     else:
         off_time = 3 + 1
 
-    return cm_df['center_of_mass'].values > 15*off_time
+    return cm_df['center_of_mass'].values <= 15*off_time
