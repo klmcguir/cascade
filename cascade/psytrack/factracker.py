@@ -395,10 +395,10 @@ class FacTracker(object):
                     weights[k] = facpars['weights'][k]
             # update pars
             # facpars['drop_offset_factors'] = True
+            abc
             facpars['weights'] = weights
             self._facpars.update(facpars)
             print(self.facpars)
-            abc
 
     def _check_loaded_data(self):
         """
