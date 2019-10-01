@@ -80,7 +80,7 @@ def is_center_of_mass_visual(
                  'nan_thresh': nan_thresh,
                  'score_threshold': score_threshold}
     cm_df = center_of_mass_tempofac(**cm_kwargs)
-
+    breakpoint
     # set the stimulus offset time (stimulus length + baseline length)
     if mouse in ['OA32', 'OA34', 'OA37', 'OA36', 'CB173', 'AS20', 'AS41']:
         off_time = 2 + 1  # add 1 for the second before stimulus onset
