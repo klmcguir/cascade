@@ -394,7 +394,7 @@ class FacTracker(object):
                 elif k in keep_keys:
                     weights[k] = facpars['weights'][k]
             # update pars
-            facpars['drop_offset_factors'] = True÷
+            # facpars['drop_offset_factors'] = True
             facpars['weights'] = weights
             self._facpars.update(facpars)
             print(self.facpars)
