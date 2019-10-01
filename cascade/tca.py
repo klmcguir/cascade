@@ -964,7 +964,7 @@ def groupday_tca(
         fit_options=None,
 
         # grouping params
-        group_by=None,
+        group_by='all',
         up_or_down='up',
         use_dprime=False,
         dprime_threshold=2,
@@ -988,8 +988,8 @@ def groupday_tca(
         driven=True,
         drive_css=('0', '135', '270'),
         drive_threshold=15,
-        nan_trial_threshold=None,
-        score_threshold=0):
+        nan_trial_threshold=0.85,
+        score_threshold=0.8):
 
     """
     Perform tensor component analysis (TCA) on data aligned
