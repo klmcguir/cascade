@@ -53,7 +53,8 @@ def fit(
     mouse_runs = Mouse(mouse=mouse).runs(
         dates=dates, run_types=run_types, runs=runs, tags=tags,
         exclude_tags=exclude_tags)
-    return FacTracker(mouse_runs, facpars=facpars, verbose=verbose, force=force)
+    return FacTracker(mouse_runs, facpars=facpars, verbose=verbose,
+                      force=force, drop_offs=drop_offs)
 
 
 def plot(
@@ -363,7 +364,9 @@ class FacTracker(object):
         """
         Update facpars weights based on rank_num inputs.
         """
+        print('here', drop)
         if drop:
+            print('and here', drop)
             facpars = deepcopy(self.facpars)
             # get boolean for factors to drop
             cm_bool = is_center_of_mass_visual(
