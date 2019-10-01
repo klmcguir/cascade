@@ -364,13 +364,11 @@ class FacTracker(object):
         """
         Update facpars weights based on rank_num inputs.
         """
-        print('here', drop)
         if drop:
-            print('and here', drop)
             facpars = deepcopy(self.facpars)
             # get boolean for factors to drop
             cm_bool = is_center_of_mass_visual(
-                    mouse=facpars['mouse'],
+                    mouse=self.mouse.mouse,
                     trace_type=facpars['trace_type'],
                     method=facpars['method'],
                     cs=facpars['cs'],
