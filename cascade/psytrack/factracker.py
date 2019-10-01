@@ -383,9 +383,7 @@ class FacTracker(object):
             for k in facpars['weights'].keys():
                 if 'factor_' in k:
                     fac_keys.append(k)
-            print(cm_bool)
             keep_keys = [s for c, s in enumerate(fac_keys) if cm_bool[c]]
-            print('Factors to keep:', keep_keys)
             # update weights
             weights = {}
             for k in facpars['weights'].keys():
@@ -394,11 +392,8 @@ class FacTracker(object):
                 elif k in keep_keys:
                     weights[k] = facpars['weights'][k]
             # update pars
-            # facpars['drop_offset_factors'] = True
-            abc
             facpars['weights'] = weights
             self._facpars.update(facpars)
-            print(self.facpars)
 
     def _check_loaded_data(self):
         """
