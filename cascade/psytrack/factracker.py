@@ -134,10 +134,14 @@ def plot(
 
     # save your figure
     if save_plot:
+        if drop_offs:
+            doff = '_dropoffs'
+        else:
+            doff = ''
         spath = opath.join(
             paths.graphd, 'psytrack-tca', mouse, fac.facpars_word,
-            '{}_{}_{}_plot_rank{}.pdf'.format(
-                mouse, fac.facpars_word, fac.runs_word, fac.rank))
+            '{}_{}_{}_plot_rank{}{}.pdf'.format(
+                mouse, fac.facpars_word, fac.runs_word, fac.rank, doff))
         mkdir_p(opath.dirname(spath))
         fig.savefig(spath, bbox_inches='tight')
 
