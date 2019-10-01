@@ -23,7 +23,7 @@ def center_of_mass_tempofac(
     of mass.
     """
     # load your data
-    load_kwargs = {'mouse': Mouse.mouse,
+    load_kwargs = {'mouse': mouse.mouse,
                    'method': method,
                    'cs': cs,
                    'warp': warp,
