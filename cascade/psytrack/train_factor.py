@@ -93,8 +93,8 @@ def train(
             rank_num=rank_num,
             verbose=verbose)
         # update sigmas
-        hyper['sigma'] = [2**-4.]*(len(weights) + 1)
-        hyper['sigDay'] = [2**-4.]*(len(weights) + 1)
+        hyper['sigma'] = [2**-4.]*len(weights)
+        hyper['sigDay'] = [2**-4.]*len(weights)
     else:
         # add 'y' but now it is a 1-2 binary vector of a TCA trial factor
         data = _splice_data_y(
