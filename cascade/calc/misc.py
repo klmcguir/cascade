@@ -6,7 +6,7 @@ import pandas as pd
 from .. import load
 
 
-@memoize(across='mouse', updated=191002, returns='other', large_output=False)
+# @memoize(across='mouse', updated=191002, returns='other', large_output=False)
 def center_of_mass_tempofac(
         mouse,
         trace_type='zscore_day',
