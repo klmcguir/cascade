@@ -11,6 +11,7 @@ from flow import config, paths
 from flow.sorters import Mouse
 from flow.misc import loadmat, matlabifypars, mkdir_p, savemat, timestamp
 from flow.misc import wordhash
+from ..calc.misc import is_center_of_mass_visual
 try:
     from .train_factor import train
 except ImportError:
@@ -143,7 +144,7 @@ def plot(
 class FacTracker(object):
     """FacTracker."""
 
-    def __init__(self, runs, facpars=None, verbose=False, force=False):
+    def __init__(self, runs, facpars=None, verbose=False, force=False, drop_offs=False):
         """Init."""
         self._runs = runs
         self._mouse = self.runs.parent
@@ -153,7 +154,7 @@ class FacTracker(object):
         self._facpars = config.params()['factrack_defaults']
         self._facpars.update(facpars)
         self._update_facpars_weights()
-        print(self.facpars['weights'])
+        self_update_facpars_drop_offset_factors(drop=drop_offs)
         self._facpars_word = None
         self._runs_word = None
         self._rank = None
@@ -357,6 +358,44 @@ class FacTracker(object):
                 weights['factor_' + str(ci)] = 1
             facpars['weights'] = weights
             self._facpars.update(facpars)
+
+    def _update_facpars_drop_offset_factors(self, drop=False):
+        """
+        Update facpars weights based on rank_num inputs.
+        """
+        if drop:
+            facpars = deepcopy(self.facpars)
+            # get boolean for factors to drop
+            cm_bool = is_center_of_mass_visual(
+                    mouse=facpars['mouse'],
+                    trace_type=facpars['trace_type'],
+                    method=facpars['method'],
+                    cs=facpars['cs'],
+                    warp=facpars['warp'],
+                    word=facpars['word'],
+                    group_by=facpars['group_by'],
+                    nan_thresh=facpars['nan_thresh'],
+                    score_threshold=facpars['score_threshold'],
+                    rank_num=facpars['rank_num'])
+            # make a vector of factor keys to keep
+            fac_keys = []
+            for k in facpars['weights'].keys():
+                if 'factor_' in k:
+                    fac_keys.append(k)
+            keep_keys = [s for c, s in enumerate(fac_keys) if cm_bool[c]]
+            print('Factors to keep:', keep_keys)
+            # update weights
+            weights = {}
+            for k in facpars['weights'].keys():
+                if k == 'bias':
+                    weights[k] = facpars['weights'][k]
+                elif k in keep_keys:
+                    weights[k] = facpars['weights'][k]
+            # update pars
+            facpars['drop_offset_factors'] = True
+            facpars['weights'] = weights
+            self._facpars.update(facpars)
+            print(self.facpars)
 
     def _check_loaded_data(self):
         """
