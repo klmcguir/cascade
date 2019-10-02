@@ -8,6 +8,7 @@ import os
 from . import paths, utils, load
 from . psytrack.train_factor import sync_tca_pillow
 from flow.misc import regression
+from copy import deepcopy
 
 
 def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
