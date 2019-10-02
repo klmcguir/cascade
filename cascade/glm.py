@@ -6,7 +6,145 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 from . import paths, utils, load
+from . psytrack.train_factor import sync_tca_pillow
 from flow.misc import regression
+
+
+def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
+    kwarg_defaults = {
+        'trace_type': 'zscore_day',
+        'method': 'mncp_hals',
+        'cs': '',
+        'warp': False,
+        'word': 'restaurant',
+        'group_by': 'all',
+        'nan_thresh': 0.85,
+        'score_threshold': 0.8,
+        'rank_num': 15,
+        'fixed_sigma': None,
+        'fixed_sigma_day': None}
+    kwargs_active = kwarg_defaults.update(kwargs)
+
+    # load your TCA and pillow data, matching their trial indices
+    psy1, meta1, fac_df, psydata = sync_tca_pillow(
+        mouse, verbose=verbose, **kwarg_active)
+
+    # drop unused columns
+    filters_df = psy1.drop(columns=['orientation', 'dprime'])
+
+    # z-score meta1 by day if you want a within day normalization
+    meta1_z_byday = (
+        meta1
+        .groupby('date')
+        .transform(lambda x: (x - x.mean()) / x.std()))
+
+    # add in biometrics during stimulus presentation
+    filters_df = filters_df.join(meta1['speed'])
+    filters_df = filters_df.join(meta1['anticipatory_licking'])
+    filters_df = filters_df.join(meta1_z_byday['pupil'])
+
+    # add in biometrics one second before stimulus presentation
+    filters_df = filters_df.join(meta1['pre_speed'])
+    filters_df = filters_df.join(meta1['pre_licking'])
+    filters_df = filters_df.join(meta1_z_byday['pre_pupil'])
+
+    # z-score to get all filters on a similar scale
+    zfilters_df = (
+        filters_df
+        .transform(lambda x: (x - x.mean()) / x.std()))
+
+    # choose your filters from Pillow to fit to TCA
+    cols = ['ori_270', 'ori_135', 'ori_0', 'prev_reward_interaction',
+            'prev_punish_interaction', 'prev_choice_interaction',
+            'bias', 'speed']
+    cols.extend(['ori_270_input', 'ori_135_input',
+                 'ori_0_input'])
+    cols.extend(['ori_270_interaction', 'ori_135_interaction',
+                 'ori_0_interaction'])
+    cols.extend(['prev_reward_input', 'prev_punish_input',
+                 'prev_choice_input'])
+    cols.extend(['ori_270_th_prev', 'ori_135_th_prev',
+                 'ori_0_th_prev'])
+    filters_1 = zfilters_df.loc[:, cols]
+
+    # fit GLM and a GLM dropping out each filter to test deviance explained
+    models, model_fits, dev_exp_full_list = [], [], []
+    delta_aic_full_list, sub_aic_full_list = [], []
+    total_aic_full_list = []
+    for fac_num in range(1, 16):
+        # add your factor for fitting as the y variable
+        fac = 'factor_' + str(fac_num)
+        sub_xy = filters_1.join(fac_df)
+        # scale and round to make it Poisson-friendly
+        sub_xy['y'] = deepcopy((sub_xy[fac]*100).apply(np.floor))
+        sub_xy = sub_xy.replace([np.inf, -np.inf], np.nan).dropna()
+        # original formula
+        formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + ori_270_th_prev + ori_135_th_prev + ori_0_th_prev + speed + pupil + anticipatory_licking'
+        model = regression.glm(
+            formula, sub_xy.reset_index(), dropzeros=False,
+            link='log', family='Poisson')
+        models.append(model)
+        res = model.fit()
+        model_fits.append(res)
+        total_dev_exp = 1 - res.deviance/res.null_deviance
+        total_aic = res.aic
+        if verbose:
+            print('Component ' + str(fac_num))
+            print('    Total deviance explained: ',
+                  1 - res.deviance/res.null_deviance)
+
+        # loop through dropping filters to calculate deviance expl
+        drop_list = [
+            ' ori_270_input +',
+            ' ori_135_input +',
+            ' ori_0_input +',
+            ' prev_reward_input +',
+            ' prev_punish_input +',
+            ' prev_choice_input +',
+            ' ori_270_th_prev +',
+            ' ori_135_th_prev +',
+            ' ori_0_th_prev +',
+            ' speed +',
+            ' pupil +',
+            ' + anticipatory_licking']
+        # get deviance explained per filter
+        # add NaN for the internal intercept
+        dev_explained_drop = []
+        dev_explained_drop.append(np.nan)
+        delta_aic = []
+        delta_aic.append(np.nan)
+        aic_drop = []
+        aic_drop.append(np.nan)
+        for dl in drop_list:
+            drop_formula = formula.replace(drop_list[dl], '')
+            model = regression.glm(
+                drop_formula, sub_xy.reset_index(), dropzeros=False,
+                link='log', family='Poisson')
+            res = model.fit()
+            aic_drop.append(res.aic)
+            delta_aic.append(res.aic - total_aic)
+            drop_dev_exp = 1 - res.deviance/res.null_deviance
+            dev_explained_drop.append(total_dev_exp - drop_dev_exp)
+            delta_aic
+        dev_exp_full_list.extend(dev_explained_drop)
+        sub_aic_full_list.extend(aic_drop)
+        delta_aic_full_list.extend(delta_aic)
+        total_aic_full_list.extend([total_aic]*len(delta_aic))
+
+    # aggregate all of your fit results
+    df_list = []
+    for c, mod in enumerate(model_fits):
+        mod_df = mod.summary2().tables[1]
+        mod_df['component'] = [c + 1]*len(mod_df)
+        mod_df['deviance_explained'] = dev_exp_full_list
+        mod_df['sub_model_aic'] = sub_aic_full_list
+        mod_df['delta_aic'] = delta_aic_full_list
+        mod_df['full_model_aic'] = total_aic_full_list
+        mod_df['x'] = mod_df.index
+        df_list.append(mod_df)
+    all_model_df = pd.concat(df_list, axis=0)
+
+    return all_model_df
 
 
 def fit_trial_factors(
@@ -48,183 +186,6 @@ def fit_trial_factors(
     total_time = pd.DataFrame(
         data={'total_time': np.arange(len(time_in_trial))},
         index=time_in_trial.index)
-    learning_state = meta['learning_state']
-    trialerror = meta['trialerror']
-
-    # create dataframe of dprime values
-    dprime_vec = []
-    for date in dates:
-        date_obj = flow.Date(mouse, date=date, exclude_tags=['bad'])
-        dprime_vec.append(pool.calc.performance.dprime(date_obj))
-    data = {'dprime': dprime_vec}
-    dprime = pd.DataFrame(data=data, index=speed.index)
-    dprime = dprime['dprime']  # make indices match to meta
-
-    # get time per day sawtooth
-    time_per_day = []
-    counter = 0
-    prev_date = dates[0]
-    for date in dates:
-        if prev_date != date:
-            counter = 0
-            prev_date = date
-        time_per_day.append(counter)
-        counter += 1
-    data = {'time_day': time_per_day}
-    time_day = pd.DataFrame(data=data, index=speed.index)
-    time_day = time_day['time_day']  # make indices match to meta
-
-    # learning times
-    time_naive, time_learning, time_reversal = [], [], []
-    counter, ncounter, rcounter = 0, 0, 0
-    for stage in learning_state:
-        if stage == 'naive':
-            time_naive.append(ncounter)
-            ncounter += 1
-        else:
-            time_naive.append(0)
-        if stage == 'learning':
-            time_learning.append(counter)
-            counter += 1
-        else:
-            time_learning.append(0)
-        if stage == 'reversal1':
-            time_reversal.append(rcounter)
-            rcounter += 1
-        else:
-            time_reversal.append(0)
-    data = {'time_learning': time_learning, 'time_naive': time_naive, 'time_reversal': time_reversal}
-    time_learning = pd.DataFrame(data=data, index=speed.index)
-
-    # choose which learning stage to run GLM on
-    stage_indexer = learning_state.isin(['learning']).values
-
-    # ------------- GET Condition TUNING
-    trial_weights = V.results[rank_num][0].factors[2][:, :]
-    conds_to_check = ['plus', 'minus', 'neutral']
-    conds_weights = np.zeros((len(conds_to_check), rank_num))
-    for c, conds in enumerate(conds_to_check):
-        conds_weights[c, :] = np.nanmean(
-            trial_weights[(condition.values == conds) & stage_indexer, :], axis=0)
-    # normalize using summed mean response to all three
-    conds_total = np.nansum(conds_weights, axis=0)
-    for c in range(len(conds_to_check)):
-        conds_weights[c, :] = np.divide(
-            conds_weights[c, :], conds_total)
-    pref_cs_idx = np.argmax(conds_weights, axis=0)
-
-    # loop through components and fit linear model
-    models = []
-    model_fits = []
-    for fac_num in range(np.shape(V.results[rank_num][0].factors[2][:, :])[1]):
-        trial_weights = V.results[rank_num][0].factors[2][:, fac_num]
-        cond_indexer = (condition.values == conds_to_check[pref_cs_idx[fac_num]]) & stage_indexer
-        # cond_indexer = (condition.isin(['plus', 'minus', 'neutral']).values) & stage_indexer
-        # plus, minus, neutral = np.zeros(len(trial_weights)), np.zeros(len(trial_weights)), np.zeros(len(trial_weights))
-        # plus[condition.isin(['plus']).values] = 1
-        # minus[condition.isin(['minus']).values] = 1
-        # neutral[condition.isin(['neutral']).values] = 1
-
-        trial_fac = trial_weights[cond_indexer]
-
-        # create df of trial history (sliding window of when similar cue
-        # appeared in the last 5 trials)
-        # create df of reward history (sliding window of recieved reward
-        # in the last 5 trials)
-        trial_pos = np.where(cond_indexer)[0]
-        reward_pos = (trialerror.values == 0)
-        trial_history, reward_history = [], []
-        for i in trial_pos:
-            trial_history.append(np.sum((trial_pos >= i-historical_memory) & (trial_pos < i)))
-            ind = i-historical_memory if (i-historical_memory > 0) else 0
-            reward_history.append(np.sum(reward_pos[ind:i]))
-
-        data = {'trial_fac': trial_fac.flatten(),
-                'dprime': dprime.values[cond_indexer].flatten(),
-                'time_day': time_day.values[cond_indexer].flatten(),
-                'time': total_time.values[cond_indexer].flatten(),
-                'speed': speed.values[cond_indexer].flatten(),
-                # 'time_naive': time_learning['time_naive'].values[cond_indexer].flatten(),
-                'time_learning': time_learning['time_learning'].values[cond_indexer].flatten(),
-                # 'time_reversal': time_learning['time_reversal'].values[cond_indexer].flatten(),
-                'reward_history': reward_history,
-                'trial_history': trial_history,
-                # 'plus': plus[cond_indexer],
-                # 'minus': minus[cond_indexer],
-                # 'neutral': neutral[cond_indexer]
-               }
-
-        # z-score
-        for k in data.keys():
-            data[k] = (data[k] - np.nanmean(data[k]))/np.nanstd(data[k])
-        fac_df = pd.DataFrame(data=data).dropna()
-
-        # fit GLM
-        print('Component ' + str(fac_num+1))
-        formula = 'trial_fac ~ time + time_day + time_learning + speed + dprime + trial_history + reward_history'
-        model = regression.glm(formula, fac_df, dropzeros=False, link='identity')
-        models.append(model)
-        res = model.fit()
-        model_fits.append(res)
-        print('Total deviance explained: ', 1 - res.deviance/res.null_deviance)
-        for k in res.params.keys():
-            if k.lower() != 'intercept':
-                beta = res.params[k]
-                print(k + ' deviance explained: ', 1 - (np.sum(np.square(beta*data[k] - model.endog))/res.null_deviance))
-        print('')
-        plt.figure(figsize=(20,4))
-        plt.plot(model.endog, label='trial factor')
-        plt.plot(res.mu, label='model')
-        plt.xlabel('trials')
-        plt.legend()
-        plt.title('Component ' + str(fac_num+1))
-
-
-def fit_cells(
-        mouse='OA27',
-        trace_type='zscore_day',
-        method='mncp_hals',
-        cs='',
-        warp=False,
-        word='orlando',
-        group_by='all',
-        nan_thresh=0.85,
-        rank_num=18,
-        historical_memory=5,
-        rectified=False,
-        verbose=False):
-
-    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
-    group_pars = {'group_by': group_by}
-
-    # if cells were removed with too many nan trials
-    if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
-    else:
-        nt_tag = ''
-
-    # load dir
-    load_dir = paths.tca_path(
-        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_decomp_' + str(trace_type) + '.npy')
-    input_tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_tensor_' + str(trace_type) + '.npy')
-    meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_df_group_meta.pkl')
-
-    # load your data
-    X = np.load(input_tensor_path)
-    meta = pd.read_pickle(meta_path)
-    meta = utils.update_naive_cs(meta)
-    orientation = meta.reset_index()['orientation']
-    condition = meta.reset_index()['condition']
-    speed = meta.reset_index()['speed']
-    dates = meta.reset_index()['date']
-    total_time = pd.DataFrame(data={'total_time': np.arange(len(time_in_trial))}, index=time_in_trial.index)
     learning_state = meta['learning_state']
     trialerror = meta['trialerror']
 
