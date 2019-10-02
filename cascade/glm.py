@@ -79,10 +79,11 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         fac = 'factor_' + str(fac_num)
         sub_xy = filters_1.join(fac_df)
         # scale and round to make it Poisson-friendly
-        sub_xy['y'] = deepcopy((sub_xy[fac]*100).apply(np.floor))
+        sub_xy['a'] = deepcopy((sub_xy[fac]*100).apply(np.floor))
+        # make sure you don't have any nans
         sub_xy = sub_xy.replace([np.inf, -np.inf], np.nan).dropna()
         # original formula
-        formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + ori_270_th_prev + ori_135_th_prev + ori_0_th_prev + speed + pupil + anticipatory_licks'
+        formula = 'a ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + ori_270_th_prev + ori_135_th_prev + ori_0_th_prev + speed + pupil + anticipatory_licks'
         model = regression.glm(
             formula, sub_xy.reset_index(), dropzeros=False,
             link='log', family='Poisson')

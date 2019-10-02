@@ -1828,7 +1828,6 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     else:
         pupil = np.full(len(trial_idx), np.nan)
 
-
     # get ensure/ensure/firstlick relative to triggered data
     ensure = t2p.ensure()
     ensure = ensure.astype('float')
