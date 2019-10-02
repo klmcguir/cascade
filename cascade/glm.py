@@ -143,13 +143,13 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
     for c, mod in enumerate(model_fits):
         mod_df = mod.summary2().tables[1]
         mod_df['component'] = [c + 1]*len(mod_df)
-        mod_df['deviance_explained'] = dev_exp_full_list
-        mod_df['sub_model_aic'] = sub_aic_full_list
-        mod_df['delta_aic'] = delta_aic_full_list
-        mod_df['full_model_aic'] = total_aic_full_list
         mod_df['x'] = mod_df.index
         df_list.append(mod_df)
     all_model_df = pd.concat(df_list, axis=0)
+    all_mod_df['deviance_explained'] = dev_exp_full_list
+    all_mod_df['sub_model_aic'] = sub_aic_full_list
+    all_mod_df['delta_aic'] = delta_aic_full_list
+    all_mod_df['full_model_aic'] = total_aic_full_list
 
     return all_model_df
 
