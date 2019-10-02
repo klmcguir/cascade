@@ -121,7 +121,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         aic_drop = []
         aic_drop.append(np.nan)
         for dl in drop_list:
-            drop_formula = formula.replace(drop_list[dl], '')
+            drop_formula = formula.replace(dl, '')
             model = regression.glm(
                 drop_formula, sub_xy.reset_index(), dropzeros=False,
                 link='log', family='Poisson')
