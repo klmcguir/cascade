@@ -97,6 +97,8 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
             print('Component ' + str(fac_num))
             print('    Total deviance explained: ',
                   1 - res.deviance/res.null_deviance)
+            print('')
+            print('')
 
         # loop through dropping filters to calculate deviance expl
         drop_list = [
