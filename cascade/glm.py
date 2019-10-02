@@ -42,12 +42,12 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
 
     # add in biometrics during stimulus presentation
     filters_df = filters_df.join(meta1['speed'])
-    filters_df = filters_df.join(meta1['anticipatory_licking'])
+    filters_df = filters_df.join(meta1['anticipatory_licks'])
     filters_df = filters_df.join(meta1_z_byday['pupil'])
 
     # add in biometrics one second before stimulus presentation
     filters_df = filters_df.join(meta1['pre_speed'])
-    filters_df = filters_df.join(meta1['pre_licking'])
+    filters_df = filters_df.join(meta1['pre_licks'])
     filters_df = filters_df.join(meta1_z_byday['pre_pupil'])
 
     # z-score to get all filters on a similar scale
@@ -81,7 +81,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         sub_xy['y'] = deepcopy((sub_xy[fac]*100).apply(np.floor))
         sub_xy = sub_xy.replace([np.inf, -np.inf], np.nan).dropna()
         # original formula
-        formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + ori_270_th_prev + ori_135_th_prev + ori_0_th_prev + speed + pupil + anticipatory_licking'
+        formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + ori_270_th_prev + ori_135_th_prev + ori_0_th_prev + speed + pupil + anticipatory_licks'
         model = regression.glm(
             formula, sub_xy.reset_index(), dropzeros=False,
             link='log', family='Poisson')
@@ -108,7 +108,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
             ' ori_0_th_prev +',
             ' speed +',
             ' pupil +',
-            ' + anticipatory_licking']
+            ' + anticipatory_licks']
         # get deviance explained per filter
         # add NaN for the internal intercept
         dev_explained_drop = []
