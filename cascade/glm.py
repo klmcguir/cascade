@@ -27,7 +27,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
 
     # load your TCA and pillow data, matching their trial indices
     psy1, meta1, fac_df, psydata = sync_tca_pillow(
-        mouse, verbose=verbose, **kwarg_active)
+        mouse, verbose=verbose, **kwargs_active)
 
     # drop unused columns
     filters_df = psy1.drop(columns=['orientation', 'dprime'])
