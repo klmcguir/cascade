@@ -11,7 +11,7 @@ from flow.misc import regression
 
 
 def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
-    kwarg_defaults = {
+    kwargs_defaults = {
         'trace_type': 'zscore_day',
         'method': 'mncp_hals',
         'cs': '',
@@ -23,7 +23,9 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         'rank_num': 15,
         'fixed_sigma': None,
         'fixed_sigma_day': None}
-    kwargs_active = kwarg_defaults.update(kwargs)
+    if kwargs is None:
+        kwargs = {}
+    kwargs_active = kwargs_defaults.update(kwargs)
 
     # load your TCA and pillow data, matching their trial indices
     psy1, meta1, fac_df, psydata = sync_tca_pillow(
