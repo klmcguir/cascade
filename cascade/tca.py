@@ -1725,7 +1725,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
             try:
                 pre_speed.append(
                     np.nanmean(
-                        pre_speed_vec[(all_onsets[s] - nframe_back):all_onsets[s]]))
+                        pre_speed_vec[int(all_onsets[s] - nframe_back):all_onsets[s]]))
             except:
                 pre_speed.append(np.nan)
         pre_speed = np.array(pre_speed)
@@ -1795,12 +1795,12 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         pre_pupil = []
         for s in trial_idx:
             try:
-                nbefore = np.round(all_onsets[s]/div) - nframe_back
-                nafter = np.round(all_onsets[s]/div)
+                nbefore = int(np.round(all_onsets[s]/div) - nframe_back)
+                nafter = int(np.round(all_onsets[s]/div))
                 pre_pupil.append(np.nanmean(pre_pupil_vec[nbefore:nafter]))
             except:
                 pre_pupil.append(np.nan)
-        pre_pupil = np.array(pre_speed)
+        pre_pupil = np.array(pre_pupil)
     else:
         pre_pupil = np.full(len(trial_idx), np.nan)
 
@@ -1819,12 +1819,12 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         pupil = []
         for s in trial_idx:
             try:
-                nbefore = np.round(all_onsets[s]/div)
-                nafter = np.round(all_offsets[s]/div)
+                nbefore = int(np.round(all_onsets[s]/div))
+                nafter = int(np.round(all_offsets[s]/div))
                 pupil.append(np.nanmean(pupil_vec[nbefore:nafter]))
             except:
                 pupil.append(np.nan)
-        pupil = np.array(pre_speed)
+        pupil = np.array(pupil)
     else:
         pupil = np.full(len(trial_idx), np.nan)
 
