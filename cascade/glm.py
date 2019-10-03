@@ -8,6 +8,7 @@ import os
 from . import paths, utils, load
 from . psytrack.train_factor import sync_tca_pillow
 from flow.misc import regression
+from . import calc
 from copy import deepcopy
 
 
@@ -31,6 +32,20 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
     # load your TCA and pillow data, matching their trial indices
     psy1, meta1, fac_df, psydata = sync_tca_pillow(
         mouse, verbose=verbose, **kwargs_defaults)
+
+    # load in the tuning of your factors
+    tuning_df = calc.tca.trial_factor_tuning(
+            mouse=flow.Mouse(mouse=mouse),
+            word=word,
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold,
+            rank_num=rank_num,
+            verbose=verbose)
 
     # drop unused columns
     filters_df = psy1.drop(columns=['orientation', 'dprime'])
@@ -76,7 +91,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
     delta_aic_full_list, sub_aic_full_list = [], []
     total_aic_full_list = []
     total_dev_full_list = []
-    for fac_num in range(1, 16):
+    for fac_num in range(1, rank_num+1):
         # add your factor for fitting as the y variable
         fac = 'factor_' + str(fac_num)
         sub_xy = filters_1.join(fac_df)
@@ -86,7 +101,49 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         sub_xy = sub_xy.replace([np.inf, -np.inf], np.nan).dropna()
         # original formula
         # formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + ori_270_th_prev + ori_135_th_prev + ori_0_th_prev + speed + pupil + anticipatory_licks'
-        formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + speed + pupil + anticipatory_licks'
+        fac_tuning = tuning_df.loc[(mouse, fac_num), 'preferred_tuning']
+        if fac_tuning == '0':
+            formula = 'y ~ ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + speed + pupil + anticipatory_licks'
+            drop_list = [
+                ' ori_0_input +',
+                ' prev_reward_input +',
+                ' prev_punish_input +',
+                ' prev_choice_input +',
+                ' speed +',
+                ' pupil +',
+                ' + anticipatory_licks']
+        elif fac_tuning == '135':
+            formula = 'y ~ ori_135_input + prev_reward_input + prev_punish_input + prev_choice_input + speed + pupil + anticipatory_licks'
+            drop_list = [
+                ' ori_135_input +',
+                ' prev_reward_input +',
+                ' prev_punish_input +',
+                ' prev_choice_input +',
+                ' speed +',
+                ' pupil +',
+                ' + anticipatory_licks']
+        elif fac_tuning == '270':
+            formula = 'y ~ ori_270_input + prev_reward_input + prev_punish_input + prev_choice_input + speed + pupil + anticipatory_licks'
+            drop_list = [
+                ' ori_270_input +',
+                ' prev_reward_input +',
+                ' prev_punish_input +',
+                ' prev_choice_input +',
+                ' speed +',
+                ' pupil +',
+                ' + anticipatory_licks']
+        elif fac_tuning == 'broad':
+            formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + speed + pupil + anticipatory_licks'
+            drop_list = [
+                ' ori_270_input +',
+                ' ori_135_input +',
+                ' ori_0_input +',
+                ' prev_reward_input +',
+                ' prev_punish_input +',
+                ' prev_choice_input +',
+                ' speed +',
+                ' pupil +',
+                ' + anticipatory_licks']
         model = regression.glm(
             formula, sub_xy.reset_index(), dropzeros=False,
             link='log', family='Poisson')
@@ -103,19 +160,19 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
             print('')
 
         # loop through dropping filters to calculate deviance expl
-        drop_list = [
-            ' ori_270_input +',
-            ' ori_135_input +',
-            ' ori_0_input +',
-            ' prev_reward_input +',
-            ' prev_punish_input +',
-            ' prev_choice_input +',
-            # ' ori_270_th_prev +',
-            # ' ori_135_th_prev +',
-            # ' ori_0_th_prev +',
-            ' speed +',
-            ' pupil +',
-            ' + anticipatory_licks']
+        # drop_list = [
+        #     ' ori_270_input +',
+        #     ' ori_135_input +',
+        #     ' ori_0_input +',
+        #     ' prev_reward_input +',
+        #     ' prev_punish_input +',
+        #     ' prev_choice_input +',
+        #     # ' ori_270_th_prev +',
+        #     # ' ori_135_th_prev +',
+        #     # ' ori_0_th_prev +',
+        #     ' speed +',
+        #     ' pupil +',
+        #     ' + anticipatory_licks']
         # get deviance explained per filter
         # add NaN for the internal intercept
         dev_explained_drop = []
