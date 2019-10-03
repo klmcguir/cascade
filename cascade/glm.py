@@ -85,7 +85,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
     delta_aic_full_list, sub_aic_full_list = [], []
     total_aic_full_list = []
     total_dev_full_list = []
-    for fac_num in range(1, rank_num+1):
+    for fac_num in range(1, kwargs_defaults['rank_num']+1):
         # add your factor for fitting as the y variable
         fac = 'factor_' + str(fac_num)
         sub_xy = filters_1.join(fac_df)
