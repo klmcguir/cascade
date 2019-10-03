@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import os
 from copy import deepcopy
-from . import load, utils
+from .. import load, utils
 
 
 @memoize(across='mouse', updated=191001, returns='other', large_output=False)
@@ -33,14 +33,15 @@ def trial_factor_tuning(
 
     # default TCA params to use
     if not word:
-        if mouse == 'OA27':
-            word = 'tray'
+        if mouse.mouse == 'OA27':
+            word = 'restaurant'
         else:
-            word = 'obligations'  # should be updated to 'obligations'
+            word = 'whale'
         if verbose:
-            print('Creating dataframe for ' + mouse + '-' + word)
+            print('Creating dataframe for ' + mouse.mouse + '-' + word)
 
-    ms = flow.Mouse(mouse)
+    ms = deepcopy(mouse)
+    mouse = mouse.mouse
     psy = ms.psytracker(verbose=True)
     dateRuns = psy.data['dateRuns']
     trialRuns = psy.data['runLength']
@@ -107,7 +108,7 @@ def trial_factor_tuning(
     meta = load.groupday_tca_meta(**load_kwargs)
 
     # add in continuous dprime
-    dp = pool.calc.psytrack.dprime(flow.Mouse(mouse))
+    dp = pool.calc.psytrack.dprime(ms)
     dfr['dprime'] = dp
 
     # filter out blank trials
