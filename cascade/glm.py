@@ -85,7 +85,8 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         # make sure you don't have any nans
         sub_xy = sub_xy.replace([np.inf, -np.inf], np.nan).dropna()
         # original formula
-        formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + ori_270_th_prev + ori_135_th_prev + ori_0_th_prev + speed + pupil + anticipatory_licks'
+        # formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + ori_270_th_prev + ori_135_th_prev + ori_0_th_prev + speed + pupil + anticipatory_licks'
+        formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + speed + pupil + anticipatory_licks'
         model = regression.glm(
             formula, sub_xy.reset_index(), dropzeros=False,
             link='log', family='Poisson')
@@ -109,9 +110,9 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
             ' prev_reward_input +',
             ' prev_punish_input +',
             ' prev_choice_input +',
-            ' ori_270_th_prev +',
-            ' ori_135_th_prev +',
-            ' ori_0_th_prev +',
+            # ' ori_270_th_prev +',
+            # ' ori_135_th_prev +',
+            # ' ori_0_th_prev +',
             ' speed +',
             ' pupil +',
             ' + anticipatory_licks']
