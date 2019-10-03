@@ -1,6 +1,6 @@
 """
 Functions for making simple calculations on tensortools TCA results.
-Saves into MongoDB database for quick retrieval. 
+Saves into MongoDB database for quick retrieval.
 """
 from pool.database import memoize
 import flow
@@ -27,7 +27,7 @@ def trial_factor_tuning(
         verbose=True):
     """
     Create a pandas dataframe of trial factor tuning for one
-    mouse. Only looks at initial learning stage. I repeat, this is 
+    mouse. Only looks at initial learning stage. I repeat, this is
     only calculated on initial learning!!!
     """
 
