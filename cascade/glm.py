@@ -75,6 +75,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
     models, model_fits, dev_exp_full_list = [], [], []
     delta_aic_full_list, sub_aic_full_list = [], []
     total_aic_full_list = []
+    total_dev_full_list = []
     for fac_num in range(1, 16):
         # add your factor for fitting as the y variable
         fac = 'factor_' + str(fac_num)
@@ -137,6 +138,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         sub_aic_full_list.extend(aic_drop)
         delta_aic_full_list.extend(delta_aic)
         total_aic_full_list.extend([total_aic]*len(delta_aic))
+        total_dev_full_list.extend([total_dev_exp]*len(delta_aic))
 
     # aggregate all of your fit results
     df_list = []
@@ -146,10 +148,12 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         mod_df['x'] = mod_df.index
         df_list.append(mod_df)
     all_model_df = pd.concat(df_list, axis=0)
-    all_model_df['deviance_explained'] = dev_exp_full_list
+    all_model_df['sub_deviance_explained'] = dev_exp_full_list
+    all_model_df['frac_deviance_explained'] = dev_exp_full_list/total_dev_full_list
     all_model_df['sub_model_aic'] = sub_aic_full_list
     all_model_df['delta_aic'] = delta_aic_full_list
     all_model_df['full_model_aic'] = total_aic_full_list
+    all_model_df['full_deviance_explained'] = total_dev_full_list
 
     return all_model_df
 
