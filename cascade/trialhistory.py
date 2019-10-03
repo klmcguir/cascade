@@ -926,6 +926,7 @@ def th_tuning_dataframe(
 
     iteration = 0
     ori_to_check = [0, 135, 270]
+    cs_to_check = ['plus', 'minus', 'neutral']
     ori_vec, cond_vec, comp_vec = [], [], []
     df_data = {}
     mean_response_mat = np.zeros((rank_num, 3))
@@ -946,7 +947,6 @@ def th_tuning_dataframe(
             single_meta = meta1.loc[ori_bool]
             cond = single_meta['condition'].unique()
             if len(cond) > 1:
-                cs_to_check = ['plus', 'minus', 'neutral']
                 multi_ori = []
                 for ics in cs_to_check:
                     multi_ori.append(ics in cond)
@@ -987,11 +987,12 @@ def th_tuning_dataframe(
             boot_means_per_comp[ri, bi] = np.nanmean(rand_samp)
 
     # test tuning
+    bonferonni_correction = len(cs_to_check)
     tuning = []
     for i in range(rank_num):
-        a = np.sum(boot_means_per_comp[i, :] >= mean_response_mat[i, 0])/1000 < 0.05
-        b = np.sum(boot_means_per_comp[i, :] >= mean_response_mat[i, 1])/1000 < 0.05
-        c = np.sum(boot_means_per_comp[i, :] >= mean_response_mat[i, 2])/1000 < 0.05
+        a = np.sum(boot_means_per_comp[i, :] >= mean_response_mat[i, 0])/1000 < 0.05/bonferonni_correction
+        b = np.sum(boot_means_per_comp[i, :] >= mean_response_mat[i, 1])/1000 < 0.05/bonferonni_correction
+        c = np.sum(boot_means_per_comp[i, :] >= mean_response_mat[i, 2])/1000 < 0.05/bonferonni_correction
         d = np.where([a, b, c])[0]
 
         if len(d) > 1 or len(d) == 0:
