@@ -34,18 +34,12 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         mouse, verbose=verbose, **kwargs_defaults)
 
     # load in the tuning of your factors
+    tuning_kwargs = deepcopy(kwargs_defaults)
+    tuning_kwargs.pop('fixed_sigma')
+    tuning_kwargs.pop('fixed_sigma_day')
     tuning_df = calc.tca.trial_factor_tuning(
             mouse=flow.Mouse(mouse=mouse),
-            word=word,
-            trace_type=trace_type,
-            method=method,
-            cs=cs,
-            warp=warp,
-            group_by=group_by,
-            nan_thresh=nan_thresh,
-            score_threshold=score_threshold,
-            rank_num=rank_num,
-            verbose=verbose)
+            verbose=verbose, **tuning_kwargs)
 
     # drop unused columns
     filters_df = psy1.drop(columns=['orientation', 'dprime'])
