@@ -241,16 +241,23 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         # get deviance explained per filter
         # add NaN for the internal intercept
         dev_explained_drop = []
-        dev_explained_drop.append(np.nan)
         delta_aic = []
-        delta_aic.append(np.nan)
         aic_drop = []
-        aic_drop.append(np.nan)
-        for dl in drop_list:
+        for c, dl in enumerate(drop_list):
             drop_formula = formula.replace(dl, '')
-            model = regression.glm(
-                drop_formula, sub_xy.reset_index(), dropzeros=False,
-                link='log', family='Poisson')
+            try:
+                model = regression.glm(
+                    drop_formula, sub_xy.reset_index(), dropzeros=False,
+                    link='log', family='Poisson')
+            except ValueError:
+                print('!!!!!!')
+                print('{}: Skipped {}'.format(mouse, fac))
+                print('!!!!!!')
+            # make up for the intercept beta
+            if c == 0:
+                dev_explained_drop.append(np.nan)
+                delta_aic.append(np.nan)
+                aic_drop.append(np.nan)
             res = model.fit()
             aic_drop.append(res.aic)
             delta_aic.append(res.aic - total_aic)
@@ -489,16 +496,23 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
         # get deviance explained per filter
         # add NaN for the internal intercept
         dev_explained_drop = []
-        dev_explained_drop.append(np.nan)
         delta_aic = []
-        delta_aic.append(np.nan)
         aic_drop = []
-        aic_drop.append(np.nan)
-        for dl in drop_list:
+        for c, dl in enumerate(drop_list):
             drop_formula = formula.replace(dl, '')
-            model = regression.glm(
-                drop_formula, sub_xy.reset_index(), dropzeros=False,
-                link='log', family='Poisson')
+            try:
+                model = regression.glm(
+                    drop_formula, sub_xy.reset_index(), dropzeros=False,
+                    link='log', family='Poisson')
+            except ValueError:
+                print('!!!!!!')
+                print('{}: Skipped {}'.format(mouse, fac))
+                print('!!!!!!')
+            # make up for the intercept beta
+            if c == 0:
+                dev_explained_drop.append(np.nan)
+                delta_aic.append(np.nan)
+                aic_drop.append(np.nan)
             res = model.fit()
             aic_drop.append(res.aic)
             delta_aic.append(res.aic - total_aic)
