@@ -12,7 +12,7 @@ from copy import deepcopy
 from .. import load, utils
 
 
-@memoize(across='mouse', updated=191001, returns='other', large_output=False)
+@memoize(across='mouse', updated=191002, returns='other', large_output=False)
 def trial_factor_tuning(
         mouse,
         trace_type='zscore_day',
@@ -230,8 +230,21 @@ def trial_factor_tuning(
         else:
             tuning.append(str(ori_to_check[d[0]]))
 
+    # get tuning in terms of CS
+    tuning_cs = []
+    for ti in tuning:
+        if ti == 'broad':
+            tuning_cs.append('broad')
+        else:
+            tuning_cs.append(
+                str(
+                    total_df['condition']
+                    .loc[total_df['orientation'].isin([int(ti)]), :]
+                    .unique()))
+
     # save tuning into dict
     df_data['preferred_tuning'] = tuning
+    df_data['preferred_tuning_cs'] = tuning_cs
 
     # make final df
     index = pd.MultiIndex.from_arrays([
