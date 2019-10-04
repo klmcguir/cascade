@@ -113,7 +113,6 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         # formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + ori_270_th_prev + ori_135_th_prev + ori_0_th_prev + speed + pupil + anticipatory_licks'
         fac_tuning = tuning_df.loc[(mouse, fac_num), 'preferred_tuning']
         fac_cs = tuning_df.loc[(mouse, fac_num), 'preferred_tuning_cs']
-        cs = ' {} +'.format(fac_cs)
         if fac_tuning == '0':
             formula = 'y ~ ori_0_input +{}'.format(' {} +'.format(fac_cs)) \
              + ' prev_reward_input + prev_punish_input + prev_choice_input +' \

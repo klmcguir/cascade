@@ -12,7 +12,7 @@ from copy import deepcopy
 from .. import load, utils
 
 
-# @memoize(across='mouse', updated=191002, returns='other', large_output=False)
+@memoize(across='mouse', updated=191002, returns='other', large_output=False)
 def trial_factor_tuning(
         mouse,
         trace_type='zscore_day',
