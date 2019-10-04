@@ -57,13 +57,13 @@ def groupmouse_fit_poisson(
         if hitmiss:
             # includes preferred ori and relevant hit/miss, CR/FA
             th_df = fit_trial_factors_poisson_hitmiss(
-                        mouse,
+                        m,
                         verbose=verbose,
                         **kwargs_defaults)
         else:
             # includes preferred ori and relevant plus, minus, neutral
             th_df = fit_trial_factors_poisson(
-                        mouse,
+                        m,
                         verbose=verbose,
                         **kwargs_defaults)
 
