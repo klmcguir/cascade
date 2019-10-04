@@ -20,6 +20,59 @@ default_sigmas = {
                 }
 
 
+def groupmouse_fit_poisson(
+        mice=['OA27', 'OA26', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36'],
+        words=None,
+        hitmiss=False,
+        verbose=True, **kwargs):
+    """
+    Create a pandas dataframe of GLM results fit across mice.
+    """
+    kwargs_defaults = {
+        'trace_type': 'zscore_day',
+        'method': 'mncp_hals',
+        'cs': '',
+        'warp': False,
+        'word': 'restaurant',
+        'group_by': 'all',
+        'nan_thresh': 0.85,
+        'score_threshold': 0.8,
+        'rank_num': 15,
+        'fixed_sigma': default_sigmas['fixed_sigma'],
+        'fixed_sigma_day': default_sigmas['fixed_sigma_day']}
+    if kwargs is None:
+        kwargs = {}
+    kwargs_defaults.update(kwargs)
+
+    # default TCA params to use
+    if not words:
+        w1 = 'restaurant'
+        w2 = 'whale'
+        words = [w1 if s == 'OA27' else w2 for s in mice]
+
+    # get all single mouse dataframes
+    df_list = []
+    for m, w in zip(mice, words):
+        kwargs_defaults['word'] = w
+        if hitmiss:
+            # includes preferred ori and relevant hit/miss, CR/FA
+            th_df = fit_trial_factors_poisson_hitmiss(
+                        mouse,
+                        verbose=verbose,
+                        **kwargs_defaults)
+        else:
+            # includes preferred ori and relevant plus, minus, neutral
+            th_df = fit_trial_factors_poisson(
+                        mouse,
+                        verbose=verbose,
+                        **kwargs_defaults)
+
+        df_list.append(th_df)
+    all_dfs = pd.concat(df_list, axis=0)
+
+    return all_dfs
+
+
 def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
     kwargs_defaults = {
         'trace_type': 'zscore_day',
@@ -185,20 +238,6 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
             print('')
             print('')
 
-        # loop through dropping filters to calculate deviance expl
-        # drop_list = [
-        #     ' ori_270_input +',
-        #     ' ori_135_input +',
-        #     ' ori_0_input +',
-        #     ' prev_reward_input +',
-        #     ' prev_punish_input +',
-        #     ' prev_choice_input +',
-        #     # ' ori_270_th_prev +',
-        #     # ' ori_135_th_prev +',
-        #     # ' ori_0_th_prev +',
-        #     ' speed +',
-        #     ' pupil +',
-        #     ' + anticipatory_licks']
         # get deviance explained per filter
         # add NaN for the internal intercept
         dev_explained_drop = []
@@ -239,6 +278,261 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
     all_model_df['delta_aic'] = delta_aic_full_list
     all_model_df['full_model_aic'] = total_aic_full_list
     all_model_df['full_deviance_explained'] = total_dev_full_list
+
+    all_model_df['mouse'] = [mouse]*len(all_model_df)
+    all_model_df = (
+        all_model_df
+        .reset_index()
+        .drop(columns=['index'])
+        .set_index(['mouse', 'component', 'x']))
+
+    return all_model_df
+
+
+def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
+    kwargs_defaults = {
+        'trace_type': 'zscore_day',
+        'method': 'mncp_hals',
+        'cs': '',
+        'warp': False,
+        'word': 'restaurant',
+        'group_by': 'all',
+        'nan_thresh': 0.85,
+        'score_threshold': 0.8,
+        'rank_num': 15,
+        'fixed_sigma': default_sigmas['fixed_sigma'],
+        'fixed_sigma_day': default_sigmas['fixed_sigma_day']}
+    if kwargs is None:
+        kwargs = {}
+    kwargs_defaults.update(kwargs)
+
+    # load your TCA and pillow data, matching their trial indices
+    psy1, meta1, fac_df, psydata = sync_tca_pillow(
+        mouse, verbose=verbose, **kwargs_defaults)
+
+    # load in the tuning of your factors
+    tuning_kwargs = deepcopy(kwargs_defaults)
+    tuning_kwargs.pop('fixed_sigma')
+    tuning_kwargs.pop('fixed_sigma_day')
+    tuning_df = calc.tca.trial_factor_tuning(
+            mouse=flow.Mouse(mouse=mouse),
+            verbose=verbose, **tuning_kwargs)
+
+    # drop unused columns
+    filters_df = psy1.drop(columns=['orientation'])
+
+    # z-score meta1 by day if you want a within day normalization
+    meta1_z_byday = (
+        meta1
+        .groupby('date')
+        .transform(lambda x: (x - x.mean()) / x.std()))
+
+    # add in biometrics during stimulus presentation
+    filters_df = filters_df.join(meta1['speed'])
+    filters_df = filters_df.join(meta1['anticipatory_licks'])
+    filters_df = filters_df.join(meta1_z_byday['pupil'])
+
+    # add in biometrics one second before stimulus presentation
+    filters_df = filters_df.join(meta1['pre_speed'])
+    filters_df = filters_df.join(meta1['pre_licks'])
+    filters_df = filters_df.join(meta1_z_byday['pre_pupil'])
+
+    # add in plus, minus, neutral
+    cs_to_add = ['plus', 'minus', 'neutral']
+    for csi in cs_to_add:
+        cs_tuning_vec = np.zeros(len(filters_df))
+        cs_tuning_vec[meta1['condition'].isin([csi])] = 1
+        filters_df[csi] = cs_tuning_vec
+
+    # add in hit, miss, CRm, FAm, CRn, FAn
+    trialerror_codes = [0, 1, 2, 3, 4, 5]  # , 6, 7, 8, 9]
+    trialerror_labels = ['hit',
+                         'miss',
+                         'neutral_CR',
+                         'neutral_FA',
+                         'minus_CR',
+                         'minus_FA',
+                         'blank_CR',
+                         'blank_FA',
+                         'pav_early_licking',
+                         'pav_late_licking']
+    for tei in trialerror_codes:
+        te_vec = np.zeros(len(filters_df))
+        te_vec[meta1['trialerror'].isin([tei])] = 1
+        filters_df[trialerror_labels[tei]] = te_vec
+
+    # z-score to get all filters on a similar scale
+    zfilters_df = (
+        filters_df
+        .transform(lambda x: (x - x.mean()) / x.std()))
+
+    # choose your filters from Pillow to fit to TCA
+    cols = ['ori_270', 'ori_135', 'ori_0', 'prev_reward_interaction',
+            'prev_punish_interaction', 'prev_choice_interaction',
+            'bias', 'speed']
+    cols.extend(['anticipatory_licks', 'pupil'])
+    cols.extend(['ori_270_input', 'ori_135_input',
+                 'ori_0_input'])
+    cols.extend(['ori_270_interaction', 'ori_135_interaction',
+                 'ori_0_interaction'])
+    cols.extend(['prev_reward_input', 'prev_punish_input',
+                 'prev_choice_input'])
+    cols.extend(['ori_270_th_prev', 'ori_135_th_prev',
+                 'ori_0_th_prev'])
+    cols.extend(['plus', 'minus', 'neutral'])
+    cols.extend(['hit', 'miss', 'neutral_CR', 'neutral_FA',
+                 'minus_CR', 'minus_FA'])
+    filters_subset = zfilters_df.loc[:, cols]
+
+    # fit GLM and a GLM dropping out each filter to test deviance explained
+    models, model_fits, dev_exp_full_list = [], [], []
+    delta_aic_full_list, sub_aic_full_list = [], []
+    total_aic_full_list = []
+    total_dev_full_list = []
+    for fac_num in range(1, kwargs_defaults['rank_num']+1):
+        # add your factor for fitting as the y variable
+        fac = 'factor_' + str(fac_num)
+        sub_xy = filters_subset.join(fac_df)
+        # scale and round to make it Poisson-friendly
+        sub_xy['y'] = deepcopy((sub_xy[fac]*100).apply(np.floor))
+        # make sure you don't have any nans
+        sub_xy = sub_xy.replace([np.inf, -np.inf], np.nan).dropna()
+        # get your tuning (ori), cs, or trialerror vectors for each factor
+        fac_tuning = tuning_df.loc[(mouse, fac_num), 'preferred_tuning']
+        fac_cs = tuning_df.loc[(mouse, fac_num), 'preferred_tuning_cs']
+
+        if fac_cs == 'plus':
+            te_pair = ['hit', 'miss']
+        elif fac_cs == 'neutral':
+            te_pair = ['neutral_CR', 'neutral_FA']
+        elif fac_cs == 'minus':
+            te_pair = ['minus_CR', 'minus_FA']
+
+        if fac_tuning == '0':
+            formula = 'y ~ ori_0_input +' \
+             + ' {} + {} +'.format(te_pair[0], te_pair[1]) \
+             + ' prev_reward_input + prev_punish_input + prev_choice_input +' \
+             + ' speed + pupil + anticipatory_licks'
+            drop_list = [
+                ' ori_0_input +',
+                ' {} + {} +'.format(te_pair[0], te_pair[1]),
+                ' prev_reward_input +',
+                ' prev_punish_input +',
+                ' prev_choice_input +',
+                ' speed +',
+                ' pupil +',
+                ' + anticipatory_licks']
+        elif fac_tuning == '135':
+            formula = 'y ~ ori_135_input +' \
+             + ' {} + {} +'.format(te_pair[0], te_pair[1]) \
+             + ' prev_reward_input + prev_punish_input + prev_choice_input +' \
+             + ' speed + pupil + anticipatory_licks'
+            drop_list = [
+                ' ori_135_input +',
+                ' {} + {} +'.format(te_pair[0], te_pair[1]),
+                ' prev_reward_input +',
+                ' prev_punish_input +',
+                ' prev_choice_input +',
+                ' speed +',
+                ' pupil +',
+                ' + anticipatory_licks']
+        elif fac_tuning == '270':
+            formula = 'y ~ ori_270_input +' \
+             + ' {} + {} +'.format(te_pair[0], te_pair[1]) \
+             + ' prev_reward_input + prev_punish_input + prev_choice_input +' \
+             + ' speed + pupil + anticipatory_licks'
+            drop_list = [
+                ' ori_270_input +',
+                ' {} + {} +'.format(te_pair[0], te_pair[1]),
+                ' prev_reward_input +',
+                ' prev_punish_input +',
+                ' prev_choice_input +',
+                ' speed +',
+                ' pupil +',
+                ' + anticipatory_licks']
+        elif fac_tuning == 'broad':
+            formula = 'y ~ ori_270_input + ori_135_input + ori_0_input +' \
+             + ' hit + miss +' \
+             + ' neutral_CR + neutral_FA +' \
+             + ' minus_CR + minus_FA +' \
+             + ' prev_reward_input +' \
+             + ' prev_punish_input + prev_choice_input + speed + pupil +' \
+             + ' anticipatory_licks'
+            drop_list = [
+                ' ori_270_input +',
+                ' ori_135_input +',
+                ' ori_0_input +',
+                ' {} + {} +'.format('hit', 'miss'),
+                ' {} + {} +'.format('neutral_CR', 'neutral_FA'),
+                ' {} + {} +'.format('minus_CR', 'minus_FA'),
+                ' prev_reward_input +',
+                ' prev_punish_input +',
+                ' prev_choice_input +',
+                ' speed +',
+                ' pupil +',
+                ' + anticipatory_licks']
+        model = regression.glm(
+            formula, sub_xy.reset_index(), dropzeros=False,
+            link='log', family='Poisson')
+        models.append(model)
+        res = model.fit()
+        model_fits.append(res)
+        total_dev_exp = 1 - res.deviance/res.null_deviance
+        total_aic = res.aic
+        if verbose:
+            print('Component ' + str(fac_num))
+            print('    Total deviance explained: ',
+                  1 - res.deviance/res.null_deviance)
+            print('')
+            print('')
+
+        # get deviance explained per filter
+        # add NaN for the internal intercept
+        dev_explained_drop = []
+        dev_explained_drop.append(np.nan)
+        delta_aic = []
+        delta_aic.append(np.nan)
+        aic_drop = []
+        aic_drop.append(np.nan)
+        for dl in drop_list:
+            drop_formula = formula.replace(dl, '')
+            model = regression.glm(
+                drop_formula, sub_xy.reset_index(), dropzeros=False,
+                link='log', family='Poisson')
+            res = model.fit()
+            aic_drop.append(res.aic)
+            delta_aic.append(res.aic - total_aic)
+            drop_dev_exp = 1 - res.deviance/res.null_deviance
+            dev_explained_drop.append(total_dev_exp - drop_dev_exp)
+            delta_aic
+        dev_exp_full_list.extend(dev_explained_drop)
+        sub_aic_full_list.extend(aic_drop)
+        delta_aic_full_list.extend(delta_aic)
+        total_aic_full_list.extend([total_aic]*len(delta_aic))
+        total_dev_full_list.extend([total_dev_exp]*len(delta_aic))
+
+    # aggregate all of your fit results
+    df_list = []
+    for c, mod in enumerate(model_fits):
+        mod_df = mod.summary2().tables[1]
+        mod_df['component'] = [c + 1]*len(mod_df)
+        mod_df['x'] = mod_df.index
+        df_list.append(mod_df)
+    all_model_df = pd.concat(df_list, axis=0)
+    all_model_df['sub_deviance_explained'] = dev_exp_full_list
+    all_model_df['frac_deviance_explained'] = (
+        np.array(dev_exp_full_list)/np.array(total_dev_full_list))
+    all_model_df['sub_model_aic'] = sub_aic_full_list
+    all_model_df['delta_aic'] = delta_aic_full_list
+    all_model_df['full_model_aic'] = total_aic_full_list
+    all_model_df['full_deviance_explained'] = total_dev_full_list
+
+    all_model_df['mouse'] = [mouse]*len(all_model_df)
+    all_model_df = (
+        all_model_df
+        .reset_index()
+        .drop(columns=['index'])
+        .set_index(['mouse', 'component', 'x']))
 
     return all_model_df
 
