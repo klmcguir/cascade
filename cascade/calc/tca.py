@@ -232,13 +232,14 @@ def trial_factor_tuning(
 
     # get tuning in terms of CS
     tuning_cs = []
+    learning_meta = meta1.loc[total_bool]
     for ti in tuning:
         if ti == 'broad':
             tuning_cs.append('broad')
         else:
             tuning_cs.append(
-                    total_df['condition']
-                    .loc[total_df['orientation'].isin([int(ti)]), :]
+                    learning_meta['condition']
+                    .loc[learning_meta['orientation'].isin([int(ti)]), :]
                     .unique())
 
     # save tuning into dict
