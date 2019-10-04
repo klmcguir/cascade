@@ -249,7 +249,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
                 model = regression.glm(
                     drop_formula, sub_xy.reset_index(), dropzeros=False,
                     link='log', family='Poisson')
-            except ValueError:
+            except:
                 print('!!!!!!')
                 print('{}: Skipped {}'.format(mouse, fac))
                 print('!!!!!!')
@@ -504,7 +504,7 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
                 model = regression.glm(
                     drop_formula, sub_xy.reset_index(), dropzeros=False,
                     link='log', family='Poisson')
-            except ValueError:
+            except:
                 print('!!!!!!')
                 print('{}: Skipped {}'.format(mouse, fac))
                 print('!!!!!!')
