@@ -11,6 +11,14 @@ from flow.misc import regression
 from . import calc
 from copy import deepcopy
 
+# default values (from mean of all model sigmas when allowing fitting)
+default_sigmas = {
+    'fixed_sigma':
+        np.array([0.098, 0.185, 0.185, 0.185, 0.0166, 0.1128, 0.0457]),
+    'fixed_sigma_day':
+        np.array([1.3003, 2.1746, 2.1746, 2.1746, 0.1195, 0.3035, 0.6393])
+                }
+
 
 def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
     kwargs_defaults = {
@@ -23,8 +31,8 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         'nan_thresh': 0.85,
         'score_threshold': 0.8,
         'rank_num': 15,
-        'fixed_sigma': None,
-        'fixed_sigma_day': None}
+        'fixed_sigma': default_sigmas['fixed_sigma'],
+        'fixed_sigma_day': default_sigmas['fixed_sigma_day']}
     if kwargs is None:
         kwargs = {}
     kwargs_defaults.update(kwargs)
@@ -42,7 +50,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
             verbose=verbose, **tuning_kwargs)
 
     # drop unused columns
-    filters_df = psy1.drop(columns=['orientation', 'dprime'])
+    filters_df = psy1.drop(columns=['orientation'])
 
     # z-score meta1 by day if you want a within day normalization
     meta1_z_byday = (
@@ -59,6 +67,13 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
     filters_df = filters_df.join(meta1['pre_speed'])
     filters_df = filters_df.join(meta1['pre_licks'])
     filters_df = filters_df.join(meta1_z_byday['pre_pupil'])
+
+    # add in plus, minus, neutral
+    cs_to_add = ['plus', 'minus', 'neutral']
+    for csi in cs_to_add:
+        cs_tuning_vec = np.zeros(len(filters_df))
+        cs_tuning_vec[meta1['condition'].isin([csi])] = 1
+        filters_df[csi] = cs_tuning_vec
 
     # z-score to get all filters on a similar scale
     zfilters_df = (
@@ -78,7 +93,8 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
                  'prev_choice_input'])
     cols.extend(['ori_270_th_prev', 'ori_135_th_prev',
                  'ori_0_th_prev'])
-    filters_1 = zfilters_df.loc[:, cols]
+    cols.extend(['plus', 'minus', 'neutral'])
+    filters_subset = zfilters_df.loc[:, cols]
 
     # fit GLM and a GLM dropping out each filter to test deviance explained
     models, model_fits, dev_exp_full_list = [], [], []
@@ -88,7 +104,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
     for fac_num in range(1, kwargs_defaults['rank_num']+1):
         # add your factor for fitting as the y variable
         fac = 'factor_' + str(fac_num)
-        sub_xy = filters_1.join(fac_df)
+        sub_xy = filters_subset.join(fac_df)
         # scale and round to make it Poisson-friendly
         sub_xy['y'] = deepcopy((sub_xy[fac]*100).apply(np.floor))
         # make sure you don't have any nans
@@ -96,10 +112,15 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         # original formula
         # formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + ori_270_th_prev + ori_135_th_prev + ori_0_th_prev + speed + pupil + anticipatory_licks'
         fac_tuning = tuning_df.loc[(mouse, fac_num), 'preferred_tuning']
+        fac_cs = tuning_df.loc[(mouse, fac_num), 'preferred_tuning_cs']
+        cs = ' {} +'.format(fac_cs)
         if fac_tuning == '0':
-            formula = 'y ~ ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + speed + pupil + anticipatory_licks'
+            formula = 'y ~ ori_0_input +{}'.format(' {} +'.format(fac_cs)) \
+             + ' prev_reward_input + prev_punish_input + prev_choice_input +' \
+             + ' speed + pupil + anticipatory_licks'
             drop_list = [
                 ' ori_0_input +',
+                ' {} +'.format(fac_cs),
                 ' prev_reward_input +',
                 ' prev_punish_input +',
                 ' prev_choice_input +',
@@ -107,9 +128,12 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
                 ' pupil +',
                 ' + anticipatory_licks']
         elif fac_tuning == '135':
-            formula = 'y ~ ori_135_input + prev_reward_input + prev_punish_input + prev_choice_input + speed + pupil + anticipatory_licks'
+            formula = 'y ~ ori_135_input +{}'.format(' {} +'.format(fac_cs)) \
+             + ' prev_reward_input + prev_punish_input + prev_choice_input +' \
+             + ' speed + pupil + anticipatory_licks'
             drop_list = [
                 ' ori_135_input +',
+                ' {} +'.format(fac_cs),
                 ' prev_reward_input +',
                 ' prev_punish_input +',
                 ' prev_choice_input +',
@@ -117,9 +141,12 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
                 ' pupil +',
                 ' + anticipatory_licks']
         elif fac_tuning == '270':
-            formula = 'y ~ ori_270_input + prev_reward_input + prev_punish_input + prev_choice_input + speed + pupil + anticipatory_licks'
+            formula = 'y ~ ori_270_input +{}'.format(' {} +'.format(fac_cs)) \
+             + ' prev_reward_input + prev_punish_input + prev_choice_input +' \
+             + ' speed + pupil + anticipatory_licks'
             drop_list = [
                 ' ori_270_input +',
+                ' {} +'.format(fac_cs),
                 ' prev_reward_input +',
                 ' prev_punish_input +',
                 ' prev_choice_input +',
@@ -127,11 +154,17 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
                 ' pupil +',
                 ' + anticipatory_licks']
         elif fac_tuning == 'broad':
-            formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + speed + pupil + anticipatory_licks'
+            formula = 'y ~ ori_270_input + ori_135_input + ori_0_input +' \
+             + ' plus + minus + neutral + prev_reward_input +' \
+             + ' prev_punish_input + prev_choice_input + speed + pupil +' \
+             + ' anticipatory_licks'
             drop_list = [
                 ' ori_270_input +',
                 ' ori_135_input +',
                 ' ori_0_input +',
+                ' {} +'.format('plus'),
+                ' {} +'.format('minus'),
+                ' {} +'.format('neutral'),
                 ' prev_reward_input +',
                 ' prev_punish_input +',
                 ' prev_choice_input +',
