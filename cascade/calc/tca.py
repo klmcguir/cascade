@@ -237,10 +237,9 @@ def trial_factor_tuning(
             tuning_cs.append('broad')
         else:
             tuning_cs.append(
-                str(
                     total_df['condition']
                     .loc[total_df['orientation'].isin([int(ti)]), :]
-                    .unique()))
+                    .unique())
 
     # save tuning into dict
     df_data['preferred_tuning'] = tuning
