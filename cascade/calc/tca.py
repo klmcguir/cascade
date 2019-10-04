@@ -12,7 +12,7 @@ from copy import deepcopy
 from .. import load, utils
 
 
-@memoize(across='mouse', updated=191002, returns='other', large_output=False)
+# @memoize(across='mouse', updated=191002, returns='other', large_output=False)
 def trial_factor_tuning(
         mouse,
         trace_type='zscore_day',
@@ -240,7 +240,7 @@ def trial_factor_tuning(
             tuning_cs.append(
                     learning_meta['condition']
                     .loc[learning_meta['orientation'].isin([int(ti)]), :]
-                    .unique())
+                    .unique()[0])
 
     # save tuning into dict
     df_data['preferred_tuning'] = tuning
