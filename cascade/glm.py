@@ -226,7 +226,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         try:
             model = regression.glm(
                 formula, sub_xy.reset_index(), dropzeros=False,
-                link='log', family='Poisson')
+                link='log', family='Poisson', verbose=False)
         except ValueError:
             print('!!!!!!')
             print('{}: Skipped {}'.format(mouse, fac))
@@ -255,7 +255,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
             try:
                 model = regression.glm(
                     drop_formula, sub_xy.reset_index(), dropzeros=False,
-                    link='log', family='Poisson')
+                    link='log', family='Poisson', verbose=False)
             except:
                 dev_explained_drop.append(np.nan)
                 delta_aic.append(np.nan)
@@ -489,7 +489,7 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
         try:
             model = regression.glm(
                 formula, sub_xy.reset_index(), dropzeros=False,
-                link='log', family='Poisson')
+                link='log', family='Poisson', verbose=False)
         except ValueError:
             print('!!!!!!')
             print('{}: Skipped {}'.format(mouse, fac))
@@ -518,7 +518,7 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
             try:
                 model = regression.glm(
                     drop_formula, sub_xy.reset_index(), dropzeros=False,
-                    link='log', family='Poisson')
+                    link='log', family='Poisson', verbose=False)
             except:
                 dev_explained_drop.append(np.nan)
                 delta_aic.append(np.nan)
