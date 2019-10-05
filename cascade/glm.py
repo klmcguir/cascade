@@ -239,11 +239,9 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         total_dev_exp = 1 - res.deviance/res.null_deviance
         total_aic = res.aic
         if verbose:
-            print('Component ' + str(fac_num))
+            print('{}: Component {}'.format(mouse, fac_num))
             print('    Total deviance explained: ',
                   1 - res.deviance/res.null_deviance)
-            print('')
-            print('')
 
         # get deviance explained per filter
         # add NaN for the internal intercept
@@ -502,11 +500,9 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
         total_dev_exp = 1 - res.deviance/res.null_deviance
         total_aic = res.aic
         if verbose:
-            print('Component ' + str(fac_num))
+            print('{}: Component {}'.format(mouse, fac_num))
             print('    Total deviance explained: ',
                   1 - res.deviance/res.null_deviance)
-            print('')
-            print('')
 
         # get deviance explained per filter
         # add NaN for the internal intercept
