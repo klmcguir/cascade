@@ -69,7 +69,7 @@ def get_bias(
 
         # dprime
         dp = pool.calc.performance.dprime(
-            flow.Date(mouse, date=day, exclude_tags=['bad']))
+            flow.Date(mouse, date=day))
         dprime_list.append(dp)
 
     FC_mean = np.nanmean(FC_ten[:, stim_window, :], axis=1)
@@ -143,7 +143,7 @@ def get_mean_response(
 
         # dprime
         dp = pool.calc.performance.dprime(
-            flow.Date(mouse, date=day, exclude_tags=['bad']))
+            flow.Date(mouse, date=day))
         dprime_list.append(dp)
 
     FC_mean = np.nanmean(FC_ten[:, stim_window, :], axis=1)
