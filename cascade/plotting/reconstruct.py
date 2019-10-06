@@ -16,8 +16,9 @@ def groupday_cell_trial_recon(
         word=None,
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=0.8,
         rectified=True,
-        rank=18,
+        rank=15,
         verbose=True):
     """
     Plot reconstruction for single cells TCA decomposition ensemble.
@@ -38,30 +39,37 @@ def groupday_cell_trial_recon(
 
     # if cells were removed with too many nan trials
     if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
+        load_tag = '_nantrial' + str(nan_thresh)
+        save_tag = ' nantrial ' + str(nan_thresh)
     else:
-        nt_tag = ''
+        load_tag = ''
+        save_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
 
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_group_decomp_' + str(trace_type) + '.npy')
     input_tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_group_tensor_' + str(trace_type) + '.npy')
     ids_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_group_ids_' + str(trace_type) + '.npy')
     meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_df_group_meta.pkl')
 
     # save dir
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    save_dir = os.path.join(save_dir, 'model reconstructions')
+    save_dir = os.path.join(save_dir, 'model reconstructions' + save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     date_dir = os.path.join(save_dir, str(group_by) + ' ' + method)
     if not os.path.isdir(date_dir): os.mkdir(date_dir)
@@ -216,9 +224,10 @@ def groupday_mean_trial_recon(
         word=None,
         group_by='all',
         nan_thresh=0.85,
+        score_threshold=0.8,
         rectified=True,
         sorted=True,
-        rank=18,
+        rank=15,
         verbose=True):
     """
     Plot reconstruction for whole groupday TCA decomposition ensemble.
@@ -237,37 +246,45 @@ def groupday_mean_trial_recon(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
-    # if cells were removed with too many nan trials
-    if nan_thresh:
-        nt_tag = '_nantrial' + str(nan_thresh)
-    else:
-        nt_tag = ''
     # if sorting using TCA cell factors
     if sorted:
         sort_tag = '_sorted'
     else:
         sort_tag = ''
 
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        load_tag = '_nantrial' + str(nan_thresh)
+        save_tag = ' nantrial ' + str(nan_thresh)
+    else:
+        load_tag = ''
+        save_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
+
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_group_decomp_' + str(trace_type) + '.npy')
     input_tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_group_tensor_' + str(trace_type) + '.npy')
     ids_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_group_ids_' + str(trace_type) + '.npy')
     meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
         + '_df_group_meta.pkl')
 
     # save dir
     save_dir = paths.tca_plots(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    save_dir = os.path.join(save_dir, 'model reconstructions')
+    save_dir = os.path.join(save_dir, 'model reconstructions' + save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     date_dir = os.path.join(save_dir, str(group_by) + ' ' + method)
     if not os.path.isdir(date_dir): os.mkdir(date_dir)
