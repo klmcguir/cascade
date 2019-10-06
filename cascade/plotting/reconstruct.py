@@ -37,7 +37,7 @@ def groupday_cell_trial_recon(
     """
 
     # use matplotlib plotting defaults
-    if poster:
+    if for_poster:
         poster_tag = '_poster'
         sns.set_context("poster")
     else:
@@ -251,7 +251,7 @@ def groupday_mean_trial_recon(
     """
 
     # use matplotlib plotting defaults
-    if poster:
+    if for_poster:
         poster_tag = '_poster'
         sns.set_context("poster")
     else:
