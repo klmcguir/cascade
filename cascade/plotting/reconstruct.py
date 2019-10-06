@@ -20,7 +20,8 @@ def groupday_cell_trial_recon(
         score_threshold=0.8,
         rectified=True,
         rank=15,
-        verbose=True):
+        verbose=True,
+        for_poster=False):
     """
     Plot reconstruction for single cells TCA decomposition ensemble.
 
@@ -35,6 +36,13 @@ def groupday_cell_trial_recon(
     Saves figures to .../analysis folder  .../qc
     """
 
+    # use matplotlib plotting defaults
+    if poster:
+        poster_tag = '_poster'
+        sns.set_context("poster")
+    else:
+        poster_tag = ''
+        mpl.rcParams.update(mpl.rcParamsDefault)
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
@@ -207,12 +215,9 @@ def groupday_cell_trial_recon(
                      + ' rank-' + str(rank) + ' TCA reconstruction')
         fig.savefig(os.path.join(date_dir, mouse + '_sort ' + str(ncell)
                     + '_cell' + str(ident)
-                    + '_rank' + str(rank) + '_TCArecon.png'),
+                    + '_rank' + str(rank) + '_TCArecon{}.png'.format(poster_tag)),
                     bbox_inches='tight')
-        fig.savefig(os.path.join(date_dir, mouse + '_sort ' + str(ncell)
-                    + '_cell' + str(ident)
-                    + '_rank' + str(rank) + '_TCArecon.eps'),
-                    bbox_inches='tight')
+
         plt.close('all')
 
 
@@ -229,7 +234,8 @@ def groupday_mean_trial_recon(
         rectified=True,
         sorted=True,
         rank=15,
-        verbose=True):
+        verbose=True,
+        for_poster=False):
     """
     Plot reconstruction for whole groupday TCA decomposition ensemble.
 
@@ -245,7 +251,12 @@ def groupday_mean_trial_recon(
     """
 
     # use matplotlib plotting defaults
-    mpl.rcParams.update(mpl.rcParamsDefault)
+    if poster:
+        poster_tag = '_poster'
+        sns.set_context("poster")
+    else:
+        poster_tag = ''
+        mpl.rcParams.update(mpl.rcParamsDefault)
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
@@ -418,10 +429,7 @@ def groupday_mean_trial_recon(
     fig.suptitle(mouse + ' mean across trials rank- ' + str(rank) +
                  ' TCA reconstruction')
     fig.savefig(os.path.join(date_dir, mouse + '_mean_rank' + str(rank)
-                + sort_tag + '_TCArecon.png'),
+                + sort_tag + '_TCArecon{}.png'.format(poster_tag)),
                 bbox_inches='tight')
-    sns.set_context("poster")
-    fig.savefig(os.path.join(date_dir, mouse + '_mean_rank' + str(rank)
-                + sort_tag + '_TCArecon_poster.png'),
-                bbox_inches='tight')
+
     plt.close('all')
