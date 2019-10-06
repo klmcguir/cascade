@@ -475,6 +475,10 @@ def build_tensor(
                         print('ERROR: cs called - "' + cs + '" - is not\
                               a valid option.')
 
+                # skip if you had no trials of interest on this run
+                if len(dfr) == 0:
+                    continue
+
                 # subselect metadata to remove certain conditions
                 if len(exclude_conds) > 0:
                     run_traces = run_traces[:, :, (~dfr['condition'].isin(exclude_conds))]
