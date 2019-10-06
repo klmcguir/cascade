@@ -200,6 +200,10 @@ def groupday_cell_trial_recon(
                     + '_cell' + str(ident)
                     + '_rank' + str(rank) + '_TCArecon.png'),
                     bbox_inches='tight')
+        fig.savefig(os.path.join(date_dir, mouse + '_sort ' + str(ncell)
+                    + '_cell' + str(ident)
+                    + '_rank' + str(rank) + '_TCArecon.eps'),
+                    bbox_inches='tight')
         plt.close('all')
 
 
@@ -394,5 +398,8 @@ def groupday_mean_trial_recon(
                  ' TCA reconstruction')
     fig.savefig(os.path.join(date_dir, mouse + '_mean_rank' + str(rank)
                 + sort_tag + '_TCArecon.png'),
+                bbox_inches='tight')
+    fig.savefig(os.path.join(date_dir, mouse + '_mean_rank' + str(rank)
+                + sort_tag + '_TCArecon.eps'),
                 bbox_inches='tight')
     plt.close('all')
