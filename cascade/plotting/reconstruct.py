@@ -243,6 +243,9 @@ def groupday_mean_trial_recon(
     Saves figures to .../analysis folder  .../qc
     """
 
+    # use matplotlib plotting defaults
+    mpl.rcParams.update(mpl.rcParamsDefault)
+
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
@@ -416,7 +419,8 @@ def groupday_mean_trial_recon(
     fig.savefig(os.path.join(date_dir, mouse + '_mean_rank' + str(rank)
                 + sort_tag + '_TCArecon.png'),
                 bbox_inches='tight')
+    sns.set_context("poster")
     fig.savefig(os.path.join(date_dir, mouse + '_mean_rank' + str(rank)
-                + sort_tag + '_TCArecon.eps'),
+                + sort_tag + '_TCArecon_poster.png'),
                 bbox_inches='tight')
     plt.close('all')
