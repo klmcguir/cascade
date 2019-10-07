@@ -402,6 +402,7 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
     delta_aic_full_list, sub_aic_full_list = [], []
     total_aic_full_list = []
     total_dev_full_list = []
+    fac_list = []
     for fac_num in range(1, kwargs_defaults['rank_num']+1):
         # add your factor for fitting as the y variable
         fac = 'factor_' + str(fac_num)
@@ -536,12 +537,13 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
         delta_aic_full_list.extend(delta_aic)
         total_aic_full_list.extend([total_aic]*len(delta_aic))
         total_dev_full_list.extend([total_dev_exp]*len(delta_aic))
+        fac_list.append(fac_num)
 
     # aggregate all of your fit results
     df_list = []
-    for c, mod in enumerate(model_fits):
+    for c, mod in zip(fac_list, model_fits):
         mod_df = mod.summary2().tables[1]
-        mod_df['component'] = [c + 1]*len(mod_df)
+        mod_df['component'] = [c]*len(mod_df)
         mod_df['x'] = mod_df.index
         df_list.append(mod_df)
     all_model_df = pd.concat(df_list, axis=0)
