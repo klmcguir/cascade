@@ -366,8 +366,9 @@ def build_tensor(
         use_dprime = False
         if mouse == 'OA27':
             exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
-                            'retinotopy', 'sated', 'learning_start',
-                            'reversal1_start', 'reversal2_start')
+                            'retinotopy', 'sated')
+                            #'learning_start',
+                            #'reversal1_start', 'reversal2_start')
         else:
             exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                             'retinotopy', 'sated')
