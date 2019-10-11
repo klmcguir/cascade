@@ -729,7 +729,10 @@ def hierclus_on_trials_learning_stages(
         cluster_number=8,
         cluster_method='ward',
         expected_size_colors=0.5,
-        auto_drop=True):
+        auto_drop=True,
+
+        # save params
+        filetype='png'):
 
     """
     Cluster weights from your trial factors and hierarchically cluster using
@@ -988,12 +991,22 @@ def hierclus_on_trials_learning_stages(
     # plot
     plt.close('all')
 
+    # parse save params
+    if filetype.lower() == 'png' or filetype.lower() == '.png':
+        suf = '.png'
+    elif filetype.lower() == 'pdf' or filetype.lower() == '.pdf':
+        suf = '.pdf'
+    elif filetype.lower() == 'eps' or filetype.lower() == '.eps':
+        suf = '.eps'
+    else:
+        print('File-type not recognized: {}'.format(filetype))
+
     fig1 = clustermap(
         clustering_df, row_colors=color_df, figsize=(13, 13),
         xticklabels=True, yticklabels=True, col_cluster=True,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method)
     fig1.savefig(
-        var_path_prefix + '_trialfac.png', bbox_inches='tight')
+        var_path_prefix + '_trialfac{}'.format(suf), bbox_inches='tight')
 
     fig2 = clustermap(
         t_df.iloc[row_sorter, :], row_colors=color_df.iloc[row_sorter, :],
@@ -1001,14 +1014,14 @@ def hierclus_on_trials_learning_stages(
         col_cluster=False, row_cluster=False, expected_size_colors=0.5,
         method='ward')
     fig2.savefig(
-        var_path_prefix + '_tempofac.png', bbox_inches='tight')
+        var_path_prefix + '_tempofac{}'.format(suf), bbox_inches='tight')
 
     fig3 = clustermap(
         t_df, row_colors=color_df, figsize=(13, 13),
         xticklabels=False, yticklabels=True, col_cluster=False,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method)
     fig3.savefig(
-        var_path_prefix + '_tempofac_sort.png', bbox_inches='tight')
+        var_path_prefix + '_tempofac_sort{}'.format(suf), bbox_inches='tight')
 
     fig4 = clustermap(
         clustering_df2.iloc[row_sorter, :], figsize=(13, 13),
@@ -1016,7 +1029,7 @@ def hierclus_on_trials_learning_stages(
         xticklabels=True, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method)
     fig4.savefig(
-        var_path_prefix + '_5ptstages.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages{}'.format(suf), bbox_inches='tight')
 
     col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
     ori_col_df = clustering_df2.iloc[row_sorter, :]
@@ -1027,7 +1040,7 @@ def hierclus_on_trials_learning_stages(
         xticklabels=True, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method)
     fig5.savefig(
-        var_path_prefix + '_5ptstages_oricolsort.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages_oricolsort{}'.format(suf), bbox_inches='tight')
 
     fig6 = clustermap(
         clustering_df3.iloc[row_sorter, :], figsize=(13, 13),
@@ -1036,7 +1049,7 @@ def hierclus_on_trials_learning_stages(
         row_cluster=False, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
     fig6.savefig(
-        var_path_prefix + '_5ptstages_amp.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages_amp{}'.format(suf), bbox_inches='tight')
 
     col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
     ori_col_df = clustering_df3.iloc[row_sorter, :]
@@ -1048,7 +1061,7 @@ def hierclus_on_trials_learning_stages(
         row_cluster=False, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
     fig7.savefig(
-        var_path_prefix + '_5ptstages_amp_oricolsort.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages_amp_oricolsort{}'.format(suf), bbox_inches='tight')
 
     fig8 = clustermap(
         clustering_df3.iloc[row_sorter, :], figsize=(13, 13),
@@ -1057,7 +1070,7 @@ def hierclus_on_trials_learning_stages(
         row_cluster=True, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
     fig8.savefig(
-        var_path_prefix + '_5ptstages_ampclus.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages_ampclus{}'.format(suf), bbox_inches='tight')
 
 
 def hierclus_on_amp_trials_learning_stages(
@@ -1079,7 +1092,10 @@ def hierclus_on_amp_trials_learning_stages(
         cluster_number=8,
         cluster_method='ward',
         expected_size_colors=0.5,
-        auto_drop=True):
+        auto_drop=True,
+
+        # save params
+        filetype='png'):
 
     """
     Cluster weights from your trial factors and hierarchically cluster using
@@ -1350,13 +1366,23 @@ def hierclus_on_amp_trials_learning_stages(
     # plot
     plt.close('all')
 
+    # parse save params
+    if filetype.lower() == 'png' or filetype.lower() == '.png':
+        suf = '.png'
+    elif filetype.lower() == 'pdf' or filetype.lower() == '.pdf':
+        suf = '.pdf'
+    elif filetype.lower() == 'eps' or filetype.lower() == '.eps':
+        suf = '.eps'
+    else:
+        print('File-type not recognized: {}'.format(filetype))
+
     fig1 = clustermap(
         clustering_df4, row_colors=color_df, figsize=(13, 13),
         xticklabels=True, yticklabels=True, col_cluster=False,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
     fig1.savefig(
-        var_path_prefix + '_trialfac.png', bbox_inches='tight')
+        var_path_prefix + '_trialfac{}'.format(suf), bbox_inches='tight')
 
     fig2 = clustermap(
         t_df.iloc[row_sorter, :], row_colors=color_df.iloc[row_sorter, :],
@@ -1364,14 +1390,14 @@ def hierclus_on_amp_trials_learning_stages(
         col_cluster=False, row_cluster=False, expected_size_colors=0.5,
         method='ward')
     fig2.savefig(
-        var_path_prefix + '_tempofac.png', bbox_inches='tight')
+        var_path_prefix + '_tempofac{}'.format(suf), bbox_inches='tight')
 
     fig3 = clustermap(
         t_df, row_colors=color_df, figsize=(13, 13),
         xticklabels=False, yticklabels=True, col_cluster=False,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method)
     fig3.savefig(
-        var_path_prefix + '_tempofac_sort.png', bbox_inches='tight')
+        var_path_prefix + '_tempofac_sort{}'.format(suf), bbox_inches='tight')
 
     fig4 = clustermap(
         clustering_df2.iloc[row_sorter, :], figsize=(13, 13),
@@ -1379,7 +1405,7 @@ def hierclus_on_amp_trials_learning_stages(
         xticklabels=True, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method)
     fig4.savefig(
-        var_path_prefix + '_5ptstages.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages{}'.format(suf), bbox_inches='tight')
 
     col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
     ori_col_df = clustering_df2.iloc[row_sorter, :]
@@ -1390,7 +1416,7 @@ def hierclus_on_amp_trials_learning_stages(
         xticklabels=True, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method)
     fig5.savefig(
-        var_path_prefix + '_5ptstages_oricolsort.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages_oricolsort{}'.format(suf), bbox_inches='tight')
 
     fig6 = clustermap(
         clustering_df3.iloc[row_sorter, :], figsize=(13, 13),
@@ -1399,7 +1425,7 @@ def hierclus_on_amp_trials_learning_stages(
         row_cluster=False, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
     fig6.savefig(
-        var_path_prefix + '_5ptstages_amp.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages_amp{}'.format(suf), bbox_inches='tight')
 
     col_sorter = [0, 1, 2, 8, 9, 5, 6, 7, 13, 14, 10, 11, 12, 3, 4]
     ori_col_df = clustering_df3.iloc[row_sorter, :]
@@ -1411,7 +1437,7 @@ def hierclus_on_amp_trials_learning_stages(
         row_cluster=False, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
     fig7.savefig(
-        var_path_prefix + '_5ptstages_amp_oricolsort.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages_amp_oricolsort{}'.format(suf), bbox_inches='tight')
 
     fig8 = clustermap(
         clustering_df3.iloc[row_sorter, :], figsize=(13, 13),
@@ -1420,7 +1446,7 @@ def hierclus_on_amp_trials_learning_stages(
         row_cluster=True, expected_size_colors=0.5, method=cluster_method,
         standard_scale=0)
     fig8.savefig(
-        var_path_prefix + '_5ptstages_ampclus.png', bbox_inches='tight')
+        var_path_prefix + '_5ptstages_ampclus{}'.format(suf), bbox_inches='tight')
 
 
 def hierclus_simple_on_trials_learning_stages(
