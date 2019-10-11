@@ -1252,7 +1252,8 @@ def hierclus_on_amp_trials_learning_stages(
              'minus_amp_high_dp_rev1']]
 
     # cluster to get cluster color labels for each component
-    g = sns.clustermap(clustering_df3, method=cluster_method, standard_scale=0)
+    std_rows = None
+    g = sns.clustermap(clustering_df3, method=cluster_method, standard_scale=std_rows)
     row_sorter = g.dendrogram_row.reordered_ind
     clusters = hierarchy.fcluster(
         g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
@@ -1380,7 +1381,7 @@ def hierclus_on_amp_trials_learning_stages(
         clustering_df4, row_colors=color_df, figsize=(13, 13),
         xticklabels=True, yticklabels=True, col_cluster=False,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method,
-        standard_scale=0)
+        standard_scale=std_rows)
     fig1.savefig(
         var_path_prefix + '_trialfac{}'.format(suf), bbox_inches='tight')
 
@@ -1423,7 +1424,7 @@ def hierclus_on_amp_trials_learning_stages(
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
         xticklabels=True, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method,
-        standard_scale=0)
+        standard_scale=std_rows)
     fig6.savefig(
         var_path_prefix + '_5ptstages_amp{}'.format(suf), bbox_inches='tight')
 
@@ -1435,7 +1436,7 @@ def hierclus_on_amp_trials_learning_stages(
         col_colors=[col_colors[s] for s in col_sorter],
         xticklabels=True, yticklabels=True, col_cluster=False,
         row_cluster=False, expected_size_colors=0.5, method=cluster_method,
-        standard_scale=0)
+        standard_scale=std_rows)
     fig7.savefig(
         var_path_prefix + '_5ptstages_amp_oricolsort{}'.format(suf), bbox_inches='tight')
 
@@ -1444,7 +1445,7 @@ def hierclus_on_amp_trials_learning_stages(
         row_colors=color_df.iloc[row_sorter, :], col_colors=col_colors,
         xticklabels=True, yticklabels=True, col_cluster=False,
         row_cluster=True, expected_size_colors=0.5, method=cluster_method,
-        standard_scale=0)
+        standard_scale=std_rows)
     fig8.savefig(
         var_path_prefix + '_5ptstages_ampclus{}'.format(suf), bbox_inches='tight')
 
