@@ -1252,7 +1252,7 @@ def hierclus_on_amp_trials_learning_stages(
              'minus_amp_high_dp_rev1']]
 
     # cluster to get cluster color labels for each component
-    g = sns.clustermap(clustering_df4, method=cluster_method, standard_scale=0)
+    g = sns.clustermap(clustering_df3, method=cluster_method, standard_scale=0)
     row_sorter = g.dendrogram_row.reordered_ind
     clusters = hierarchy.fcluster(
         g.dendrogram_row.linkage, cluster_number, criterion='maxclust')
