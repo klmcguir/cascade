@@ -718,15 +718,15 @@ def hierclus_on_trials_learning_stages(
         method='mncp_hals',
         cs='',
         warp=False,
-        words=['orlando', 'already', 'already', 'already', 'already'],
+        words=['restaurant', 'whale', 'whale', 'whale', 'whale'],
         group_by='all',
         nan_thresh=0.85,
-        score_threshold=None,
+        score_threshold=0.8,
         speed_thresh=5,
 
         # clustering/plotting params
-        rank_num=18,
-        cluster_number=7,
+        rank_num=15,
+        cluster_number=8,
         cluster_method='ward',
         expected_size_colors=0.5,
         auto_drop=True):
@@ -1068,15 +1068,15 @@ def hierclus_on_amp_trials_learning_stages(
         method='mncp_hals',
         cs='',
         warp=False,
-        words=['orlando', 'already', 'already', 'already', 'already'],
+        words=['restaurant', 'whale', 'whale', 'whale', 'whale'],
         group_by='all',
         nan_thresh=0.85,
-        score_threshold=None,
+        score_threshold=0.8,
         speed_thresh=5,
 
         # clustering/plotting params
-        rank_num=18,
-        cluster_number=7,
+        rank_num=15,
+        cluster_number=8,
         cluster_method='ward',
         expected_size_colors=0.5,
         auto_drop=True):
