@@ -1684,27 +1684,27 @@ def hierclus_simple_on_trials_learning_stages(
 
     # create colormap for variance explained by each component (as a fraction
     # of the total variance explained
-    mouse_list = clustering_df.reset_index().loc[:, 'mouse'].unique()
-    var_list = []
-    for mouse in mouse_list:
-        word = words[np.where(np.isin(mice, mouse))[0][0]]
-        var_df = calc.var.groupday_varex_bycomp(
-            flow.Mouse(mouse=mouse), word=word)
-        var_df = var_df.loc[(var_df['rank'] == rank_num), :]
-        scalar = var_df.sum()['variance_explained_tcamodel']
-        var_df = var_df['variance_explained_tcamodel'] / scalar
-        var_list.append(var_df)
-    print(var_list)
-    varex = pd.concat(var_list, axis=0)
-    bins = list(np.arange(0, 0.2, 0.01))
-    bins.append(np.inf)
-    varex_color_options = sns.cubehelix_palette(
-        len(bins)-1, start=.5, rot=-.75, reverse=True)
-    binned_varex = pd.cut(varex, bins, labels=range(0, len(bins)-1))
-    varex_color_dict = {k: v for k, v in zip(np.unique(binned_varex),
-                                             varex_color_options)}
-    varex_colors = [varex_color_dict[m] if ~np.isnan(m) else
-                    [.5, .5, .5, 1.] for m in binned_varex]
+    # mouse_list = clustering_df.reset_index().loc[:, 'mouse'].unique()
+    # var_list = []
+    # for mouse in mouse_list:
+    #     word = words[np.where(np.isin(mice, mouse))[0][0]]
+    #     var_df = calc.var.groupday_varex_bycomp(
+    #         flow.Mouse(mouse=mouse), word=word)
+    #     var_df = var_df.loc[(var_df['rank'] == rank_num), :]
+    #     scalar = var_df.sum()['variance_explained_tcamodel']
+    #     var_df = var_df['variance_explained_tcamodel'] / scalar
+    #     var_list.append(var_df)
+    # print(var_list)
+    # varex = pd.concat(var_list, axis=0)
+    # bins = list(np.arange(0, 0.2, 0.01))
+    # bins.append(np.inf)
+    # varex_color_options = sns.cubehelix_palette(
+    #     len(bins)-1, start=.5, rot=-.75, reverse=True)
+    # binned_varex = pd.cut(varex, bins, labels=range(0, len(bins)-1))
+    # varex_color_dict = {k: v for k, v in zip(np.unique(binned_varex),
+    #                                          varex_color_options)}
+    # varex_colors = [varex_color_dict[m] if ~np.isnan(m) else
+    #                 [.5, .5, .5, 1.] for m in binned_varex]
 
     # colors for columns learning stages
     col_colors = []
