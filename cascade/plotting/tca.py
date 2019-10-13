@@ -578,8 +578,9 @@ def groupday_longform_factors_annotated(
                         y_ticks = ax[i, 2].get_yticks()
                         y_ticks[-1] = ystd3
                         y_ticks = np.round(y_ticks, 2)
+                        y_ticks = yticks[yticks >= 0]
                         # y_tickl = [str(y) for y in y_ticks]
-                        ax[i, 2].set_ylim(ystd3)
+                        ax[i, 2].set_ylim([0, ystd3])
                         ax[i, 2].set_yticks(y_ticks)
                         ax[i, 2].set_yticklabels(y_ticks)
                         pdb
