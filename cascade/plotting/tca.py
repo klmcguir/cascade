@@ -245,6 +245,7 @@ def groupday_longform_factors_annotated(
         alpha=0.6,
         plot_running=True,
         filetype='png',
+        scale_y=False,
         verbose=False):
 
     """
@@ -296,6 +297,10 @@ def groupday_longform_factors_annotated(
     if score_threshold:
         load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
         save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
+
+    # update saving tag if you used a cell score threshold
+    if scale_y:
+        save_tag = ' scaley' + save_tag
 
     # load dir
     load_dir = paths.tca_path(
@@ -407,7 +412,15 @@ def groupday_longform_factors_annotated(
             for i in range(rows):
 
                 # get axis values
-                y_lim = [0, np.nanmax(U.factors[2][:, comp])]
+                if scale_y:
+                    ystd3 = np.nanstd(U.factors[2][:, comp])*3
+                    ymax = np.nanmax(U.factors[2][:, comp])
+                    if ystd3 < ymax:
+                        y_lim = [0, ystd3]
+                    else:
+                        y_lim = [0, ymax]
+                else:
+                    y_lim = [0, np.nanmax(U.factors[2][:, comp])]
 
                 # running
                 if plot_running:
@@ -556,6 +569,19 @@ def groupday_longform_factors_annotated(
 
                 # despine plots to look like sns defaults
                 sns.despine()
+
+                # rescale the y-axis for trial factors if you
+                if scale_y:
+                    ystd3 = np.nanstd(U.factors[2][:, comp])*3
+                    ymax = np.nanmax(U.factors[2][:, comp])
+                    if ystd3 < ymax:
+                        y_ticks = ax[i, 2].get_yticks()
+                        y_ticks[-1] = ystd3
+                        y_ticks = np.round(y_ticks, 2)
+                        # y_tickl = [str(y) for y in y_ticks]
+                        ax[i, 2].set_ylim(ystd3)
+                        ax[i, 2].set_yticks(y_ticks)
+                        ax[i, 2].set_yticklabels(y_ticks)
 
             # save
             if filetype.lower() == 'pdf':
