@@ -412,15 +412,16 @@ def groupday_longform_factors_annotated(
             for i in range(rows):
 
                 # get axis values
-                if scale_y:
-                    ystd3 = np.nanstd(U.factors[2][:, comp])*3
-                    ymax = np.nanmax(U.factors[2][:, comp])
-                    if ystd3 < ymax:
-                        y_lim = [0, ystd3]
+                if i == 1:
+                    if scale_y:
+                        ystd3 = np.nanstd(U.factors[2][:, comp])*3
+                        ymax = np.nanmax(U.factors[2][:, comp])
+                        if ystd3 < ymax:
+                            y_lim = [0, ystd3]
+                        else:
+                            y_lim = [0, ymax]
                     else:
-                        y_lim = [0, ymax]
-                else:
-                    y_lim = [0, np.nanmax(U.factors[2][:, comp])]
+                        y_lim = [0, np.nanmax(U.factors[2][:, comp])]
 
                 # running
                 if plot_running:
@@ -571,16 +572,23 @@ def groupday_longform_factors_annotated(
                 sns.despine()
 
                 # rescale the y-axis for trial factors if you
-                if scale_y:
+                if i == 1 and scale_y:
                     ystd3 = np.nanstd(U.factors[2][:, comp])*3
                     ymax = np.nanmax(U.factors[2][:, comp])
+                if scale_y:
                     if ystd3 < ymax:
-                        y_ticks = ax[i, 2].get_yticks()
-                        y_ticks[-1] = ystd3
-                        y_ticks = np.round(y_ticks, 2)
-                        y_ticks = y_ticks[y_ticks >= 0]
+                        # y_ticks = ax[i, 2].get_yticks()
+                        # y_ticks[-1] = ystd3
+                        # y_ticks = np.round(y_ticks, 2)
+                        # y_ticks = y_ticks[y_ticks >= 0]
                         # y_tickl = [str(y) for y in y_ticks]
+                        y_ticks = np.round([0, ystd3/2, ystd], 2)
                         ax[i, 2].set_ylim([0, ystd3])
+                        ax[i, 2].set_yticks(y_ticks)
+                        ax[i, 2].set_yticklabels(y_ticks)
+                    else:
+                        y_ticks = np.round([0, ymax/2, ymax], 2)
+                        ax[i, 2].set_ylim([0, ymax])
                         ax[i, 2].set_yticks(y_ticks)
                         ax[i, 2].set_yticklabels(y_ticks)
 
