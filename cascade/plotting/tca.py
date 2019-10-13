@@ -578,11 +578,6 @@ def groupday_longform_factors_annotated(
                     ymax = np.nanmax(U.factors[2][:, comp])
                 if scale_y:
                     if ystd3 < ymax:
-                        # y_ticks = ax[i, 2].get_yticks()
-                        # y_ticks[-1] = ystd3
-                        # y_ticks = np.round(y_ticks, 2)
-                        # y_ticks = y_ticks[y_ticks >= 0]
-                        # y_tickl = [str(y) for y in y_ticks]
                         y_ticks = np.round([0, ystd3/2, ystd3], 2)
                         ax[i, 2].set_ylim([0, ystd3])
                         ax[i, 2].set_yticks(y_ticks)
