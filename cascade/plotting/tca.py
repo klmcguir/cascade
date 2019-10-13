@@ -412,7 +412,7 @@ def groupday_longform_factors_annotated(
             for i in range(rows):
 
                 # get axis values
-                if i == 1:
+                if i == 0:
                     if scale_y:
                         ystd3 = np.nanstd(U.factors[2][:, comp])*3
                         ymax = np.nanmax(U.factors[2][:, comp])
@@ -572,7 +572,7 @@ def groupday_longform_factors_annotated(
                 sns.despine()
 
                 # rescale the y-axis for trial factors if you
-                if i == 1 and scale_y:
+                if i == 0 and scale_y:
                     ystd3 = np.nanstd(U.factors[2][:, comp])*3
                     ymax = np.nanmax(U.factors[2][:, comp])
                 if scale_y:
