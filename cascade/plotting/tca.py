@@ -582,6 +582,7 @@ def groupday_longform_factors_annotated(
                         ax[i, 2].set_ylim(ystd3)
                         ax[i, 2].set_yticks(y_ticks)
                         ax[i, 2].set_yticklabels(y_ticks)
+                        pdb
 
             # save
             if filetype.lower() == 'pdf':
