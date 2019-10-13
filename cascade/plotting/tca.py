@@ -413,7 +413,7 @@ def groupday_longform_factors_annotated(
 
                 # get axis values
                 if i == 0:
-                    y_sc_factor = 2
+                    y_sc_factor = 4
                     if scale_y:
                         ystd3 = np.nanstd(U.factors[2][:, comp])*y_sc_factor
                         ymax = np.nanmax(U.factors[2][:, comp])
