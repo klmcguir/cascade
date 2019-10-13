@@ -413,8 +413,9 @@ def groupday_longform_factors_annotated(
 
                 # get axis values
                 if i == 0:
+                    y_sc_factor = 2
                     if scale_y:
-                        ystd3 = np.nanstd(U.factors[2][:, comp])*3
+                        ystd3 = np.nanstd(U.factors[2][:, comp])*y_sc_factor
                         ymax = np.nanmax(U.factors[2][:, comp])
                         if ystd3 < ymax:
                             y_lim = [0, ystd3]
@@ -548,7 +549,7 @@ def groupday_longform_factors_annotated(
 
                 # plot days, reversal, or learning lines if there are any
                 if col >= 1:
-                    y_lim = ax[i, col].get_ylim()
+                    # y_lim = ax[i, col].get_ylim()
                     if len(day_x) > 0:
                         for k in day_x:
                             ax[i, col].plot(
@@ -573,7 +574,7 @@ def groupday_longform_factors_annotated(
 
                 # rescale the y-axis for trial factors if you
                 if i == 0 and scale_y:
-                    ystd3 = np.nanstd(U.factors[2][:, comp])*3
+                    ystd3 = np.nanstd(U.factors[2][:, comp])*y_sc_factor
                     ymax = np.nanmax(U.factors[2][:, comp])
                 if scale_y:
                     if ystd3 < ymax:
