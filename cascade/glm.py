@@ -156,14 +156,6 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
     total_dev_full_list = []
     fac_list = []
     for fac_num in range(1, kwargs_defaults['rank_num']+1):
-        # add your factor for fitting as the y variable
-        fac = 'factor_' + str(fac_num)
-        sub_xy = filters_subset.join(fac_df)
-        # scale and round to make it Poisson-friendly
-        sub_xy['y'] = deepcopy((sub_xy[fac]*100).apply(np.floor))
-        # make sure you don't have any nans
-        sub_xy = sub_xy.replace([np.inf, -np.inf], np.nan).dropna()
-        sub_xy = sub_xy.reset_index()
         # original formula
         fac_tuning = tuning_df.loc[(mouse, fac_num), 'preferred_tuning']
         fac_cs = tuning_df.loc[(mouse, fac_num), 'preferred_tuning_cs']
@@ -225,6 +217,13 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
                 ' pupil +',
                 ' + anticipatory_licks']
 
+        # add your factor for fitting as the y variable
+        fac = 'factor_' + str(fac_num)
+        sub_xy = filters_subset.join(fac_df)
+        # scale and round to make it Poisson-friendly
+        sub_xy['y'] = deepcopy((sub_xy[fac]*100).apply(np.floor))
+        sub_xy = sub_xy.reset_index()
+
         # if a filter is totally empty remove it from the formula and the drop
         for col in sub_xy.columns:
             total_nan = np.sum(sub_xy[col].isna().values)
@@ -234,6 +233,9 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
                 drop_list = [s for s in drop_list if col not in s]
                 if verbose:
                     print('{}: dropped column/filter: {}'.format(mouse, col))
+
+        # make sure you don't have any nans
+        sub_xy = sub_xy.replace([np.inf, -np.inf], np.nan).dropna()
 
         try:
             model = regression.glm(
@@ -417,14 +419,7 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
     total_dev_full_list = []
     fac_list = []
     for fac_num in range(1, kwargs_defaults['rank_num']+1):
-        # add your factor for fitting as the y variable
-        fac = 'factor_' + str(fac_num)
-        sub_xy = filters_subset.join(fac_df)
-        # scale and round to make it Poisson-friendly
-        sub_xy['y'] = deepcopy((sub_xy[fac]*100).apply(np.floor))
-        # make sure you don't have any nans
-        sub_xy = sub_xy.replace([np.inf, -np.inf], np.nan).dropna()
-        sub_xy = sub_xy.reset_index()
+
         # get your tuning (ori), cs, or trialerror vectors for each factor
         fac_tuning = tuning_df.loc[(mouse, fac_num), 'preferred_tuning']
         fac_cs = tuning_df.loc[(mouse, fac_num), 'preferred_tuning_cs']
@@ -506,6 +501,13 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
                 ' pupil +',
                 ' + anticipatory_licks']
 
+        # add your factor for fitting as the y variable
+        fac = 'factor_' + str(fac_num)
+        sub_xy = filters_subset.join(fac_df)
+        # scale and round to make it Poisson-friendly
+        sub_xy['y'] = deepcopy((sub_xy[fac]*100).apply(np.floor))
+        sub_xy = sub_xy.reset_index()
+
         # if a filter is totally empty remove it from the formula and the drop
         for col in sub_xy.columns:
             total_nan = np.sum(sub_xy[col].isna().values)
@@ -515,6 +517,9 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
                 drop_list = [s for s in drop_list if col not in s]
                 if verbose:
                     print('{}: dropped column/filter: {}'.format(mouse, col))
+
+        # make sure you don't have any nans
+        sub_xy = sub_xy.replace([np.inf, -np.inf], np.nan).dropna()
 
         try:
             model = regression.glm(
