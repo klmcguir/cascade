@@ -443,7 +443,8 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
              + ' speed + pupil + anticipatory_licks'
             drop_list = [
                 ' ori_0_input +',
-                ' {} + {} +'.format(te_pair[0], te_pair[1]),
+                ' {} +'.format(te_pair[0]),
+                ' {} +'.format(te_pair[1]),
                 ' prev_reward_input +',
                 ' prev_punish_input +',
                 ' prev_choice_input +',
@@ -457,7 +458,8 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
              + ' speed + pupil + anticipatory_licks'
             drop_list = [
                 ' ori_135_input +',
-                ' {} + {} +'.format(te_pair[0], te_pair[1]),
+                ' {} +'.format(te_pair[0]),
+                ' {} +'.format(te_pair[1]),
                 ' prev_reward_input +',
                 ' prev_punish_input +',
                 ' prev_choice_input +',
@@ -471,7 +473,8 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
              + ' speed + pupil + anticipatory_licks'
             drop_list = [
                 ' ori_270_input +',
-                ' {} + {} +'.format(te_pair[0], te_pair[1]),
+                ' {} +'.format(te_pair[0]),
+                ' {} +'.format(te_pair[1]),
                 ' prev_reward_input +',
                 ' prev_punish_input +',
                 ' prev_choice_input +',
@@ -490,9 +493,12 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
                 ' ori_270_input +',
                 ' ori_135_input +',
                 ' ori_0_input +',
-                ' {} + {} +'.format('hit', 'miss'),
-                ' {} + {} +'.format('neutral_CR', 'neutral_FA'),
-                ' {} + {} +'.format('minus_CR', 'minus_FA'),
+                ' {} +'.format('hit'),
+                ' {} +'.format('neutral_CR'),
+                ' {} +'.format('minus_CR'),
+                ' {} +'.format('miss'),
+                ' {} +'.format('neutral_FA'),
+                ' {} +'.format('minus_FA'),
                 ' prev_reward_input +',
                 ' prev_punish_input +',
                 ' prev_choice_input +',
