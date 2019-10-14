@@ -287,6 +287,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         delta_aic_full_list.extend(delta_aic)
         total_aic_full_list.extend([total_aic]*len(delta_aic))
         total_dev_full_list.extend([total_dev_exp]*len(delta_aic))
+        fac_list.append(fac_num)
 
     # aggregate all of your fit results
     df_list = []
