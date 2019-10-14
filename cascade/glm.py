@@ -227,7 +227,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
 
         # if a filter is totally empty remove it from the formula and the drop
         for col in sub_xy.columns:
-            total_nan = np.sum(np.isnan(sub_xy[col].values))
+            total_nan = np.sum(sub_xy[col].isna().values)
             total_vals = len(sub_xy[col].values)
             if total_nan == total_vals:
                 sub_xy = sub_xy.drop(columns=[col])
@@ -501,7 +501,7 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
 
         # if a filter is totally empty remove it from the formula and the drop
         for col in sub_xy.columns:
-            total_nan = np.sum(np.isnan(sub_xy[col].values))
+            total_nan = np.sum(sub_xy[col].isna().values)
             total_vals = len(sub_xy[col].values)
             if total_nan == total_vals:
                 sub_xy = sub_xy.drop(columns=[col])
