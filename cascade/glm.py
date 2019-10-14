@@ -163,8 +163,8 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
         sub_xy['y'] = deepcopy((sub_xy[fac]*100).apply(np.floor))
         # make sure you don't have any nans
         sub_xy = sub_xy.replace([np.inf, -np.inf], np.nan).dropna()
+        sub_xy = sub_xy.reset_index()
         # original formula
-        # formula = 'y ~ ori_270_input + ori_135_input + ori_0_input + prev_reward_input + prev_punish_input + prev_choice_input + ori_270_th_prev + ori_135_th_prev + ori_0_th_prev + speed + pupil + anticipatory_licks'
         fac_tuning = tuning_df.loc[(mouse, fac_num), 'preferred_tuning']
         fac_cs = tuning_df.loc[(mouse, fac_num), 'preferred_tuning_cs']
         if fac_tuning == '0':
@@ -224,9 +224,18 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
                 ' speed +',
                 ' pupil +',
                 ' + anticipatory_licks']
+
+        # if a filter is totally empty remove it from the formula and the drop
+        pdb
+        for col in sub_xy.columns:
+            total_nan = np.sum(np.isnan(sub_xy[col].values))
+            total_vals = len(sub_xy[col].values)
+            if total_nan == total_vals:
+                sub_xy = sub_xy.drop(columns=[col])
+                drop_list = [s for s in drop_list if col not in s]
         try:
             model = regression.glm(
-                formula, sub_xy.reset_index(), dropzeros=False,
+                formula, sub_xy, dropzeros=False,
                 link='log', family='Poisson', verbose=False)
         except ValueError:
             print('!!!!!!')
@@ -253,7 +262,7 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
             drop_formula = formula.replace(dl, '')
             try:
                 model = regression.glm(
-                    drop_formula, sub_xy.reset_index(), dropzeros=False,
+                    drop_formula, sub_xy, dropzeros=False,
                     link='log', family='Poisson', verbose=False)
             except:
                 dev_explained_drop.append(np.nan)
@@ -412,6 +421,7 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
         sub_xy['y'] = deepcopy((sub_xy[fac]*100).apply(np.floor))
         # make sure you don't have any nans
         sub_xy = sub_xy.replace([np.inf, -np.inf], np.nan).dropna()
+        sub_xy = sub_xy.reset_index()
         # get your tuning (ori), cs, or trialerror vectors for each factor
         fac_tuning = tuning_df.loc[(mouse, fac_num), 'preferred_tuning']
         fac_cs = tuning_df.loc[(mouse, fac_num), 'preferred_tuning_cs']
@@ -488,7 +498,7 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
                 ' + anticipatory_licks']
         try:
             model = regression.glm(
-                formula, sub_xy.reset_index(), dropzeros=False,
+                formula, sub_xy, dropzeros=False,
                 link='log', family='Poisson', verbose=False)
         except ValueError:
             print('!!!!!!')
@@ -515,7 +525,7 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
             drop_formula = formula.replace(dl, '')
             try:
                 model = regression.glm(
-                    drop_formula, sub_xy.reset_index(), dropzeros=False,
+                    drop_formula, sub_xy, dropzeros=False,
                     link='log', family='Poisson', verbose=False)
             except:
                 dev_explained_drop.append(np.nan)
