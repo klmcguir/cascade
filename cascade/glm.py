@@ -230,8 +230,8 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
             total_vals = len(sub_xy[col].values)
             if total_nan == total_vals:
                 sub_xy = sub_xy.drop(columns=[col])
-                drop_list = [s for s in drop_list if col not in s]
                 formula = formula.replace([s for s in drop_list if col in s][0], '')
+                drop_list = [s for s in drop_list if col not in s]
                 if verbose:
                     print('{}: dropped column/filter: {}'.format(mouse, col))
 
