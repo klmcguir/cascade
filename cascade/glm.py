@@ -226,13 +226,15 @@ def fit_trial_factors_poisson(mouse, verbose=True, **kwargs):
                 ' + anticipatory_licks']
 
         # if a filter is totally empty remove it from the formula and the drop
-        pdb
         for col in sub_xy.columns:
             total_nan = np.sum(np.isnan(sub_xy[col].values))
             total_vals = len(sub_xy[col].values)
             if total_nan == total_vals:
                 sub_xy = sub_xy.drop(columns=[col])
                 drop_list = [s for s in drop_list if col not in s]
+                if verbose:
+                    print('{}: dropped column/filter: {}'.format(mouse, col))
+
         try:
             model = regression.glm(
                 formula, sub_xy, dropzeros=False,
@@ -496,6 +498,17 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
                 ' speed +',
                 ' pupil +',
                 ' + anticipatory_licks']
+
+        # if a filter is totally empty remove it from the formula and the drop
+        for col in sub_xy.columns:
+            total_nan = np.sum(np.isnan(sub_xy[col].values))
+            total_vals = len(sub_xy[col].values)
+            if total_nan == total_vals:
+                sub_xy = sub_xy.drop(columns=[col])
+                drop_list = [s for s in drop_list if col not in s]
+                if verbose:
+                    print('{}: dropped column/filter: {}'.format(mouse, col))
+
         try:
             model = regression.glm(
                 formula, sub_xy, dropzeros=False,
