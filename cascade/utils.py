@@ -579,7 +579,7 @@ def build_tensor(
             for run in d1_runs:
                 t2p = run.trace2p()
                 # trigger all trials around stimulus onsets
-                run_traces = utils.getcstraces(
+                run_traces = getcstraces(
                     run, cs=cs, trace_type=trace_type,
                     start_time=start_time, end_time=end_time,
                     downsample=True, clean_artifacts=clean_artifacts,
