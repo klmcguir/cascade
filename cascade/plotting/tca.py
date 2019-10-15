@@ -439,7 +439,7 @@ def groupday_longform_factors_annotated(
                     # color_vals = [[0.28, 0.68, 0.93, alpha],
                     #               [0.84, 0.12, 0.13, alpha],
                     #               [0.46, 0.85, 0.47, alpha]]
-                    color_vals = sns.color_palette('husl', 3)
+                    color_vals = sns.color_palette('BuPu', 3)
                     for k in range(0, 3):
                         ax[i, col].plot(
                             trial_num[orientation == ori_vals[k]],
