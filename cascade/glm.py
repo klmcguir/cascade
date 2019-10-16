@@ -995,6 +995,7 @@ def fit_trial_factors_poisson_hitmiss_v3(mouse, verbose=True, **kwargs):
     cols.extend(['plus', 'minus', 'neutral'])
     cols.extend(['hit', 'miss', 'neutral_CR', 'neutral_FA',
                  'minus_CR', 'minus_FA'])
+    cols.extend(['dprime'])
     filters_subset = zfilters_df.loc[:, cols]
 
     # fit GLM and a GLM dropping out each filter to test deviance explained
@@ -1062,15 +1063,16 @@ def fit_trial_factors_poisson_hitmiss_v3(mouse, verbose=True, **kwargs):
         #         ' + anticipatory_licks']
         # elif fac_tuning == 'broad':
         formula = 'y ~ ori_270_input + ori_135_input + ori_0_input +' \
-         + ' hit +' \
-         + ' neutral_CR +' \
-         + ' minus_CR +' \
-         + ' miss +' \
-         + ' neutral_FA +' \
-         + ' minus_FA +' \
-         + ' prev_reward_input +' \
-         + ' prev_punish_input + prev_choice_input + speed + pupil +' \
-         + ' anticipatory_licks'
+             + ' hit +' \
+             + ' neutral_CR +' \
+             + ' minus_CR +' \
+             + ' prev_reward_input +' \
+             + ' prev_punish_input + prev_choice_input + speed + pupil +' \
+             + ' anticipatory_licks +' \
+             + ' dprime'
+             # + ' miss +' \
+             # + ' neutral_FA +' \
+             # + ' minus_FA +' \
         drop_list = [
             ' ori_270_input +',
             ' ori_135_input +',
@@ -1078,15 +1080,16 @@ def fit_trial_factors_poisson_hitmiss_v3(mouse, verbose=True, **kwargs):
             ' {} +'.format('hit'),
             ' {} +'.format('neutral_CR'),
             ' {} +'.format('minus_CR'),
-            ' {} +'.format('miss'),
-            ' {} +'.format('neutral_FA'),
-            ' {} +'.format('minus_FA'),
+            # ' {} +'.format('miss'),
+            # ' {} +'.format('neutral_FA'),
+            # ' {} +'.format('minus_FA'),
             ' prev_reward_input +',
             ' prev_punish_input +',
             ' prev_choice_input +',
             ' speed +',
             ' pupil +',
-            ' + anticipatory_licks']
+            ' anticipatory_licks +',
+            ' + dprime']
 
         # add your factor for fitting as the y variable
         fac = 'factor_' + str(fac_num)
