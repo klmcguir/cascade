@@ -902,7 +902,7 @@ def fit_trial_factors_poisson_hitmiss_v2(mouse, verbose=True, **kwargs):
     return all_model_df
 
 
-def fit_trial_factors_poisson_hitmiss_v2(mouse, verbose=True, **kwargs):
+def fit_trial_factors_poisson_hitmiss_v3(mouse, verbose=True, **kwargs):
     kwargs_defaults = {
         'trace_type': 'zscore_day',
         'method': 'mncp_hals',
