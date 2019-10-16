@@ -25,6 +25,7 @@ def groupmouse_fit_poisson(
         words=None,
         hitmiss=False,
         hitmiss_v2=False,
+        hitmiss_v3=False,
         verbose=True, **kwargs):
     """
     Create a pandas dataframe of GLM results fit across mice.
