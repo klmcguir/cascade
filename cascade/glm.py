@@ -1061,7 +1061,7 @@ def fit_trial_factors_poisson_hitmiss_v3(mouse, verbose=True, **kwargs):
         #         ' pupil +',
         #         ' + anticipatory_licks']
         # elif fac_tuning == 'broad':
-        formula = 'y ~' \
+        formula = 'y ~ ori_270_input + ori_135_input + ori_0_input +' \
          + ' hit +' \
          + ' neutral_CR +' \
          + ' minus_CR +' \
@@ -1072,6 +1072,9 @@ def fit_trial_factors_poisson_hitmiss_v3(mouse, verbose=True, **kwargs):
          + ' prev_punish_input + prev_choice_input + speed + pupil +' \
          + ' anticipatory_licks'
         drop_list = [
+            ' ori_270_input +',
+            ' ori_135_input +',
+            ' ori_0_input +',
             ' {} +'.format('hit'),
             ' {} +'.format('neutral_CR'),
             ' {} +'.format('minus_CR'),
