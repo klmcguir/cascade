@@ -434,13 +434,14 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
 
         if fac_tuning == '0':
             formula = 'y ~ ori_0_input +' \
-             + ' {} + {} +'.format(te_pair[0], te_pair[1]) \
+             + ' {} +'.format(te_pair[0]) \
+             # + ' {} +'.format(te_pair[1]) \
              + ' prev_reward_input + prev_punish_input + prev_choice_input +' \
              + ' speed + pupil + anticipatory_licks'
             drop_list = [
                 ' ori_0_input +',
                 ' {} +'.format(te_pair[0]),
-                ' {} +'.format(te_pair[1]),
+                # ' {} +'.format(te_pair[1]),
                 ' prev_reward_input +',
                 ' prev_punish_input +',
                 ' prev_choice_input +',
@@ -449,13 +450,14 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
                 ' + anticipatory_licks']
         elif fac_tuning == '135':
             formula = 'y ~ ori_135_input +' \
-             + ' {} + {} +'.format(te_pair[0], te_pair[1]) \
+             + ' {} +'.format(te_pair[0]) \
+             # + ' {} +'.format(te_pair[1]) \
              + ' prev_reward_input + prev_punish_input + prev_choice_input +' \
              + ' speed + pupil + anticipatory_licks'
             drop_list = [
                 ' ori_135_input +',
                 ' {} +'.format(te_pair[0]),
-                ' {} +'.format(te_pair[1]),
+                # ' {} +'.format(te_pair[1]),
                 ' prev_reward_input +',
                 ' prev_punish_input +',
                 ' prev_choice_input +',
@@ -464,13 +466,14 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
                 ' + anticipatory_licks']
         elif fac_tuning == '270':
             formula = 'y ~ ori_270_input +' \
-             + ' {} + {} +'.format(te_pair[0], te_pair[1]) \
+             + ' {} +'.format(te_pair[0]) \
+             # + ' {} +'.format(te_pair[1]) \
              + ' prev_reward_input + prev_punish_input + prev_choice_input +' \
              + ' speed + pupil + anticipatory_licks'
             drop_list = [
                 ' ori_270_input +',
                 ' {} +'.format(te_pair[0]),
-                ' {} +'.format(te_pair[1]),
+                # ' {} +'.format(te_pair[1]),
                 ' prev_reward_input +',
                 ' prev_punish_input +',
                 ' prev_choice_input +',
@@ -479,9 +482,12 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
                 ' + anticipatory_licks']
         elif fac_tuning == 'broad':
             formula = 'y ~ ori_270_input + ori_135_input + ori_0_input +' \
-             + ' hit + miss +' \
-             + ' neutral_CR + neutral_FA +' \
-             + ' minus_CR + minus_FA +' \
+             + ' hit +' \
+             # + ' miss +' \
+             + ' neutral_CR +' \
+             # + ' neutral_FA +' \
+             + ' minus_CR +' \
+             # + ' minus_FA +' \
              + ' prev_reward_input +' \
              + ' prev_punish_input + prev_choice_input + speed + pupil +' \
              + ' anticipatory_licks'
@@ -492,9 +498,9 @@ def fit_trial_factors_poisson_hitmiss(mouse, verbose=True, **kwargs):
                 ' {} +'.format('hit'),
                 ' {} +'.format('neutral_CR'),
                 ' {} +'.format('minus_CR'),
-                ' {} +'.format('miss'),
-                ' {} +'.format('neutral_FA'),
-                ' {} +'.format('minus_FA'),
+                # ' {} +'.format('miss'),
+                # ' {} +'.format('neutral_FA'),
+                # ' {} +'.format('minus_FA'),
                 ' prev_reward_input +',
                 ' prev_punish_input +',
                 ' prev_choice_input +',
