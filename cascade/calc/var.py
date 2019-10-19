@@ -71,7 +71,7 @@ def groupday_varex_drop_worst_comp(
     # only check the best iteration of TCA (usually runs 3)
     it = 0
     for r in V.results:
-        UX_clus = clusters[r]
+        UX_clus = V_clusters[r]
         clus_nums = np.unique(UX_clus)
         bad_clus = clus_nums[
                     np.argmax([np.sum(UX_clus == s) for s in clus_nums])]
