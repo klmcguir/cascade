@@ -11,6 +11,134 @@ from copy import deepcopy
 
 
 @memoize(across='mouse', updated=190805, returns='other', large_output=True)
+def groupday_varex_drop_worst_comp(
+        mouse,
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        word=None,
+        group_by='all',
+        nan_thresh=0.85,
+        score_threshold=None,
+        rectified=True,
+        verbose=False):
+    """
+    Plot reconstruction error as variance explained across all whole groupday
+    TCA decomposition ensemble.
+
+    Parameters:
+    -----------
+    mouse : str; mouse object
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../qc
+    """
+
+    mouse = mouse.mouse
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # load your data
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+    V, _, V_clusters = load.groupday_tca_model(
+                **load_kwargs, unsorted=False, full_output=True)
+    _, V_sorts = load.groupday_tca_model(
+                **load_kwargs, unsorted=True)
+    X = load.groupday_tca_input_tensor(
+                **load_kwargs)
+
+    # rectify input tensor (only look at nonnegative variance)
+    if rectified:
+        X[X < 0] = 0
+
+    # get reconstruction error as variance explained
+    # create vectors for dataframe
+    varex_wdrop = []
+    varex = []
+    rank = []
+    iteration = []
+    # only check the best iteration of TCA (usually runs 3)
+    it = 0
+    for r in V.results:
+        UX_clus = clusters[r]
+        clus_nums = np.unique(UX_clus)
+        bad_clus = clus_nums[
+                    np.argmax([np.sum(UX_clus == s) for s in clus_nums])]
+        if r == 1:  # there is only on cluster, don't drop
+            keep_vec = UX_clus == bad_clus
+        else:
+            keep_vec = UX_clus != bad_clus
+        U = V.results[r][it].factors.full()
+        U_drop = V.results[r][it].factors.full()[keep_vec, :, :]
+        X_drop = X[V_sorts[r-1], :, :][keep_vec, :, :]
+        varex_wdrop.append(1 - (bn.nanvar(X_drop - U_drop)/bn.nanvar(X_drop)))
+        varex.append(1 - (bn.nanvar(X - U)/bn.nanvar(X)))
+        rank.append(r)
+        iteration.append(it)
+
+    # mean response of neuron across trials
+    mU = np.nanmean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
+    varex_mu = 1 - (bn.nanvar(X - mU)/bn.nanvar(X))
+
+    # smoothed response of neuron across time
+    sm_window = 5  # This should always be odd or there will be a frame shift
+    assert sm_window % 2 == 1
+    sm_shift = int(np.floor((sm_window - 1)/2) + sm_window*2)
+    pad = np.zeros((np.shape(X)[0], sm_window*2, np.shape(X)[2]))
+    smU_in = np.concatenate((pad, X, pad), axis=1)
+    smU = bn.move_mean(smU_in, 5, axis=1)
+    smU = smU[:, sm_shift:(np.shape(X)[1] + sm_shift), :]
+    varex_smu = 1 - (bn.nanvar(X - smU)/bn.nanvar(X))
+
+    # calculate trial concatenated PCA reconstruction of data, this is
+    # the upper bound of performance we could expect
+    if verbose:
+        print('Calculating trial concatenated PCA control: ' + mouse)
+    iX = deepcopy(X)
+    iX[np.isnan(iX)] = bn.nanmean(iX[:])  # impute empties w/ mean of data
+    sz = np.shape(iX)
+    iX = iX.reshape(sz[0], sz[1]*sz[2])
+    mu = bn.nanmean(iX, axis=0)
+    catPCA = PCA()
+    catPCA.fit(iX)
+    nComp = len(V.results)
+    Xhat = np.dot(catPCA.transform(iX)[:, :nComp],
+                  catPCA.components_[:nComp, :])
+    Xhat += mu
+    varex_PCA = [1 - (bn.nanvar(X.reshape(sz[0], sz[1]*sz[2]) - Xhat)
+                 / bn.nanvar(X.reshape(sz[0], sz[1]*sz[2])))][0]
+
+    # make dataframe of data
+    # create your index out of relevant variables
+    index = pd.MultiIndex.from_arrays(
+        [[mouse]*len(varex)],
+        names=['mouse'])
+
+    data = {'rank': rank,
+            'iteration':  iteration,
+            'variance_explained_tcamodel': varex,
+            'variance_explained_dropping_worst_comp': varex_wdrop,
+            'variance_explained_smoothmodel': [varex_smu]*len(rank),
+            'variance_explained_meanmodel': [varex_mu]*len(rank),
+            'variance_explained_PCA': [varex_PCA]*len(rank)}
+
+    dfvar = pd.DataFrame(data, index=index)
+
+    return dfvar
+
+
+@memoize(across='mouse', updated=190805, returns='other', large_output=True)
 def groupday_varex(
         mouse,
         trace_type='zscore_day',
