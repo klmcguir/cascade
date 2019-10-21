@@ -216,14 +216,14 @@ def groupmouse_varex_summary(
         R = np.max([r for r in V.results.keys()])
         ax.scatter(x_s, var_s, color=cmap[c*2], alpha=0.5)
         ax.scatter(x_drop, var_drop, color=cmap[c*2+1], alpha=0.5)
-        ax.scatter([R+2], var_mean, color=cmap[c], alpha=0.5)
+        ax.scatter([R+2], var_mean, color=cmap[c*2], alpha=0.5)
         # ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
-        ax.scatter([R+4], var_PCA, color=cmap[c], alpha=0.5)
+        ax.scatter([R+4], var_PCA, color=cmap[c*2], alpha=0.5)
         ax.plot(x0, var0, label=('mouse ' + mouse), color=cmap[c*2])
         ax.plot(x_drop, var_drop, label=(r'$mouse_-$ ' + mouse), color=cmap[c*2+1])
-        ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c])
+        ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c*2])
         # ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
-        ax.plot([R+3.5, R+4.5], [var_PCA, var_PCA], color=cmap[c])
+        ax.plot([R+3.5, R+4.5], [var_PCA, var_PCA], color=cmap[c*2])
 
     # add labels/titles
     x_labels = [str(R) for R in V.results]
