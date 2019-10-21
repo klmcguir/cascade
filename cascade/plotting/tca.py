@@ -98,8 +98,8 @@ def groupmouse_varex_summary(
         method='mncp_hals',
         cs='',
         warp=False,
-        words=['tray', 'obligations', 'obligations', 'obligations',
-               'obligations', 'obligations', 'obligations', 'obligations'],
+        words=['restaurant', 'whale', 'whale', 'whale',
+               'whale', 'whale', 'whale', 'whale'],
         group_by='all',
         nan_thresh=0.85,
         score_threshold=0.8,
@@ -217,19 +217,19 @@ def groupmouse_varex_summary(
         ax.scatter(x_s, var_s, color=cmap[c*2], alpha=0.5)
         ax.scatter(x_drop, var_drop, color=cmap[c*2+1], alpha=0.5)
         ax.scatter([R+2], var_mean, color=cmap[c], alpha=0.5)
-        ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
-        ax.scatter([R+6], var_PCA, color=cmap[c], alpha=0.5)
+        # ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
+        ax.scatter([R+4], var_PCA, color=cmap[c], alpha=0.5)
         ax.plot(x0, var0, label=('mouse ' + mouse), color=cmap[c*2])
-        ax.plot(x_drop, var_drop, label=(r'$mouse^-$ ' + mouse), color=cmap[c*2+1])
+        ax.plot(x_drop, var_drop, label=(r'$mouse_-$ ' + mouse), color=cmap[c*2+1])
         ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c])
-        ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
-        ax.plot([R+5.5, R+6.5], [var_PCA, var_PCA], color=cmap[c])
+        # ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
+        ax.plot([R+3.5, R+4.5], [var_PCA, var_PCA], color=cmap[c])
 
     # add labels/titles
     x_labels = [str(R) for R in V.results]
     x_labels.extend(
         ['', 'mean\ncell\nresponse',
-         '', 'smooth\nresponse\n(0.3s)',
+         # '', 'smooth\nresponse\n(0.3s)',
          '', 'PCA$_{20}$'])
     ax.set_xticks(range(1, len(V.results) + 7))
     ax.set_xticklabels(x_labels)
@@ -1136,19 +1136,19 @@ def groupday_varex_summary(
     ax.scatter(x_s, var_s, color=cmap[c*2], alpha=0.5)
     ax.scatter(x_drop, var_drop, color=cmap[c*2+1], alpha=0.5)
     ax.scatter([R+2], var_mean, color=cmap[c], alpha=0.5)
-    ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
-    ax.scatter([R+6], var_PCA, color=cmap[c], alpha=0.5)
+    # ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
+    ax.scatter([R+4], var_PCA, color=cmap[c], alpha=0.5)
     ax.plot(x0, var0, label=('mouse ' + mouse), color=cmap[c*2])
-    ax.plot(x_drop, var_drop, label=(r'$mouse^-$ ' + mouse), color=cmap[c*2+1])
+    ax.plot(x_drop, var_drop, label=(r'$mouse_-$ ' + mouse), color=cmap[c*2+1])
     ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c])
-    ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
-    ax.plot([R+5.5, R+6.5], [var_PCA, var_PCA], color=cmap[c])
+    # ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
+    ax.plot([R+3.5, R+4.5], [var_PCA, var_PCA], color=cmap[c])
 
     # add labels/titles
     x_labels = [str(R) for R in V.results]
     x_labels.extend(
         ['', 'mean\ncell\nresponse',
-         '', 'smooth\nresponse\n(0.3s)',
+         # '', 'smooth\nresponse\n(0.3s)',
          '', 'PCA$_{20}$'])
     ax.set_xticks(range(1, len(V.results) + 7))
     ax.set_xticklabels(x_labels)
