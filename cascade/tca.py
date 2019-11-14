@@ -1365,11 +1365,6 @@ def groupday_tca(
     else:
         nt_tag = ''
 
-    # just so you have a clue how big the tensor is
-    if verbose:
-        print('Tensor decomp about to begin: tensor shape = '
-              + str(np.shape(group_tensor)))
-
     # optionally remove stimulus correlations for each cell
     if remove_stim_corr:
         group_tensor = _remove_stimulus_corr(group_tensor, meta)
@@ -1378,6 +1373,11 @@ def groupday_tca(
     # to define a three pt temporal trace
     if three_pt_tf:
         group_tensor = _three_point_temporal_trace(group_tensor, meta)
+
+    # just so you have a clue how big the tensor is
+    if verbose:
+        print('Tensor decomp about to begin: tensor shape = '
+              + str(np.shape(group_tensor)))
 
     # concatenate and save df for the day
     meta_path = os.path.join(
@@ -1414,11 +1414,46 @@ def groupday_tca(
     if verbose:
         print(str(day1.mouse) + ': group_by=' + str(group_by) + ': done.')
 
+
 def _remove_stimulus_corr(tensor, metadata):
     """
-    Remove stimulus correlations from individual cells by averaging 
-    across shuffle of all cells.
+    Remove stimulus correlations from individual cells by taking average for 
+    each CS and GO/NOGO combo and subtracting that from each corresponding
+    set of trials. This will remove stimulus correlations (and a lot of motor
+    differences which I don't love), but will also deal with the changing 
+    proportion of GO/NOGO trials per day and force the differences in TCA
+    components to focus less on motor differences. 
+
+    This may also remove some of the slower changes in amplitude for cells.
+
+    Currently this treats reversal days pre and post separately 
     """
+
+    # preallocate
+    new_tensor = np.empty(tensor.shape)
+    new_tensor[:] = np.nan
+
+    # take averages for CS, GO/NOGO combos per day and subtract from 
+    # corresponding trials
+    for n_day in metadata.reset_index()['date'].unique():
+        day_bool = metadata.reset_index()['date'].isin([n_day]).values
+        for n_ori in metadata['orientation'].unique():
+            ori_bool = metadata['orientation'].isin([n_ori]).values
+            for n_te in metadata['trialerror'].unique():
+                te_bool = metadata['trialerror'].isin([n_te]).values
+                total_bool = te_bool & ori_bool & day_bool
+
+                # if there are no trials of a given type skip
+                if len(np.sum(total_bool)) == 0:
+                    continue
+
+                # subtract mean trace from each cell
+                new_tensor[:, :, total_bool] = (
+                    tensor[:, :, total_bool] -
+                    np.nanmean(tensor[:, :, total_bool], axis=2))
+
+    return new_tensor
+
 
 def _three_point_temporal_trace(tensor, metadata):
     """
