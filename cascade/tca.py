@@ -1430,13 +1430,13 @@ def _three_point_temporal_trace(tensor, metadata):
     sample_rate = 15.5
     mouse = metadata.reset_index()['mouse'].unique()
     if mouse in ['OA32', 'OA34', 'OA36' ]:
-        stim_start = np.floor(sample_rate)
-        stim_end = np.floor((2+1)*sample_rate)
-        resp_end = np.floor((2+2+1)*sample_rate)
+        stim_start = int(np.floor(sample_rate))
+        stim_end = int(np.floor((2+1)*sample_rate))
+        resp_end = int(np.floor((2+2+1)*sample_rate))
     elif mouse in ['OA27', 'OA26', 'OA67', 'VF226', 'CC175']:
-        stim_start = np.floor(sample_rate)
-        stim_end = np.floor((3+1)*sample_rate)
-        resp_end = np.floor((2+3+1)*sample_rate)
+        stim_start = int(np.floor(sample_rate))
+        stim_end = int(np.floor((3+1)*sample_rate))
+        resp_end = int(np.floor((2+3+1)*sample_rate))
     else:
         print('Whose mouse is this!?')
 
@@ -1446,7 +1446,7 @@ def _three_point_temporal_trace(tensor, metadata):
 
     # baseline mean
     new_tensor[:, 0, :] = np.nanmean(
-        tensor[:, stim_start, :], axis=1)
+        tensor[:, :stim_start, :], axis=1)
 
     # stimulus mean
     new_tensor[:, 1, :] = np.nanmean(
