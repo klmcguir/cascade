@@ -1444,7 +1444,7 @@ def _remove_stimulus_corr(tensor, metadata):
                 total_bool = te_bool & ori_bool & day_bool
 
                 # if there are no trials of a given type skip
-                if len(np.sum(total_bool)) == 0:
+                if np.sum(total_bool) == 0:
                     continue
 
                 # subtract mean trace from each cell
