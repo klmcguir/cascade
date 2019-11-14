@@ -1450,7 +1450,7 @@ def _remove_stimulus_corr(tensor, metadata):
                 # subtract mean trace from each cell
                 new_tensor[:, :, total_bool] = (
                     tensor[:, :, total_bool] -
-                    np.nanmean(tensor[:, :, total_bool], axis=2))
+                    np.nanmean(tensor[:, :, total_bool], axis=2)[:,:,None])
 
     return new_tensor
 
