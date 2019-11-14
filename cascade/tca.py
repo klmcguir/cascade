@@ -992,7 +992,9 @@ def groupday_tca(
         score_threshold=0.8,
 
         # other params
-        update_meta=False):
+        update_meta=False,
+        three_pt_tf=False,
+        remove_stim_corr=False):
 
     """
     Perform tensor component analysis (TCA) on data aligned
@@ -1133,6 +1135,17 @@ def groupday_tca(
             exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                             'retinotopy', 'sated')
 
+     elif group_by.lower() == 'all2':
+        tags = None
+        use_dprime = False
+        if mouse == 'OA27':
+            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                            'retinotopy', 'sated', 'learning_start',
+                            'reversal1_start', 'reversal2_start', 'reversal2')
+        else:
+            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                            'retinotopy', 'sated', 'reversal2_start', 'reversal2')
+
 
     else:
         print('Using input parameters without modification by group_by=...')
@@ -1149,6 +1162,10 @@ def groupday_tca(
             'exclude_tags': exclude_tags, 'exclude_conds': exclude_conds,
             'driven': driven, 'drive_css': drive_css,
             'drive_threshold': drive_threshold}
+    if three_pt_tf:
+        pars['three_pt_trace'] = True
+    if remove_stim_corr:
+        pars['removed_stim_corr'] = True
     group_pars = {'group_by': group_by, 'up_or_down': up_or_down,
                   'use_dprime': use_dprime,
                   'dprime_threshold': dprime_threshold}
@@ -1353,6 +1370,15 @@ def groupday_tca(
         print('Tensor decomp about to begin: tensor shape = '
               + str(np.shape(group_tensor)))
 
+    # optionally remove stimulus correlations for each cell
+    if remove_stim_corr:
+        group_tensor = _remove_stimulus_corr(group_tensor, meta)
+
+    # optionally use the average across the baseline, stim, and post stim avg
+    # to define a three pt temporal trace
+    if three_pt_tf:
+        group_tensor = _three_point_temporal_trace(group_tensor, meta)
+
     # concatenate and save df for the day
     meta_path = os.path.join(
         save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag +
@@ -1387,6 +1413,51 @@ def groupday_tca(
     # print output so you don't go crazy waiting
     if verbose:
         print(str(day1.mouse) + ': group_by=' + str(group_by) + ': done.')
+
+def _remove_stimulus_corr(tensor, metadata):
+    """
+    Remove stimulus correlations from individual cells by averaging 
+    across shuffle of all cells.
+    """
+
+def _three_point_temporal_trace(tensor, metadata):
+    """
+    Take average of baseline period, average of stimulus period, and
+    average of response period to make a three point temporal trace
+    """
+
+    # set useful variables
+    sample_rate = 15.5
+    mouse = metadata.reset_index()['mouse'].unique()
+    if mouse in ['OA32', 'OA34', 'OA36' ]:
+        stim_start = np.floor(sample_rate)
+        stim_end = np.floor((2+1)*sample_rate)
+        resp_end = np.floor((2+2+1)*sample_rate)
+    elif mouse in ['OA27', 'OA26', 'OA67', 'VF226', 'CC175']:
+        stim_start = np.floor(sample_rate)
+        stim_end = np.floor((3+1)*sample_rate)
+        resp_end = np.floor((2+3+1)*sample_rate)
+    else:
+        print('Whose mouse is this!?')
+
+    # preallocate
+    new_tensor = np.empty(tensor.shape[0], 3, tensor.shape[2])
+    new_tensor[:] = np.nan
+
+    # baseline mean
+    new_tensor[:, 0, :] = np.nanmean(
+        tensor[:, stim_start, :], axis=1)
+
+    # stimulus mean
+    new_tensor[:, 1, :] = np.nanmean(
+        tensor[:, stim_start:stim_end, :], axis=1)
+
+    # baseline mean
+    new_tensor[:, 2, :] = np.nanmean(
+        tensor[:, stim_end:resp_end, :], axis=1)
+
+    return new_tensor
+
 
 
 def _group_drive_ids(days, drive_css, drive_threshold, drive_type='trial'):
