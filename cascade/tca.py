@@ -1135,7 +1135,7 @@ def groupday_tca(
             exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                             'retinotopy', 'sated')
 
-     elif group_by.lower() == 'all2':
+    elif group_by.lower() == 'all2':
         tags = None
         use_dprime = False
         if mouse == 'OA27':
