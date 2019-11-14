@@ -1441,7 +1441,7 @@ def _three_point_temporal_trace(tensor, metadata):
         print('Whose mouse is this!?')
 
     # preallocate
-    new_tensor = np.empty(tensor.shape[0], 3, tensor.shape[2])
+    new_tensor = np.empty((tensor.shape[0], 3, tensor.shape[2]))
     new_tensor[:] = np.nan
 
     # baseline mean
