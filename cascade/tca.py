@@ -1407,7 +1407,7 @@ def groupday_tca(
             ensemble[m] = tt.Ensemble(
                 fit_method=m, fit_options=deepcopy(fit_options))
             ensemble[m].fit(group_tensor, ranks=range(1, rank+1),
-                            replicates=replicates, verbose=False)
+                            replicates=replicates, verbose=verbose)
         np.save(output_tensor_path, ensemble)
 
     # print output so you don't go crazy waiting
