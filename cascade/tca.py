@@ -1398,9 +1398,16 @@ def groupday_tca(
 
     # run TCA - iterate over different fitting methods
     if not update_meta:  # only run full TCA when not updating metadata
-        if np.isin('mcp_als', method) | np.isin('mncp_hals', method):
+        if np.isin('mcp_als', method) | \
+           np.isin('mncp_hals', method) | \
+           np.isin('ncp_hals', method):
             mask = ~np.isnan(group_tensor)
-            fit_options['mask'] = mask
+            # allow for normal ncp_hals to run with no mask if the tensor
+            # has no empties
+            if np.sum(mask.flatten()) == len(mask.flatten()):
+                fit_options['mask'] = None
+            else:
+                fit_options['mask'] = mask
         group_tensor[np.isnan(group_tensor)] = 0
         ensemble = {}
         for m in method:
