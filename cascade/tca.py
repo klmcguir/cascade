@@ -1,5 +1,5 @@
 """Functions for running tensor component analysis (TCA)."""
-import tensortools as tt
+import tensortools_old as tt
 import numpy as np
 import flow
 from flow.misc import wordhash
