@@ -144,7 +144,8 @@ def getcstraces(
         warp=False,
         smooth=True,
         smooth_win=6,
-        smooth_win_dec=3):
+        smooth_win_dec=3,
+        exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy', 'sated')):
     """
     Wrapper function for flow.Trace2P.cstraces() or .warpsctraces().
     Adds in artifact removal, and multiple types of z-score calc.
@@ -219,14 +220,18 @@ def getcstraces(
         if 'zscore' in trace_type.lower():
             arti = False if clean_artifacts is None else True
             if 'zscore_day' in trace_type.lower():
-                mu = pool.calc.zscore.mu(date, nan_artifacts=arti,
+                mu = pool.calc.zscore.mu(date, exclude_tags=exclude_tags, nan_artifacts=arti,
                                          thresh=thresh)
-                sigma = pool.calc.zscore.sigma(date, nan_artifacts=arti,
+                sigma = pool.calc.zscore.sigma(date, exclude_tags=exclude_tags,
+                                               nan_artifacts=arti,
                                                thresh=thresh)
             elif 'zscore_iti' in trace_type.lower():
-                mu = pool.calc.zscore.iti_mu(date, window=4,
+                mu = pool.calc.zscore.iti_mu(date, exclude_tags=exclude_tags,
+                                             window=4,
                                              nan_artifacts=arti, thresh=thresh)
-                sigma = pool.calc.zscore.iti_sigma(date, window=4,
+                sigma = pool.calc.zscore.iti_sigma(date,
+                                                   exclude_tags=exclude_tags,
+                                                   window=4,
                                                    nan_artifacts=arti,
                                                    thresh=thresh)
             elif 'zscore_run' in trace_type.lower():
