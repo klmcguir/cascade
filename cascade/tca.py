@@ -1,5 +1,10 @@
 """Functions for running tensor component analysis (TCA)."""
-import tensortools_old as tt
+# try:
+#     import tensortools_old as tt
+# except:
+import tensortools as tt
+
+# import tensortools_old as tt
 import numpy as np
 import flow
 from flow.misc import wordhash
@@ -962,6 +967,9 @@ def groupday_tca(
         method=('mncp_hals',),
         replicates=3,
         fit_options=None,
+        skip_modes=[],
+        negative_modes=[],
+        tensor_init='rand',
 
         # grouping params
         group_by='all',
@@ -1166,6 +1174,8 @@ def groupday_tca(
         pars['three_pt_trace'] = True
     if remove_stim_corr:
         pars['removed_stim_corr'] = True
+    if len(negative_modes) > 0:
+        pars['negative_modes'] = negative_modes,
     group_pars = {'group_by': group_by, 'up_or_down': up_or_down,
                   'use_dprime': use_dprime,
                   'dprime_threshold': dprime_threshold}
@@ -1408,6 +1418,14 @@ def groupday_tca(
                 fit_options['mask'] = None
             else:
                 fit_options['mask'] = mask
+            # allow for fitting with only certain negative dimesions
+            if len(negative_modes) > 0:
+                fit_options['negative_modes'] = negative_modes
+            # allow for fitting with only certain negative dimesions
+            if tensor_init.lower() != 'rand':
+                fit_options['init'] = tensor_init
+            if len(skip_modes) > 0:
+                fit_options['skip_modes'] = skip_modes
         group_tensor[np.isnan(group_tensor)] = 0
         ensemble = {}
         for m in method:
