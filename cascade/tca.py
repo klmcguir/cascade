@@ -1283,7 +1283,7 @@ def groupday_tca(
                     start_time=start_time, end_time=end_time,
                     downsample=True, clean_artifacts=clean_artifacts,
                     thresh=thresh, warp=warp, smooth=smooth,
-                    smooth_win=smooth_win)
+                    smooth_win=smooth_win, exclude_tags=exclude_tags)
                 # filter and sort
                 run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
                 # get matched trial metadata/variables
