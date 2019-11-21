@@ -48,6 +48,7 @@ def groupday_varex_drop_worst_comp(
                    'cs': cs,
                    'warp': warp,
                    'word': word,
+                   'trace_type': trace_type,
                    'group_by': group_by,
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold}
@@ -176,6 +177,7 @@ def groupday_varex(
                    'cs': cs,
                    'warp': warp,
                    'word': word,
+                   'trace_type': trace_type,
                    'group_by': group_by,
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold}
