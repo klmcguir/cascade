@@ -397,9 +397,9 @@ def groupday_longform_factors_annotated(
             ax[0, 2].set_title('Trial factors')
 
             # add title to whole figure
-            ax[0, 0].text(-1.2, 4, '\n' + mouse + ': \n\nrank: ' + str(int(r))
-                          + '\nmethod: ' + method + ' \ngroup_by: '
-                          + group_by, fontsize=12,
+            ax[0, 0].text(-1.2, 4, '\n ' + mouse + ':\n\n rank: ' + str(int(r))
+                          + '\n method: ' + method + '\n group_by: '
+                          + group_by + '\n word: ' + word, fontsize=12,
                           transform=ax[0, 0].transAxes, color='#969696')
 
             # plot cell factors
@@ -835,9 +835,10 @@ def groupday_factors_annotated(
         ax[2].set_title('Trial factors')
 
         # add title to whole figure
-        ax[0].text(-1.2, 4, '\n' + mouse + ': \n\nrank: ' + str(int(r)) +
-                   '\nmethod: ' + method + ' \ngroup_by: '
-                   + group_by, fontsize=12, transform=ax[0].transAxes,
+        ax[0].text(-1.2, 4, '\n ' + mouse + ':\n\n rank: ' + str(int(r)) +
+                   '\nmethod: ' + method + '\n group_by: '
+                   + group_by + '\n word: ' + word,
+                   fontsize=12, transform=ax[0].transAxes,
                    color='#969696')
 
         # reshape for easier indexing
