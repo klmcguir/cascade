@@ -10,7 +10,7 @@ from sklearn.decomposition import PCA
 from copy import deepcopy
 
 
-@memoize(across='mouse', updated=190805, returns='other', large_output=True)
+@memoize(across='mouse', updated=191121, returns='other', large_output=True)
 def groupday_varex_drop_worst_comp(
         mouse,
         trace_type='zscore_day',
@@ -139,7 +139,7 @@ def groupday_varex_drop_worst_comp(
     return dfvar
 
 
-@memoize(across='mouse', updated=190805, returns='other', large_output=True)
+@memoize(across='mouse', updated=191121, returns='other', large_output=True)
 def groupday_varex(
         mouse,
         trace_type='zscore_day',
