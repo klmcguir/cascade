@@ -836,7 +836,7 @@ def groupday_factors_annotated(
 
         # add title to whole figure
         ax[0].text(-1.2, 4, '\n ' + mouse + ':\n\n rank: ' + str(int(r)) +
-                   '\nmethod: ' + method + '\n group_by: '
+                   '\n method: ' + method + '\n group_by: '
                    + group_by + '\n word: ' + word,
                    fontsize=12, transform=ax[0].transAxes,
                    color='#969696')
