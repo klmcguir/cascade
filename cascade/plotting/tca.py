@@ -303,30 +303,17 @@ def groupday_longform_factors_annotated(
 
     # if cells were removed with too many nan trials
     if nan_thresh:
-        load_tag = '_nantrial' + str(nan_thresh)
         save_tag = ' nantrial ' + str(nan_thresh)
     else:
-        load_tag = ''
         save_tag = ''
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
         save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
 
     # update saving tag if you used a cell score threshold
     if scale_y:
         save_tag = ' scaley' + save_tag
-
-    # load dir
-    load_dir = paths.tca_path(
-        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_group_decomp_' + str(trace_type) + '.npy')
-    meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_df_group_meta.pkl')
 
     # save dir
     save_dir = paths.tca_plots(
@@ -337,10 +324,17 @@ def groupday_longform_factors_annotated(
     if not os.path.isdir(date_dir): os.mkdir(date_dir)
 
     # load your data
-    ensemble = np.load(tensor_path)
-    ensemble = ensemble.item()
-    meta = pd.read_pickle(meta_path)
-    meta = utils.update_naive_cs(meta)
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+    sort_ensemble, _, _ = load.groupday_tca_model(
+                            **load_kwargs, full_output=True)
+    meta = load.groupday_tca_model(**load_kwargs)
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))
     condition = meta['condition']
@@ -349,12 +343,6 @@ def groupday_longform_factors_annotated(
     speed = meta['speed']
     dates = meta.reset_index()['date']
     learning_state = meta['learning_state']
-
-    # re-balance your factors ()
-    print('Re-balancing factors.')
-    for r in ensemble[method].results:
-        for i in range(len(ensemble[method].results[r])):
-            ensemble[method].results[r][i].factors.rebalance()
 
     # calculate change indices for days and reversal/learning
     udays = {d: c for c, d in enumerate(np.unique(dates))}
@@ -368,17 +356,7 @@ def groupday_longform_factors_annotated(
     tags = meta['tag']
     hunger[tags == 'disengaged'] = 'disengaged'
 
-    # sort neuron factors by component they belong to most
-    # if 'mcp_als' has been run make sure the variable is in the correct format
-    if isinstance(ensemble[method], dict):
-        ensemble2 = {}
-        ensemble2[method] = lambda: None
-        ensemble[method] = {k: [v] for k, v in ensemble[method].items()}
-        ensemble2[method].results = ensemble[method]
-        sort_ensemble, my_sorts = tca._sortfactors(ensemble2[method])
-    else:
-        sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
-
+    # plot
     rows = 5
     cols = 3
     for r in sort_ensemble.results:
@@ -747,28 +725,16 @@ def groupday_factors_annotated(
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
 
-        # if cells were removed with too many nan trials
+    # if cells were removed with too many nan trials
     if nan_thresh:
-        load_tag = '_nantrial' + str(nan_thresh)
         save_tag = ' nantrial ' + str(nan_thresh)
     else:
-        load_tag = ''
         save_tag = ''
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
         save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
 
-    # load dir
-    load_dir = paths.tca_path(
-        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_group_decomp_' + str(trace_type) + '.npy')
-    meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_df_group_meta.pkl')
 
     # save dir
     save_dir = paths.tca_plots(
@@ -783,10 +749,17 @@ def groupday_factors_annotated(
     if not os.path.isdir(date_dir): os.mkdir(date_dir)
 
     # load your data
-    ensemble = np.load(tensor_path)
-    ensemble = ensemble.item()
-    meta = pd.read_pickle(meta_path)
-    meta = utils.update_naive_cs(meta)
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+    sort_ensemble, _, _ = load.groupday_tca_model(
+                            **load_kwargs, full_output=True)
+    meta = load.groupday_tca_model(**load_kwargs)
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))
     condition = meta['condition']
@@ -795,12 +768,6 @@ def groupday_factors_annotated(
     speed = meta['speed']
     dates = meta.reset_index()['date']
     learning_state = meta['learning_state']
-
-    # re-balance your factors ()
-    print('Re-balancing factors.')
-    for r in ensemble[method].results:
-        for i in range(len(ensemble[method].results[r])):
-            ensemble[method].results[r][i].factors.rebalance()
 
     # calculate change indices for days and reversal/learning
     udays = {d: c for c, d in enumerate(np.unique(dates))}
@@ -814,10 +781,7 @@ def groupday_factors_annotated(
     tags = meta['tag']
     hunger[tags == 'disengaged'] = 'disengaged'
 
-    # sort neuron factors by component they belong to most
-    # if 'mcp_als' has been run make sure the variable is in the correct format
-    sort_ensemble, my_sorts = tca._sortfactors(ensemble[method])
-
+    # plot
     for r in sort_ensemble.results:
 
         U = sort_ensemble.results[r][0].factors
