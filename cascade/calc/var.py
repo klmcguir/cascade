@@ -10,17 +10,17 @@ from sklearn.decomposition import PCA
 from copy import deepcopy
 
 
-@memoize(across='mouse', updated=191121, returns='other', large_output=True)
+@memoize(across='mouse', updated=191203, returns='other', large_output=True)
 def groupday_varex_drop_worst_comp(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by='all',
+        group_by='all2',
         nan_thresh=0.85,
-        score_threshold=None,
+        score_threshold=0.8,
         rectified=True,
         verbose=False):
     """
@@ -139,17 +139,17 @@ def groupday_varex_drop_worst_comp(
     return dfvar
 
 
-@memoize(across='mouse', updated=191121, returns='other', large_output=True)
+@memoize(across='mouse', updated=191203, returns='other', large_output=True)
 def groupday_varex(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by='all',
+        group_by='all2',
         nan_thresh=0.85,
-        score_threshold=None,
+        score_threshold=0.8,
         rectified=True,
         verbose=False):
     """
@@ -250,16 +250,17 @@ def groupday_varex(
     return dfvar
 
 
-@memoize(across='mouse', updated=190805, returns='other', large_output=True)
+@memoize(across='mouse', updated=191203, returns='other', large_output=True)
 def groupday_varex_byday(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by='all',
+        group_by='all2',
         nan_thresh=0.85,
+        score_threshold=0.8,
         rectified=True,
         verbose=False):
     """
@@ -287,27 +288,19 @@ def groupday_varex_byday(
     else:
         nt_tag = ''
 
-    # load dir
-    load_dir = paths.tca_path(
-        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_decomp_' + str(trace_type) + '.npy')
-    input_tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_tensor_' + str(trace_type) + '.npy')
-    meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_df_group_meta.pkl')
-
     # load your data
-    ensemble = np.load(tensor_path)
-    ensemble = ensemble.item()
-    V = ensemble[method]
-    X = np.load(input_tensor_path)
-    meta = pd.read_pickle(meta_path)
-    orientation = meta['orientation']
-    condition = meta['condition']
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'trace_type': trace_type,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+    V, _ = load.groupday_tca_model(**load_kwargs, unsorted=True)
+    X = load.groupday_tca_input_tensor(**load_kwargs)
+    meta = load.groupday_tca_meta(**load_kwargs)
     dates = meta.reset_index()['date']
 
     # rectify input tensor (only look at nonnegative variance)
@@ -364,15 +357,15 @@ def groupday_varex_byday(
     return dfvar
 
 
-@memoize(across='mouse', updated=190805, returns='other', large_output=True)
+@memoize(across='mouse', updated=191203, returns='other', large_output=True)
 def groupday_var_byday(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by='all',
+        group_by='all2',
         nan_thresh=0.85,
         score_threshold=0.8,
         rectified=True,
@@ -403,26 +396,18 @@ def groupday_var_byday(
         nt_tag = ''
 
     # load dir
-    load_dir = paths.tca_path(
-        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_decomp_' + str(trace_type) + '.npy')
-    input_tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_tensor_' + str(trace_type) + '.npy')
-    meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_df_group_meta.pkl')
-
-    # load your data
-    ensemble = np.load(tensor_path)
-    ensemble = ensemble.item()
-    V = ensemble[method]
-    X = np.load(input_tensor_path)
-    meta = pd.read_pickle(meta_path)
-    orientation = meta['orientation']
-    condition = meta['condition']
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'trace_type': trace_type,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+    V, _ = load.groupday_tca_model(**load_kwargs, unsorted=True)
+    X = load.groupday_tca_input_tensor(**load_kwargs)
+    meta = load.groupday_tca_meta(**load_kwargs)
     dates = meta.reset_index()['date']
 
     # rectify input tensor (only look at nonnegative variance)
@@ -464,16 +449,17 @@ def groupday_var_byday(
     return dfvar
 
 
-@memoize(across='mouse', updated=190805, returns='other', large_output=True)
+@memoize(across='mouse', updated=191203, returns='other', large_output=True)
 def groupday_varex_byday_bycomp(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by='all',
+        group_by='all2',
         nan_thresh=0.85,
+        score_threshold=0.8,
         rectified=True,
         verbose=False):
     """
@@ -502,26 +488,18 @@ def groupday_varex_byday_bycomp(
         nt_tag = ''
 
     # load dir
-    load_dir = paths.tca_path(
-        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_decomp_' + str(trace_type) + '.npy')
-    input_tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_tensor_' + str(trace_type) + '.npy')
-    meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_df_group_meta.pkl')
-
-    # load your data
-    ensemble = np.load(tensor_path)
-    ensemble = ensemble.item()
-    V = ensemble[method]
-    X = np.load(input_tensor_path)
-    meta = pd.read_pickle(meta_path)
-    orientation = meta['orientation']
-    condition = meta['condition']
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'trace_type': trace_type,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+    V, _ = load.groupday_tca_model(**load_kwargs, unsorted=True)
+    X = load.groupday_tca_input_tensor(**load_kwargs)
+    meta = load.groupday_tca_meta(**load_kwargs)
     dates = meta.reset_index()['date']
 
     # rectify input tensor (only look at nonnegative variance)
@@ -571,11 +549,11 @@ def groupday_varex_byday_bycomp(
 def groupday_varex_byday_bycomp_bycell(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by='all',
+        group_by='all2',
         nan_thresh=0.85,
         rectified=True,
         verbose=False):
@@ -688,11 +666,11 @@ def groupday_varex_byday_bycomp_bycell(
 def groupday_varex_bycomp_bycell(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by='all',
+        group_by='all2',
         nan_thresh=0.85,
         rectified=True,
         verbose=False):
@@ -794,16 +772,17 @@ def groupday_varex_bycomp_bycell(
     return dfvar
 
 
-@memoize(across='mouse', updated=190805, returns='other', large_output=True)
+@memoize(across='mouse', updated=191203, returns='other', large_output=True)
 def groupday_varex_bycomp(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by='all',
+        group_by='all2',
         nan_thresh=0.85,
+        score_threshold=0.8,
         rectified=True,
         verbose=False):
     """
@@ -832,27 +811,17 @@ def groupday_varex_bycomp(
         nt_tag = ''
 
     # load dir
-    load_dir = paths.tca_path(
-        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
-    tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_decomp_' + str(trace_type) + '.npy')
-    input_tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_group_tensor_' + str(trace_type) + '.npy')
-    meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + nt_tag
-        + '_df_group_meta.pkl')
-
-    # load your data
-    ensemble = np.load(tensor_path)
-    ensemble = ensemble.item()
-    V = ensemble[method]
-    X = np.load(input_tensor_path)
-    meta = pd.read_pickle(meta_path)
-    orientation = meta['orientation']
-    condition = meta['condition']
-    dates = meta.reset_index()['date']
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'trace_type': trace_type,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+    V, _ = load.groupday_tca_model(**load_kwargs, unsorted=True)
+    X = load.groupday_tca_input_tensor(**load_kwargs)
 
     # rectify input tensor (only look at nonnegative variance)
     if rectified:
@@ -892,11 +861,11 @@ def groupday_varex_bycomp(
 def groupday_varex_byday_bycell(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by='all',
+        group_by='all2',
         nan_thresh=0.85,
         rectified=True,
         verbose=False):
@@ -1022,11 +991,11 @@ def groupday_varex_byday_bycell(
 def groupday_varex_bycell(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by='all',
+        group_by='all2',
         nan_thresh=0.85,
         rectified=True,
         verbose=False):
