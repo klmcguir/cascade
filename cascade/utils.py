@@ -23,9 +23,9 @@ def correct_nonneg(ensemble):
                     flip_facs = list(np.where(neg_cellfac_vec < 0)[0])
                     for fac in flip_facs:
                         ensemble[method].results[r][i].factors[0][:, fac] = \
-                           ensemble[method].results[r][i].factors[0][:, fac]**-1
+                           ensemble[method].results[r][i].factors[0][:, fac]*-1
                         ensemble[method].results[r][i].factors[2][:, fac] = \
-                           ensemble[method].results[r][i].factors[2][:, fac]**-1
+                           ensemble[method].results[r][i].factors[2][:, fac]*-1
     
     return ensemble
 
