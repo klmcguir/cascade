@@ -228,10 +228,15 @@ def groupday_tca_model(
 
     # re-balance your factors ()
     if verbose:
-        print('Re-balancing factors.')
+        print('{}: {}: Re-balancing factors.'.format(mouse, word))
     for r in ensemble[method].results:
         for i in range(len(ensemble[method].results[r])):
             ensemble[method].results[r][i].factors.rebalance()
+
+    # force cell factors to be positive at the expense of trial factors
+    if verbose:
+        print('{}: {}: Re-nonneg-ing cell factors.'.format(mouse, word))
+    ensemble = utils.correct_nonneg(ensemble)
 
     # sort neuron factors by component they belong to most
     sort_ensemble, my_sorts = _sortfactors(ensemble[method])
