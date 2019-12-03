@@ -334,7 +334,7 @@ def groupday_longform_factors_annotated(
                    'score_threshold': score_threshold}
     sort_ensemble, _, _ = load.groupday_tca_model(
                             **load_kwargs, full_output=True)
-    meta = load.groupday_tca_model(**load_kwargs)
+    meta = load.groupday_tca_meta(**load_kwargs)
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))
     condition = meta['condition']
@@ -759,7 +759,7 @@ def groupday_factors_annotated(
                    'score_threshold': score_threshold}
     sort_ensemble, _, _ = load.groupday_tca_model(
                             **load_kwargs, full_output=True)
-    meta = load.groupday_tca_model(**load_kwargs)
+    meta = load.groupday_tca_meta(**load_kwargs)
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))
     condition = meta['condition']
