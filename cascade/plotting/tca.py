@@ -95,15 +95,16 @@ def groupmouse_varex_summary(
         mice=['OA27', 'OA67', 'OA32', 'OA34', 'CC175', 'OA36', 'OA26',
               'VF226'],
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
-        words=['restaurant', 'whale', 'whale', 'whale',
-               'whale', 'whale', 'whale', 'whale'],
-        group_by='all',
+        words=['determine', 'pharmacology', 'pharmacology', 'pharmacology',
+               'pharmacology', 'pharmacology', 'pharmacology', 'pharmacology'],
+        group_by='all2',
         nan_thresh=0.85,
         score_threshold=0.8,
-        rectified=True,
+        add_dropout_line=False,
+        rectified=False,
         verbose=False):
     """
     Plot reconstruction error as variance explained across all whole groupday
@@ -190,22 +191,24 @@ def groupmouse_varex_summary(
             score_threshold=score_threshold,
             rectified=rectified,
             verbose=verbose)
-        df_var_drop = var.groupday_varex_drop_worst_comp(
-            flow.Mouse(mouse=mouse),
-            trace_type=trace_type,
-            method=method,
-            cs=cs,
-            warp=warp,
-            word=words[c],
-            group_by=group_by,
-            nan_thresh=nan_thresh,
-            score_threshold=score_threshold,
-            rectified=rectified,
-            verbose=verbose)
+        if add_dropout_line:
+            df_var_drop = var.groupday_varex_drop_worst_comp(
+                flow.Mouse(mouse=mouse),
+                trace_type=trace_type,
+                method=method,
+                cs=cs,
+                warp=warp,
+                word=words[c],
+                group_by=group_by,
+                nan_thresh=nan_thresh,
+                score_threshold=score_threshold,
+                rectified=rectified,
+                verbose=verbose)
         x_s = df_var['rank'].values
         var_s = df_var['variance_explained_tcamodel'].values
-        x_drop = df_var_drop['rank'].values
-        var_drop = df_var_drop['variance_explained_dropping_worst_comp'].values
+        if add_dropout_line:
+            x_drop = df_var_drop['rank'].values
+            var_drop = df_var_drop['variance_explained_dropping_worst_comp'].values
         x0 = x_s[df_var['iteration'].values == 0]
         var0 = var_s[df_var['iteration'].values == 0]
         var_mean = df_var['variance_explained_meanmodel'].values[0]
@@ -215,12 +218,14 @@ def groupmouse_varex_summary(
         # plot
         R = np.max([r for r in V.results.keys()])
         ax.scatter(x_s, var_s, color=cmap[c*2], alpha=0.5)
-        ax.scatter(x_drop, var_drop, color=cmap[c*2+1], alpha=0.5)
+        if add_dropout_line:
+            ax.scatter(x_drop, var_drop, color=cmap[c*2+1], alpha=0.5)
         ax.scatter([R+2], var_mean, color=cmap[c*2], alpha=0.5)
         # ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
         ax.scatter([R+4], var_PCA, color=cmap[c*2], alpha=0.5)
         ax.plot(x0, var0, label=('mouse ' + mouse), color=cmap[c*2])
-        ax.plot(x_drop, var_drop, label=(r'$mouse_-$ ' + mouse), color=cmap[c*2+1])
+        if add_dropout_line:
+            ax.plot(x_drop, var_drop, label=(r'$mouse_-$ ' + mouse), color=cmap[c*2+1])
         ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c*2])
         # ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
         ax.plot([R+3.5, R+4.5], [var_PCA, var_PCA], color=cmap[c*2])
