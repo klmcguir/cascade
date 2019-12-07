@@ -241,12 +241,12 @@ def groupmouse_varex_summary(
          '', 'PCA$_{20}$'])
     ax.set_xticks(range(1, len(V.results) + 7))
     ax.set_xticklabels(x_labels, size=14)
-    ax.set_yticklabels(ax.get_yticks(), size=14)
+    ax.set_yticklabels([round(s, 2), for s in ax.get_yticks()], size=14)
     ax.set_xlabel('model rank', size=18)
     ax.set_ylabel('variance explained', size=18)
     ax.set_title(
         'Variance Explained: ' + str(method) + r_tag + ', ' + str(mice))
-    ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+    ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0., size=14)
 
     fig.savefig(var_path, bbox_inches='tight')
 
