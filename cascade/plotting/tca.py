@@ -246,7 +246,7 @@ def groupmouse_varex_summary(
     ax.set_ylabel('variance explained', size=18)
     ax.set_title(
         'Variance Explained: ' + str(method) + r_tag + ', ' + str(mice))
-    ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0., size=14)
+    ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
 
     fig.savefig(var_path, bbox_inches='tight')
 
