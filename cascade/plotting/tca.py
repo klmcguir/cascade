@@ -164,9 +164,9 @@ def groupmouse_varex_summary(
         100, 100, figure=fig, left=0.05, right=.95, top=.95, bottom=0.05)
     ax = fig.add_subplot(gs[10:90-buffer, :90-right_pad])
     if add_dropout_line:
-        colormap = sns.color_palette('Paired', len(mice)*2)
+        cmap = sns.color_palette('Paired', len(mice)*2)
     else:
-        colormap = sns.color_palette('hls', len(mice)*2)
+        cmap = sns.color_palette('hls', len(mice)*2)
 
     for c, mouse in enumerate(mice):
 
