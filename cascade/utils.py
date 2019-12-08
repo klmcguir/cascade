@@ -121,7 +121,6 @@ def update_naive_trialerror(meta, verbose=True):
     cs_list = ['plus', 'minus', 'neutral']
 
     # original dataframe columns
-    meta['condition'] = meta['trialerror']
     condition = meta['condition']
     learning_state = meta['learning_state']
 
@@ -150,7 +149,7 @@ def update_naive_trialerror(meta, verbose=True):
                 new_te.append(5)
         else:
             new_te.append(np.nan)
-    meta.iloc[naive_pmn, 'trialerror'] = np.array(new_te)
+    meta[naive_pmn, 'trialerror'] = np.array(new_te)
 
     if verbose:
         print('Updated naive trialerror to match learning.')
