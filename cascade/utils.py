@@ -149,7 +149,7 @@ def update_naive_trialerror(meta, verbose=True):
                 new_te.append(5)
         else:
             new_te.append(np.nan)
-    meta[naive_pmn, 'trialerror'] = np.array(new_te)
+    meta.at[naive_pmn, 'trialerror'] = new_te
 
     if verbose:
         print('Updated naive trialerror to match learning.')
