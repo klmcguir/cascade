@@ -307,7 +307,7 @@ def groupday_tca_meta(
 
     # load your data
     meta = pd.read_pickle(meta_path)
-    meta = utils.update_naive_cs(meta)
+    meta = utils.update_naive_meta(meta)
 
     return meta
 
