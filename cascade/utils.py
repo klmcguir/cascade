@@ -59,6 +59,18 @@ def add_dprime_to_meta(meta):
     return meta
 
 
+def update_naive_meta(meta, verbose=True):
+
+    """
+    Helper function that takes a pd metadata dataframe and makes sure that cses
+    and trial error match between naive and learning.
+    """
+    meta = update_naive_cs(meta, verbose=verbose)
+    meta = update_naive_trialerror(meta, verbose=verbose)
+
+    return meta
+
+
 def update_naive_cs(meta, verbose=True):
     """
     Helper function that takes a pd metadata dataframe and makes sure that cses
@@ -89,10 +101,59 @@ def update_naive_cs(meta, verbose=True):
         meta.loc[naive_pmn & (orientation == ori), 'condition'] = cs
 
     if verbose:
-        meta.reset_index()
         print('Updated naive cs-ori pairings to match learning.')
         for k, v in cs_codes.items():
             print('    ', k, v)
+
+    return meta
+
+
+def update_naive_trialerror(meta, verbose=True):
+    """
+    Helper function that takes a pd metadata dataframe and makes sure that 
+    trialerror match between naive and learning learning_state.
+    Note: CSs must be correct for naive data already otherwise it will not
+    affect trialerror values.
+    Note: Ignores pavlovians. 
+    """
+
+    # cses to check, pavlovians etc. will remain the same
+    cs_list = ['plus', 'minus', 'neutral']
+
+    # original dataframe columns
+    meta['condition'] = meta['trialerror']
+    condition = meta['condition']
+    learning_state = meta['learning_state']
+
+    # make sure not to mix in other run types (i.e., )
+    naive_pmn = (condition.isin(cs_list) & (learning_state == 'naive')).values
+
+    # create a corrected vector of trialerrors
+    naive_te = meta['trialerror'].values[naive_pmn]
+    naive_cs = meta['condition'].values[naive_pmn]
+    new_te = []
+    for te, cs in zip(naive_te, naive_cs):
+        if cs == 'plus':
+            if te % 2 == 0:
+                new_te.append(0)
+            else:
+                new_te.append(1)
+        elif cs == 'neutral':
+            if te % 2 == 0:
+                new_te.append(2)
+            else:
+                new_te.append(3)
+        elif cs == 'minus':
+            if te % 2 == 0:
+                new_te.append(4)
+            else:
+                new_te.append(5)
+        else:
+            new_te.append(np.nan)
+    meta.iloc[naive_pmn, 'trialerror'] = np.array(new_te)
+
+    if verbose:
+        print('Updated naive trialerror to match learning.')
 
     return meta
 
