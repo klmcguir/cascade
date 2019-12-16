@@ -358,3 +358,52 @@ def groupday_tca_input_tensor(
     input_tensor = np.load(input_tensor_path)
 
     return input_tensor
+
+
+def groupday_tca_bhv(
+        mouse='OA27',
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        word='determined',
+        group_by='all',
+        nan_thresh=0.85,
+        score_threshold=0.8):
+    """
+    Load existing behavioral tensor from tensor component analysis (TCA).
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+
+    mouse = mouse
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        load_tag = '_nantrial' + str(nan_thresh)
+    else:
+        load_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+
+    # load dir
+    load_dir = paths.tca_path(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    input_tensor_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
+        + '_group_bhv_' + str(trace_type) + '.npy')
+
+    # load your data
+    input_tensor = np.load(input_tensor_path)
+
+    return input_tensor
+
