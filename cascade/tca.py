@@ -1520,10 +1520,9 @@ def _get_speed_pupil_traces(
         baseline=(-1,0),
         cutoff_before_lick_ms=-1)
 
-    all_behaviors_list = [
-        pupil_traces, dpupil_traces, speed_traces, dspeed_traces]
-    bhv_traces = np.stack([all_behaviors_list], axis=0)
-    db
+    all_behaviors_list = (
+        pupil_traces, dpupil_traces, speed_traces, dspeed_traces)
+    bhv_traces = np.concatenate(all_behaviors_list, axis=0)
 
     return bhv_traces
 
