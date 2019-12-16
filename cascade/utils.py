@@ -426,6 +426,69 @@ def getcstraces(
     return run_traces
 
 
+def getcsbehavior(
+        run,
+        cs='',
+        trace_type='pupil',
+        start_time=-1,
+        end_time=6,
+        downsample=True,
+        baseline=None,
+        cutoff_before_lick_ms=-1):
+    """
+    Wrapper function for flow.Trace2P.csbehaviortraces().
+    Downsamples traces which are not at the correct sampling frequency.
+
+    Parameters
+    ----------
+    run : Run object
+    cs : str
+        Type of CS. e.g., plus, minus, neutral, 0, 135, 270, ...
+    trace_type : str
+        pupil, speed, etc.
+    downsample : bool
+        Downsample from 31 to 15 Hz sampling rate
+
+    Result
+    ------
+    np.ndarray
+        behavior x frames x nstimuli/onsets
+
+    """
+
+    t2p = run.trace2p()
+    
+    run_traces = t2p.csbehaviortraces(cs, start_s=start_time, end_s=end_time,
+                              trace_type=trace_type, 
+                              cutoff_before_lick_ms=cutoff_before_lick_ms,
+                              errortrials=-1, baseline=baseline,
+                              baseline_to_stimulus=True)
+
+    # downsample all traces/timestamps to 15Hz if framerate is 31Hz
+    if (t2p.d['framerate'] > 30) and downsample and (trace_type.lower() not in ['pupil']):
+        # make sure divisible by 2
+        sz = np.shape(run_traces)  # dims: (cells, time, trials)
+        if sz[1] % 2 == 1:
+            run_traces = run_traces[:, :-1, :]
+            sz = np.shape(run_traces)
+        # downsample
+        # ignore python and numpy divide by zero warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            with np.errstate(invalid='ignore', divide='ignore'):
+                ds_traces = np.zeros((sz[0], int(sz[1]/2), sz[2]))
+                for trial in range(sz[2]):
+                    a = run_traces[:, :, trial].reshape(sz[0], int(sz[1]/2), 2)
+                    if trace_type.lower() == 'deconvolved':
+                        ds_traces[:, :, trial] = np.nanmax(a, axis=2)
+                    else:
+                        ds_traces[:, :, trial] = np.nanmean(a, axis=2)
+
+        run_traces = ds_traces
+
+    return run_traces
+
+
 def build_tensor(
         mouse,
         tags=None,
