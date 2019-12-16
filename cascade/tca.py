@@ -1212,6 +1212,7 @@ def groupday_tca(
     # preallocate for looping over a group of days/runs
     meta_list = []
     tensor_list = []
+    bhv_list = []
     id_list = []
     for c, day1 in enumerate(days, 0):
 
@@ -1274,6 +1275,7 @@ def groupday_tca(
         # build tensors for all correct runs and trials after filtering
         if d1_runs:
             d1_tensor_list = []
+            d1_bhv_list = []
             d1_meta = []
             for run in d1_runs:
                 t2p = run.trace2p()
@@ -1281,9 +1283,17 @@ def groupday_tca(
                 run_traces = utils.getcstraces(
                     run, cs=cs, trace_type=trace_type,
                     start_time=start_time, end_time=end_time,
-                    downsample=True, clean_artifacts=clean_artifacts,
+                    downsample=downsample, clean_artifacts=clean_artifacts,
                     thresh=thresh, warp=warp, smooth=smooth,
                     smooth_win=smooth_win, exclude_tags=exclude_tags)
+                bhv_traces = _get_speed_pupil_traces(
+                    run,
+                    cs=cs,
+                    start_time=start_time,
+                    end_time=end_time,
+                    downsample=downsample,
+                    cutoff_before_lick_ms=-1)
+
                 # filter and sort
                 run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
                 # get matched trial metadata/variables
@@ -1311,6 +1321,7 @@ def groupday_tca(
                 # subselect metadata to remove certain conditions
                 if len(exclude_conds) > 0:
                     run_traces = run_traces[:, :, (~dfr['condition'].isin(exclude_conds))]
+                    bhv_traces = bhv_traces[:, :, (~dfr['condition'].isin(exclude_conds))]
                     dfr = dfr.loc[(~dfr['condition'].isin(exclude_conds)), :]
 
                 # drop trials with nans and add to lists
@@ -1319,6 +1330,7 @@ def groupday_tca(
                               axis=1, keepdims=True).flatten() == 0
                 dfr = dfr.iloc[keep, :]
                 d1_tensor_list.append(run_traces[:, :, keep])
+                d1_bhv_list.append(bhv_traces[:, :, keep])
                 d1_meta.append(dfr)
 
             # if you did not add any runs for the day, continue
@@ -1328,11 +1340,15 @@ def groupday_tca(
             # concatenate matched cells across trials 3rd dim (aka, 2)
             tensor = np.concatenate(d1_tensor_list, axis=2)
 
+            # concatenate matched cells across trials 3rd dim (aka, 2)
+            bhv_tensor = np.concatenate(d1_bhv_list, axis=2)
+
             # concatenate all trial metadata in pd dataframe
             meta = pd.concat(d1_meta, axis=0)
 
             meta_list.append(meta)
             tensor_list.append(tensor)
+            bhv_list.append(bhv_tensor)
             id_list.append(ids)
 
     # get total trial number across all days/runs
@@ -1342,6 +1358,9 @@ def groupday_tca(
     # get union of ids. Use these for indexing and splicing tensors together
     id_union = np.unique(np.concatenate(id_list, axis=0))
     cell_num = len(id_union)
+
+    # build final behavior trace tensor
+    group_bhv_tensor = np.concatenate(bhv_list, axis=2)
 
     # build a single large tensor leaving nans where cell is not found
     trial_start = 0
@@ -1396,6 +1415,9 @@ def groupday_tca(
     input_tensor_path = os.path.join(
         save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag +
         '_group_tensor_' + str(trace_type) + '.npy')
+    input_bhv_path = os.path.join(
+        save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag +
+        '_group_bhv_' + str(trace_type) + '.npy')
     input_ids_path = os.path.join(
         save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag +
         '_group_ids_' + str(trace_type) + '.npy')
@@ -1405,6 +1427,7 @@ def groupday_tca(
     meta.to_pickle(meta_path)
     np.save(input_tensor_path, group_tensor)
     np.save(input_ids_path, id_union)
+    np.save(input_bhv_path, group_bhv_tensor)
 
     # run TCA - iterate over different fitting methods
     if not update_meta:  # only run full TCA when not updating metadata
@@ -1438,6 +1461,70 @@ def groupday_tca(
     # print output so you don't go crazy waiting
     if verbose:
         print(str(day1.mouse) + ': group_by=' + str(group_by) + ': done.')
+
+
+def _get_speed_pupil_traces(
+        run,
+        cs='',
+        start_time=-1,
+        end_time=6,
+        downsample=True,
+        cutoff_before_lick_ms=-1):
+    """
+    Helper function that makes a tensor stacking pupil and running speed
+    into a single tensor. dpupil and dpspeed are baseline subtracted from
+    -1 to 0 sec before stimulus onset.
+    
+    Returns: array
+    -------
+    [pupil, dpupil, speed, dspeed] x timepoints x trials
+
+    """
+    pupil_traces = utils.getcsbehavior(
+        run,
+        cs=cs,
+        trace_type='pupil',
+        start_time=start_time,
+        end_time=end_time,
+        downsample=downsample,
+        baseline=None,
+        cutoff_before_lick_ms=cutoff_before_lick_ms)
+
+    dpupil_traces = utils.getcsbehavior(
+        run,
+        cs=cs,
+        trace_type='pupil',
+        start_time=-1,
+        end_time=6,
+        downsample=True,
+        baseline=(-1,0),
+        cutoff_before_lick_ms=-1)
+
+    speed_traces = utils.getcsbehavior(
+        run,
+        cs=cs,
+        trace_type='speed',
+        start_time=start_time,
+        end_time=end_time,
+        downsample=downsample,
+        baseline=None,
+        cutoff_before_lick_ms=cutoff_before_lick_ms)
+
+    dspeed_traces = utils.getcsbehavior(
+        run,
+        cs=cs,
+        trace_type='speed',
+        start_time=-1,
+        end_time=6,
+        downsample=True,
+        baseline=(-1,0),
+        cutoff_before_lick_ms=-1)
+
+    all_behaviors_list = [
+        pupil_traces, dpupil_traces, speed_traces, dspeed_traces]
+    bhv_traces = np.concatenate([all_behaviors_list], axis=0)
+
+    return bhv_traces
 
 
 def _remove_stimulus_corr(tensor, metadata):
