@@ -1232,7 +1232,7 @@ def groupday_tca(
                 orig_num_ids = len(good_ids)
                 highscore_ids = _group_ids_score(days, score_threshold)
                 good_ids = np.intersect1d(good_ids, highscore_ids)
-                if verbose:
+                if verbose and c == 0:
                     print('Cell score threshold ' + str(score_threshold) + ':'
                           + ' ' + str(len(highscore_ids)) + ' above threshold:'
                           + ' good_ids updated to ' + str(len(good_ids)) + '/'
@@ -1250,7 +1250,7 @@ def groupday_tca(
                 orig_num_ids = len(good_ids)
                 highscore_ids = _group_ids_score(days, score_threshold)
                 good_ids = np.intersect1d(good_ids, highscore_ids)
-                if verbose:
+                if verbose and c == 0:
                     print('Cell score thresh ' + str(score_threshold) + ':'
                           + ' ' + str(len(highscore_ids)) + ' above thresh:'
                           + ' good_ids updated to ' + str(len(good_ids)) + '/'
@@ -1304,15 +1304,19 @@ def groupday_tca(
                 # skip runs with only one type of stimulus presentation
                 ori_to_match = np.unique(dfr['orientation'].values)
                 ori_wo_blanks = len(ori_to_match) - np.sum(ori_to_match == -1)
-                if ori_wo_blanks <= 1:
+                if cs == '' and ori_wo_blanks <= 2:
                     if verbose:
-                        print('Skipping, only 1 ori presented: ', run)
+                        print('Skipping, only {} ori presented: '.format(ori_wo_blanks), run)
                     continue
                 # subselect metadata if you are only running certain cs
                 if cs != '':
                     if cs == 'plus' or cs == 'minus' or cs == 'neutral':
+                        run_traces = run_traces[:, :, (~dfr['condition'].isin([cs]))]
+                        bhv_traces = bhv_traces[:, :, (~dfr['condition'].isin([cs]))]
                         dfr = dfr.loc[(dfr['condition'].isin([cs])), :]
                     elif cs == '0' or cs == '135' or cs == '270':
+                        run_traces = run_traces[:, :, (~dfr['orientation'].isin([cs]))]
+                        bhv_traces = bhv_traces[:, :, (~dfr['orientation'].isin([cs]))]
                         dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
                     else:
                         print('ERROR: cs called - "' + cs + '" - is not\
