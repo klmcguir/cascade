@@ -117,7 +117,7 @@ def weighted_avg_first100(
             mouse, 'group', pars=pars, word=word_n, group_pars=group_pars)
     save_dir = os.path.join(save_dir, 'adaptation')
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
-    save_dir = os.path.join(save_dir, 'trial mean {}'.format(stim_window,lower()))
+    save_dir = os.path.join(save_dir, 'trial mean {}'.format(stim_window.lower()))
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     save_dir = os.path.join(save_dir, 'rank {}'.format(rank))
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
