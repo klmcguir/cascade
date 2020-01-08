@@ -153,7 +153,7 @@ def weighted_avg_first100(
     # construct boolean of first 100 trials per day
     days = meta_stim.reset_index()['date'].unique()
     first100 = np.zeros((len(meta_stim['orientation'].isin([0]).values)))
-    for di, codi in zip(days, cod):
+    for di in days:
         dboo  = meta_stim.reset_index()['date'].isin([di]).values
         first100[np.where(dboo)[0][:100]] = 1
     firstboo = first100 > 0
@@ -411,7 +411,7 @@ def projected_heatmap(
     # construct boolean of first 100 trials per day
     days = meta_stim.reset_index()['date'].unique()
     first100 = np.zeros((len(meta_stim['orientation'].isin([0]).values)))
-    for di, codi in zip(days, cod):
+    for di in days:
         dboo  = meta_stim.reset_index()['date'].isin([di]).values
         first100[np.where(dboo)[0][:100]] = 1
     firstboo = first100 > 0
