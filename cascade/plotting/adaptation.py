@@ -418,7 +418,7 @@ def projected_heatmap(
 
     # only look at the first 100 trials and 
     meta_stim_sub = meta_stim.iloc[(firstboo & sessboo), :]
-    input_bhv_sub = input_bhv.iloc[(firstboo & sessboo), :]
+    input_bhv_sub = input_bhv[:,:,(firstboo & sessboo)]
     input_stim_sub = input_stim[:,:,(firstboo & sessboo)]
 
     # set saving path
