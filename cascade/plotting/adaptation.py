@@ -189,7 +189,7 @@ def weighted_avg_first100(
     cod = sns.color_palette('husl', len(days))
 
     # choose adapting components
-    adapting_comps = range(rank)
+    adapting_comps = range(1, rank+1)
 
     # plot
     plt.figure(figsize=(30,6))
