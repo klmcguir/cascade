@@ -19,7 +19,7 @@ def opt_func_offset(x, a, b, c):
     return a * np.exp(-b * x) + c
 
 
-def weighted_avg_first100_adaptation(
+def weighted_avg_first100(
         mouse='OA27',
         trace_type='zscore_day',
         method='ncp_hals',
