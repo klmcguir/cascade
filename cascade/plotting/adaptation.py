@@ -35,7 +35,9 @@ def weighted_avg_first100(
         rank=15,
         run_threshold=3,
         stim_window='last_sec', # 'first_sec' is the other option
-        func_type='no_offset'
+        func_type='no_offset',
+        start_time=-1,
+        end_time=6,
         ):
 
     # load TCA models and data
