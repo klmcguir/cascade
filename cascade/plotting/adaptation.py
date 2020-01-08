@@ -441,10 +441,10 @@ def projected_heatmap(
     for ci in range(1,rank+1):
         # stim
         if stim_or_noise == 'stim':
-            weight_vec = V.results[rank][0].factors[0][(firstboo & sessboo), ci-1]
+            weight_vec = V.results[rank][0].factors[0][:, ci-1]
         # noise
         else:
-            weight_vec = V2.results[rank][0].factors[0][(firstboo & sessboo), ci-1]
+            weight_vec = V2.results[rank][0].factors[0][:, ci-1]
         weight_map = np.zeros(input_stim_sub.shape[1:])
         for tri in range(input_stim_sub.shape[2]):
             trialx = weight_vec[:, None] * input_stim_sub[:,:,tri]
