@@ -265,39 +265,39 @@ def weighted_avg_first100(
 
 
 def projected_heatmap(
-    mouse='OA27',
-    trace_type='zscore_day',
-    method='ncp_hals',
-    cs='',
-    warp=False,
-    group_by='all2',
-    nan_thresh=0.85,
-    score_threshold=0.8,
-    word_s='determine',
-    word_n='directors',
-    stim_or_noise='noise',
-    color_by='orientation',
-    rank=15,
-    run_threshold=3,
-    start_time=-1,
-    end_time=6,
-    cs_bar=True,
-    day_bar=True,
-    day_line=True,
-    run_line=False,
-    match_clim=True,
-    quinine_ticks=False,
-    ensure_ticks=False,
-    lick_ticks=False,
-    label_cbar=True,
-    vmin=None,
-    vmax=None):
+        mouse='OA27',
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        group_by='all2',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        word_s='determine',
+        word_n='directors',
+        stim_or_noise='noise',
+        color_by='orientation',
+        rank=15,
+        run_threshold=3,
+        start_time=-1,
+        end_time=6,
+        cs_bar=True,
+        day_bar=True,
+        day_line=True,
+        run_line=False,
+        match_clim=True,
+        quinine_ticks=False,
+        ensure_ticks=False,
+        lick_ticks=False,
+        label_cbar=True,
+        vmin=None,
+        vmax=None):
 
-"""
-Weight your cell activity using cell factors and take mean for each component. 
-Use this to construct heatmaps of the first 100 trials of the day accounting
-for absolute run (session) during the day. 
-"""
+    """
+    Weight your cell activity using cell factors and take mean for each component. 
+    Use this to construct heatmaps of the first 100 trials of the day accounting
+    for absolute run (session) during the day. 
+    """
     # fixed plotting params
     # arthur's predetermined hex colors
     colors = {
