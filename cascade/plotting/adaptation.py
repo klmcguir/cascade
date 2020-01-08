@@ -493,8 +493,8 @@ def projected_heatmap(
             ensure = np.array(meta['ensure'])
             quinine = np.array(meta['quinine'])
             firstlick = np.array(meta['firstlick'])
-            css = meta['condition']
-            learning_state = meta['learning_state']
+            css = deepcopy(meta['condition'])
+            learning_state = deepcopy(meta['learning_state'])
 
             ori_inds = np.array(meta_stim_sub['orientation'].values)
             ori_inds = ori_inds == oris[count]
