@@ -90,16 +90,16 @@ def weighted_avg_first100(
             group_by=group_by,
             nan_thresh=nan_thresh,
             score_threshold=score_threshold)
-    input_bhv = load.groupday_tca_bhv(
-            mouse=mouse,
-            trace_type=trace_type,
-            method=method,
-            cs=cs,
-            warp=warp,
-            word=word_s,
-            group_by=group_by,
-            nan_thresh=nan_thresh,
-            score_threshold=score_threshold)
+    # input_bhv = load.groupday_tca_bhv(
+    #         mouse=mouse,
+    #         trace_type=trace_type,
+    #         method=method,
+    #         cs=cs,
+    #         warp=warp,
+    #         word=word_s,
+    #         group_by=group_by,
+    #         nan_thresh=nan_thresh,
+    #         score_threshold=score_threshold)
     
     # pick decay function
     if func_type.lower() == 'no_offset':
@@ -384,16 +384,16 @@ def projected_heatmap(
             group_by=group_by,
             nan_thresh=nan_thresh,
             score_threshold=score_threshold)
-    input_bhv = load.groupday_tca_bhv(
-            mouse=mouse,
-            trace_type=trace_type,
-            method=method,
-            cs=cs,
-            warp=warp,
-            word=word_s,
-            group_by=group_by,
-            nan_thresh=nan_thresh,
-            score_threshold=score_threshold)
+    # input_bhv = load.groupday_tca_bhv(
+    #         mouse=mouse,
+    #         trace_type=trace_type,
+    #         method=method,
+    #         cs=cs,
+    #         warp=warp,
+    #         word=word_s,
+    #         group_by=group_by,
+    #         nan_thresh=nan_thresh,
+    #         score_threshold=score_threshold)
 
     # get timestamp info for plotting lines
     run = flow.DateSorter.frommeta(mice=[mouse], exclude_tags=['bad'])[-1].runs(exclude_tags=['bad'])[0]
@@ -421,7 +421,7 @@ def projected_heatmap(
 
     # only look at the first 100 trials and 
     meta_stim_sub = meta_stim.iloc[(firstboo & sessboo), :]
-    input_bhv_sub = input_bhv[:,:,(firstboo & sessboo)]
+    # input_bhv_sub = input_bhv[:,:,(firstboo & sessboo)]
     input_stim_sub = input_stim[:,:,(firstboo & sessboo)]
 
     # set saving path
