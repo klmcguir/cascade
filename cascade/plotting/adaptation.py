@@ -226,12 +226,12 @@ def weighted_avg_first100(
             ax1.plot(inds[dboo], mean_comp[dboo], 'o', color=codi, alpha=0.3)
             
             # fit trial types with exponential decay and plot 
-            try:
-                popt1, pcov1 = curve_fit(func, x1-np.min(x1), y1-offset)
-                print('made it here')
-                ax1.plot(x1, func(x1-np.min(x1), *popt1)+offset, color=color[1], linewidth=3)
-            except:
-                print('skipped')
+            # try:
+            popt1, pcov1 = curve_fit(func, x1-np.min(x1), y1-offset)
+            print('made it here')
+            ax1.plot(x1, func(x1-np.min(x1), *popt1)+offset, color=color[1], linewidth=3)
+            # except:
+            #     print('skipped')
             try:
                 popt2, pcov2 = curve_fit(func, x2-np.min(x2), y2-offset)
                 ax1.plot(x2, func(x2-np.min(x2), *popt2)+offset, color=color[2], linewidth=3)
