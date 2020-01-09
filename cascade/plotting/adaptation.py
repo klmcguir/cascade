@@ -183,8 +183,17 @@ def weighted_avg_first100(
     dp100 = meta_stim['dprime'].values[firstboo]
 
     # calculate indices of reversal/learning
-    rev_ind = np.where(meta_stim['learning_state'].isin(['learning']).values[firstboo & sessboo])[0][-1]
-    lear_ind = np.where(meta_stim['learning_state'].isin(['naive']).values[firstboo & sessboo])[0][-1]
+    rev_ind = np.where(
+        meta_stim['learning_state']
+        .isin(['learning'])
+        .values[firstboo & sessboo])[0][-1]
+    if np.sum(meta_stim['learning_state'].isin(['naive']).values) > 0:
+        lear_ind = np.where(
+            meta_stim['learning_state']
+            .isin(['naive'])
+            .values[firstboo & sessboo])[0][-1]
+    else:
+        lear_ind = 0
 
     # colormap for each day
     cod = sns.color_palette('husl', len(days))
