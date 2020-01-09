@@ -253,8 +253,8 @@ def weighted_avg_first100(
         ax1.set_ylabel('response amplitude (weighted z-score)')
 
         # create matching dprime figure 
-        ax2.plot(inds, dp100, '-')
-        ax2.set_ylabel('dprime')
+        ax2.plot(inds, dp100, '-', color='#C880D1')
+        ax2.set_ylabel('dprime', color='#C880D1')
 
         # save
         file_name = 'Mean Weighted Activity {} Component {} rank {} {}.png'.format(stim_or_noise, aci, rank, func_tag)
