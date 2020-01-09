@@ -1069,7 +1069,7 @@ def groupday_tca(
                         'retinotopy', 'sated', 'learning_start',
                         'reversal1_start')
 
-    elif group_by.lower() == 'low_dprime_leanrning':
+    elif group_by.lower() == 'low_dprime_learning':
         use_dprime = True
         up_or_down = 'down'
         tags = 'learning'
