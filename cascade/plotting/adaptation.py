@@ -254,7 +254,7 @@ def weighted_avg_first100(
 
         # create matching dprime figure 
         ax2.plot(inds, dp100, '-')
-        ax2.set_ylabel('dprime')git: addcur
+        ax2.set_ylabel('dprime')
 
         # save
         file_name = 'Mean Weighted Activity {} Component {} rank {} {}.png'.format(stim_or_noise, aci+1, rank, func_tag)
