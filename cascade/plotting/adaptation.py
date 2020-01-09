@@ -918,7 +918,6 @@ def projected_heatmap(
 def bhv_heatmap(
         mouse='OA27',
         trace_type='zscore_day',
-        bhv_trace_type='speed',  # speed, dspeed, pupil, dpupil
         method='ncp_hals',
         cs='',
         warp=False,
@@ -1053,14 +1052,14 @@ def bhv_heatmap(
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
 
     # created weighted reconstructions of cell activity and plot heatmaps 
-    for ci in range(1,rank+1):
+    for bhv_trace_type in bhv_lookup.keys():
         
         # pick your trace
         weight_map = input_bhv_sub[bhv_lookup[bhv_trace_type], :, :]
 
         # set file and title names
-        file_name = 'Heatmap Weighted Activity {} Component {} rank {} vmax.png'.format(bhv_trace_type, ci, rank)
-        supt = 'Mean Weighted Activity Component {}: {}'.format(ci, bhv_trace_type)
+        file_name = 'Heatmap Behavior {} rank {} vmax.png'.format(bhv_trace_type, rank)
+        supt = 'Behavioral traces: {}'.format(bhv_trace_type)
 
         o0 = weight_map.T[meta_stim_sub['orientation'].isin([0]).values, :]
         o135 = weight_map.T[meta_stim_sub['orientation'].isin([135]).values, :]
