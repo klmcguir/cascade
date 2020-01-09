@@ -9,6 +9,7 @@ import bottleneck as bt
 import os
 import flow
 from .. import load, paths, utils
+from copy import deepcopy
 
 
 def opt_func(x, a, b):
