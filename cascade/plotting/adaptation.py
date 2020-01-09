@@ -194,9 +194,9 @@ def weighted_avg_first100(
 
     # plot
     # plt.figure(figsize=(30,6))
-    fig, ax1 = plt.subplots(figsize=(30,6))
-    ax2 = ax1.twinx()
     for aci in adapting_comps:
+        fig, ax1 = plt.subplots(figsize=(30,6))
+        ax2 = ax1.twinx()
         for di, codi in zip(days, cod):
 
             # get your avg ensemble response vector
