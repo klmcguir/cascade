@@ -32,7 +32,7 @@ def weighted_avg_first100(
         word_s='determine',
         word_n='directors',
         stim_or_noise='noise',
-        color_by='orientation',
+        color_by='condition',
         rank=15,
         run_threshold=3,
         stim_window='last_sec', # 'first_sec' is the other option
