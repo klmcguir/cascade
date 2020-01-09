@@ -129,7 +129,7 @@ def weighted_avg_first100(
     run = flow.DateSorter.frommeta(mice=[mouse], exclude_tags=['bad'])[-1].runs(exclude_tags=['bad'])[0]
     t2p = run.trace2p()
     tr = t2p.d['framerate']
-    timestep = 1/tr
+    timestep = 1/31
     timestamps = np.arange(start_time, end_time, timestep)[::2][:input_stim.shape[1]]
     times = np.unique(timestamps)
     zero_sec = np.where(times <= 0)[0][-1]
@@ -394,7 +394,7 @@ def projected_heatmap(
     run = flow.DateSorter.frommeta(mice=[mouse], exclude_tags=['bad'])[-1].runs(exclude_tags=['bad'])[0]
     t2p = run.trace2p()
     tr = t2p.d['framerate']
-    timestep = 1/tr
+    timestep = 1/31
     timestamps = np.arange(start_time, end_time, timestep)[::2][:input_stim.shape[1]]
     times = np.unique(timestamps)
     zero_sec = np.where(times <= 0)[0][-1]
