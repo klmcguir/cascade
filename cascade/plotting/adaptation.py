@@ -272,6 +272,234 @@ def weighted_avg_first100(
         fig.savefig(save_path, bbox_inches='tight')
 
 
+def tca_first100(
+        mouse='OA27',
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        group_by='all2',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        word_s='determine',
+        word_n='directors',
+        stim_or_noise='noise',
+        color_by='condition',
+        rank=15,
+        run_threshold=3,
+        stim_window='last_sec', # 'first_sec' is the other option
+        func_type='no_offset',
+        start_time=-1,
+        end_time=6,
+        ):
+    """
+    Plot the first 100 trials of TCA results. Fitting with exponential 
+    function.
+    """
+    # load TCA models and data
+    V, my_sorts_stim = load.groupday_tca_model(
+            mouse=mouse,
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            rank=rank,
+            word=word_s,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold,
+            full_output=False,
+            unsorted=True,
+            verbose=False)
+    V2, my_sorts_noise = load.groupday_tca_model(
+            mouse=mouse,
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            rank=rank,
+            word=word_n,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold,
+            full_output=False,
+            unsorted=True,
+            verbose=False)
+    meta_stim = load.groupday_tca_meta(
+            mouse=mouse,
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            word=word_s,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold)
+    meta_stim = utils.add_dprime_to_meta(meta_stim)
+    # input_bhv = load.groupday_tca_bhv(
+    #         mouse=mouse,
+    #         trace_type=trace_type,
+    #         method=method,
+    #         cs=cs,
+    #         warp=warp,
+    #         word=word_s,
+    #         group_by=group_by,
+    #         nan_thresh=nan_thresh,
+    #         score_threshold=score_threshold)
+    
+    # pick decay function
+    if func_type.lower() == 'no_offset':
+        func = opt_func
+    else:
+        func = opt_func_offset
+    func_tag = func_type.lower()
+
+    # set saving path
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+    if stim_or_noise.lower() == 'stim':
+        save_dir = paths.tca_plots(
+            mouse, 'group', pars=pars, word=word_s, group_pars=group_pars)
+    else:
+        save_dir = paths.tca_plots(
+            mouse, 'group', pars=pars, word=word_n, group_pars=group_pars)
+    save_dir = os.path.join(save_dir, 'adaptation')
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    save_dir = os.path.join(save_dir, 'tca first100 {}'.format(stim_window.lower()))
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    save_dir = os.path.join(save_dir, 'rank {}'.format(rank))
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+
+    # get timestamp info for plotting lines
+    run = flow.DateSorter.frommeta(mice=[mouse], exclude_tags=['bad'])[-1].runs(exclude_tags=['bad'])[0]
+    t2p = run.trace2p()
+    tr = t2p.d['framerate']
+    timestep = 1/31
+    timestamps = np.arange(start_time, end_time, timestep)[::2][:input_stim.shape[1]]
+    times = np.unique(timestamps)
+    zero_sec = np.where(times <= 0)[0][-1]
+    if tr < 30:
+        three_sec = np.where(times <= 2)[0][-1]
+    else:
+        three_sec = np.where(times <= 3)[0][-1]
+
+    # construct boolean of early runs each day
+    sessboo = meta_stim.reset_index()['run'].values <= run_threshold
+
+    # construct boolean of first 100 trials per day
+    days = meta_stim.reset_index()['date'].unique()
+    first100 = np.zeros((len(meta_stim['orientation'].isin([0]).values)))
+    for di in days:
+        dboo  = meta_stim.reset_index()['date'].isin([di]).values
+        first100[np.where(dboo)[0][:100]] = 1
+    firstboo = first100 > 0
+
+    # set firstboo to only include early runs/sessions 
+    firstboo = firstboo & sessboo
+
+    # create boolean vectors for each trial type
+    inds = np.arange(np.sum(firstboo))
+    if color_by.lower() == 'orientation':
+        # color = ['#6fd174', '#6e8dcc', '#cc6670']
+        boo1  = meta_stim['orientation'].isin([0]).values[firstboo]
+        boo2  = meta_stim['orientation'].isin([135]).values[firstboo]
+        boo3  = meta_stim['orientation'].isin([270]).values[firstboo]
+    elif color_by.lower() == 'condition':
+        # color = ['#6fd174', '#6e8dcc', '#cc6670']
+        boo1  = meta_stim['condition'].isin(['neutral']).values[firstboo]
+        boo2  = meta_stim['condition'].isin(['minus']).values[firstboo]
+        boo3  = meta_stim['condition'].isin(['plus']).values[firstboo]
+
+    # get useful variables
+    pupil = meta_stim['pupil'].values[firstboo]
+    dp100 = meta_stim['dprime'].values[firstboo]
+
+    # calculate indices of reversal/learning
+    rev_ind = np.where(
+        meta_stim['learning_state']
+        .isin(['learning'])
+        .values[firstboo & sessboo])[0][-1]
+    if np.sum(meta_stim['learning_state'].isin(['naive']).values) > 0:
+        lear_ind = np.where(
+            meta_stim['learning_state']
+            .isin(['naive'])
+            .values[firstboo & sessboo])[0][-1]
+    else:
+        lear_ind = 0
+
+    # colormap for each day
+    cod = sns.color_palette('husl', len(days))
+
+    # choose adapting components
+    adapting_comps = range(1, rank+1)
+
+    # plot
+    # plt.figure(figsize=(30,6))
+    for aci in adapting_comps:
+        fig, ax1 = plt.subplots(figsize=(30,6))
+        ax2 = ax1.twinx()
+        for di, codi in zip(days, cod):
+
+            # boolean for each day accounting for first 100 trials
+            dboo  = meta_stim.reset_index()['date'].isin([di]).values[firstboo]
+            
+            # add an offset so that the fitting is only calculated on positive values
+            offset = np.min(mean_comp)
+
+            if stim_or_noise == 'stim':  # stim
+                comp_vec = V.results[rank][0].factors[2][:, aci-1]
+            else:  # noise
+                comp_vec = V2.results[rank][0].factors[2][:, aci-1]
+            
+            # get trial values and indices for each trial type
+            x1 = inds[dboo & boo1]
+            y1 = comp_vec[dboo & boo1]
+            x2 = inds[dboo & boo2]
+            y2 = comp_vec[dboo & boo2]
+            x3 = inds[dboo & boo3]
+            y3 = comp_vec[dboo & boo3]
+            
+            # plot all trials for each day
+            ax1.plot(inds[dboo], comp_vec[dboo], 'o', color=codi, alpha=0.3)
+            
+            # fit trial types with exponential decay and plot
+            color = ['#6fd174', '#3b7a3e', '#6e8dcc', '#314773', '#cc6670', '#732931']
+            try:
+                popt1, pcov1 = curve_fit(func, x1-np.min(x1), y1-offset)
+                ax1.plot(x1, func(x1-np.min(x1), *popt1)+offset, color=color[2], linewidth=3)
+            except:
+                print('Fit failed')
+            try:
+                popt2, pcov2 = curve_fit(func, x2-np.min(x2), y2-offset)
+                ax1.plot(x2, func(x2-np.min(x2), *popt2)+offset, color=color[4], linewidth=3)
+            except:
+                print('Fit failed')
+            try:
+                popt3, pcov3 = curve_fit(func, x3-np.min(x3), y3-offset)
+                ax1.plot(x3, func(x3-np.min(x3), *popt3)+offset, color=color[0], linewidth=3)
+            except:
+                print('Fit failed')
+        
+        # add axis labels, title, and lines for reversal/learning     
+        y_min = np.min(comp_vec, axis=0)
+        y_max = np.max(comp_vec, axis=0)
+        ax1.plot([0, len(comp_vec)], [0, 0], '--k')
+        ax1.plot([lear_ind, lear_ind], [y_min, y_max], '--k')
+        ax1.plot([rev_ind, rev_ind], [y_min, y_max], '--k')
+        ax1.set_title('{}: Component {}: {}: TCA model responses (first 100 trials per day)'.format(mouse, aci, stim_or_noise), size=16)
+        ax1.set_xlabel('trial number', size=14)
+        ax1.set_ylabel('response amplitude (weighted z-score)', size=14)
+
+        # create matching dprime figure 
+        ax2.plot(inds, dp100, '-', color='#C880D1')
+        ax2.set_ylabel('dprime', color='#C880D1', size=14)
+
+        # save
+        file_name = 'TCA Model Activity {} Component {} rank {} {}.png'.format(stim_or_noise, aci, rank, func_tag)
+        save_path = os.path.join(save_dir, file_name)     
+        fig.savefig(save_path, bbox_inches='tight')
+
+
 def projected_heatmap(
         mouse='OA27',
         trace_type='zscore_day',
