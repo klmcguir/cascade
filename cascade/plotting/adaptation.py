@@ -1048,7 +1048,7 @@ def bhv_heatmap(
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     save_dir = os.path.join(save_dir, 'heatmaps')
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
-    save_dir = os.path.join(save_dir, 'rank {}'.format(rank))
+    save_dir = os.path.join(save_dir, 'bhv traces')
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
 
     # created weighted reconstructions of cell activity and plot heatmaps 
@@ -1062,7 +1062,7 @@ def bhv_heatmap(
             continue
 
         # set file and title names
-        file_name = 'Heatmap Behavior {} rank {} vmax.png'.format(bhv_trace_type, rank)
+        file_name = 'Heatmap behavior {}.png'.format(bhv_trace_type, rank)
         supt = 'Behavioral traces: {}'.format(bhv_trace_type)
 
         o0 = weight_map.T[meta_stim_sub['orientation'].isin([0]).values, :]
