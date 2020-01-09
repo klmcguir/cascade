@@ -977,10 +977,10 @@ def bhv_heatmap(
 
     # bhv lookup for indexing into 1st dim of input_bhv tensor
     bhv_lookup = {
-        'speed': 0,
-        'dspeed': 1,
-        'pupil': 2,
-        'dpupil': 3
+        'pupil': 0,
+        'dpupil': 1,
+        'speed': 2,
+        'dspeed': 3
     }
 
 #     cmap = sns.diverging_palette(220, 10, sep=30, as_cmap=True)
