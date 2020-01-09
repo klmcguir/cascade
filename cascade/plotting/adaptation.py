@@ -375,7 +375,8 @@ def tca_first100(
     t2p = run.trace2p()
     tr = t2p.d['framerate']
     timestep = 1/31
-    timestamps = np.arange(start_time, end_time, timestep)[::2][:input_stim.shape[1]]
+    tpoints = len(V.results[rank][0].factors[0][:, 0])
+    timestamps = np.arange(start_time, end_time, timestep)[::2][:tpoints]
     times = np.unique(timestamps)
     zero_sec = np.where(times <= 0)[0][-1]
     if tr < 30:
