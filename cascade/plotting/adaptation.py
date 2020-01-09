@@ -173,7 +173,7 @@ def weighted_avg_first100(
         boo2  = meta_stim['orientation'].isin([135]).values[firstboo]
         boo3  = meta_stim['orientation'].isin([270]).values[firstboo]
     elif color_by.lower() == 'condition':
-        color = ['#6fd174', '#6e8dcc', '#cc6670']
+        # color = ['#6fd174', '#6e8dcc', '#cc6670']
         boo1  = meta_stim['condition'].isin(['neutral']).values[firstboo]
         boo2  = meta_stim['condition'].isin(['minus']).values[firstboo]
         boo3  = meta_stim['condition'].isin(['plus']).values[firstboo]
@@ -225,23 +225,23 @@ def weighted_avg_first100(
             # plot all trials for each day
             ax1.plot(inds[dboo], mean_comp[dboo], 'o', color=codi, alpha=0.3)
             
-            # fit trial types with exponential decay and plot 
-            # try:
-            popt1, pcov1 = curve_fit(func, x1-np.min(x1), y1-offset)
-            print('made it here')
-            ax1.plot(x1, func(x1-np.min(x1), *popt1)+offset, color=color[1], linewidth=3)
-            # except:
-            #     print('skipped')
+            # fit trial types with exponential decay and plot
+            color = ['#6fd174', '#3b7a3e', '#6e8dcc', '#314773', '#cc6670', '#732931']
+            try:
+                popt1, pcov1 = curve_fit(func, x1-np.min(x1), y1-offset)
+                ax1.plot(x1, func(x1-np.min(x1), *popt1)+offset, color=color[2], linewidth=3)
+            except:
+                print('Fit failed')
             try:
                 popt2, pcov2 = curve_fit(func, x2-np.min(x2), y2-offset)
-                ax1.plot(x2, func(x2-np.min(x2), *popt2)+offset, color=color[2], linewidth=3)
+                ax1.plot(x2, func(x2-np.min(x2), *popt2)+offset, color=color[4], linewidth=3)
             except:
-                print('skipped')
+                print('Fit failed')
             try:
                 popt3, pcov3 = curve_fit(func, x3-np.min(x3), y3-offset)
                 ax1.plot(x3, func(x3-np.min(x3), *popt3)+offset, color=color[0], linewidth=3)
             except:
-                print('skipped')
+                print('Fit failed')
         
         # add axis labels, title, and lines for reversal/learning     
         y_min = np.min(mean_comp, axis=0)
