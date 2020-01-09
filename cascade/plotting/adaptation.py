@@ -193,7 +193,9 @@ def weighted_avg_first100(
     adapting_comps = range(1, rank+1)
 
     # plot
-    plt.figure(figsize=(30,6))
+    # plt.figure(figsize=(30,6))
+    fig, ax1 = plt.subplots(figsize=(30,6))
+    ax2 = ax1.twinx()
     for aci in adapting_comps:
         for di, codi in zip(days, cod):
 
@@ -226,46 +228,38 @@ def weighted_avg_first100(
             # fit trial types with exponential decay and plot 
             try:
                 popt1, pcov1 = curve_fit(func, x1-np.min(x1), y1-offset)
-                plt.plot(x1, func(x1-np.min(x1), *popt1)+offset, color=color[1], linewidth=3)
+                ax1.plot(x1, func(x1-np.min(x1), *popt1)+offset, color=color[1], linewidth=3)
             except:
                 print('skipped')
             try:
                 popt2, pcov2 = curve_fit(func, x2-np.min(x2), y2-offset)
-                plt.plot(x2, func(x2-np.min(x2), *popt2)+offset, color=color[2], linewidth=3)
+                ax1.plot(x2, func(x2-np.min(x2), *popt2)+offset, color=color[2], linewidth=3)
             except:
                 print('skipped')
             try:
                 popt3, pcov3 = curve_fit(func, x3-np.min(x3), y3-offset)
-                plt.plot(x3, func(x3-np.min(x3), *popt3)+offset, color=color[0], linewidth=3)
+                ax1.plot(x3, func(x3-np.min(x3), *popt3)+offset, color=color[0], linewidth=3)
             except:
                 print('skipped')
         
         # add axis labels, title, and lines for reversal/learning     
         y_min = np.min(mean_comp, axis=0)
         y_max = np.max(mean_comp, axis=0)
-        plt.plot([0, len(mean_comp)], [0, 0], '--k')
-        plt.plot([lear_ind, lear_ind], [y_min, y_max], '--k')
-        plt.plot([rev_ind, rev_ind], [y_min, y_max], '--k')
-        plt.title('Ensemble average sustained responses (first 100 trials per day)')
-        plt.xlabel('trial number')
-        plt.ylabel('response amplitude (weighted z-score)')
+        ax1.plot([0, len(mean_comp)], [0, 0], '--k')
+        ax1.plot([lear_ind, lear_ind], [y_min, y_max], '--k')
+        ax1.plot([rev_ind, rev_ind], [y_min, y_max], '--k')
+        ax1.title('Ensemble average sustained responses (first 100 trials per day)')
+        ax1.xlabel('trial number')
+        ax1.ylabel('response amplitude (weighted z-score)')
 
         # create matching dprime figure 
-        y_min = np.min(dp100, axis=0)
-        y_max = np.max(dp100, axis=0)
-        plt.figure(figsize=(30,6))
-        plt.plot([0, len(mean_comp)], [0, 0], '--k')
-        plt.plot(inds, dp100, '-')
-        plt.plot([lear_ind, lear_ind], [y_min, y_max], '--k')
-        plt.plot([rev_ind, rev_ind], [y_min, y_max], '--k')
-        plt.title('dprime')
-        plt.xlabel('trial number')
-        plt.ylabel('dprime')
+        ax2.plot(inds, dp100, '-')
+        ax2.ylabel('dprime')
 
     # save
     file_name = 'Mean Weighted Activity {} Component {} rank {} {}.png'.format(stim_or_noise, aci+1, rank, func_tag)
     save_path = os.path.join(save_dir, file_name)     
-    plt.savefig(save_path, bbox_inches='tight')
+    fig.savefig(save_path, bbox_inches='tight')
 
 
 def projected_heatmap(
