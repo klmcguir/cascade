@@ -1017,7 +1017,7 @@ def bhv_heatmap(
     t2p = run.trace2p()
     tr = t2p.d['framerate']
     timestep = 1/31
-    timestamps = np.arange(start_time, end_time, timestep)[::2][:input_stim.shape[1]]
+    timestamps = np.arange(start_time, end_time, timestep)[::2][:input_bhv.shape[1]]
     times = np.unique(timestamps)
     zero_sec = np.where(times <= 0)[0][-1]
     if tr < 30:
