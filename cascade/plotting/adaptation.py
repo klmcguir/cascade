@@ -925,8 +925,6 @@ def bhv_heatmap(
         nan_thresh=0.85,
         score_threshold=0.8,
         word='determine',
-        stim_or_noise='noise',
-        rank=15,
         run_threshold=3,
         start_time=-1,
         end_time=6,
@@ -1062,7 +1060,7 @@ def bhv_heatmap(
             continue
 
         # set file and title names
-        file_name = 'Heatmap behavior {}.png'.format(bhv_trace_type, rank)
+        file_name = 'Heatmap behavior {}.png'.format(bhv_trace_type)
         supt = 'Behavioral traces: {}'.format(bhv_trace_type)
 
         o0 = weight_map.T[meta_stim_sub['orientation'].isin([0]).values, :]
