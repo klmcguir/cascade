@@ -223,7 +223,7 @@ def weighted_avg_first100(
             y3 = mean_comp[dboo & boo3]
             
             # plot all trials for each day
-            plt.plot(inds[dboo], mean_comp[dboo], 'o', color=codi, alpha=0.3)
+            ax1.plot(inds[dboo], mean_comp[dboo], 'o', color=codi, alpha=0.3)
             
             # fit trial types with exponential decay and plot 
             try:
@@ -257,7 +257,7 @@ def weighted_avg_first100(
         ax2.set_ylabel('dprime')
 
         # save
-        file_name = 'Mean Weighted Activity {} Component {} rank {} {}.png'.format(stim_or_noise, aci+1, rank, func_tag)
+        file_name = 'Mean Weighted Activity {} Component {} rank {} {}.png'.format(stim_or_noise, aci, rank, func_tag)
         save_path = os.path.join(save_dir, file_name)     
         fig.savefig(save_path, bbox_inches='tight')
 
