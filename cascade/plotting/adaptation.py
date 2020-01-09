@@ -1043,12 +1043,8 @@ def bhv_heatmap(
     # set saving path
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
-    if stim_or_noise.lower() == 'stim':
-        save_dir = paths.tca_plots(
-            mouse, 'group', pars=pars, word=word_s, group_pars=group_pars)
-    else:
-        save_dir = paths.tca_plots(
-            mouse, 'group', pars=pars, word=word_n, group_pars=group_pars)
+    save_dir = paths.tca_plots(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     save_dir = os.path.join(save_dir, 'adaptation')
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     save_dir = os.path.join(save_dir, 'heatmaps')
