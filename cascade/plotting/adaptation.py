@@ -248,13 +248,13 @@ def weighted_avg_first100(
         ax1.plot([0, len(mean_comp)], [0, 0], '--k')
         ax1.plot([lear_ind, lear_ind], [y_min, y_max], '--k')
         ax1.plot([rev_ind, rev_ind], [y_min, y_max], '--k')
-        ax1.title('Ensemble average sustained responses (first 100 trials per day)')
-        ax1.xlabel('trial number')
-        ax1.ylabel('response amplitude (weighted z-score)')
+        ax1.set_title('Ensemble average sustained responses (first 100 trials per day)')
+        ax1.set_xlabel('trial number')
+        ax1.set_ylabel('response amplitude (weighted z-score)')
 
         # create matching dprime figure 
         ax2.plot(inds, dp100, '-')
-        ax2.ylabel('dprime')
+        ax2.set_ylabel('dprime')git: addcur
 
         # save
         file_name = 'Mean Weighted Activity {} Component {} rank {} {}.png'.format(stim_or_noise, aci+1, rank, func_tag)
