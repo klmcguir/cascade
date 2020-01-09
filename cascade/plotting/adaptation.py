@@ -186,12 +186,12 @@ def weighted_avg_first100(
     rev_ind = np.where(
         meta_stim['learning_state']
         .isin(['learning'])
-        .values[firstboo & sessboo])[0][-1]
+        .values[firstboo])[0][-1]
     if np.sum(meta_stim['learning_state'].isin(['naive']).values) > 0:
         lear_ind = np.where(
             meta_stim['learning_state']
             .isin(['naive'])
-            .values[firstboo & sessboo])[0][-1]
+            .values[firstboo])[0][-1]
     else:
         lear_ind = 0
 
@@ -419,12 +419,12 @@ def tca_first100(
     rev_ind = np.where(
         meta_stim['learning_state']
         .isin(['learning'])
-        .values[firstboo & sessboo])[0][-1]
+        .values[firstboo])[0][-1]
     if np.sum(meta_stim['learning_state'].isin(['naive']).values) > 0:
         lear_ind = np.where(
             meta_stim['learning_state']
             .isin(['naive'])
-            .values[firstboo & sessboo])[0][-1]
+            .values[firstboo])[0][-1]
     else:
         lear_ind = 0
 
@@ -445,9 +445,9 @@ def tca_first100(
             dboo  = meta_stim.reset_index()['date'].isin([di]).values[firstboo]
 
             if stim_or_noise == 'stim':  # stim
-                comp_vec = V.results[rank][0].factors[2][:, aci-1]
+                comp_vec = V.results[rank][0].factors[2][:, aci-1][firstboo]
             else:  # noise
-                comp_vec = V2.results[rank][0].factors[2][:, aci-1]
+                comp_vec = V2.results[rank][0].factors[2][:, aci-1][firstboo]
             
             # add an offset so that the fitting is only calculated on positive values
             offset = np.min(comp_vec)
