@@ -228,6 +228,7 @@ def weighted_avg_first100(
             # fit trial types with exponential decay and plot 
             try:
                 popt1, pcov1 = curve_fit(func, x1-np.min(x1), y1-offset)
+                print('made it here')
                 ax1.plot(x1, func(x1-np.min(x1), *popt1)+offset, color=color[1], linewidth=3)
             except:
                 print('skipped')
@@ -248,13 +249,13 @@ def weighted_avg_first100(
         ax1.plot([0, len(mean_comp)], [0, 0], '--k')
         ax1.plot([lear_ind, lear_ind], [y_min, y_max], '--k')
         ax1.plot([rev_ind, rev_ind], [y_min, y_max], '--k')
-        ax1.set_title('{}: Component {}: {}: Ensemble average sustained responses (first 100 trials per day)'.format(mouse, aci, stim_or_noise))
-        ax1.set_xlabel('trial number')
-        ax1.set_ylabel('response amplitude (weighted z-score)')
+        ax1.set_title('{}: Component {}: {}: Ensemble average sustained responses (first 100 trials per day)'.format(mouse, aci, stim_or_noise), size=16)
+        ax1.set_xlabel('trial number', size=14)
+        ax1.set_ylabel('response amplitude (weighted z-score)', size=14)
 
         # create matching dprime figure 
         ax2.plot(inds, dp100, '-', color='#C880D1')
-        ax2.set_ylabel('dprime', color='#C880D1')
+        ax2.set_ylabel('dprime', color='#C880D1', size=14)
 
         # save
         file_name = 'Mean Weighted Activity {} Component {} rank {} {}.png'.format(stim_or_noise, aci, rank, func_tag)
