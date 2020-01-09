@@ -248,7 +248,7 @@ def weighted_avg_first100(
         ax1.plot([0, len(mean_comp)], [0, 0], '--k')
         ax1.plot([lear_ind, lear_ind], [y_min, y_max], '--k')
         ax1.plot([rev_ind, rev_ind], [y_min, y_max], '--k')
-        ax1.set_title('Ensemble average sustained responses (first 100 trials per day)')
+        ax1.set_title('{}: Component {}: {}: Ensemble average sustained responses (first 100 trials per day)'.format(mouse, aci, stim_or_noise))
         ax1.set_xlabel('trial number')
         ax1.set_ylabel('response amplitude (weighted z-score)')
 
