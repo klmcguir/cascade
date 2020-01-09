@@ -443,15 +443,15 @@ def tca_first100(
 
             # boolean for each day accounting for first 100 trials
             dboo  = meta_stim.reset_index()['date'].isin([di]).values[firstboo]
-            
-            # add an offset so that the fitting is only calculated on positive values
-            offset = np.min(mean_comp)
 
             if stim_or_noise == 'stim':  # stim
                 comp_vec = V.results[rank][0].factors[2][:, aci-1]
             else:  # noise
                 comp_vec = V2.results[rank][0].factors[2][:, aci-1]
             
+            # add an offset so that the fitting is only calculated on positive values
+            offset = np.min(comp_vec)
+
             # get trial values and indices for each trial type
             x1 = inds[dboo & boo1]
             y1 = comp_vec[dboo & boo1]
