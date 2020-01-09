@@ -1057,6 +1057,10 @@ def bhv_heatmap(
         # pick your trace
         weight_map = input_bhv_sub[bhv_lookup[bhv_trace_type], :, :]
 
+        # skip behaviors that were not recorded
+        if np.sum(np.isnan(weight_map.flatten())) == len(weight_map.flatten()):
+            continue
+
         # set file and title names
         file_name = 'Heatmap Behavior {} rank {} vmax.png'.format(bhv_trace_type, rank)
         supt = 'Behavioral traces: {}'.format(bhv_trace_type)
