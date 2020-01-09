@@ -270,6 +270,7 @@ def weighted_avg_first100(
         file_name = 'Mean Weighted Activity {} Component {} rank {} {}.png'.format(stim_or_noise, aci, rank, func_tag)
         save_path = os.path.join(save_dir, file_name)     
         fig.savefig(save_path, bbox_inches='tight')
+        plt.close('all')
 
 
 def tca_first100(
@@ -499,6 +500,7 @@ def tca_first100(
         file_name = 'TCA Model Activity {} Component {} rank {} {}.png'.format(stim_or_noise, aci, rank, func_tag)
         save_path = os.path.join(save_dir, file_name)     
         fig.savefig(save_path, bbox_inches='tight')
+        plt.close('all')
 
 
 def projected_heatmap(
@@ -513,7 +515,6 @@ def projected_heatmap(
         word_s='determine',
         word_n='directors',
         stim_or_noise='noise',
-        color_by='orientation',
         rank=15,
         run_threshold=3,
         start_time=-1,
@@ -911,3 +912,378 @@ def projected_heatmap(
                 ax.collections[0].set_cmap(ccmap)
         save_path = os.path.join(save_dir, file_name)     
         plt.savefig(save_path, bbox_inches='tight')
+        plt.close('all')
+
+
+def bhv_heatmap(
+        mouse='OA27',
+        trace_type='zscore_day',
+        bhv_trace_type='speed',  # speed, dspeed, pupil, dpupil
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        group_by='all2',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        word='determine',
+        stim_or_noise='noise',
+        rank=15,
+        run_threshold=3,
+        start_time=-1,
+        end_time=6,
+        cs_bar=True,
+        day_bar=True,
+        day_line=True,
+        run_line=False,
+        match_clim=True,
+        quinine_ticks=False,
+        ensure_ticks=False,
+        lick_ticks=False,
+        label_cbar=True,
+        vmin=None,
+        vmax=None):
+
+    """
+    Behavioral heatmaps of the first 100 trials of the day accounting for
+    absolute run (session) during the day. 
+    """
+
+    # fixed plotting params
+    # arthur's predetermined hex colors
+    colors = {
+        'orange': '#E86E0A',
+        'red': '#D61E21',
+        'gray': '#7C7C7C',
+        'black': '#000000',
+        'green': '#75D977',
+        'mint': '#47D1A8',
+        'purple': '#C880D1',
+        'indigo': '#5E5AE6',
+        'blue': '#47AEED',  # previously 4087DD
+        'yellow': '#F2E205',
+    }
+
+    # cs to color mapping
+    cs_colors = {
+        'plus': 'mint',
+        'minus': 'red',
+        'neutral': 'blue',
+        'pavlovian': 'mint',
+        'naive': 'gray'
+    }
+
+    # checkerboard overlay or day_bar
+    day_colors = {
+         'A': '#FDFEFE',
+         'B': '#7B7D7D'
+    }
+
+    # bhv lookup for indexing into 1st dim of input_bhv tensor
+    bhv_lookup = {
+        'speed': 0,
+        'dspeed': 1,
+        'pupil': 2,
+        'dpupil': 3
+    }
+
+#     cmap = sns.diverging_palette(220, 10, sep=30, as_cmap=True)
+    # cmap = 'seismic'
+
+    # load TCA models and data
+    meta_stim = load.groupday_tca_meta(
+            mouse=mouse,
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            word=word,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold)
+    meta_stim = utils.add_dprime_to_meta(meta_stim)
+    input_bhv = load.groupday_tca_bhv(
+            mouse=mouse,
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            word=word,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold)
+
+    # get timestamp info for plotting lines
+    run = flow.DateSorter.frommeta(mice=[mouse], exclude_tags=['bad'])[-1].runs(exclude_tags=['bad'])[0]
+    t2p = run.trace2p()
+    tr = t2p.d['framerate']
+    timestep = 1/31
+    timestamps = np.arange(start_time, end_time, timestep)[::2][:input_stim.shape[1]]
+    times = np.unique(timestamps)
+    zero_sec = np.where(times <= 0)[0][-1]
+    if tr < 30:
+        three_sec = np.where(times <= 2)[0][-1]
+    else:
+        three_sec = np.where(times <= 3)[0][-1]
+
+    # construct boolean of early runs each day
+    sessboo = meta_stim.reset_index()['run'].values <= run_threshold
+
+    # construct boolean of first 100 trials per day
+    days = meta_stim.reset_index()['date'].unique()
+    first100 = np.zeros((len(meta_stim['orientation'].isin([0]).values)))
+    for di in days:
+        dboo  = meta_stim.reset_index()['date'].isin([di]).values
+        first100[np.where(dboo)[0][:100]] = 1
+    firstboo = first100 > 0
+
+    # only look at the first 100 trials and 
+    meta_stim_sub = meta_stim.iloc[(firstboo & sessboo), :]
+    input_bhv_sub = input_bhv[:,:,(firstboo & sessboo)]
+
+    # set saving path
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+    if stim_or_noise.lower() == 'stim':
+        save_dir = paths.tca_plots(
+            mouse, 'group', pars=pars, word=word_s, group_pars=group_pars)
+    else:
+        save_dir = paths.tca_plots(
+            mouse, 'group', pars=pars, word=word_n, group_pars=group_pars)
+    save_dir = os.path.join(save_dir, 'adaptation')
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    save_dir = os.path.join(save_dir, 'heatmaps')
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    save_dir = os.path.join(save_dir, 'rank {}'.format(rank))
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+
+    # created weighted reconstructions of cell activity and plot heatmaps 
+    for ci in range(1,rank+1):
+        
+        # pick your trace
+        weight_map = input_bhv_sub[bhv_lookup[bhv_trace_type], :, :]
+
+        # set file and title names
+        file_name = 'Heatmap Weighted Activity {} Component {} rank {} vmax.png'.format(bhv_trace_type, ci, rank)
+        supt = 'Mean Weighted Activity Component {}: {}'.format(ci, bhv_trace_type)
+
+        o0 = weight_map.T[meta_stim_sub['orientation'].isin([0]).values, :]
+        o135 = weight_map.T[meta_stim_sub['orientation'].isin([135]).values, :]
+        o270 = weight_map.T[meta_stim_sub['orientation'].isin([270]).values, :]
+
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(30,12))
+        fig.suptitle(supt, size=20, ) #x=0.22)
+        sns.heatmap(o0, ax=ax1)
+        sns.heatmap(o135, ax=ax2)
+        sns.heatmap(o270, ax=ax3)
+
+        # loop through axes and plot relevant metadata on top
+        oris = [0, 135, 270]
+        count = 0
+        cmin = []
+        cmax = []
+        ccmap = []
+        for oc, ax in enumerate((ax1, ax2, ax3)):
+
+            # add in a title
+            ax.set_title('orientation = {}'.format(oris[oc]), size=18)
+
+            # match vmin and max across plots (first check values)
+            if match_clim and vmax is None:
+                _vmin, _vmax = ax.collections[0].get_clim()
+                cmin.append(_vmin)
+                cmax.append(_vmax)
+                ccmap.append(ax.collections[0].get_cmap())
+
+            # get metadata for this orientation/set of trials
+            meta = meta_stim_sub.loc[meta_stim_sub['orientation'].isin([oris[count]]), ['condition',
+                           'ensure', 'quinine', 'firstlick', 'learning_state']]
+            meta = meta.reset_index()
+            meta = meta.drop_duplicates()
+            ensure = np.array(meta['ensure'])
+            quinine = np.array(meta['quinine'])
+            firstlick = np.array(meta['firstlick'])
+            css = deepcopy(meta['condition'])
+            learning_state = deepcopy(meta['learning_state'])
+
+            ori_inds = np.array(meta_stim_sub['orientation'].values)
+            ori_inds = ori_inds == oris[count]
+
+            # set labels
+            if count == 0:
+                ax.set_ylabel('Trials', size=18)
+            ax.set_xlabel('Time (sec)', size=18)
+
+            # plot cs color bar/line
+            if cs_bar:
+                css[meta['learning_state'].isin(['naive']).values] = 'naive'
+                for cs in np.unique(css):
+                    cs_line_color = colors[cs_colors[cs]]
+                    cs_y = np.where(css == cs)[0]
+                    cs_y = [cs_y[0], cs_y[-1]+1]
+                    ax.plot((2, 2), cs_y, color=cs_line_color, ls='-',
+                            lw=15, alpha=0.8, solid_capstyle='butt')
+
+            # find days where learning or reversal start
+            if day_bar:
+                days = np.array(meta_stim_sub.index.get_level_values('date'))
+                days = days[ori_inds]
+                runs = np.array(meta_stim_sub.index.get_level_values('run'))
+                runs = runs[ori_inds]
+                count_d = 0
+                for day in np.unique(days):
+                    day_y = np.where(days == day)[0]
+                    day_y = [day_y[0], day_y[-1]+1]
+                    day_bar_color = day_colors[sorted(day_colors.keys())[count_d%2]]
+                    ax.plot((3.5, 3.5), day_y, color=day_bar_color, ls='-',
+                            lw=6, alpha=0.4, solid_capstyle='butt')
+                    count_d = count_d + 1
+
+            # get limits for plotting
+            y_lim = ax.get_ylim()
+            x_lim = ax.get_xlim()
+
+            # plot lines between days
+            if day_line:
+                days = np.array(meta_stim_sub.index.get_level_values('date'))
+                days = days[ori_inds]
+                days = np.diff(days)
+                day_ind = np.where(days > 0)[0]
+                for y in day_ind:
+                    day_y = [y+1, y+1]
+                    ax.plot(x_lim, day_y, color='#8e8e8e', ls='-', lw=1, alpha=0.8)
+
+            # plot lines between runs
+            if run_line:
+                runs = np.array(meta_stim_sub.index.get_level_values('run'))
+                runs = runs[ori_inds]
+                runs = np.diff(runs)
+                run_ind = np.where(runs > 0)[0]
+                for y in run_ind:
+                    run_y = [y+1, y+1]
+                    ax.plot(x_lim, run_y, color='#bababa', ls='-', lw=1,  alpha=0.8)
+
+            # plot onset/offest lines
+            ax.plot((zero_sec, zero_sec), y_lim, color='#8e8e8e', ls='-', lw=2, alpha=0.8)
+            ax.plot((three_sec, three_sec), y_lim, color='#8e8e8e', ls='-', lw=2, alpha=0.8)
+
+            # if you allow caxis to scale automatically, add alpha to ticks
+            if not vmin and not vmax:
+                tick_alpha = 0.5
+            else:
+                tick_alpha = 1
+
+            # plot quinine
+            if quinine_ticks:
+        #         quinine = meta['quinine'].values
+                for l in range(len(quinine)):
+                    if np.isfinite(quinine[l]):
+                        x = [quinine[l], quinine[l]]
+                        y = [l+0.5, l+0.5]
+                        ax.plot(x, y, color='#0fffc3', ls='',
+                                marker='.', markersize=2, alpha=tick_alpha)
+
+            # plot ensure
+            if ensure_ticks:
+        #         quinine = meta['ensure'].values
+                for l in range(len(ensure)):
+                    if np.isfinite(ensure[l]):
+                        x = [ensure[l], ensure[l]]
+                        y = [l+0.5, l+0.5]
+                        ax.plot(x, y, color='#ffb30f', ls='',
+                                marker='.', markersize=2, alpha=tick_alpha)
+
+            # plot licks
+            if lick_ticks:
+        #         quinine = meta['firstlick'].values
+                for l in range(len(firstlick)):
+                    if np.isfinite(firstlick[l]):
+                        x = [firstlick[l], firstlick[l]]
+                        y = [l+0.5, l+0.5]
+                        ax.plot(x, y, color='#7237f2', ls='',
+                                marker='.', markersize=2, alpha=tick_alpha)
+
+            # reset yticklabels
+            if y_lim[0] < 100:
+                step = 10
+            elif y_lim[0] < 200:
+                step = 20
+            elif y_lim[0] < 500:
+                step = 50
+            elif y_lim[0] < 5000:
+                step = 500
+            elif y_lim[0] < 10000:
+                step = 1000
+            elif y_lim[0] >= 10000:
+                step = 5000
+            base_yticks = range(int(y_lim[-1]), int(y_lim[0]), int(step))
+            base_yticks = [s for s in base_yticks]
+            base_ylabels = [str(s) for s in base_yticks]
+
+            dates = np.array(meta_stim_sub.index.get_level_values('date'))
+            dates = dates[ori_inds]
+            date_yticks = []
+            date_label = []
+
+            date_rel = meta.reset_index()['date'].unique()
+
+            for day in np.unique(dates):
+
+                # find number of inds needed to shift labels to put in middle of date block
+                last_ind = np.where(dates == day)[0][-1]
+                first_ind = np.where(dates == day)[0][0]
+                shifter = np.round((last_ind - first_ind)/2)
+                label_ind = last_ind - shifter
+
+                # get your relative day number
+                day_val = np.where(date_rel == day)[0][0] + 1  # add one to make it one-indexed
+
+                # add a pad to keep labels left-justified
+                if day_val < 10:
+                    pad = '  '
+                else:
+                    pad = ''
+
+                # if the date label and trial label inds are exactly the same
+                # force the label info onto one line of text
+                # label days with imaging day number
+                if np.isin(label_ind, base_yticks):
+                    # remove the existing ind and add a special label to end
+                    good_tick = ~np.isin(base_yticks, label_ind)
+                    base_yticks = [base_yticks[s] for s in range(len(good_tick))
+                                   if good_tick[s]]
+                    base_ylabels = [base_ylabels[s] for s in range(len(good_tick))
+                                   if good_tick[s]]
+                    dpad = '          '
+                    dpad = dpad[0:(len('          ') - len(str(label_ind)*2))]
+                    base_ylabels.append('Day ' + str(day_val) + dpad + str(label_ind))
+                else:
+                    base_ylabels.append('Day ' + str(day_val) + '          ' + pad)
+                base_yticks.append(label_ind)
+
+            ax.set_yticks(base_yticks)
+            ax.set_yticklabels(base_ylabels, size=14)
+
+            # reset xticklabels
+            xticklabels = np.array([-1, 0, 1, 2, 3, 4, 5, 6])
+            xticklabels = xticklabels[(xticklabels > times[0]) & (xticklabels < times[-1])]
+            xticks = [np.where(times <= s)[0][-1] for s in xticklabels]
+            ax.set_xticks(xticks)
+            ax.set_xticklabels(xticklabels, rotation='horizontal', size=16)
+
+            # update count through loops
+            count = count + 1
+
+        # match vmin and max across plots (using cmax to choose cmap and cmin)
+        scale_by = 0.7
+        if match_clim and vmax is None:
+            max_ind = np.nanargmax(cmax)
+            cmin = cmin[max_ind]*scale_by
+            cmax = cmax[max_ind]*scale_by
+            ccmap = ccmap[max_ind]
+
+            for ax in (ax1, ax2, ax3):
+                ax.collections[0].set_clim(vmax=cmax, vmin=cmin)
+                ax.collections[0].set_cmap(ccmap)
+        save_path = os.path.join(save_dir, file_name)     
+        plt.savefig(save_path, bbox_inches='tight')
+        plt.close('all')
