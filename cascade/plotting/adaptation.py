@@ -1284,3 +1284,80 @@ def bhv_heatmap(
         save_path = os.path.join(save_dir, file_name)     
         plt.savefig(save_path, bbox_inches='tight')
         plt.close('all')
+
+
+def fit_linear_template(
+        mice=['OA27', 'OA67', 'OA32', 'OA34', 'CC175', 'OA36', 'OA26',
+              'VF226'],
+        words=['determine', 'pharmacology', 'pharmacology', 'pharmacology',
+               'pharmacology', 'pharmacology', 'pharmacology', 'pharmacology'],
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        group_by='all2',
+        nan_thresh=0.85,
+        score_threshold=0.8
+):
+
+    for m, w in zip(mice, words):
+        # load TCA models and data
+        V, my_sorts_stim = load.groupday_tca_model(
+                mouse=mouse,
+                trace_type=trace_type,
+                method=method,
+                cs=cs,
+                warp=warp,
+                rank=rank,
+                word=word,
+                group_by=group_by,
+                nan_thresh=nan_thresh,
+                score_threshold=score_threshold,
+                full_output=False,
+                unsorted=True,
+                verbose=False)
+        V2, my_sorts_noise = load.groupday_tca_model(
+                mouse=mouse,
+                trace_type=trace_type,
+                method=method,
+                cs=cs,
+                warp=warp,
+                rank=rank,
+                word=word_n,
+                group_by=group_by,
+                nan_thresh=nan_thresh,
+                score_threshold=score_threshold,
+                full_output=False,
+                unsorted=True,
+                verbose=False)
+        meta_stim = load.groupday_tca_meta(
+                mouse=mouse,
+                trace_type=trace_type,
+                method=method,
+                cs=cs,
+                warp=warp,
+                word=word_s,
+                group_by=group_by,
+                nan_thresh=nan_thresh,
+                score_threshold=score_threshold)
+        meta_stim = utils.add_dprime_to_meta(meta_stim)
+        input_stim = load.groupday_tca_input_tensor(
+                mouse=mouse,
+                trace_type=trace_type,
+                method=method,
+                cs=cs,
+                warp=warp,
+                word=word_s,
+                group_by=group_by,
+                nan_thresh=nan_thresh,
+                score_threshold=score_threshold)
+        # input_bhv = load.groupday_tca_bhv(
+        #         mouse=mouse,
+        #         trace_type=trace_type,
+        #         method=method,
+        #         cs=cs,
+        #         warp=warp,
+        #         word=word_s,
+        #         group_by=group_by,
+        #         nan_thresh=nan_thresh,
+        #         score_threshold=score_threshold)

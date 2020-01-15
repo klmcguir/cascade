@@ -166,6 +166,59 @@ def singleday_tensor(
         return tensor, meta, ids
 
 
+def groupday_tca_ids(
+        mouse='OA27',
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        rank=18,
+        word='tray',
+        group_by='all',
+        nan_thresh=0.85,
+        score_threshold=None,
+        full_output=False,
+        unsorted=False,
+        verbose=False):
+    """
+    Load existing TCA ids (absolute cell ids for all aligned cells in tensor).
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    ids array
+
+    """
+
+    mouse = mouse
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        load_tag = '_nantrial' + str(nan_thresh)
+    else:
+        load_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+
+    # load dir
+    load_dir = paths.tca_path(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    ids_path = os.path.join(
+                load_dir, str(mouse) + '_' + str(group_by) + load_tag
+                + '_group_ids_' + str(trace_type) + '.npy')
+
+    # load your data
+    ids = np.load(ids_path)
+
+    return ids
+
+
 def groupday_tca_model(
         mouse='OA27',
         trace_type='zscore_day',
