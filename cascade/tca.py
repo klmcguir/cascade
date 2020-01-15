@@ -1388,6 +1388,7 @@ def groupday_tca(
         badtrialratio = nbadtrials/ntrials
         badcell_indexer = badtrialratio < nan_trial_threshold
         group_tensor = group_tensor[badcell_indexer, :, :]
+        id_union = id_union[badcell_indexer]
         if verbose:
             print('Removed ' + str(np.sum(~badcell_indexer)) +
                   ' cells from tensor:' + ' badtrialratio < ' +
