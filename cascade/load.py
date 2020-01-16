@@ -473,7 +473,7 @@ def groupday_tensor(
     if verbose:
         print(str(day1.mouse) + ': group_by=' + str(group_by) + ': loaded.')
 
-    return group_tensor, id_union, group_bhv_tensor
+    return group_tensor, id_union, group_bhv_tensor, meta
 
 
 def singleday_tensor(
