@@ -12,15 +12,94 @@ from copy import deepcopy
 from .. import load, utils
 
 
+def trialbytrial_drive(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        word='tray',
+        group_by='all2',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        drive_type='visual'):
+    """
+    Create a cells x trials array that contains the log inverse p-values
+    of each trial compared to the distributions of the baseline response
+    for each cell. Stats us a two tailed KS test.
+
+    This is a wrapped function so that a flow Mouse object is correctly
+    passed to the memoizer and MongoDB database. 
+    """
+
+    drive_mat = trialbytrial_drive_sub(
+        flow.Mouse(mouse=mouse),
+        trace_type=trace_type,
+        method=method,
+        cs=cs,
+        warp=warp,
+        word=word,
+        group_by=group_by,
+        nan_thresh=nan_thresh,
+        score_threshold=score_threshold,
+        drive_type=drive_type):
+
+    return drive_mat
+
+
+@memoize(across='mouse', updated=200120, returns='other', large_output=True)
+def trialbytrial_drive_sub(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        word='tray',
+        group_by='all2',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        drive_type='visual'):
+    """
+    Create a cells x trials array that contains the log inverse p-values
+    of each trial compared to the distributions of the baseline response
+    for each cell. Stats us a two tailed KS test. 
+    """
+
+    # get the mouse as a string
+    mouse = mouse.mouse
+
+    # load your tensor
+    tensor = groupday_tca_input_tensor(
+        mouse=mouse,
+        trace_type=trace_type,
+        method=method,
+        cs=cs,
+        warp=warp,
+        word=word,
+        group_by=group_by,
+        nan_thresh=nan_thresh,
+        score_threshold=score_threshold):
+
+    if drive_type == 'visual':
+        drive_mat = _trial_driven_visually(tensor, mouse, sec=15.5):
+    elif drive_type == 'trial':
+        drive_mat = _trial_driven_trial(tensor, mouse, sec=15.5):
+    else:
+        print('{}: requested {}: drive_type not recognized.'.format(
+            mouse, drive_type))
+
+    return drive_mat
+
+
 @memoize(across='mouse', updated=191003, returns='other', large_output=False)
 def trial_factor_tuning(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by='all',
+        group_by='all2',
         nan_thresh=0.85,
         score_threshold=0.8,
         rank_num=18,
@@ -257,3 +336,110 @@ def trial_factor_tuning(
     tuning_df = pd.DataFrame(df_data, index=index)
 
     return tuning_df
+
+
+def _trial_driven_visually(tensor, mouse, sec=15.5):
+    """
+    Calculate the probability of being visually driven for each cell
+    per trial.
+
+    Parameters:
+    -----------
+    tensor : np.ndarray
+        cells x time x trials
+    mouse : str
+        The mouse name.
+    sec : float
+        How many samples per second in the input data?
+
+    Returns:
+    --------
+    np.ndarray
+        An array of length equal to the number cells x trial number,
+        values are the log inverse p-value of that cell responding to
+        the particular cs.
+
+    """
+
+    # Baseline is mean across frames, now ncells x nonsets
+    stim_length = [2 if mouse in ['OA32', 'OA34', 'OA36'] else 3][0]
+    baselines = np.nanmean(tensor[:, :int(np.floor(sec)), :], axis=1)
+    full_baselines = tensor[:, :int(np.floor(sec)), :]
+    stimuli = tensor[:, int(np.ceil(sec)):int(np.ceil((stim_length+1)*sec)), :]
+
+    # Per-cell value
+    meanbl = np.nanmean(baselines, axis=1)
+    ncells = tensor.shape[0]
+
+    # We will save the maximum inverse p values
+    maxinvps = np.zeros((ncells, tensor.shape[2]), dtype=np.float64)
+
+    for c in range(ncells):
+        cell_baseline_vec = full_baselines[c, :, :].flatten()
+        cell_baseline_vec = cell_baseline_vec[~np.isnan(cell_baseline_vec)]
+        ntrials = np.sum(~np.isnan(baselines[c,:]).flatten())
+        bonferroni_n = ncells*ntrials
+        std = np.std(cell_baseline_vec)
+        
+        for trial in range(tensor.shape[2]):
+            if np.nanmean(stimuli[c, :, trial]) > meanbl[c]: # don't test a cell if it is negative on average
+                pv = sp.stats.ks_2samp(cell_baseline_vec, stimuli[c, :, trial])
+                logpv = -1*np.log(pv[1]*bonferroni_n)
+                if logpv > maxinvps[c, trial]:
+                    maxinvps[c, trial] = logpv
+
+    return maxinvps
+
+
+def _trial_driven_trial(tensor, mouse, sec=15.5):
+    """
+    Calculate the probability of being visually driven for each cell
+    per trial.                                           |
+    tensor[:, int(np.ceil(sec)):int(np.ceil((stim_length+3)*sec)), :]
+
+    Parameters:
+    -----------
+    tensor : np.ndarray
+        cells x time x trials
+    mouse : str
+        The mouse name.
+    sec : float
+        How many samples per second in the input data?
+
+    Returns:
+    --------
+    np.ndarray
+        An array of length equal to the number cells x trial number,
+        values are the log inverse p-value of that cell responding to
+        the particular cs.
+
+    """
+
+    # Baseline is mean across frames, now ncells x nonsets
+    stim_length = [2 if mouse in ['OA32', 'OA34', 'OA36'] else 3][0]
+    baselines = np.nanmean(tensor[:, :int(np.floor(sec)), :], axis=1)
+    full_baselines = tensor[:, :int(np.floor(sec)), :]
+    stimuli = tensor[:, int(np.ceil(sec)):int(np.ceil((stim_length+3)*sec)), :]
+
+    # Per-cell value
+    meanbl = np.nanmean(baselines, axis=1)
+    ncells = tensor.shape[0]
+
+    # We will save the maximum inverse p values
+    maxinvps = np.zeros((ncells, tensor.shape[2]), dtype=np.float64)
+
+    for c in range(ncells):
+        cell_baseline_vec = full_baselines[c, :, :].flatten()
+        cell_baseline_vec = cell_baseline_vec[~np.isnan(cell_baseline_vec)]
+        ntrials = np.sum(~np.isnan(baselines[c,:]).flatten())
+        bonferroni_n = ncells*ntrials
+        std = np.std(cell_baseline_vec)
+        
+        for trial in range(tensor.shape[2]):
+            if np.nanmean(stimuli[c, :, trial]) > meanbl[c]: # don't test a cell if it is negative on average
+                pv = sp.stats.ks_2samp(cell_baseline_vec, stimuli[c, :, trial])
+                logpv = -1*np.log(pv[1]*bonferroni_n)
+                if logpv > maxinvps[c, trial]:
+                    maxinvps[c, trial] = logpv
+
+    return maxinvps
