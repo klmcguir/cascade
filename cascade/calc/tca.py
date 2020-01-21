@@ -69,7 +69,7 @@ def trialbytrial_drive_sub(
     mouse = mouse.mouse
 
     # load your tensor
-    tensor = groupday_tca_input_tensor(
+    tensor = load.groupday_tca_input_tensor(
         mouse=mouse,
         trace_type=trace_type,
         method=method,
