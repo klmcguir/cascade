@@ -1182,8 +1182,6 @@ def groupday_tca(
     save_dir = paths.tca_path(mouse, 'group', pars=pars, group_pars=group_pars)
 
     # get DateSorter object
-    if mouse == 'OA26' and 'contrast' in exclude_tags:
-        dates = [s.date for s in days is s.date != 170302]
     if np.isin(group_by.lower(),
                ['naive_vs_high_dprime', 'l_vs_r1', 'naive_and_learning']):
         days = flow.DateSorter.frommeta(
@@ -1191,6 +1189,8 @@ def groupday_tca(
     else:
         days = flow.DateSorter.frommeta(
             mice=[mouse], tags=tags, exclude_tags=['bad'])
+    if mouse == 'OA26' and 'contrast' in exclude_tags:
+        days = [s for s in days if s.date != 170302]
 
     # filter DateSorter object if you are filtering on dprime
     if use_dprime:
