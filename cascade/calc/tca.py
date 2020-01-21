@@ -42,7 +42,7 @@ def trialbytrial_drive(
         group_by=group_by,
         nan_thresh=nan_thresh,
         score_threshold=score_threshold,
-        drive_type=drive_type):
+        drive_type=drive_type)
 
     return drive_mat
 
@@ -78,12 +78,12 @@ def trialbytrial_drive_sub(
         word=word,
         group_by=group_by,
         nan_thresh=nan_thresh,
-        score_threshold=score_threshold):
+        score_threshold=score_threshold)
 
     if drive_type == 'visual':
-        drive_mat = _trial_driven_visually(tensor, mouse, sec=15.5):
+        drive_mat = _trial_driven_visually(tensor, mouse, sec=15.5)
     elif drive_type == 'trial':
-        drive_mat = _trial_driven_trial(tensor, mouse, sec=15.5):
+        drive_mat = _trial_driven_trial(tensor, mouse, sec=15.5)
     else:
         print('{}: requested {}: drive_type not recognized.'.format(
             mouse, drive_type))
