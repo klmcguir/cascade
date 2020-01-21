@@ -10,6 +10,7 @@ import numpy as np
 import os
 from copy import deepcopy
 from .. import load, utils
+import scipy as sp
 
 
 def trialbytrial_drive(
