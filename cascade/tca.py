@@ -996,7 +996,7 @@ def groupday_tca(
         driven=True,
         drive_css=('0', '135', '270'),
         drive_threshold=1.31,
-        nan_trial_threshold=0.95,
+        nan_trial_threshold=0.85,
         score_threshold=0.8,
 
         # other params
