@@ -964,7 +964,7 @@ def groupday_tca(
 
         # TCA params
         rank=20,
-        method=('mncp_hals',),
+        method=('ncp_hals',),
         replicates=3,
         fit_options=None,
         skip_modes=[],
@@ -972,7 +972,7 @@ def groupday_tca(
         tensor_init='rand',
 
         # grouping params
-        group_by='all',
+        group_by='all2',
         up_or_down='up',
         use_dprime=False,
         dprime_threshold=2,
@@ -995,8 +995,8 @@ def groupday_tca(
         exclude_conds=('blank', 'blank_reward', 'pavlovian'),
         driven=True,
         drive_css=('0', '135', '270'),
-        drive_threshold=15,
-        nan_trial_threshold=0.85,
+        drive_threshold=1.31,
+        nan_trial_threshold=0.95,
         score_threshold=0.8,
 
         # other params
