@@ -598,8 +598,7 @@ def groupday_longform_factors_annotated(
                 suffix = '.eps'
             else:
                 suffix = '.png'
-            plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) +
-                        '_component_' + str(comp + 1) + suffix),
+            plt.savefig(os.path.join(date_dir, '{}_rank_{}_component_{}{}'.format(mouse, r, comp + 1, suffix)),
                         bbox_inches='tight')
             if verbose:
                 plt.show()
@@ -974,7 +973,7 @@ def groupday_factors_annotated(
             suffix = '.eps'
         else:
             suffix = '.png'
-        plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + suffix),
+        plt.savefig(os.path.join(date_dir, '{}_rank_{}{}'.format(mouse, r, suffix)),
                                  bbox_inches='tight')
         if verbose:
             plt.show()
