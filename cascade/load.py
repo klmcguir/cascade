@@ -476,6 +476,90 @@ def groupday_tensor(
     return group_tensor, id_union, group_bhv_tensor, meta
 
 
+def load_all_groupday(
+        mouse='OA27',
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        rank=15,
+        word='tray',
+        group_by='all',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        full_output=False,
+        unsorted=True,
+        verbose=False):
+    """
+    Load all existing data from fitting a TCA model.
+    """
+
+    # load TCA model
+    model = groupday_tca_model(
+        mouse=mouse,
+        trace_type=trace_type,
+        method=method,
+        cs=cs,
+        warp=warp,
+        word=word,
+        group_by=group_by,
+        nan_thresh=nan_thresh,
+        score_threshold=score_threshold,
+        full_output=full_output,
+        unsorted=unsorted,
+        verbose=verbose)
+
+    # load cell ids
+    ids = groupday_tca_ids(
+        mouse=mouse,
+        trace_type=trace_type,
+        method=method,
+        cs=cs,
+        warp=warp,
+        word=word,
+        group_by=group_by,
+        nan_thresh=nan_thresh,
+        score_threshold=score_threshold)
+
+    # load input tensor
+    tensor = groupday_tca_input_tensor(
+        mouse=mouse,
+        trace_type=trace_type,
+        method=method,
+        cs=cs,
+        warp=warp,
+        word=word,
+        group_by=group_by,
+        nan_thresh=nan_thresh,
+        score_threshold=score_threshold)
+
+    # load metadata
+    meta = groupday_tca_meta(
+        mouse=mouse,
+        trace_type=trace_type,
+        method=method,
+        cs=cs,
+        warp=warp,
+        word=word,
+        group_by=group_by,
+        nan_thresh=nan_thresh,
+        score_threshold=score_threshold)
+
+    # load behavioral traces (i.e., pupil and running)
+    bhv = groupday_tca_bhv(
+        mouse=mouse,
+        trace_type=trace_type,
+        method=method,
+        cs=cs,
+        warp=warp,
+        word=word,
+        group_by=group_by,
+        nan_thresh=nan_thresh,
+        score_threshold=score_threshold)
+
+    return model, ids, tensor, meta, bhv
+
+
 def singleday_tensor(
         mouse,
         date,
@@ -636,14 +720,10 @@ def groupday_tca_ids(
         method='mncp_hals',
         cs='',
         warp=False,
-        rank=18,
         word='tray',
         group_by='all',
         nan_thresh=0.85,
-        score_threshold=None,
-        full_output=False,
-        unsorted=False,
-        verbose=False):
+        score_threshold=None):
     """
     Load existing TCA ids (absolute cell ids for all aligned cells in tensor).
 
@@ -785,7 +865,6 @@ def groupday_tca_meta(
         method='mncp_hals',
         cs='',
         warp=False,
-        rank=18,
         word='tray',
         group_by='all',
         nan_thresh=0.85,
