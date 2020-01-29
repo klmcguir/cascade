@@ -489,25 +489,29 @@ def load_all_groupday(
         score_threshold=0.8,
         full_output=False,
         unsorted=True,
+        with_model=True,
         verbose=False):
     """
     Load all existing data from fitting a TCA model.
     """
 
     # load TCA model
-    model = groupday_tca_model(
-        mouse=mouse,
-        trace_type=trace_type,
-        method=method,
-        cs=cs,
-        warp=warp,
-        word=word,
-        group_by=group_by,
-        nan_thresh=nan_thresh,
-        score_threshold=score_threshold,
-        full_output=full_output,
-        unsorted=unsorted,
-        verbose=verbose)
+    if with_model:
+        model = groupday_tca_model(
+            mouse=mouse,
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            word=word,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold,
+            full_output=full_output,
+            unsorted=unsorted,
+            verbose=verbose)
+    else:
+        model = []
 
     # load cell ids
     ids = groupday_tca_ids(
