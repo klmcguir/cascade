@@ -497,7 +497,7 @@ def load_all_groupday(
 
     # load TCA model
     if with_model:
-        model = groupday_tca_model(
+        model, sorts = groupday_tca_model(
             mouse=mouse,
             trace_type=trace_type,
             method=method,
@@ -511,7 +511,7 @@ def load_all_groupday(
             unsorted=unsorted,
             verbose=verbose)
     else:
-        model = []
+        model, sorts = [], []
 
     # load cell ids
     ids = groupday_tca_ids(
@@ -561,7 +561,7 @@ def load_all_groupday(
         nan_thresh=nan_thresh,
         score_threshold=score_threshold)
 
-    return model, ids, tensor, meta, bhv
+    return model, ids, tensor, meta, bhv, sorts
 
 
 def singleday_tensor(
