@@ -405,8 +405,7 @@ def sync_tca_pillow(
                    'word': word,
                    'group_by': group_by,
                    'nan_thresh': nan_thresh,
-                   'score_threshold': score_threshold,
-                   'rank': rank_num}
+                   'score_threshold': score_threshold}
     tensor, _, _ = load.groupday_tca_model(**load_kwargs)
     meta = load.groupday_tca_meta(**load_kwargs)
 
