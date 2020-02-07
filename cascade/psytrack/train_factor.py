@@ -314,11 +314,11 @@ def _gather_data(runs, weights, include_pavlovian=True):
 def sync_tca_pillow(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by='all',
+        group_by='all2',
         nan_thresh=0.85,
         score_threshold=0.8,
         rank_num=18,
@@ -333,9 +333,9 @@ def sync_tca_pillow(
     # default TCA params to use
     if not word:
         if mouse == 'OA27':
-            word = 'restaurant'
+            word = 'prints'
         else:
-            word = 'whale'  # should be updated to 'obligations'
+            word = 'horrible'  # should be updated to 'obligations'
         if verbose:
             print('Creating dataframe for ' + mouse + '-' + word)
 
