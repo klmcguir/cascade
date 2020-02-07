@@ -1036,9 +1036,17 @@ def groupmouse_trialfac_summary_stages(
                        'nan_thresh': nan_thresh,
                        'score_threshold': score_threshold,
                        'rank': rank_num}
+        load_kwargs_meta = {'mouse': mouse,
+                       'method': method,
+                       'cs': cs,
+                       'warp': warp,
+                       'word': words[mnum],
+                       'group_by': group_by,
+                       'nan_thresh': nan_thresh,
+                       'score_threshold': score_threshold}
         sort_ensemble, cell_ids, cell_clusters = load.groupday_tca_model(
             **load_kwargs, full_output=True)
-        meta = load.groupday_tca_meta(**load_kwargs)
+        meta = load.groupday_tca_meta(**load_kwargs_meta)
         orientation = meta['orientation']
         condition = meta['condition']
         trialerror = meta['trialerror']
