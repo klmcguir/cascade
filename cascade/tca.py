@@ -2067,7 +2067,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     firstlick = t2p.firstlick('')[trial_idx]
     firstlick = firstlick + (np.abs(start_time)*np.round(t2p.d['framerate']))
 
-    firstlickbout = t2p.firstlickbout('')[trial_idx]
+    firstlickbout = t2p.firstlickbout('', lickbout_len=3, strict=True)[trial_idx]
     firstlickbout = firstlickbout + (np.abs(start_time)*np.round(t2p.d['framerate']))
 
     # downsample all timestamps to 15Hz if framerate is 31Hz
