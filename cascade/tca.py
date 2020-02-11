@@ -2067,11 +2067,15 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     firstlick = t2p.firstlick('')[trial_idx]
     firstlick = firstlick + (np.abs(start_time)*np.round(t2p.d['framerate']))
 
+    firstlickbout = t2p.firstlickbout('')[trial_idx]
+    firstlickbout = firstlickbout + (np.abs(start_time)*np.round(t2p.d['framerate']))
+
     # downsample all timestamps to 15Hz if framerate is 31Hz
     if (t2p.d['framerate'] > 30) and downsample:
         ensure = ensure/2
         quinine = quinine/2
         firstlick = firstlick/2
+        firstlickbout = firstlickbout/2
 
     # create your index out of relevant variables
     index = pd.MultiIndex.from_arrays([
@@ -2085,8 +2089,9 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     data = {'orientation':  oris, 'condition': css,
             'trialerror': trialerror, 'hunger': hunger,
             'learning_state': learning_state, 'tag': tags,
-            'firstlick': firstlick, 'ensure': ensure,
-            'quinine': quinine, 'speed': speed, 'pre_speed': pre_speed,
+            'firstlick': firstlick, 'firstlickbout': firstlickbout,
+            'ensure': ensure, 'quinine': quinine,
+            'speed': speed, 'pre_speed': pre_speed,
             'anticipatory_licks': antic_lick, 'pre_licks': pre_lick,
             'pupil': pupil, 'pre_pupil': pre_pupil,
             'brainmotion': brainmotion}
