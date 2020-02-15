@@ -1132,6 +1132,21 @@ def groupday_tca(
                         'retinotopy', 'sated', 'learning_start',
                         'reversal1_start')
 
+    elif group_by.lower() == 'l_vs_r1_tight':  # focus on few days around rev
+        use_dprime = False
+        tags = None
+        days = flow.DateSorter.frommeta(
+                mice=[mouse], tags='learning', exclude_tags=['bad'])
+        day_count = len(days) - 4
+        dates = [s.date for c, s in enumerate(days) if c >= day_count ]
+        days = flow.DateSorter.frommeta(
+                mice=[mouse], tags='reversal1', exclude_tags=['bad'])
+        rev_dates = [s.date for c, s in enumerate(days) if c < 4]
+        dates.extend(rev_dates)
+        dates = list(np.unique(dates))
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated', 'learning_start')
+
     elif group_by.lower() == 'all':
         tags = None
         use_dprime = False
@@ -1379,6 +1394,13 @@ def groupday_tca(
             celln_all_trials = tensor_list[i][c, :, :]
             group_tensor[(id_union == k), :, trial_start:trial_end] = celln_all_trials
         trial_start += np.shape(tensor_list[i])[2]
+
+    # special case for focusing on reversal transition
+    if group_by.lower() == 'l_vs_r1_tight':
+        first_bool = _first100_bool(meta)
+        meta = meta.iloc[firstboo, :]
+        group_bhv_tensor = group_bhv_tensor[:, :, firstboo]
+        group_tensor = group_tensor[:, :, firstboo]
 
     # allow for cells with low number of trials to be dropped
     if nan_trial_threshold:
@@ -2159,3 +2181,117 @@ def _getcstraces_filtered(
     meta_df = pd.concat(meta_list, axis=0)
 
     return tensor, meta_df
+
+
+def _first100_bool(meta):
+    """
+    Helper function to get a boolean vector of the first 100 trials for each day.
+    If a day is shorter than 100 trials use the whole day. 
+    """
+    
+    days = meta.reset_index()['date'].unique()
+
+    first100 = np.zeros((len(meta)))
+    for di in days:
+        dboo  = meta.reset_index()['date'].isin([di]).values
+        daylength = np.sum(dboo)
+        if daylength > 100:
+            first100[np.where(dboo)[0][:100]] = 1
+        else:
+            first100[dboo] = 1
+    firstboo = first100 > 0
+    
+    return firstboo
+
+
+def _last100_bool(meta):
+    """
+    Helper function to get a boolean vector of the last 100 trials for each day.
+    If a day is shorter than 100 trials use the whole day. 
+    """
+    
+    days = meta.reset_index()['date'].unique()
+
+    first100 = np.zeros((len(meta)))
+    for di in days:
+        dboo  = meta.reset_index()['date'].isin([di]).values
+        daylength = np.sum(dboo)
+        if daylength > 100:
+            first100[np.where(dboo)[0][-100:]] = 1
+        else:
+            first100[dboo] = 1
+    firstboo = first100 > 0
+    
+    return firstboo
+
+
+def _firstlast100_bool(meta):
+    """
+    Helper function to get a boolean vector of the first and last 100 trials for each day.
+    If a day is shorter than 200 trials use the whole day. 
+    """
+    
+    days = meta.reset_index()['date'].unique()
+
+    first100 = np.zeros((len(meta)))
+    for di in days:
+        dboo  = meta.reset_index()['date'].isin([di]).values
+        daylength = np.sum(dboo)
+        if daylength > 100:
+            first100[np.where(dboo)[0][-50:]] = 1
+            first100[np.where(dboo)[0][:50]] = 1
+        else:
+            first100[dboo] = 1
+    firstboo = first100 > 0
+    
+    return firstboo
+
+
+def _mosttrials_bool(meta):
+    """
+    Helper function to get a boolean vector of the first n trials for each day.
+    n = the number of trials on the shortest day.
+    """
+    
+    day_lengths = []
+    days = meta.reset_index()['date'].unique()
+    for di in days:
+        dboo  = meta.reset_index()['date'].isin([di]).values
+        day_lengths.append(np.sum(dboo))
+    trialn = np.min(day_lengths)
+    
+    first100 = np.zeros((len(meta)))
+    for di in days:
+        dboo  = meta.reset_index()['date'].isin([di]).values
+        first100[np.where(dboo)[0][:trialn]] = 1
+    firstboo = first100 > 0
+    
+    mouse = meta.reset_index()['mouse'].unique()[0]
+    print('{}: {} trials are being used to maximize possible trials each day'.format(mouse, trialn))
+    
+    return firstboo
+
+
+def _mostlatetrials_bool(meta):
+    """
+    Helper function to get a boolean vector of the first n trials for each day.
+    n = the number of trials on the shortest day.
+    """
+    
+    day_lengths = []
+    days = meta.reset_index()['date'].unique()
+    for di in days:
+        dboo  = meta.reset_index()['date'].isin([di]).values
+        day_lengths.append(np.sum(dboo))
+    trialn = np.min(day_lengths)
+    
+    first100 = np.zeros((len(meta)))
+    for di in days:
+        dboo  = meta.reset_index()['date'].isin([di]).values
+        first100[np.where(dboo)[0][-trialn:]] = 1
+    firstboo = first100 > 0
+    
+    mouse = meta.reset_index()['mouse'].unique()[0]
+    print('{}: {} trials are being used to maximize possible trials each day'.format(mouse, trialn))
+    
+    return firstboo
