@@ -1169,6 +1169,17 @@ def groupday_tca(
             exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                             'retinotopy', 'sated', 'reversal2_start', 'reversal2')
 
+    elif group_by.lower() == 'all3':
+        tags = None
+        use_dprime = False
+        if mouse == 'OA27':
+            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                            'retinotopy', 'sated', 'learning_start',
+                            'reversal2_start', 'reversal2')
+        else:
+            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                            'retinotopy', 'sated', 'reversal2_start', 'reversal2')
+
 
     else:
         print('Using input parameters without modification by group_by=...')
@@ -1396,8 +1407,8 @@ def groupday_tca(
         trial_start += np.shape(tensor_list[i])[2]
 
     # special case for focusing on reversal transition
-    if group_by.lower() == 'l_vs_r1_tight':
-        first_bool = _first100_bool(meta)
+    if group_by.lower() in ['l_vs_r1_tight', 'all3']:
+        first_bool = _first100_bool_wdelta(meta)
         meta = meta.iloc[first_bool, :]
         group_bhv_tensor = group_bhv_tensor[:, :, first_bool]
         group_tensor = group_tensor[:, :, first_bool]
@@ -2194,6 +2205,37 @@ def _first100_bool(meta):
     first100 = np.zeros((len(meta)))
     for di in days:
         dboo  = meta.reset_index()['date'].isin([di]).values
+        daylength = np.sum(dboo)
+        if daylength > 100:
+            first100[np.where(dboo)[0][:100]] = 1
+        else:
+            first100[dboo] = 1
+    firstboo = first100 > 0
+    
+    return firstboo
+
+def _first100_bool_wdelta(meta):
+    """
+    Helper function to get a boolean vector of the first 100 trials for each day.
+    Treats initial learning and reversal as a new "day."
+    If a day is shorter than 100 trials use the whole day. 
+    """
+    
+    day_vec = meta.reset_index()['date'].values
+    days = np.unique(day_vec)
+    ls = meta['learning_state'].values
+    for di in days:
+        dboo  = np.isin(day_vec, di)
+        states_vec = ls[dboo]
+        u_states = np.unique(states_vec)
+        if len(u_states) > 1:
+            second_state = dboo & (states_vec == u_states[1])
+            day_vec[second_state] = day_vec[second_state] + 0.5
+
+    first100 = np.zeros((len(meta)))
+    days = np.unique(day_vec)
+    for di in days:
+        dboo  = np.isin(day_vec, di)
         daylength = np.sum(dboo)
         if daylength > 100:
             first100[np.where(dboo)[0][:100]] = 1
