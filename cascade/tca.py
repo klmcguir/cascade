@@ -1398,9 +1398,9 @@ def groupday_tca(
     # special case for focusing on reversal transition
     if group_by.lower() == 'l_vs_r1_tight':
         first_bool = _first100_bool(meta)
-        meta = meta.iloc[firstboo, :]
-        group_bhv_tensor = group_bhv_tensor[:, :, firstboo]
-        group_tensor = group_tensor[:, :, firstboo]
+        meta = meta.iloc[first_bool, :]
+        group_bhv_tensor = group_bhv_tensor[:, :, first_bool]
+        group_tensor = group_tensor[:, :, first_bool]
 
     # allow for cells with low number of trials to be dropped
     if nan_trial_threshold:
