@@ -1198,7 +1198,7 @@ def groupday_tca(
 
     # get DateSorter object
     if np.isin(group_by.lower(),
-               ['naive_vs_high_dprime', 'l_vs_r1', 'naive_and_learning']):
+               ['naive_vs_high_dprime', 'l_vs_r1', 'l_vs_r1_tight', 'naive_and_learning']):
         days = flow.DateSorter.frommeta(
             mice=[mouse], dates=dates, exclude_tags=['bad'])
     else:
