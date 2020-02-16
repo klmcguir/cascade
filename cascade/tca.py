@@ -2229,7 +2229,7 @@ def _first100_bool_wdelta(meta):
         states_vec = ls[dboo]
         u_states = np.unique(states_vec)
         if len(u_states) > 1:
-            second_state = dboo & (states_vec == u_states[1])
+            second_state = dboo & (ls == u_states[1])
             day_vec[second_state] = day_vec[second_state] + 0.5
 
     first100 = np.zeros((len(meta)))
