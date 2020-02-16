@@ -281,7 +281,7 @@ def tca_path(mouse, grouping, pars=None, word=None, group_pars=None):
     # get word
     if pars and not word:
         pars_word = flow.misc.wordhash.word(pars)
-        print('TCA parameters hashed: ' + pars_word)
+        print('{}: TCA parameters hashed: {}'.format(mouse, pars_word))
     elif (pars and word) or (word and not pars):
         pars_word = word
     else:
