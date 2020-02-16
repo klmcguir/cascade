@@ -1143,7 +1143,7 @@ def groupday_tca(
                 mice=[mouse], tags='reversal1', exclude_tags=['bad'])
         rev_dates = [s.date for c, s in enumerate(days) if c < 4]
         dates.extend(rev_dates)
-        dates = list(np.unique(dates))
+        dates = list([int(s) for s in np.unique(dates)])
         exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'learning_start')
 
