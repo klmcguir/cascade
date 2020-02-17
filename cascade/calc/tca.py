@@ -8,6 +8,7 @@ import pool
 import pandas as pd
 import numpy as np
 import os
+import bottleneck as bt
 from copy import deepcopy
 from .. import load, utils
 import scipy as sp
@@ -420,7 +421,7 @@ def _trial_driven_visually_bins(tensor, mouse, sec=15.5, bins_per_sec=2):
 
     # Baseline is mean across frames, now ncells x nonsets
     stim_length = [2 if mouse in ['OA32', 'OA34', 'OA36'] else 3][0]
-    baselines = np.nanmean(tensor[:, :int(np.floor(sec)), :], axis=1)
+    baselines = bt.nanmean(tensor[:, :int(np.floor(sec)), :], axis=1)
     full_baselines = tensor[:, :int(np.floor(sec)), :]
     stimuli = tensor[:, int(np.ceil(sec)):int(np.ceil((stim_length+1)*sec)), :]
 
@@ -435,7 +436,7 @@ def _trial_driven_visually_bins(tensor, mouse, sec=15.5, bins_per_sec=2):
     nbins = len(bin_ends)
 
     # Per-cell value
-    meanbl = np.nanmean(baselines, axis=1)
+    meanbl = bt.nanmean(baselines, axis=1)
     ncells = tensor.shape[0]
 
     # We will save the maximum inverse p values
@@ -458,7 +459,7 @@ def _trial_driven_visually_bins(tensor, mouse, sec=15.5, bins_per_sec=2):
             for bin_s, bin_e in zip(bin_starts, bin_ends):
 
                 # don't test a bin if it is negative on average
-                if np.nanmean(stimuli[c, bin_s:bin_e, trial]) > meanbl[c]:
+                if bt.nanmean(stimuli[c, bin_s:bin_e, trial]) > meanbl[c]:
                     pv = sp.stats.ks_2samp(cell_baseline_vec, stimuli[c, bin_s:bin_e, trial])
                     bin_pvs.append(pv[1])
 
