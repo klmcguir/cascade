@@ -380,10 +380,13 @@ def _trial_driven_visually(tensor, mouse, sec=15.5):
         cell_baseline_vec = cell_baseline_vec[~np.isnan(cell_baseline_vec)]
         ntrials = np.sum(~np.isnan(baselines[c,:]).flatten())
         bonferroni_n = ncells*ntrials
-        std = np.std(cell_baseline_vec)
         
         for trial in range(tensor.shape[2]):
-            if np.nanmean(stimuli[c, :, trial]) > meanbl[c]: # don't test a cell if it is negative on average
+            # skip nans
+            if np.isnan(stimuli[c, 0, trial]):
+                continue
+            # don't test a cell if it is negative on average
+            if np.nanmean(stimuli[c, :, trial]) > meanbl[c]:
                 pv = sp.stats.ks_2samp(cell_baseline_vec, stimuli[c, :, trial])
                 logpv = -1*np.log(pv[1]*bonferroni_n)
                 if logpv > maxinvps[c, trial]:
@@ -443,9 +446,12 @@ def _trial_driven_visually_bins(tensor, mouse, sec=15.5, bins_per_sec=2):
         cell_baseline_vec = cell_baseline_vec[~np.isnan(cell_baseline_vec)]
         ntrials = np.sum(~np.isnan(baselines[c,:]).flatten())
         bonferroni_n = ncells*ntrials*nbins
-        std = np.std(cell_baseline_vec)
         
         for trial in range(tensor.shape[2]):
+
+            # skip nans
+            if np.isnan(stimuli[c, 0, trial]):
+                continue
 
             bin_pvs = []
 
