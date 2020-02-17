@@ -1407,6 +1407,7 @@ def groupday_tca(
         trial_start += np.shape(tensor_list[i])[2]
 
     # special case for focusing on reversal transition
+    abcdf
     if group_by.lower() in ['l_vs_r1_tight', 'all3']:
         first_bool = _first100_bool_wdelta(meta)
         meta = meta.iloc[first_bool, :]
