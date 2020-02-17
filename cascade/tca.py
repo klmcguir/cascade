@@ -1407,7 +1407,6 @@ def groupday_tca(
         trial_start += np.shape(tensor_list[i])[2]
 
     # special case for focusing on reversal transition
-    abcdf
     if group_by.lower() in ['l_vs_r1_tight', 'all3']:
         first_bool = _first100_bool_wdelta(meta)
         meta = meta.iloc[first_bool, :]
@@ -2233,6 +2232,7 @@ def _first100_bool_wdelta(meta):
             second_state = dboo & (ls == u_states[1])
             day_vec[second_state] = day_vec[second_state] + 0.5
 
+    abcdf
     first100 = np.zeros((len(meta)))
     days = np.unique(day_vec)
     for di in days:
