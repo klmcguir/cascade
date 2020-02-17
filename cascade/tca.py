@@ -2221,7 +2221,7 @@ def _first100_bool_wdelta(meta):
     If a day is shorter than 100 trials use the whole day. 
     """
     
-    day_vec = meta.reset_index()['date'].values
+    day_vec = np.array(meta.reset_index()['date'].values, dtype='float')
     days = np.unique(day_vec)
     ls = meta['learning_state'].values
     for di in days:
@@ -2230,9 +2230,8 @@ def _first100_bool_wdelta(meta):
         u_states = np.unique(states_vec)
         if len(u_states) > 1:
             second_state = dboo & (ls == u_states[1])
-            day_vec[second_state] = day_vec[second_state] + 0.5
+            day_vec[second_state] += 0.5
 
-    abcdf
     first100 = np.zeros((len(meta)))
     days = np.unique(day_vec)
     for di in days:
