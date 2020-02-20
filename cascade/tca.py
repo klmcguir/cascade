@@ -1181,14 +1181,14 @@ def groupday_tca(
                             'retinotopy', 'sated', 'reversal2_start', 'reversal2')
 
     elif group_by.lower() == 'all3':
-    tags = None
-    use_dprime = False
-    if mouse == 'OA27':
-        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
-                        'retinotopy', 'sated', 'learning_start',
-                        'reversal2_start', 'reversal2')
-    else:
-        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+        tags = None
+        use_dprime = False
+        if mouse == 'OA27':
+            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                            'retinotopy', 'sated', 'learning_start',
+                            'reversal2_start', 'reversal2')
+        else:
+            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'reversal2_start', 'reversal2')
 
 
