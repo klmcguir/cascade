@@ -1169,7 +1169,7 @@ def groupday_tca(
             exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                             'retinotopy', 'sated', 'reversal2_start', 'reversal2')
 
-    elif group_by.lower() == 'all3':
+    elif group_by.lower() == 'all100':  #first 100 trials of every day
         tags = None
         use_dprime = False
         if mouse == 'OA27':
@@ -1179,6 +1179,17 @@ def groupday_tca(
         else:
             exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                             'retinotopy', 'sated', 'reversal2_start', 'reversal2')
+
+    elif group_by.lower() == 'all3':
+    tags = None
+    use_dprime = False
+    if mouse == 'OA27':
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated', 'learning_start',
+                        'reversal2_start', 'reversal2')
+    else:
+        exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated', 'reversal2_start', 'reversal2')
 
 
     else:
@@ -1407,7 +1418,7 @@ def groupday_tca(
         trial_start += np.shape(tensor_list[i])[2]
 
     # special case for focusing on reversal transition
-    if group_by.lower() in ['l_vs_r1_tight', 'all3']:
+    if group_by.lower() in ['l_vs_r1_tight', 'all100']:
         first_bool = _first100_bool_wdelta(meta)
         meta = meta.iloc[first_bool, :]
         group_bhv_tensor = group_bhv_tensor[:, :, first_bool]
