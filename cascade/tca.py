@@ -1950,6 +1950,16 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     # get trialerror ensuring you don't include runthrough at end of trials
     trialerror = np.array(t2p.d['trialerror'][trial_idx])
 
+    # prev trials responses
+    prevtrialerror = np.array(trialerror, dtype=float)
+    prevtrialerror = np.insert(prev_reward, 0, np.nan)[trial_idx]
+
+    # previous reward
+    prev_reward = np.isin(prevtrialerror, [0, 8, 9])
+
+    # previous punishment
+    prev_punishment = np.isin(prevtrialerror, [5])
+
     # get cs and orientation info for each trial
     lookup = {v: k for k, v in t2p.d['codes'].items()}  # invert dict
     css = [lookup[s] for s in t2p.d['condition'][trial_idx]]
@@ -2131,7 +2141,10 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
                 names=['mouse', 'date', 'run', 'trial_idx'])
 
     data = {'orientation':  oris, 'condition': css,
-            'trialerror': trialerror, 'hunger': hunger,
+            'trialerror': trialerror,
+            'prev_reward': prev_reward,
+            'prev_punish': prev_punishment,
+            'hunger': hunger,
             'learning_state': learning_state, 'tag': tags,
             'firstlick': firstlick, 'firstlickbout': firstlickbout,
             'ensure': ensure, 'quinine': quinine,
