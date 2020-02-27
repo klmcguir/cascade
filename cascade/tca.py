@@ -1952,7 +1952,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
 
     # prev trials responses
     prevtrialerror = np.array(trialerror, dtype=float)
-    prevtrialerror = np.insert(prev_reward, 0, np.nan)[trial_idx]
+    prevtrialerror = np.insert(prevtrialerror, 0, np.nan)[trial_idx]
 
     # previous reward
     prev_reward = np.isin(prevtrialerror, [0, 8, 9])
