@@ -476,6 +476,95 @@ def _trial_driven_visually_bins(tensor, mouse, sec=15.5, bins_per_sec=2):
 
     return maxinvps
 
+def _trial_driven_visually_fast_levene(tensor, mouse, sec=15.5):
+    """
+    Calculate the probability of being visually driven for each cell
+    per trial across multiple bins with Bonferroni correction. Baseline
+    here is the distribution in the 1 second before stimulus onset w/o
+    pooling across multiple trials.
+
+    Parameters:
+    -----------
+    tensor : np.ndarray
+        cells x time x trials
+    mouse : str
+        The mouse name.
+    sec : float
+        How many samples per second in the input data?
+
+    Returns:
+    --------
+    np.ndarray
+        An array of length equal to the number cells x trial number,
+        values are the log10 inverse p-value of that cell responding to
+        the particular cs.
+
+    """
+
+    # Baseline is mean across frames, now ncells x nonsets
+    stim_length = [2 if mouse in ['OA32', 'OA34', 'OA36'] else 3][0]
+    baselines = bt.nanmean(tensor[:, :int(np.floor(sec)), :], axis=1)
+    full_baselines = tensor[:, :int(np.floor(sec)), :]
+    stimuli = tensor[:, int(np.ceil(sec)):int(np.ceil((stim_length+1)*sec)), :]
+
+    # get log bins to test
+    bins = np.round(np.logspace(np.log10(0.1), np.log10(stim_length), 4)*sec)
+    bins[0] = 0
+    bin_ends = bins[1:]
+    bin_starts = bins[:-1]
+    bin_ends = [int(s) for s in bin_ends]
+    bin_starts = [int(s) for s in bin_starts]
+    nbins = len(bin_ends)
+    
+    # bin stimulus
+    binned_stimuli = np.zeros((stimuli.shape[0], nbins, stimuli.shape[2]))
+    binned_stimuli[:] = np.nan
+    bin_count = 0
+    for bin_s, bin_e in zip(bin_starts, bin_ends):
+        this_bin = stimuli[:, bin_s:bin_e, :]
+        binned_stimuli[:, bin_count,:] = bt.nanmean(this_bin, axis=1)
+        bin_count += 1
+        
+    # bin baselines
+    binned_baselines = np.zeros((stimuli.shape[0], nbins, stimuli.shape[2]))
+    binned_baselines[:] = np.nan
+    bin_count = 0
+    baseline_length = full_baselines.shape[1]
+    for bin_s, bin_e in zip(bin_starts, bin_ends):
+        bin_length = bin_e-bin_s
+        if bin_length > baseline_length:
+            bin_length = baseline_length
+        this_bin = full_baselines[:, -bin_length:, :]
+        binned_baselines[:, bin_count,:] = bt.nanmean(this_bin, axis=1)
+        bin_count += 1
+    
+    # cell count for Bonferroni correction
+    ncells = tensor.shape[0]
+
+    # We will save the maximum inverse p values
+    maxinvps = np.zeros((ncells, tensor.shape[2]), dtype=np.float64)
+
+    for c in range(ncells):
+        cell_baseline_vec = binned_baselines[c, :, :].flatten()
+        cell_baseline_vec = cell_baseline_vec[~np.isnan(cell_baseline_vec)]
+        
+        ntrials = np.sum(~np.isnan(baselines[c,:]).flatten())
+        bonferroni_n = ncells*ntrials
+        
+        for trial in range(tensor.shape[2]):
+
+            # skip nans
+            if np.isnan(stimuli[c, 0, trial]):
+                continue
+
+            # don't test a bin if it is negative on average
+            if bt.nanmean(binned_stimuli[c, :, trial]) > 0:
+                pv = sp.stats.levene(cell_baseline_vec, binned_stimuli[c, :, trial])
+                logpv = -1*np.log10(pv[1]*bonferroni_n)
+                if logpv > 0:
+                    maxinvps[c, trial] = logpv
+
+    return maxinvps
 
 def _trial_driven_visually_bins_local(tensor, mouse, sec=15.5, bins_per_sec=2):
     """
