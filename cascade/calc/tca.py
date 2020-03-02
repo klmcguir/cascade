@@ -541,7 +541,7 @@ def _trial_driven_visually_bins_local(tensor, mouse, sec=15.5, bins_per_sec=2):
             for bin_s, bin_e in zip(bin_starts, bin_ends):
 
                 # don't test a bin if it is negative on average
-                if bt.nanmean(stimuli[c, bin_s:bin_e, trial]) > meanbl[c]:
+                if bt.nanmean(stimuli[c, bin_s:bin_e, trial]) > 0:
                     pv = sp.stats.ks_2samp(local_baseline_vec, stimuli[c, bin_s:bin_e, trial])
                     bin_pvs.append(pv[1])
 
