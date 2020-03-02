@@ -458,15 +458,19 @@ def _trial_driven_visually_bins(tensor, mouse, sec=15.5, bins_per_sec=2):
 
             for bin_s, bin_e in zip(bin_starts, bin_ends):
 
+                # get your bin and mean of that bin once
+                this_bin = stimuli[c, bin_s:bin_e, trial]
+                bin_mean = bt.nanmean(this_bin)
+
                 # don't test a bin if it is negative on average
-                if bt.nanmean(stimuli[c, bin_s:bin_e, trial]) > meanbl[c]:
-                    pv = sp.stats.ks_2samp(cell_baseline_vec, stimuli[c, bin_s:bin_e, trial])
+                if bin_mean > meanbl[c]:
+                    pv = sp.stats.ks_2samp(cell_baseline_vec, this_bin)
                     bin_pvs.append(pv[1])
 
             # if no values were above zero skip cell
             if len(bin_pvs) > 0:
                 best_pv = np.min(bin_pvs)
-                logpv = -1*np.log(best_pv*bonferroni_n)
+                logpv = -1*np.log10(best_pv*bonferroni_n)
                 if logpv > maxinvps[c, trial]:
                     maxinvps[c, trial] = logpv
 
