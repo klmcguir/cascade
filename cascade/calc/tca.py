@@ -476,6 +476,7 @@ def _trial_driven_visually_bins(tensor, mouse, sec=15.5, bins_per_sec=2):
 
     return maxinvps
 
+
 def _trial_driven_visually_fast_levene(tensor, mouse, sec=15.5):
     """
     Calculate the probability of being visually driven for each cell
