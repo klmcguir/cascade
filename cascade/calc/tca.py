@@ -536,7 +536,7 @@ def _trial_driven_visually_bins_local(tensor, mouse, sec=15.5, bins_per_sec=2):
             bin_pvs = []
 
             # get the vector that is the baseline response for the trial
-            local_baseline_vec = stimuli[c, :, trial]
+            local_baseline_vec = full_baselines[c, :, trial]
 
             for bin_s, bin_e in zip(bin_starts, bin_ends):
 
