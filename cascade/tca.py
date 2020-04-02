@@ -1973,7 +1973,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     tags = [tags[0]]*len(trial_idx)
 
     # get boolean of engagement per trial
-    HMM_engaged = engaged(run, across_run=False)[trial_idx]
+    HMM_engaged = pool.calc.performance.engaged(run, across_run=False)[trial_idx]
 
     # get trialerror ensuring you don't include runthrough at end of trials
     trialerror = np.array(t2p.d['trialerror'][trial_idx])
