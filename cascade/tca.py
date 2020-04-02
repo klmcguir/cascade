@@ -1973,7 +1973,14 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     tags = [tags[0]]*len(trial_idx)
 
     # get boolean of engagement per trial
-    HMM_engaged = pool.calc.performance.engaged(run, across_run=False)[trial_idx]
+    try:
+        HMM_engaged = pool.calc.performance.engaged(
+            run, across_run=False)[trial_idx]
+    except KeyError:
+        HMM_engaged = np.zeros((len(trial_idx)))
+        if verbose:
+            print('{} {} {}: HMM engagement failed.'.format(
+                      run.mouse, run.date, run.run))
 
     # get trialerror ensuring you don't include runthrough at end of trials
     trialerror = np.array(t2p.d['trialerror'][trial_idx])
@@ -2003,6 +2010,9 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         oris = [t2p.d['orientations'][lookup[s]] for s in t2p.d['condition'][trial_idx]]
     except KeyError:
         oris = [np.nan for s in t2p.d['condition'][trial_idx]]
+        if verbose:
+            print('{} {} {}: orientation lookup failed.'.format(
+                      run.mouse, run.date, run.run))
 
     # get ori according to which cs it was during initial learning
     initial_css = [lookups.lookup_ori[run.mouse][s] for s in oris]
@@ -2016,6 +2026,9 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         all_offsets = all_onsets + (np.round(t2p.d['framerate'])*3)
         if all_offsets[-1] > t2p.nframes:
             all_offsets[-1] = t2p.nframes
+        if verbose:
+            print('{} {} {}: offsets failed: hardcoding offsets to 3s.'.format(
+                      run.mouse, run.date, run.run))
 
     # calculate running speed during trial
     if t2p.d['running'].size > 0:
