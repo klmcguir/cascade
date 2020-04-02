@@ -2013,26 +2013,26 @@ def sustainedness_daily_mean_comp_plots(
     plt.savefig('.//{}//{}_{}_{}_SI_revhdp_v_revldp.pdf'.format(folder, t_or_wa, tag, words[0]), bbox_inches='tight')
 
     for ori in ['plus', 'minus', 'neutral']:
-    plt.figure()
-    dsus = total_sus['high_dp learning'] - total_sus['low_dp reversal1']
-    ori_vec = total_sus.reset_index()['initial CS'].values
-    tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=total_sus.index)
-    # for ori in ['plus', 'minus', 'neutral']:
-    oriboo = ori_vec == 'initial {}'.format(ori)
-    regtester = tester.iloc[oriboo]
-    regori = total_sus['high_dp learning'].iloc[oriboo]
-    sns.regplot(x=total_sus['high_dp learning'].iloc[oriboo], y=regtester['delta_sus'], marker='.', color=color_dict[ori], dropna=True)
-    sns.scatterplot(x=total_sus['high_dp learning'].iloc[oriboo], y=regtester['delta_sus'], s=100,
-                    hue=total_sus.iloc[oriboo, :].reset_index()['initial CS'].values, palette=hue_dict,
-                    style=total_sus.iloc[oriboo, :].reset_index()['mouse'].values)
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.xlim([0, 1])
-    plt.ylim([-0.67, 0.5])
-    keep_bool = ~np.isnan(tester['delta_sus'])
-    rs, ps = [], []
-    plt.ylabel('$\Delta$SI\n $SI_{high dp}-SI_{reversal}$')
-    plt.xlabel('sustainedness\n high dprime learning')
-    plt.title('Sustainedness vs $\Delta$$SI_{lrn-rev}$')
+        plt.figure()
+        dsus = total_sus['high_dp learning'] - total_sus['low_dp reversal1']
+        ori_vec = total_sus.reset_index()['initial CS'].values
+        tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=total_sus.index)
+        # for ori in ['plus', 'minus', 'neutral']:
+        oriboo = ori_vec == 'initial {}'.format(ori)
+        regtester = tester.iloc[oriboo]
+        regori = total_sus['high_dp learning'].iloc[oriboo]
+        sns.regplot(x=total_sus['high_dp learning'].iloc[oriboo], y=regtester['delta_sus'], marker='.', color=color_dict[ori], dropna=True)
+        sns.scatterplot(x=total_sus['high_dp learning'].iloc[oriboo], y=regtester['delta_sus'], s=100,
+                        hue=total_sus.iloc[oriboo, :].reset_index()['initial CS'].values, palette=hue_dict,
+                        style=total_sus.iloc[oriboo, :].reset_index()['mouse'].values)
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.xlim([0, 1])
+        plt.ylim([-0.67, 0.5])
+        keep_bool = ~np.isnan(tester['delta_sus'])
+        rs, ps = [], []
+        plt.ylabel('$\Delta$SI\n $SI_{high dp}-SI_{reversal}$')
+        plt.xlabel('sustainedness\n high dprime learning')
+        plt.title('Sustainedness vs $\Delta$$SI_{lrn-rev}$')
 #     plt.savefig('.//{}//{}_{}_{}_SI_learnhdp_v_revldp_{}.pdf'.format(folder, t_or_wa, tag, words[0], ori), bbox_inches='tight')
 
 
