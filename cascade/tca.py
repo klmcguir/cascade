@@ -1978,6 +1978,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
             run, across_run=False)[trial_idx]
     except KeyError:
         HMM_engaged = np.zeros((len(trial_idx)))
+        HMM_engaged[:] = np.nan
         if verbose:
             print('{} {} {}: HMM engagement failed.'.format(
                       run.mouse, run.date, run.run))
