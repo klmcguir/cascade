@@ -13,6 +13,7 @@ import pandas as pd
 import os
 from . import utils
 from . import paths
+from . import lookups
 from copy import deepcopy
 from functools import reduce
 
@@ -1888,10 +1889,34 @@ def _triggerfromrun(run, trace_type='zscore_day', cs='', downsample=True,
 
 
 def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
-                      downsample=True, verbose=True):
+                      downsample=True, add_p_cols=True, verbose=True):
     """
     Create pandas dataframe of trial metadata from run.
 
+    Parameters
+    -------
+    run, flow RunSorter object
+        Run object to be parsed.
+    trace_type, str
+        Type of trace, to match loading of actual 2P imaging data.
+    start_time, int
+        Number of seconds before stimulus onset to include.
+    end_time, int
+        Number of seconds after stimulus onset to include.
+    downsample, boolean
+        Downsample by a factor of 2. Important for vectors that only record a 
+        2P imaging frame number rather than trial by trial values. 
+    add_p_cols, boolean
+        Optionally, add in columns to metadata that include probability of 
+        current trial since last trial of the same type. 
+    verbose, boolean
+        Print useful statement about progress of function and underlying data.
+
+    Returns
+    -------
+    dfr, pandas.DataFrame
+        DataFrame of all metadata as columns indexed by 'mouse', 'date', 'run',
+        and 'trial_idx'. 
     """
 
     # get t2p object
@@ -1978,6 +2003,9 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         oris = [t2p.d['orientations'][lookup[s]] for s in t2p.d['condition'][trial_idx]]
     except KeyError:
         oris = [np.nan for s in t2p.d['condition'][trial_idx]]
+
+    # get ori according to which cs it was during initial learning
+    initial_css = [lookups.lookup_ori[run.mouse][s] for s in oris]
 
     # get mean running speed for time stim is on screen
     # use first 3 seconds after onset if there is no offset
@@ -2153,6 +2181,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
 
     data = {'orientation':  oris,
             'condition': css,
+            'initial_condition': initial_css,
             'trialerror': trialerror,
             'prev_reward': prev_reward,
             'prev_punish': prev_punishment,
@@ -2177,7 +2206,108 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
 
     dfr = pd.DataFrame(data, index=index)
 
+    # optionally add in columns of probabilities
+    if add_p_cols:
+        dfr = _add_prob_columns_trialmeta(run.mouse, dfr)
+
     return dfr
+
+
+def _add_prob_columns_trialmeta(mouse, meta1_df):
+    """
+    Helper function to add in useful columns to metadata related to
+    trial history. 
+    """
+
+    # add a binary column for choice, 1 for go 0 for nogo
+    new_meta = {}
+    new_meta['go'] = np.zeros(len(meta1_df))
+    new_meta['go'][meta1_df['trialerror'].isin([0, 3, 5, 7]).values] = 1
+    new_meta_df1 = pd.DataFrame(data=new_meta, index=meta1_df.index)
+    # new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+
+    # add a binary column for reward
+    new_meta = {}
+    new_meta['reward'] = np.zeros(len(new_meta_df1))
+    new_meta['reward'][meta1_df['trialerror'].isin([0]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
+    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+
+    # add a binary column for punishment
+    new_meta = {}
+    new_meta['punishment'] = np.zeros(len(new_meta_df1))
+    new_meta['punishment'][meta1_df['trialerror'].isin([5]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
+    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+
+    # rename oris according to their meaning during learning
+    new_meta = {}
+    for ori in ['plus', 'minus', 'neutral']:
+        new_meta = {}
+        new_meta['initial_{}'.format(ori)] = np.zeros(len(new_meta_df1))
+        new_meta['initial_{}'.format(ori)][meta1_df['orientation'].isin([lookups.lookup[mouse][ori]]).values] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
+        new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+
+    # create epochs since last reward
+    c = 0
+    vec = []
+    for s in new_meta_df1['reward'].values:
+        if s == 0: 
+            vec.append(c)
+        else:
+            vec.append(c)
+            c += 1
+    new_meta_df1['reward_cum'] = vec
+
+    # since last go
+    c = 0
+    vec = []
+    for s in new_meta_df1['go'].values:
+        if s == 0: 
+            vec.append(c)
+        else:
+            vec.append(c)
+            c += 1
+    new_meta_df1['go_cum'] = vec
+
+    # since last of same cue type
+    for ori in ['plus', 'minus', 'neutral']:
+        c = 0
+        vec = []
+        for s in new_meta_df1['initial_{}'.format(ori)].values:
+            if s == 0: 
+                vec.append(c)
+            else:
+                vec.append(c)
+                c += 1
+        new_meta_df1['initial_{}_cum'.format(ori)] = vec
+
+    # vec of ones for finding denominator across a number of trials
+    new_meta_df1['trial_number'] = np.ones((len(new_meta_df1)))
+
+    # loop over different accumulators to get full length interaction terms
+    p_cols = []
+    for aci in ['initial_plus', 'initial_minus', 'initial_neutral', 'go', 'reward']:
+        accumulated_df = new_meta_df1.groupby('{}_cum'.format(aci)).sum()
+        prob_since_last = accumulated_df.divide(accumulated_df['trial_number'], axis=0)
+        for vali in ['initial_plus', 'initial_minus', 'initial_neutral', 'go', 'reward']:
+            new_vec = np.zeros(len(new_meta_df1))
+            new_bool = new_meta_df1[aci].gt(0).values
+            new_vec[new_bool] = prob_since_last[vali].values[0:np.sum(new_bool)] # use only matched trials
+            new_meta_df1['p_{}_since_last_{}'.format(vali, aci)] = new_vec
+            p_cols.append('p_{}_since_last_{}'.format(vali, aci))
+
+    # turn go, reward, punishment into boolean
+    grp_df = new_meta_df1.loc[:, ['go', 'reward', 'punishment']].gt(0)
+
+    # get only columns for probability 
+    p_df = new_meta_df1.loc[:, p_cols]
+
+    # add new columns to original df
+    new_dfr = pd.concat([new_meta, grp_df, p_df], axis=1)
+
+    return new_dfr
 
 
 def _getcstraces_filtered(
