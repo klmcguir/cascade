@@ -10,8 +10,35 @@ import os
 import flow
 from .. import load, paths, utils
 from copy import deepcopy
+import scipy as sp
 
 
+# useful lookup tables
+color_dict = {'plus': [0.46, 0.85, 0.47, 1],
+     'minus': [0.84, 0.12, 0.13, 1],
+     'neutral': [0.28, 0.68, 0.93, 1],
+     'learning': [34/255, 110/255, 54/255, 1],
+     'reversal': [173/255, 38/255, 26/255, 1],
+     'gray': [163/255, 163/255, 163/255, 1]}
+
+lookup = {'OA27': {'plus': 270, 'minus': 135, 'neutral': 0},
+     'VF226': {'plus': 0, 'minus': 270, 'neutral': 135},
+     'OA67': {'plus': 0, 'minus': 270, 'neutral': 135},
+     'OA32': {'plus': 135, 'minus': 0, 'neutral': 270},
+     'OA34': {'plus': 270, 'minus': 135, 'neutral': 0},
+     'OA36': {'plus': 0, 'minus': 270, 'neutral': 135},
+     'OA26': {'plus': 270, 'minus': 135, 'neutral': 0}}
+
+lookup_ori = {'OA27': {270: 'plus', 135: 'minus', 0: 'neutral'},
+     'VF226': {0: 'plus', 270: 'minus', 135: 'neutral'},
+     'OA67': {0: 'plus', 270: 'minus', 135: 'neutral'},
+     'OA32': {135: 'plus', 0: 'minus', 270: 'neutral'},
+     'OA34': {270: 'plus', 135: 'minus', 0: 'neutral'},
+     'OA36': {0: 'plus', 270: 'minus', 135: 'neutral'},
+     'OA26': {270: 'plus', 135: 'minus', 0: 'neutral'}}
+
+
+# exponential fitting functions 
 def opt_func(x, a, b):
     return a * np.exp(-b * x)
 
@@ -1286,11 +1313,756 @@ def bhv_heatmap(
         plt.close('all')
 
 
+def _get_fitting_template_defaults(mouse, sigma=3, sec=15.5, normalize=True):
+    """
+    Helper function for convolving Gaussian kernel with onset, sustained 
+    stimulus, stimulus offset, and ensure delivery period. These can then be
+    used for simple linear regression or GLM. 
+    """
+
+    # preallocate Gaussian kernel convolution 
+    gker = []
+
+    # pick ranges of relevant time periods for convolution
+    onset_r = np.arange(np.floor(sec), np.round(sec + sec/3), 1)
+    if mouse in ['OA32', 'OA34', 'OA36']:
+        sus_r = np.arange(np.floor(sec), np.round(sec*3), 1)
+        off_r = np.arange(np.floor(sec*3), np.round(sec*3 + sec/3), 1)
+        ensure_r = np.arange(np.floor(sec*3 + sec/3), np.round(sec*5), 1)
+    else:
+        sus_r = np.arange(np.floor(sec), np.round(sec*4), 1)
+        off_r = np.arange(np.floor(sec*4), np.round(sec*4 + sec/3), 1)
+        ensure_r = np.arange(np.floor(sec*4 + sec/3), np.round(sec*6), 1)
+    ranges = [onset_r, sus_r, off_r, ensure_r]
+
+    # convolve
+    for i in ranges:
+        i = [int(s) for s in i]
+        starter = np.zeros((108))
+        starter[i] = 1
+        gker.append(sp.ndimage.gaussian_filter1d(starter, sigma, mode='constant', cval=0))
+
+    # normalize filters
+    if normalize:
+        gker = [(s - np.min(s))/np.max(s) for s in gker]
+
+    templates = np.vstack(gker).T
+
+    return templates
+
+
+def sustainedness_daily_mean_comp_plots(
+        mice=['OA27', 'OA67', 'OA32', 'OA34', 'OA36', 'OA26',
+              'VF226'],
+        words=['christina', 'christina', 'christina', 'christina',
+               'christina', 'christina', 'christina'],
+        trace_type='zscore_day',
+        method='ncp_hals',
+        ks_thresh=1.31,
+        t_or_wa='thresh', # thresh or weighted
+        cs='',
+        warp=False,
+        group_by='all2',
+        nan_thresh=0.95,
+        score_threshold=0.8):
+    """ 
+    Giant, gross plotting script to make a zillion summary plots for 
+    sustainedness and transientness across mice clustered according to 
+    a TCA cell factor chosen by the user. 
+    """
+
+    # load in a full size tensor
+    model_list = []
+    tensor_list = []
+    id_list = []
+    bhv_list = []
+    meta_list = []
+    twords=['prints', 'horrible', 'horrible', 'horrible',
+               'horrible', 'horrible', 'horrible'],
+    tmice=['OA27', 'OA67', 'OA32', 'OA34', 'OA36', 'OA26', 'VF226']
+    # return --> model, ids, tensor, meta, bhv
+    for mouse, word in zip(tmice, twords):
+        out = cas.load.load_all_groupday(
+            mouse, word=word, with_model=False, nan_thresh=0.95) 
+        model_list.append(out[0])
+        tensor_list.append(out[2])
+        id_list.append(out[1])
+        bhv_list.append(out[4])
+        meta_list.append(out[3])
+
+    # load TCA models and data
+    rank = 10
+    words = ['christina']*len(mice)
+    model_list = []
+    model_id_list = []
+    for mouse, word in zip(mice, words):
+        V, my_sorts = cas.load.groupday_tca_model(
+                mouse=mouse,
+                trace_type='zscore_day',
+                method='ncp_hals',
+                cs='',
+                rank=rank,
+                word=word,
+                group_by='l_vs_r1_tight',
+                nan_thresh=0.95,
+                score_threshold=0.8,
+                full_output=False,
+                unsorted=True,
+                verbose=False)
+        model_list.append(V)
+        ids = cas.load.groupday_tca_ids(
+                mouse=mouse,
+                trace_type='zscore_day',
+                method='ncp_hals',
+                cs='',
+                word=word,
+                group_by='l_vs_r1_tight',
+                nan_thresh=0.95,
+                score_threshold=0.8)
+        model_id_list.append(ids)
+
+    # subset full size tensor to only include cells that were kept in tca model
+    subset_tensor_list = []
+    subset_model_list = []
+    for t1, m1, l1, l2 in zip(tensor_list, model_list, id_list, model_id_list):
+        survivor_boo = np.in1d(l1, l2)
+        subset_tensor_list.append(t1[survivor_boo,:,:])
+        kept_ids1 = l1[survivor_boo]
+        survivor_boo = np.in1d(l2, l1)
+        subset_model_list.append(m1.results[rank][0].factors[0][survivor_boo, :])
+        kept_ids2 = l2[survivor_boo]
+        if np.sum((kept_ids1-kept_ids2) != 0) > 0:
+            print('Unmatched ids!!!')
+
+    # build cell-weighted/-projected
+    projection_list = []
+    for c, V in enumerate(subset_model_list):
+        map_by_comp = {}
+        for ci in range(1,rank+1):
+            weight_vec = V[:, ci-1]
+            weight_map = np.zeros(subset_tensor_list[c].shape[1:])
+            for tri in range(subset_tensor_list[c].shape[2]):
+                trialx = weight_vec[:, None] * subset_tensor_list[c][:,:,tri]
+                weight_map[:, tri] = bt.nanmean(trialx, axis=0)
+            map_by_comp[ci] = weight_map
+        projection_list.append(map_by_comp)
+        if verbose:
+            print('v1: Done mouse {}.'.format(c+1))
+        
+    # build cell-weighted/-projected
+    thresh_list = []
+    for c, V in enumerate(subset_model_list):
+        map_by_comp = {}
+        for ci in range(1,rank+1):
+            thresh = np.std(V)*1
+            weight_vec = deepcopy(V[:, ci-1])
+            weight_vec[weight_vec <= thresh] = 0
+            weight_vec[weight_vec > thresh] = 1
+            if verbose:
+                print('    included {} cells from comp {}'.format(np.sum(weight_vec), ci))
+            weight_map = np.zeros(subset_tensor_list[c].shape[1:])
+            for tri in range(subset_tensor_list[c].shape[2]):
+                trialx = weight_vec[:, None] * subset_tensor_list[c][:,:,tri]
+                weight_map[:, tri] = bt.nanmean(trialx, axis=0)
+            map_by_comp[ci] = weight_map
+        thresh_list.append(map_by_comp)
+        if verbose:
+            print('v2: Done mouse {}.'.format(c+1))
+
+    # NNLS fitting 
+    fits = {}
+    daily_avg_dict = {}
+    oris = [0, 135, 270]
+    for mi, proj, meti in zip(mice, projection_list, meta_list):
+        daily_avg_dict[mi] = {}
+        A = _get_fitting_template_defaults(mi)
+        all_ori = meti['orientation'].values
+        all_days = meti.reset_index()['date'].values
+        u_days = meti.reset_index()['date'].unique()
+        firsty = _first100_bool(meti)
+        fits[mi] = {}
+        for c, comp_n in enumerate(proj.keys()):
+            daily_avg_dict[mi][comp_n] = {}
+            fits[mi]['component_{}'.format(c+1)] = {}
+            ks_boo = comp_proj_ks_dict[mi][c, :] > ks_thresh 
+            for ori in oris:
+                cell_mat = np.zeros((proj[comp_n].shape[0], len(u_days)))
+                for dc, day_i in enumerate(u_days):
+                    day_ori_bool = (all_ori == ori) & (all_days == day_i) & firsty
+                    cell_mat[:, dc] = np.nanmean(proj[comp_n][:, day_ori_bool & ks_boo], axis=1)
+                all_tr = []
+                for tr_n in range(cell_mat.shape[1]):
+                    b = deepcopy(cell_mat[:, tr_n])
+                    b[b < 0] = 0
+                    if np.sum(np.isnan(b)) == len(b):
+                        sp_ans = np.zeros(4)
+                        sp_ans[:] = np.nan
+                        sp_ans = [sp_ans]
+                    else:
+                        sp_ans = sp.optimize.nnls(A, b)
+                    all_tr.append(sp_ans[0])
+                fits[mi]['component_{}'.format(c+1)]['ori_{}'.format(ori)] = np.vstack(all_tr)
+                fits[mi]['component_{}'.format(c+1)]['trial_inds_{}'.format(ori)] = np.where(all_ori == ori)[0]
+                daily_avg_dict[mi][comp_n][ori] = cell_mat
+                
+        print('Making progress: {} done.'.format(mi))
+
+
+    fits2 = {}
+    daily_avg_dict2 = {}
+    oris = [0, 135, 270]
+    for mi, proj, meti in zip(mice, thresh_list, meta_list):
+        daily_avg_dict2[mi] = {}
+        A = _get_fitting_template_defaults(mi)
+        all_ori = meti['orientation'].values
+        all_days = meti.reset_index()['date'].values
+        u_days = meti.reset_index()['date'].unique()
+        firsty = _first100_bool(meti)
+        fits2[mi] = {}
+        for c, comp_n in enumerate(proj.keys()):
+            fits2[mi]['component_{}'.format(c+1)] = {}
+            ks_boo = comp_proj_ks_dict2[mi][c, :] > ks_thresh 
+            for ori in oris:
+    #             cell_mat = proj[comp_n][:, all_ori == ori]
+                cell_mat = np.zeros((proj[comp_n].shape[0], len(u_days)))
+                for dc, day_i in enumerate(u_days):
+                    day_ori_bool = (all_ori == ori) & (all_days == day_i) & firsty
+                    cell_mat[:, dc] = np.nanmean(proj[comp_n][:, day_ori_bool & ks_boo], axis=1)
+                all_tr = []
+                for tr_n in range(cell_mat.shape[1]):
+                    b = deepcopy(cell_mat[:, tr_n])
+                    b[b < 0] = 0
+                    if np.sum(np.isnan(b)) == len(b):
+                        sp_ans = np.zeros(4)
+                        sp_ans[:] = np.nan
+                        sp_ans = [sp_ans]
+                    else:
+                        sp_ans = sp.optimize.nnls(A, b)
+                    all_tr.append(sp_ans[0])
+                fits2[mi]['component_{}'.format(c+1)]['ori_{}'.format(ori)] = np.vstack(all_tr)
+                fits2[mi]['component_{}'.format(c+1)]['trial_inds_{}'.format(ori)] = np.where(all_ori == ori)[0]
+                daily_avg_dict2[mi][ori] = cell_mat
+
+        print('Making progress: {} done.'.format(mi))
+
+
+        alpha = 0.7
+    ksthresh = 1.31 #35
+    dp_threshold = 2
+    t_or_wa = 'thresh'
+
+    folder = 'Sustainedness index plots daily thresh fit on means'
+    # folder = 'Sustainedness index plots daily thresh mean of trials fits'
+    if not os.path.isdir(folder): os.mkdir(folder)
+    save_dir = os.path.join(folder, 'Sustainedness plots')
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+
+    if t_or_wa == 'thresh':
+        which_fits = deepcopy(fits2)
+    #     which_ks = deepcopy(proj_ks_dict2)
+    elif t_or_wa == 'weighted_avg':
+        which_fits = deepcopy(fits)
+    #     which_ks = deepcopy(proj_ks_dict)
+
+    for ori in ['plus', 'minus', 'neutral']:
+        ti_cont, mi_cont, ci_cont = [], [], []
+        ti_norm_cont = []
+        for mi, meti, V in zip(mice, meta_list, model_list):
+            
+            # add dprime to meti
+            meti = cas.utils.add_dprime_to_meta(meti)
+            
+            # get indices for stimulus period
+            tstart = int(np.floor(15.5))
+            tend = int(np.floor(15.5*1.5))
+            if mi in ['OA32', 'OA34', 'OA36']:
+                send = int(np.floor(15.5*3))
+            else:
+                send = int(np.floor(15.5*4))
+            sstart = int(np.floor(send-15.5/2))
+            
+            # calculate change indices for days and reversal/learning
+            dates = meti.reset_index()['date']
+            udays = {d: c for c, d in enumerate(np.unique(dates))}
+            ndays = np.diff([udays[i] for i in np.unique(dates)])
+            day_x = np.where(ndays)[0] + 0.5
+
+            # get your learning and reversal start indices 
+            rev_ind = np.where(meti['learning_state'].isin(['learning']).values)[0][-1]
+            rev_ind = np.where(np.unique(dates) == dates[rev_ind])[0] + 0.5
+            if np.sum(meti['learning_state'].isin(['naive']).values) != 0:
+                lear_ind = np.where(meti['learning_state'].isin(['naive']).values)[0][-1]
+                lear_ind = np.where(np.unique(dates) == dates[lear_ind])[0] + 0.5
+            else:
+                lear_ind = 0 - 0.5
+
+            fig = plt.figure(figsize=(10, 3))
+            gs = fig.add_gridspec(100, 100)
+            ax1 = fig.add_subplot(gs[:, :30])
+            sns.despine()
+            ax2 = fig.add_subplot(gs[:, 40:])
+            sns.despine()
+
+            temp_fac = V.results[rank][0].factors[1][:, :]
+            ax1.plot(temp_fac, linewidth=2)
+            ax2.set_title('temporal factor')
+
+            first_boo = _first100_bool(meti)
+            all_means3 = np.zeros((1, 5, len(which_fits[mi].keys())))
+            all_means3[:] = np.nan
+            for comp_n in range(1, len(which_fits[mi].keys())+1):
+
+                mi_cont.append(mi)
+                ci_cont.append(comp_n)
+                
+                # don't consider offset components
+                temp_fac = V.results[rank][0].factors[1][:, comp_n-1]
+                if np.argmax(temp_fac) > send:
+                    continue
+                
+                ori_type = 'ori_{}'.format(lookup[mi][ori])
+                trial_type = 'trial_inds_{}'.format(lookup[mi][ori])
+                fit_mat = which_fits[mi]['component_{}'.format(comp_n)][ori_type]
+                y_vec = fit_mat[:,1]/(fit_mat[:,1] + fit_mat[:,0])
+
+                stage_labels = []
+                c_day = 0
+                for n_day in meta_list[0]['learning_state'].unique(): # forcing to include all stages
+                    meti_d = meti.groupby('date').max()
+                    day_bool = meti_d['learning_state'].isin([n_day]).values
+                    if n_day == 'naive':
+                        total_bool = day_bool #& (y_vec < 1)
+                        stage_labels.append(n_day)
+                            # if there are no trials of a given type skip
+                        if np.sum(total_bool) == 0:
+                            c_day += 1
+                            continue
+
+                        if np.sum(~np.isnan(y_vec)) <= len(y_vec)/3:
+                            c_day += 1
+                            continue
+                        # subtract mean trace from each cell
+                        all_means3[0, c_day, comp_n-1] = np.nanmean(y_vec[total_bool])
+                        c_day += 1
+                    else:
+                        for dpi in ['low_dp', 'high_dp']:
+                            if dpi == 'high_dp':
+                                dp_bool = meti_d['dprime'].values >= dp_threshold
+                            elif dpi == 'low_dp':
+                                dp_bool = meti_d['dprime'].values < dp_threshold
+                            total_bool = day_bool & dp_bool #& (y_vec < 1) #& ori_bool
+
+                            stage_labels.append('{} {}'.format(dpi, n_day))
+                            # if there are no trials of a given type skip
+                            if np.sum(total_bool) == 0:
+                                print('Skipped empty for: {} {}'.format(dpi, n_day))
+                                c_day += 1
+                                continue
+                            if np.sum(~np.isnan(y_vec)) <= len(y_vec)/3:
+                                c_day += 1
+                                continue
+
+                            # subtract mean trace from each cell
+                            all_means3[0, c_day, comp_n-1] = np.nanmean(y_vec[total_bool])
+                            c_day += 1
+
+            tuning_index = all_means3.squeeze()
+            ti_cont.append(tuning_index)  #for continued analysis 
+            tuning_index = tuning_index/tuning_index[2, :]
+            ti_norm_cont.append(tuning_index)  #for continued analysis 
+
+            ax2.plot(tuning_index)
+            ax2.legend(bbox_to_anchor=(1.05, 1), labels=['component {}'.format(k) for k in thresh_list[0].keys()])
+            ax2.set_title('{}: Sustained responses across stages of learning'.format(mi))
+            ax1.set_title('{}: TCA component\n thresholded averages'.format(words[0]))
+            ax1.set_xlabel('time in trial')
+            ax1.set_ylabel('factor weight')
+            stim_window_ticks = np.arange(0, 108, 15.5)
+            stim_window_labels = np.arange(-1, 7, 1)
+            ax1.set_xticks(stim_window_ticks)
+            ax1.set_xticklabels(labels=stim_window_labels)
+            ax2.set_xlabel('learning stage')
+            ax2.set_ylabel(r'sustainedness ($\beta_{sus}$/($\beta_{sus}$+$\beta_{trans}$))')
+            stage_ticks = np.arange(0, 5, 1)
+            ax2.set_xticks(stage_ticks)
+            ax2.set_xticklabels(labels=stage_labels, rotation=45, ha='right')
+            plt.savefig('.//{}//Sustainedness plots//{}_{}_{}_{}_sus_avg_stages.pdf'.format(folder, t_or_wa, mi, ori, words[0]), bbox_inches='tight')
+    #         plt.close('all')
+        
+        stacked_nsus_idx = np.vstack([s.T for s in ti_norm_cont])
+        stacked_sus_idx = np.vstack([s.T for s in ti_cont])
+        index = pd.MultiIndex.from_arrays([mi_cont, ci_cont], names=['mouse', 'component'])
+        sus_df = pd.DataFrame(data=stacked_sus_idx, columns=stage_labels, index=index)
+        norm_sus_df = pd.DataFrame(data=stacked_nsus_idx, columns=stage_labels, index=index)
+        
+        plt.figure()
+        dsus = ((sus_df['high_dp learning'] - sus_df['low_dp learning'])*-1)/(sus_df['high_dp learning'] + sus_df['low_dp learning'])
+        # dsusr = (norm_sus_df['high_dp learning'] - norm_sus_df['low_dp reversal1'])*-1
+        tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=sus_df.index)
+        sns.regplot(x=sus_df['high_dp learning'], y=tester['delta_sus'], marker='.')
+    #     sns.scatterplot(x=sus_df['high_dp learning'], y=tester['delta_sus'], hue=sus_df.reset_index()['mouse'].values)
+        sns.scatterplot(x=sus_df['high_dp learning'], y=tester['delta_sus'], s=100,
+                        hue=['component {}'.format(s) for s in sus_df.reset_index()['component'].values],
+                        style=sus_df.reset_index()['mouse'].values)
+        plt.legend(bbox_to_anchor=(1.05, 1))
+        # plt.ylim([-0.2, 0.2])
+        keep_bool = ~np.isnan(tester['delta_sus'])
+        r = sp.stats.pearsonr(sus_df['high_dp learning'].loc[keep_bool], tester['delta_sus'].loc[keep_bool])
+        plt.ylabel('$\Delta$SI\n -1*($SI_{high dp}-SI_{low dp})/(SI_{high dp}+SI_{low dp}$)')
+        plt.xlabel('sustainedness\n high dprime')
+        plt.title('{}: '.format(ori) + 'Sustainedness vs $\Delta$$SI_{lrn-lrn}$' + ': R={}, {}={}'.format(round(r[0], 2), '$-1*log_{10}(p)$', round(-1*np.log10(r[1]), 3)))
+        plt.savefig('.//{}//{}_{}_{}_SI_learnhdp_v_learnldp.pdf'.format(folder, t_or_wa, ori, words[0]), bbox_inches='tight')
+
+        plt.figure()
+        dsus = ((sus_df['high_dp learning'] - sus_df['naive'])*-1)/(sus_df['high_dp learning'] + sus_df['naive'])
+        # dsusr = (norm_sus_df['high_dp learning'] - norm_sus_df['low_dp reversal1'])*-1
+        tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=sus_df.index)
+        sns.regplot(x=sus_df['high_dp learning'], y=tester['delta_sus'], marker='.')
+    #     sns.scatterplot(x=sus_df['high_dp learning'], y=tester['delta_sus'], hue=sus_df.reset_index()['mouse'].values)
+        sns.scatterplot(x=sus_df['high_dp learning'], y=tester['delta_sus'], s=100,
+                        hue=['component {}'.format(s) for s in sus_df.reset_index()['component'].values],
+                        style=sus_df.reset_index()['mouse'].values)
+        plt.legend(bbox_to_anchor=(1.05, 1))
+        # plt.ylim([-0.2, 0.15])
+        keep_bool = ~np.isnan(tester['delta_sus'])
+        r = sp.stats.pearsonr(sus_df['high_dp learning'].loc[keep_bool], tester['delta_sus'].loc[keep_bool])
+        plt.ylabel('$\Delta$SI\n -1*($SI_{high dp}-SI_{naive})/(SI_{high dp}+SI_{naive}$)')
+        plt.xlabel('sustainedness\n high dprime learning')
+        plt.title('{}: '.format(ori) + 'Sustainedness vs $\Delta$$SI_{lrn-naive}$' + ': R={}, {}={}'.format(round(r[0], 2), '$-1*log_{10}(p)$', round(-1*np.log10(r[1]), 3)))
+        plt.savefig('.//{}//{}_{}_{}_SI_learnhdp_v_naive.pdf'.format(folder, t_or_wa, ori, words[0]), bbox_inches='tight')
+        
+        plt.figure()
+        dsus = ((sus_df['high_dp learning'] - sus_df['low_dp reversal1'])*-1)/(sus_df['high_dp learning'] + sus_df['low_dp reversal1'])
+        # dsusr = (norm_sus_df['high_dp learning'] - norm_sus_df['low_dp reversal1'])*-1
+        tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=sus_df.index)
+        sns.regplot(x=sus_df['high_dp learning'], y=tester['delta_sus'], marker='.')
+    #     sns.scatterplot(x=sus_df['high_dp learning'], y=tester['delta_sus'], hue=sus_df.reset_index()['mouse'].values)
+        sns.scatterplot(x=sus_df['high_dp learning'], y=tester['delta_sus'], s=100,
+                        hue=['component {}'.format(s) for s in sus_df.reset_index()['component'].values],
+                        style=sus_df.reset_index()['mouse'].values)
+        plt.legend(bbox_to_anchor=(1.05, 1))
+        # plt.ylim([-0.2, 0.2])
+        keep_bool = ~np.isnan(tester['delta_sus'])
+        r = sp.stats.pearsonr(sus_df['high_dp learning'].loc[keep_bool], tester['delta_sus'].loc[keep_bool])
+        plt.ylabel('$\Delta$SI\n -1*($SI_{high dp}-SI_{reversal})/(SI_{high dp}+SI_{reversal}$)')
+        plt.xlabel('sustainedness\n high dprime learning')
+        plt.title('{}: '.format(ori) + 'Sustainedness vs $\Delta$$SI_{lrn-rev}$' + ': R={}, {}={}'.format(round(r[0], 2), '$-1*log_{10}(p)$', round(-1*np.log10(r[1]), 3)))
+        plt.savefig('.//{}//{}_{}_{}_SI_learnhdp_v_revldp.pdf'.format(folder, t_or_wa, ori, words[0]), bbox_inches='tight')
+        
+        plt.figure()
+        dsus = ((sus_df['high_dp reversal1'] - sus_df['low_dp reversal1'])*-1)/(sus_df['high_dp reversal1'] + sus_df['low_dp reversal1'])
+        # dsusr = (norm_sus_df['high_dp learning'] - norm_sus_df['low_dp reversal1'])*-1
+        tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=sus_df.index)
+        sns.regplot(x=sus_df['high_dp reversal1'], y=tester['delta_sus'], marker='.')
+    #     sns.scatterplot(x=sus_df['high_dp reversal1'], y=tester['delta_sus'], hue=sus_df.reset_index()['mouse'].values)
+        sns.scatterplot(x=sus_df['high_dp reversal1'], y=tester['delta_sus'], s=100,
+                        hue=['component {}'.format(s) for s in sus_df.reset_index()['component'].values],
+                        style=sus_df.reset_index()['mouse'].values)
+        plt.legend(bbox_to_anchor=(1.05, 1))
+        # plt.ylim([-0.2, 0.2])
+        keep_bool = ~np.isnan(tester['delta_sus'])
+        r = sp.stats.pearsonr(sus_df['high_dp reversal1'].loc[keep_bool], tester['delta_sus'].loc[keep_bool])
+        plt.ylabel('$\Delta$SI\n -1*($SI_{high dp rev}-SI_{low dp rev})/(SI_{high dp rev}+SI_{low dp rev}$)')
+        plt.xlabel('sustainedness\n high dprime reversal')
+        plt.title('{}: '.format(ori) + 'Sustainedness vs $\Delta$$SI_{rev-rev}$' + ': R={}, {}={}'.format(round(r[0], 2), '$-1*log_{10}(p)$', round(-1*np.log10(r[1]), 3)))
+        plt.savefig('.//{}//{}_{}_{}_SI_revhdp_v_revldp.pdf'.format(folder, t_or_wa, ori, words[0]), bbox_inches='tight')
+
+
+    stages = ['naive', 'low_dp learning', 'high_dp learning', 'low_dp reversal1', 'high_dp reversal1']
+    folder = 'Sustainedness plots component thresh scatter'
+    tag = 'v1'
+    primary_stage = 'high_dp learning'
+    secondary_stages = [s for s in stages if s != primary_stage]
+
+    if not os.path.isdir(folder): os.mkdir(folder)
+    save_dir = os.path.join(folder, primary_stage)
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        
+    for stages_to_comp in secondary_stages:
+        plt.figure()
+        # for ori in ['plus', 'minus', 'neutral']:
+        #     ori_vec = total_sus.reset_index()['initial CS'].values
+        # oriboo = ori_vec == 'initial {}'.format(ori)
+        sns.scatterplot(x=total_sus[primary_stage].values, 
+                        y=total_sus[stages_to_comp].values,
+                        palette=hue_dict,
+                        hue=total_sus.reset_index()['initial CS'].values,
+                        style=total_sus.reset_index()['mouse'].values)
+        xmax = np.nanmax(total_sus[primary_stage].values)
+        ymax = np.nanmax(total_sus[stages_to_comp].values)
+        maxval = np.nanmax([xmax, ymax])
+        plt.plot([0, maxval], [0, maxval], 'k--')
+        plt.xlabel(primary_stage)
+        plt.ylabel(stages_to_comp)
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.ylabel('sustainedness coeff {}'.format(stages_to_comp), size=14)
+        plt.xlabel('sustainedness coeff {}'.format(primary_stage), size=14)
+        plt.title('Sustainedness coeff {} vs Sustainedness coeff {}\n\n'.format(primary_stage, stages_to_comp), size=16)
+        plt.savefig('.//{}//{}_{}_{}_sus_{}_v_{}.pdf'.format(save_dir, t_or_wa, tag, words[0], primary_stage, stages_to_comp),
+                    bbox_inches='tight')
+
+
+        for ori in ['plus', 'minus', 'neutral']:
+            plt.figure()
+        #     f, ax = plt.subplots(figsize=(7, 7))
+        #     ax.set(xscale="log", yscale="log")
+            ori_vec = total_sus.reset_index()['initial CS'].values
+            oriboo = ori_vec == 'initial {}'.format(ori)
+            sns.scatterplot(x=total_sus[primary_stage].iloc[oriboo].values, 
+                            y=total_sus[stages_to_comp].iloc[oriboo].values,
+                            color=hue_dict['initial {}'.format(ori)],
+                            style=total_sus.reset_index()['mouse'].iloc[oriboo].values)
+            plt.plot([0, maxval], [0, maxval], 'k--')
+        #     plt.yscale('log')
+        #     plt.xscale('log')
+        #     plt.ylim([-5, None])
+        #     plt.xlim([-5, None])
+            plt.xlabel(primary_stage)
+            plt.ylabel(stages_to_comp)
+            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+            plt.ylabel('sustainedness coeff {}'.format(stages_to_comp), size=14)
+            plt.xlabel('sustainedness coeff {}'.format(primary_stage), size=14)
+            plt.title('Sustainedness coeff {} vs Sustainedness coeff {}\n\n'.format(primary_stage, stages_to_comp), size=16)
+            plt.savefig('.//{}//{}_{}_{}_sus_initial_{}_{}_v_{}.pdf'.format(save_dir, t_or_wa, tag, words[0], ori, primary_stage, stages_to_comp),
+                        bbox_inches='tight')
+
+    stages = ['naive', 'low_dp learning', 'high_dp learning', 'low_dp reversal1', 'high_dp reversal1']
+    folder = 'Transient plots component thresh scatter'
+    tag = 'v1'
+    primary_stage = 'high_dp learning'
+    secondary_stages = [s for s in stages if s != primary_stage]
+
+    if not os.path.isdir(folder): os.mkdir(folder)
+    save_dir = os.path.join(folder, primary_stage)
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+        
+    for stages_to_comp in secondary_stages:
+        plt.figure()
+        sns.scatterplot(x=total_sus[primary_stage].values, 
+                        y=total_sus[stages_to_comp].values,
+                        palette=hue_dict,
+                        hue=total_sus.reset_index()['initial CS'].values,
+                        style=total_sus.reset_index()['mouse'].values)
+        xmax = np.nanmax(total_sus[primary_stage].values)
+        ymax = np.nanmax(total_sus[stages_to_comp].values)
+        maxval = np.nanmax([xmax, ymax])
+        plt.plot([0, maxval], [0, maxval], 'k--')
+        plt.xlabel(primary_stage)
+        plt.ylabel(stages_to_comp)
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.ylabel('Transientness coeff {}'.format(stages_to_comp), size=14)
+        plt.xlabel('Transientness coeff {}'.format(primary_stage), size=14)
+        plt.title('Transientness coeff {} vs Transientness coeff {}\n\n'.format(primary_stage, stages_to_comp), size=16)
+        plt.savefig('.//{}//{}_{}_{}_trans_{}_v_{}.pdf'.format(save_dir, t_or_wa, tag, words[0], primary_stage, stages_to_comp),
+                    bbox_inches='tight')
+
+
+        for ori in ['plus', 'minus', 'neutral']:
+            plt.figure()
+            ori_vec = total_sus.reset_index()['initial CS'].values
+            oriboo = ori_vec == 'initial {}'.format(ori)
+            sns.scatterplot(x=total_sus[primary_stage].iloc[oriboo].values, 
+                            y=total_sus[stages_to_comp].iloc[oriboo].values,
+                            color=hue_dict['initial {}'.format(ori)],
+                            style=total_sus.reset_index()['mouse'].iloc[oriboo].values)
+            plt.plot([0, maxval], [0, maxval], 'k--')
+        #     plt.ylim([-5, None])
+        #     plt.xlim([-5, None])
+            plt.xlabel(primary_stage)
+            plt.ylabel(stages_to_comp)
+            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+            plt.ylabel('Transientness coeff {}'.format(stages_to_comp), size=14)
+            plt.xlabel('Transientness coeff {}'.format(primary_stage), size=14)
+            plt.title('Transientness coeff {} vs Transientness coeff {}\n\n'.format(primary_stage, stages_to_comp), size=16)
+            plt.savefig('.//{}//{}_{}_{}_trans_initial_{}_{}_v_{}.pdf'.format(save_dir, t_or_wa, tag, words[0], ori, primary_stage, stages_to_comp),
+                        bbox_inches='tight')
+
+    folder = 'Sustainedness index plots daily thresh fit on means grouped PMN'
+    # folder = 'Sustainedness index plots daily thresh mean of trials fits'
+    if not os.path.isdir(folder): os.mkdir(folder)
+    save_dir = os.path.join(folder, 'Sustainedness plots christina ylim')
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    tag = 'v2'
+
+    hue_dict = {}
+    for ori in ['plus', 'minus', 'neutral']:
+        hue_dict['initial {}'.format(ori)] = color_dict[ori]
+
+    plt.figure()
+    dsus = total_sus['high_dp learning'] - total_sus['low_dp learning']
+    ori_vec = total_sus.reset_index()['initial CS'].values
+    tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=total_sus.index)
+    for ori in ['plus', 'minus', 'neutral']:
+        oriboo = ori_vec == 'initial {}'.format(ori)
+        regtester = tester.iloc[oriboo]
+        regori = total_sus['high_dp learning'].iloc[oriboo]
+        sns.regplot(x=total_sus['high_dp learning'].iloc[oriboo], y=regtester['delta_sus'], marker='.', color=color_dict[ori], dropna=True)
+    sns.scatterplot(x=total_sus['high_dp learning'], y=tester['delta_sus'], s=100,
+                    hue=total_sus.reset_index()['initial CS'].values, palette=hue_dict,
+                    style=total_sus.reset_index()['mouse'].values)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.xlim([0, 1])
+    # plt.ylim([-1, 1])
+    keep_bool = ~np.isnan(tester['delta_sus'])
+    rs, ps = [], []
+    for ori in ['plus', 'minus', 'neutral']:
+        oriboo = ori_vec == 'initial {}'.format(ori)
+        r = sp.stats.pearsonr(total_sus['high_dp learning'].loc[keep_bool & oriboo], tester['delta_sus'].loc[keep_bool & oriboo])
+        ps.append(r[1])
+        rs.append(r[0])
+    plt.ylabel('$\Delta$SI\n $SI_{high dp}-SI_{low dp}$')
+    plt.xlabel('sustainedness\n high dprime')
+    plt.title('Sustainedness vs $\Delta$$SI_{lrn-lrn}$'
+              + ':\n $_i$plus R={}, {}={}'.format(round(rs[0], 2), '$-1*log_{10}(p)$', round(-1*np.log10(ps[0]), 3))
+              + '\n $_i$minus R={}, {}={}'.format(round(rs[1], 2), '$-1*log_{10}(p)$', round(-1*np.log10(ps[1]), 3))
+              + '\n $_i$neutral R={}, {}={}'.format(round(rs[2], 2), '$-1*log_{10}(p)$', round(-1*np.log10(ps[2]), 3))
+             )
+    plt.savefig('.//{}//{}_{}_{}_SI_learnhdp_v_learnldp.pdf'.format(folder, t_or_wa, tag, words[0]), bbox_inches='tight')
+
+    plt.figure()
+    dsus = total_sus['high_dp learning'] - total_sus['naive']
+    ori_vec = total_sus.reset_index()['initial CS'].values
+    tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=total_sus.index)
+    for ori in ['plus', 'minus', 'neutral']:
+        oriboo = ori_vec == 'initial {}'.format(ori)
+        regtester = tester.iloc[oriboo]
+        regori = total_sus['high_dp learning'].iloc[oriboo]
+        sns.regplot(x=total_sus['high_dp learning'].iloc[oriboo], y=regtester['delta_sus'], marker='.', color=color_dict[ori], dropna=True)
+    sns.scatterplot(x=total_sus['high_dp learning'], y=tester['delta_sus'], s=100,
+                    hue=total_sus.reset_index()['initial CS'].values, palette=hue_dict,
+                    style=total_sus.reset_index()['mouse'].values)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.xlim([0, 1])
+    # plt.ylim([-1, 1])
+    keep_bool = ~np.isnan(tester['delta_sus'])
+    rs, ps = [], []
+    for ori in ['plus', 'minus', 'neutral']:
+        oriboo = ori_vec == 'initial {}'.format(ori)
+        r = sp.stats.pearsonr(total_sus['high_dp learning'].loc[keep_bool & oriboo], tester['delta_sus'].loc[keep_bool & oriboo])
+        ps.append(r[1])
+        rs.append(r[0])
+    plt.ylabel('$\Delta$SI\n $SI_{high dp}-SI_{naive}$')
+    plt.xlabel('sustainedness\n high dprime learning')
+    plt.title('Sustainedness vs $\Delta$$SI_{lrn-naive}$'
+              + ':\n $_i$plus R={}, {}={}'.format(round(rs[0], 2), '$-1*log_{10}(p)$', round(-1*np.log10(ps[0]), 3))
+              + '\n $_i$minus R={}, {}={}'.format(round(rs[1], 2), '$-1*log_{10}(p)$', round(-1*np.log10(ps[1]), 3))
+              + '\n $_i$neutral R={}, {}={}'.format(round(rs[2], 2), '$-1*log_{10}(p)$', round(-1*np.log10(ps[2]), 3))
+             )
+    plt.savefig('.//{}//{}_{}_{}_SI_learnhdp_v_naive.pdf'.format(folder, t_or_wa, tag, words[0]), bbox_inches='tight')
+
+    plt.figure()
+    dsus = total_sus['high_dp learning'] - total_sus['low_dp reversal1']
+    ori_vec = total_sus.reset_index()['initial CS'].values
+    tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=total_sus.index)
+    for ori in ['plus', 'minus', 'neutral']:
+        oriboo = ori_vec == 'initial {}'.format(ori)
+        regtester = tester.iloc[oriboo]
+        regori = total_sus['high_dp learning'].iloc[oriboo]
+        sns.regplot(x=total_sus['high_dp learning'].iloc[oriboo], y=regtester['delta_sus'], marker='.', color=color_dict[ori], dropna=True)
+    sns.scatterplot(x=total_sus['high_dp learning'], y=tester['delta_sus'], s=100,
+                    hue=total_sus.reset_index()['initial CS'].values, palette=hue_dict,
+                    style=total_sus.reset_index()['mouse'].values)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.xlim([0, 1])
+    # plt.ylim([-1, 1])
+    keep_bool = ~np.isnan(tester['delta_sus'])
+    rs, ps = [], []
+    for ori in ['plus', 'minus', 'neutral']:
+        oriboo = ori_vec == 'initial {}'.format(ori)
+        r = sp.stats.pearsonr(total_sus['high_dp learning'].loc[keep_bool & oriboo], tester['delta_sus'].loc[keep_bool & oriboo])
+        ps.append(r[1])
+        rs.append(r[0])
+    plt.ylabel('$\Delta$SI\n $SI_{high dp}-SI_{reversal}$')
+    plt.xlabel('sustainedness\n high dprime learning')
+    plt.title('Sustainedness vs $\Delta$$SI_{lrn-rev}$'
+              + ':\n $_i$plus R={}, {}={}'.format(round(rs[0], 2), '$-1*log_{10}(p)$', round(-1*np.log10(ps[0]), 3))
+              + '\n $_i$minus R={}, {}={}'.format(round(rs[1], 2), '$-1*log_{10}(p)$', round(-1*np.log10(ps[1]), 3))
+              + '\n $_i$neutral R={}, {}={}'.format(round(rs[2], 2), '$-1*log_{10}(p)$', round(-1*np.log10(ps[2]), 3))
+             )
+    plt.savefig('.//{}//{}_{}_{}_SI_learnhdp_v_revldp.pdf'.format(folder, t_or_wa, tag, words[0]), bbox_inches='tight')
+
+    plt.figure()
+    dsus = total_sus['high_dp reversal1'] - total_sus['low_dp reversal1']
+    ori_vec = total_sus.reset_index()['initial CS'].values
+    tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=total_sus.index)
+    for ori in ['plus', 'minus', 'neutral']:
+        oriboo = ori_vec == 'initial {}'.format(ori)
+        regtester = tester.iloc[oriboo]
+        regori = total_sus['high_dp reversal1'].iloc[oriboo]
+        sns.regplot(x=total_sus['high_dp reversal1'].iloc[oriboo], y=regtester['delta_sus'], marker='.', color=color_dict[ori], dropna=True)
+    sns.scatterplot(x=total_sus['high_dp reversal1'], y=tester['delta_sus'], s=100,
+                    hue=total_sus.reset_index()['initial CS'].values, palette=hue_dict,
+                    style=total_sus.reset_index()['mouse'].values)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.xlim([0, 1])
+    # plt.ylim([-1, 1])
+    keep_bool = ~np.isnan(tester['delta_sus'])
+    rs, ps = [], []
+    for ori in ['plus', 'minus', 'neutral']:
+        oriboo = ori_vec == 'initial {}'.format(ori)
+        r = sp.stats.pearsonr(total_sus['high_dp reversal1'].loc[keep_bool & oriboo], tester['delta_sus'].loc[keep_bool & oriboo])
+        ps.append(r[1])
+        rs.append(r[0])
+    plt.ylabel('$\Delta$SI\n $SI_{high dp rev}-SI_{low dp rev}$')
+    plt.xlabel('sustainedness\n high dprime reversal')
+    plt.title('Sustainedness vs $\Delta$$SI_{rev-rev}$'
+              + ':\n $_i$plus R={}, {}={}'.format(round(rs[0], 2), '$-1*log_{10}(p)$', round(-1*np.log10(ps[0]), 3))
+              + '\n $_i$minus R={}, {}={}'.format(round(rs[1], 2), '$-1*log_{10}(p)$', round(-1*np.log10(ps[1]), 3))
+              + '\n $_i$neutral R={}, {}={}'.format(round(rs[2], 2), '$-1*log_{10}(p)$', round(-1*np.log10(ps[2]), 3))
+             )
+    plt.savefig('.//{}//{}_{}_{}_SI_revhdp_v_revldp.pdf'.format(folder, t_or_wa, tag, words[0]), bbox_inches='tight')
+
+    for ori in ['plus', 'minus', 'neutral']:
+    plt.figure()
+    dsus = total_sus['high_dp learning'] - total_sus['low_dp reversal1']
+    ori_vec = total_sus.reset_index()['initial CS'].values
+    tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=total_sus.index)
+    # for ori in ['plus', 'minus', 'neutral']:
+    oriboo = ori_vec == 'initial {}'.format(ori)
+    regtester = tester.iloc[oriboo]
+    regori = total_sus['high_dp learning'].iloc[oriboo]
+    sns.regplot(x=total_sus['high_dp learning'].iloc[oriboo], y=regtester['delta_sus'], marker='.', color=color_dict[ori], dropna=True)
+    sns.scatterplot(x=total_sus['high_dp learning'].iloc[oriboo], y=regtester['delta_sus'], s=100,
+                    hue=total_sus.iloc[oriboo, :].reset_index()['initial CS'].values, palette=hue_dict,
+                    style=total_sus.iloc[oriboo, :].reset_index()['mouse'].values)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.xlim([0, 1])
+    plt.ylim([-0.67, 0.5])
+    keep_bool = ~np.isnan(tester['delta_sus'])
+    rs, ps = [], []
+    plt.ylabel('$\Delta$SI\n $SI_{high dp}-SI_{reversal}$')
+    plt.xlabel('sustainedness\n high dprime learning')
+    plt.title('Sustainedness vs $\Delta$$SI_{lrn-rev}$')
+#     plt.savefig('.//{}//{}_{}_{}_SI_learnhdp_v_revldp_{}.pdf'.format(folder, t_or_wa, tag, words[0], ori), bbox_inches='tight')
+
+
+
+
+
+
+def NNLS_sustainedness_scatter():
+
+    # load in a full size tensor
+    model_list = []
+    tensor_list = []
+    id_list = []
+    bhv_list = []
+    meta_list = []
+    # return --> model, ids, tensor, meta, bhv
+    for mouse, word in zip(mice, words):
+        out = cas.load.load_all_groupday(
+            mouse, word=word, with_model=False, nan_thresh=0.95) 
+        model_list.append(out[0])
+        tensor_list.append(out[2])
+        id_list.append(out[1])
+        bhv_list.append(out[4])
+        meta_list.append(out[3])
+
 def fit_linear_template(
-        mice=['OA27', 'OA67', 'OA32', 'OA34', 'CC175', 'OA36', 'OA26',
+        mice=['OA27', 'OA67', 'OA32', 'OA34', 'OA36', 'OA26',
               'VF226'],
         words=['determine', 'pharmacology', 'pharmacology', 'pharmacology',
-               'pharmacology', 'pharmacology', 'pharmacology', 'pharmacology'],
+               'pharmacology', 'pharmacology', 'pharmacology'],
         trace_type='zscore_day',
         method='ncp_hals',
         cs='',
@@ -1299,58 +2071,49 @@ def fit_linear_template(
         nan_thresh=0.85,
         score_threshold=0.8
 ):
-
-    for m, w in zip(mice, words):
+    model_list = []
+    meta_list = []
+    input_list = []
+    for mi, wi in zip(mice, words):
         # load TCA models and data
-        V, my_sorts_stim = load.groupday_tca_model(
-                mouse=mouse,
+        V, my_sorts = load.groupday_tca_model(
+                mouse=mi,
                 trace_type=trace_type,
                 method=method,
                 cs=cs,
                 warp=warp,
                 rank=rank,
-                word=word,
+                word=wi,
                 group_by=group_by,
                 nan_thresh=nan_thresh,
                 score_threshold=score_threshold,
                 full_output=False,
                 unsorted=True,
                 verbose=False)
-        V2, my_sorts_noise = load.groupday_tca_model(
-                mouse=mouse,
+        meta = load.groupday_tca_meta(
+                mouse=mi,
                 trace_type=trace_type,
                 method=method,
                 cs=cs,
                 warp=warp,
-                rank=rank,
-                word=word_n,
-                group_by=group_by,
-                nan_thresh=nan_thresh,
-                score_threshold=score_threshold,
-                full_output=False,
-                unsorted=True,
-                verbose=False)
-        meta_stim = load.groupday_tca_meta(
-                mouse=mouse,
-                trace_type=trace_type,
-                method=method,
-                cs=cs,
-                warp=warp,
-                word=word_s,
+                word=wi,
                 group_by=group_by,
                 nan_thresh=nan_thresh,
                 score_threshold=score_threshold)
-        meta_stim = utils.add_dprime_to_meta(meta_stim)
-        input_stim = load.groupday_tca_input_tensor(
-                mouse=mouse,
+        meta = utils.add_dprime_to_meta(meta)
+        input_tensor = load.groupday_tca_input_tensor(
+                mouse=mi,
                 trace_type=trace_type,
                 method=method,
                 cs=cs,
                 warp=warp,
-                word=word_s,
+                word=wi,
                 group_by=group_by,
                 nan_thresh=nan_thresh,
                 score_threshold=score_threshold)
+        model_list.append(V)
+        meta_list.append(meta)
+        input_list.append(input_tensor)
         # input_bhv = load.groupday_tca_bhv(
         #         mouse=mouse,
         #         trace_type=trace_type,

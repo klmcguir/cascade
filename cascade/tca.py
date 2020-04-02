@@ -2305,7 +2305,7 @@ def _add_prob_columns_trialmeta(mouse, meta1_df):
     p_df = new_meta_df1.loc[:, p_cols]
 
     # add new columns to original df
-    new_dfr = pd.concat([new_meta, grp_df, p_df], axis=1)
+    new_dfr = pd.concat([meta1_df, grp_df, p_df], axis=1)
 
     return new_dfr
 
