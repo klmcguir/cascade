@@ -1947,6 +1947,9 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         tags = ['standard']
     tags = [tags[0]]*len(trial_idx)
 
+    # get boolean of engagement per trial
+    HMM_engaged = engaged(run, across_run=False)[trial_idx]
+
     # get trialerror ensuring you don't include runthrough at end of trials
     trialerror = np.array(t2p.d['trialerror'][trial_idx])
 
@@ -1959,6 +1962,14 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
 
     # previous punishment
     prev_punishment = np.isin(prevtrialerror, [5])
+
+    # previous cue was the same as current cue
+    prev_same_plus = (np.isin(prevtrialerror, [0, 1, 8, 9]) & 
+                      np.isin(prevtrialerror, [0, 1, 8, 9]))
+    prev_same_neutral = (np.isin(prevtrialerror, [2, 3]) & 
+                         np.isin(prevtrialerror, [2, 3]))
+    prev_same_minus = (np.isin(prevtrialerror, [4, 5]) & 
+                       np.isin(prevtrialerror, [4, 5]))
 
     # get cs and orientation info for each trial
     lookup = {v: k for k, v in t2p.d['codes'].items()}  # invert dict
@@ -2140,17 +2151,28 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
                 ],
                 names=['mouse', 'date', 'run', 'trial_idx'])
 
-    data = {'orientation':  oris, 'condition': css,
+    data = {'orientation':  oris,
+            'condition': css,
             'trialerror': trialerror,
             'prev_reward': prev_reward,
             'prev_punish': prev_punishment,
+            'prev_same_plus': prev_same_plus,
+            'prev_same_neutral': prev_same_neutral,
+            'prev_same_minus': prev_same_minus,
             'hunger': hunger,
-            'learning_state': learning_state, 'tag': tags,
-            'firstlick': firstlick, 'firstlickbout': firstlickbout,
-            'ensure': ensure, 'quinine': quinine,
-            'speed': speed, 'pre_speed': pre_speed,
-            'anticipatory_licks': antic_lick, 'pre_licks': pre_lick,
-            'pupil': pupil, 'pre_pupil': pre_pupil,
+            'learning_state': learning_state,
+            'tag': tags,
+            'firstlick': firstlick,
+            'firstlickbout': firstlickbout,
+            'ensure': ensure,
+            'quinine': quinine,
+            'hmm_engaged': HMM_engaged,
+            'speed': speed,
+            'pre_speed': pre_speed,
+            'anticipatory_licks': antic_lick,
+            'pre_licks': pre_lick,
+            'pupil': pupil,
+            'pre_pupil': pre_pupil,
             'brainmotion': brainmotion}
 
     dfr = pd.DataFrame(data, index=index)
