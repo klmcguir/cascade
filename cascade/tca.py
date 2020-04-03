@@ -2307,6 +2307,7 @@ def _add_prob_columns_trialmeta(mouse, meta1_df):
         prob_since_last = accumulated_df.divide(accumulated_df['trial_number'], axis=0)
         for vali in ['initial_plus', 'initial_minus', 'initial_neutral', 'go', 'reward']:
             new_vec = np.zeros(len(new_meta_df1))
+            new_vec[:] = np.nan
             new_bool = new_meta_df1[aci].gt(0).values
             new_vec[new_bool] = prob_since_last[vali].values[0:np.sum(new_bool)] # use only matched trials
             new_meta_df1['p_{}_since_last_{}'.format(vali, aci)] = new_vec
