@@ -1996,14 +1996,6 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     # previous punishment
     prev_punishment = np.isin(prevtrialerror, [5])
 
-    # previous cue was the same as current cue
-    prev_same_plus = (np.isin(prevtrialerror, [0, 1, 8, 9]) & 
-                      np.isin(prevtrialerror, [0, 1, 8, 9]))
-    prev_same_neutral = (np.isin(prevtrialerror, [2, 3]) & 
-                         np.isin(prevtrialerror, [2, 3]))
-    prev_same_minus = (np.isin(prevtrialerror, [4, 5]) & 
-                       np.isin(prevtrialerror, [4, 5]))
-
     # get cs and orientation info for each trial
     lookup = {v: k for k, v in t2p.d['codes'].items()}  # invert dict
     css = [lookup[s] for s in t2p.d['condition'][trial_idx]]
@@ -2017,6 +2009,17 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
 
     # get ori according to which cs it was during initial learning
     initial_css = [lookups.lookup_ori[run.mouse][s] for s in oris]
+
+    # previous cue (orientation) was the same as current cue, named by initial
+    # learning cs
+    unassigned_prev_same_cue = {}
+    unassigned_prev_same_cue['plus'] = (np.isin(prevtrialerror, [0, 1, 8, 9]) & 
+                                        np.isin(prevtrialerror, [0, 1, 8, 9]))
+    unassigned_prev_same_cue['neutral'] = (np.isin(prevtrialerror, [2, 3]) & 
+                                           np.isin(prevtrialerror, [2, 3]))
+    unassigned_prev_same_cue['minus'] = (np.isin(prevtrialerror, [4, 5]) & 
+                                         np.isin(prevtrialerror, [4, 5]))
+    dbasd
 
     # get mean running speed for time stim is on screen
     # use first 3 seconds after onset if there is no offset
