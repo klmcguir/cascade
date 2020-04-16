@@ -18,7 +18,7 @@ def groupday_varex_drop_worst_comp(
         cs='',
         warp=False,
         word=None,
-        group_by='all2',
+        group_by='all3',
         nan_thresh=0.85,
         score_threshold=0.8,
         rectified=True,
@@ -139,7 +139,7 @@ def groupday_varex_drop_worst_comp(
     return dfvar
 
 
-@memoize(across='mouse', updated=191203, returns='other', large_output=True)
+@memoize(across='mouse', updated=200414, returns='other', large_output=True)
 def groupday_varex(
         mouse,
         trace_type='zscore_day',
@@ -147,7 +147,7 @@ def groupday_varex(
         cs='',
         warp=False,
         word=None,
-        group_by='all2',
+        group_by='all3',
         nan_thresh=0.85,
         score_threshold=0.8,
         rectified=True,
@@ -193,26 +193,37 @@ def groupday_varex(
     varex = []
     rank = []
     iteration = []
+    total_X_var = bn.nanvar(X)
     for r in V.results:
         for it in range(0, len(V.results[r])):
             U = V.results[r][it].factors.full()
-            varex.append(1 - (bn.nanvar(X - U)/bn.nanvar(X)))
+            varex.append(1 - (bn.nanvar(X - U)/total_X_var))
             rank.append(r)
             iteration.append(it)
 
     # mean response of neuron across trials
     mU = np.nanmean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
-    varex_mu = 1 - (bn.nanvar(X - mU)/bn.nanvar(X))
+    varex_mu = 1 - (bn.nanvar(X - mU)/total_X_var)
+
+    # mean response of neurons per day
+    mU2 = np.zeros(mU.shape)
+    for day in np.unique(dates):
+        day_bool = dates.isin([day])
+        day_mean = np.nanmean(X[:, :, day_bool], axis=2, keepdims=True)
+        day_mean_chunk = day_mean * np.ones((1, 1, np.sum(day_bool.values)))
+        mU2[:, :, day_bool] = day_mean_chunk
+    mU2[~np.isfinite(X)] = np.nan
+    varex_mu_daily = 1 - (bn.nanvar(X - mU2)/total_X_var)
 
     # smoothed response of neuron across time
-    sm_window = 5  # This should always be odd or there will be a frame shift
+    sm_window = 15  # This should always be odd or there will be a frame shift
     assert sm_window % 2 == 1
     sm_shift = int(np.floor((sm_window - 1)/2) + sm_window*2)
     pad = np.zeros((np.shape(X)[0], sm_window*2, np.shape(X)[2]))
     smU_in = np.concatenate((pad, X, pad), axis=1)
-    smU = bn.move_mean(smU_in, 5, axis=1)
+    smU = bn.move_mean(smU_in, sm_window, axis=1)
     smU = smU[:, sm_shift:(np.shape(X)[1] + sm_shift), :]
-    varex_smu = 1 - (bn.nanvar(X - smU)/bn.nanvar(X))
+    varex_smu = 1 - (bn.nanvar(X - smU)/total_X_var)
 
     # calculate trial concatenated PCA reconstruction of data, this is
     # the upper bound of performance we could expect
@@ -243,6 +254,7 @@ def groupday_varex(
             'variance_explained_tcamodel': varex,
             'variance_explained_smoothmodel': [varex_smu]*len(rank),
             'variance_explained_meanmodel': [varex_mu]*len(rank),
+            'variance_explained_meandailymodel': [varex_mu_daily]*len(rank),
             'variance_explained_PCA': [varex_PCA]*len(rank)}
 
     dfvar = pd.DataFrame(data, index=index)
@@ -250,7 +262,7 @@ def groupday_varex(
     return dfvar
 
 
-@memoize(across='mouse', updated=191203, returns='other', large_output=True)
+@memoize(across='mouse', updated=200414, returns='other', large_output=True)
 def groupday_varex_byday(
         mouse,
         trace_type='zscore_day',
@@ -258,7 +270,7 @@ def groupday_varex_byday(
         cs='',
         warp=False,
         word=None,
-        group_by='all2',
+        group_by='all3',
         nan_thresh=0.85,
         score_threshold=0.8,
         rectified=True,
@@ -309,6 +321,8 @@ def groupday_varex_byday(
 
     # create vectors for dataframe
     varex = []
+    var_daily = []
+    var_mod_daily = []
     varex_smu = []
     varex_mu = []
     date = []
@@ -320,12 +334,12 @@ def groupday_varex_byday(
         mU = np.nanmean(
             X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
         # smoothed response of neuron across time
-        sm_window = 5  # should always be odd or there will be a frame shift
+        sm_window = 15  # should always be odd or there will be a frame shift
         assert sm_window % 2 == 1
         sm_shift = int(np.floor((sm_window - 1)/2) + sm_window*2)
         pad = np.zeros((np.shape(X)[0], sm_window*2, np.shape(X)[2]))
         smU_in = np.concatenate((pad, X, pad), axis=1)
-        smU = bn.move_mean(smU_in, 5, axis=1)
+        smU = bn.move_mean(smU_in, sm_window, axis=1)
         smU = smU[:, sm_shift:(np.shape(X)[1] + sm_shift), :]
         # calculate variance explained per day
         for day in np.unique(dates):
@@ -334,11 +348,14 @@ def groupday_varex_byday(
             mUd = mU[:, :, day_bool]
             smUd = smU[:, :, day_bool]
             bX = X[:, :, day_bool]
+            daily_var = bn.nanvar(bX)
             rank.append(r)
             date.append(day)
-            varex.append(1 - (bn.nanvar(bX - bUd)/bn.nanvar(bX)))
-            varex_mu.append(1 - (bn.nanvar(bX - mUd)/bn.nanvar(bX)))
-            varex_smu.append(1 - (bn.nanvar(bX - smUd)/bn.nanvar(bX)))
+            varex.append(1 - (bn.nanvar(bX - bUd)/daily_var))
+            varex_mu.append(1 - (bn.nanvar(bX - mUd)/daily_var))
+            varex_smu.append(1 - (bn.nanvar(bX - smUd)/daily_var))
+            var_daily.append(daily_var)
+            var_mod_daily.append()
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -348,8 +365,10 @@ def groupday_varex_byday(
 
     data = {'rank': rank,
             'date':  date,
+            'total_data_variance': var_daily,
+            'total_model_variance': var_mod_daily,
             'variance_explained_tcamodel': varex,
-            'variance_explained_smoothmodel': varex_smu,
+            'variance_explained_meandaily': varex_smu,
             'variance_explained_meanmodel': varex_mu}
 
     dfvar = pd.DataFrame(data, index=index)
@@ -365,7 +384,7 @@ def groupday_var_byday(
         cs='',
         warp=False,
         word=None,
-        group_by='all2',
+        group_by='all3',
         nan_thresh=0.85,
         score_threshold=0.8,
         rectified=True,
@@ -457,7 +476,7 @@ def groupday_varex_byday_bycomp(
         cs='',
         warp=False,
         word=None,
-        group_by='all2',
+        group_by='all3',
         nan_thresh=0.85,
         score_threshold=0.8,
         rectified=True,
@@ -508,6 +527,8 @@ def groupday_varex_byday_bycomp(
 
     # create vectors for dataframe
     varex = []
+    var_daily = []
+    var_comp_daily = []
     date = []
     rank = []
     component = []
@@ -524,10 +545,13 @@ def groupday_varex_byday_bycomp(
                 day_bool = dates.isin([day])
                 bUd = abc[:, :, day_bool]
                 bX = X[:, :, day_bool]
+                daily_var = bn.nanvar(bX)
                 rank.append(r)
                 date.append(day)
                 component.append(fac_num+1)
-                varex.append(1 - (bn.nanvar(bX - bUd)/bn.nanvar(bX)))
+                varex.append(1 - (bn.nanvar(bX - bUd)/daily_var))
+                var_daily.append(daily_var)
+                var_comp_daily.append(bn.nanvar(bUd))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -538,6 +562,8 @@ def groupday_varex_byday_bycomp(
     data = {'rank': rank,
             'date':  date,
             'component': component,
+            'variance_daily': var_daily,
+            'variance_of_component': var_comp_daily,
             'variance_explained_tcamodel': varex}
 
     dfvar = pd.DataFrame(data, index=index)
@@ -553,7 +579,7 @@ def groupday_varex_byday_bycomp_bycell(
         cs='',
         warp=False,
         word=None,
-        group_by='all2',
+        group_by='all3',
         nan_thresh=0.85,
         rectified=True,
         verbose=False):
@@ -615,6 +641,8 @@ def groupday_varex_byday_bycomp_bycell(
 
     # create vectors for dataframe
     varex = []
+    var_cell = []
+    var_cell_model = []
     date = []
     rank = []
     component = []
@@ -637,12 +665,15 @@ def groupday_varex_byday_bycomp_bycell(
                     cell_identity = ids[cell_num]
                     bX = xxxx[cell_num, :, :]
                     bU = abcd[cell_num, :, :]
+                    daily_cell_var = bn.nanvar(bX)
                     rank.append(r)
                     date.append(day)
                     component.append(fac_num+1)
                     cell_idx.append(cell_num)
                     cell_id.append(cell_identity)
-                    varex.append(1 - (bn.nanvar(bX - bU)/bn.nanvar(bX)))
+                    varex.append(1 - (bn.nanvar(bX - bU)/daily_cell_var))
+                    var_cell.append(daily_cell_var)
+                    var_cell_model.append(bn.nanvar(bU))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -655,6 +686,8 @@ def groupday_varex_byday_bycomp_bycell(
             'cell_num': cell_idx,
             'cell_id': cell_id,
             'component': component,
+            'variance_of_cell_daily': var_cell,
+            'variance_of_cell_daily_tcamodel': var_cell_model,
             'variance_explained_tcamodel': varex}
 
     dfvar = pd.DataFrame(data, index=index)
@@ -662,7 +695,7 @@ def groupday_varex_byday_bycomp_bycell(
     return dfvar
 
 
-@memoize(across='mouse', updated=190805, returns='other', large_output=True)
+@memoize(across='mouse', updated=200414, returns='other', large_output=True)
 def groupday_varex_bycomp_bycell(
         mouse,
         trace_type='zscore_day',
@@ -670,7 +703,7 @@ def groupday_varex_bycomp_bycell(
         cs='',
         warp=False,
         word=None,
-        group_by='all2',
+        group_by='all3',
         nan_thresh=0.85,
         rectified=True,
         verbose=False):
@@ -780,7 +813,7 @@ def groupday_varex_bycomp(
         cs='',
         warp=False,
         word=None,
-        group_by='all2',
+        group_by='all3',
         nan_thresh=0.85,
         score_threshold=0.8,
         rectified=True,
@@ -829,8 +862,11 @@ def groupday_varex_bycomp(
 
     # create vectors for dataframe
     varex = []
+    var_data = []
+    var_model = []
     rank = []
     component = []
+    total_X_var = bn.nanvar(X)
     for r in V.results:
         for fac_num in range(np.shape(V.results[r][0].factors[0][:, :])[1]):
             # reconstruct single component model
@@ -841,7 +877,9 @@ def groupday_varex_bycomp(
             bUd = ab[:, :, None] @ c[None, :]
             rank.append(r)
             component.append(fac_num+1)
-            varex.append(1 - (bn.nanvar(X - bUd)/bn.nanvar(X)))
+            varex.append(1 - (bn.nanvar(X - bUd)/total_X_var))
+            var_data.append(total_X_var)
+            var_model.append(bn.nanvar(bUd))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -851,6 +889,8 @@ def groupday_varex_bycomp(
 
     data = {'rank': rank,
             'component': component,
+            'variance_of_data': var_data,
+            'variance_of_comp_tcamodel': var_model,
             'variance_explained_tcamodel': varex}
 
     dfvar = pd.DataFrame(data, index=index)

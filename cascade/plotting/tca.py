@@ -620,6 +620,7 @@ def groupday_factors_annotated(
         plot_running=True,
         filetype='png',
         scale_y=False,
+        hunger_or_hmm='hmm',
         verbose=False):
 
     """
@@ -776,6 +777,12 @@ def groupday_factors_annotated(
     speed = meta['speed']
     dates = meta.reset_index()['date']
     learning_state = meta['learning_state']
+    if hunger_or_hmm == 'hmm' and 'hmm_engaged' in meta.columns:
+        hmm = meta['hmm_engaged']
+    else:
+        hunger_or_hmm = False
+        if verbose:
+            print('hmm_engaged not in columns: Final column set to hunger state.')
 
     # calculate change indices for days and reversal/learning
     udays = {d: c for c, d in enumerate(np.unique(dates))}
@@ -914,18 +921,35 @@ def groupday_factors_annotated(
                                           borderaxespad=2.5)
                 # State - main variable to plot
                 elif col == 6:
-                    h_vals = ['hungry', 'sated', 'disengaged']
-                    h_labels = ['hungry', 'sated', 'disengaged']
-                    color_vals = [[1, 0.6, 0.3, alpha], [0.7, 0.9, 0.4, alpha],
-                                  [0.6, 0.5, 0.6, alpha], [0.0, 0.9, 0.4, alpha]]
-                    for k in range(0, 3):
-                        ax[i, col].plot(trial_num[hunger == h_vals[k]],
-                                        U.factors[2][hunger == h_vals[k], i], 'o',
-                                        label=str(h_labels[k]), color=color_vals[k], markersize=2)
-                    if i == 0:
-                        ax[i, col].set_title('State')
-                        ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
-                                          borderaxespad=2.5)
+                    if hunger_or_hmm == 'hunger':
+                        h_vals = ['hungry', 'sated', 'disengaged']
+                        h_labels = ['hungry', 'sated', 'disengaged']
+                        color_vals = [[1, 0.6, 0.3, alpha], [0.7, 0.9, 0.4, alpha],
+                                      [0.6, 0.5, 0.6, alpha], [0.0, 0.9, 0.4, alpha]]
+                        for k in range(0, 3):
+                            ax[i, col].plot(trial_num[hunger == h_vals[k]],
+                                            U.factors[2][hunger == h_vals[k], i], 'o',
+                                            label=str(h_labels[k]), color=color_vals[k], markersize=2)
+                        if i == 0:
+                            ax[i, col].set_title('State')
+                            ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
+                                              borderaxespad=2.5)
+                    elif hunger_or_hmm == 'hmm':
+                        h_vals = ['hmm_engaged', 'hmm_disengaged']
+                        h_labels = ['hmm_engaged', 'hmm_disengaged']
+                        color_vals = [[1, 0.6, 0.3, alpha],
+                                      [0.7, 0.9, 0.4, alpha]]
+                        
+                        ax[i, col].plot(trial_num[hmm],
+                                        U.factors[2][hmm, i], 'o',
+                                            label=str(h_labels[0]), color=color_vals[0], markersize=2)
+                        ax[i, col].plot(trial_num[~hmm],
+                                        U.factors[2][~hmm, i], 'o',
+                                            label=str(h_labels[1]), color=color_vals[1], markersize=2)
+                        if i == 0:
+                            ax[i, col].set_title('HMM engaged')
+                            ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
+                                              borderaxespad=2.5)
 
                 # plot days, reversal, or learning lines if there are any
                 if col >= 2:
