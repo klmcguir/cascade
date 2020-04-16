@@ -355,7 +355,7 @@ def groupday_varex_byday(
             varex_mu.append(1 - (bn.nanvar(bX - mUd)/daily_var))
             varex_smu.append(1 - (bn.nanvar(bX - smUd)/daily_var))
             var_daily.append(daily_var)
-            var_mod_daily.append()
+            var_mod_daily.append(bn.nanvar(bUd))
 
     # make dataframe of data
     # create your index out of relevant variables
@@ -376,7 +376,7 @@ def groupday_varex_byday(
     return dfvar
 
 
-@memoize(across='mouse', updated=191203, returns='other', large_output=True)
+@memoize(across='mouse', updated=200414, returns='other', large_output=True)
 def groupday_var_byday(
         mouse,
         trace_type='zscore_day',
@@ -468,7 +468,7 @@ def groupday_var_byday(
     return dfvar
 
 
-@memoize(across='mouse', updated=191203, returns='other', large_output=True)
+@memoize(across='mouse', updated=200414, returns='other', large_output=True)
 def groupday_varex_byday_bycomp(
         mouse,
         trace_type='zscore_day',
@@ -805,7 +805,7 @@ def groupday_varex_bycomp_bycell(
     return dfvar
 
 
-@memoize(across='mouse', updated=191203, returns='other', large_output=True)
+@memoize(across='mouse', updated=200414, returns='other', large_output=True)
 def groupday_varex_bycomp(
         mouse,
         trace_type='zscore_day',
