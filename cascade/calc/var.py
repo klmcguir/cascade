@@ -183,6 +183,8 @@ def groupday_varex(
                    'score_threshold': score_threshold}
     V, _ = load.groupday_tca_model(**load_kwargs, unsorted=True)
     X = load.groupday_tca_input_tensor(**load_kwargs)
+    meta = load.groupday_tca_meta(**load_kwargs)
+    dates = meta.reset_index()['date']
 
     # rectify input tensor (only look at nonnegative variance)
     if rectified:

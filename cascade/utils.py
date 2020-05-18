@@ -59,6 +59,141 @@ def add_dprime_to_meta(meta):
     return meta
 
 
+def update_meta_date_vec(meta):
+    """
+    Helper function to get change date vector in metadata to be .5 for learning
+    and reversal transitions in the middle of the day.
+    """
+    
+    day_vec = np.array(meta.reset_index()['date'].values, dtype='float')
+    days = np.unique(day_vec)
+    ls = meta['learning_state'].values
+    for di in days:
+        dboo  = np.isin(day_vec, di)
+        states_vec = ls[dboo]
+        u_states = np.unique(states_vec)
+        if len(u_states) > 1:
+            second_state = dboo & (ls == u_states[1])
+            day_vec[second_state] += 0.5
+    
+    # replace
+    new_meta = meta.reset_index()
+    new_meta['date'] = day_vec
+    new_meta = new_meta.set_index(['mouse', 'date', 'run', 'trial_idx'])
+    
+    return new_meta
+
+
+def add_5stages_to_meta(meta):
+    """
+    Helper function to add the stage of learning to metadata.
+    """
+    
+    stages = ['naive', 'low_dp learning', 'high_dp learning',
+              'low_dp reversal1', 'high_dp reversal1']
+    
+    if 'dprime' not in meta.columns:
+        meta = add_dprime_to_meta(meta)
+    meta = update_meta_date_vec(meta)
+    u_days = np.unique(meta.reset_index()['date'])
+    all_days = meta.reset_index()['date'].values
+    ls = meta['learning_state'].values
+    dp = meta['dprime'].values
+    
+    stage_vec = []
+    for lsi, dpi in zip(ls, dp):
+    
+        if 'naive' in lsi:
+            stage_vec.append('naive')
+        elif 'learning' in lsi:
+            if dpi < 2:
+                stage_vec.append('low_dp learning')
+            elif dpi >=2:
+                stage_vec.append('high_dp learning')
+        elif 'reversal1' in lsi:
+            if dpi < 2:
+                stage_vec.append('low_dp reversal1')
+            elif dpi >=2:
+                stage_vec.append('high_dp reversal1')
+    
+    meta['parsed_stage'] = stage_vec
+    
+    return meta
+
+
+def add_10stages_to_meta(meta, simple=True):
+    """
+    Helper function to add the stage of learning to metadata breaking
+    each of the 5 major stages ['naive', 'low_dp learning', 'high_dp learning',
+    'low_dp reversal1', 'high_dp reversal1'] into an early and late stages.
+    
+    Can choose to divide trials in half or days in half.
+
+    simple=True: Divide trials in a stage right down the middle.
+
+    simple=False: Divide days. Single days are NOT broken in half. They are
+    attributed to the later period. This is to prevent groups of cells that
+    change dramatically within a day from affecting results if they are highly
+    responsive at the beginning of the day but not at the end.
+
+    """
+    
+    # make sure paresed stage exists so you can loop over this.
+    if 'parsed_stage' not in meta.columns:
+        meta = add_5stages_to_meta(meta)
+    meta = update_meta_date_vec(meta)
+    
+    # get days and parsed stages of learning
+    u_stages = meta['parsed_stage'].unique()
+    u_days = meta.reset_index()['date'].unique()
+    all_days = meta.reset_index()['date']
+    parse = meta['parsed_stage']
+
+    stage_vec = []
+    for ic, istage in enumerate(u_stages):
+        
+        # simple=False; break a stage in half but assign shared days to later
+        # period. i.e., if there are 3 days, 1 day is early and 2 are late.
+        if simple:
+            stage_bool = parse.isin([istage]).values
+            stage_inds = np.where(stage_bool)[0]
+            midpoint = int(np.ceil(len(stage_inds)/2))
+            first_half = stage_inds[:midpoint]
+            last_half = stage_inds[midpoint:]
+
+            # add the appropriate number of stage values to the list
+            for s in first_half:
+                stage_vec.append('early {}'.format(istage))
+            for s in last_half:
+                stage_vec.append('late {}'.format(istage))
+        else:
+            stage_bool = parse.isin([istage]).values
+            stage_days = all_days.iloc[stage_bool].unique()
+            day_bool = np.isin(all_days.values, stage_days)
+
+            # if a stage only has one day consider it late
+            if len(stage_days) == 1:
+                stage_inds = np.where(day_bool)[0]
+                for s in stage_inds:
+                    stage_vec.append('late {}'.format(istage))
+            else:
+                day_mid = int(np.floor(len(stage_days)/2))
+                first_days = stage_days[:day_mid]
+                last_days = stage_days[day_mid:]
+                day_bool1 = np.isin(all_days.values, first_days)
+                day_bool2 = np.isin(all_days.values, last_days)
+                clean_first_inds = np.where(day_bool1)[0]
+                clean_last_inds = np.where(day_bool2)[0]
+                for s in clean_first_inds:
+                    stage_vec.append('early {}'.format(istage))
+                for s in clean_last_inds:
+                    stage_vec.append('late {}'.format(istage))
+    
+    meta['parsed_10stage'] = stage_vec
+    
+    return meta
+
+
 def update_naive_meta(meta, verbose=True):
 
     """
@@ -272,6 +407,9 @@ def getcstraces(
     date = run.parent
     date.set_subset(run.cells)
 
+    # always exclude bad runs
+    exclude_tags = exclude_tags + ('bad',)
+
     # standardize: z-score
     if 'zscore' in trace_type.lower():
 
@@ -379,7 +517,7 @@ def getcstraces(
         run_traces = t2p.warpcstraces(cs, start_s=start_time, end_s=end_time,
                                       trace_type=trace_type, cutoff_before_lick_ms=-1,
                                       errortrials=-1, baseline=(-1, 0),
-                                      move_outcome_to=4, baseline_to_stimulus=True)
+                                      move_outcome_to=5, baseline_to_stimulus=True)
     else:
         run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
                                   trace_type=trace_type, cutoff_before_lick_ms=-1,
@@ -672,6 +810,8 @@ def build_tensor(
     else:
         days = flow.DateSorter.frommeta(
             mice=[mouse], tags=tags, exclude_tags=['bad'])
+    if mouse == 'OA26' and 'contrast' in exclude_tags:
+        days = [s for s in days if s.date != 170302]
 
     # filter DateSorter object if you are filtering on dprime
     if use_dprime:

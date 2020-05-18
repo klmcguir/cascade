@@ -18,6 +18,11 @@ def groupmouse_word(mouse_dict):
     word : str
         hash word
     """
+
+    # sort list of names so that user order is irrelevant
+    mouse_dict['mice'] = sorted(mouse_dict['mice'])
+
+    # get hash word
     word = flow.misc.wordhash.word(mouse_dict)
     print('Mice hashed: ' + word)
 

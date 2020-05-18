@@ -1230,6 +1230,9 @@ def groupday_tca(
     if mouse == 'OA26' and 'contrast' in exclude_tags:
         days = [s for s in days if s.date != 170302]
 
+    # only include days with xday alignment
+    days = [s for s in days if 'xday' in s.tags]
+
     # filter DateSorter object if you are filtering on dprime
     if use_dprime:
         dprime = []
@@ -1306,7 +1309,7 @@ def groupday_tca(
         # TODO add in additional filter for being able to check for quality of xday alignment
 
         # get all runs for both days
-        d1_runs = day1.runs(exclude_tags=['bad'])
+        d1_runs = day1.runs(exclude_tags=['bad'], run_types='training')
 
         # filter for only runs without certain tags
         d1_runs = [run for run in d1_runs if not
@@ -1976,6 +1979,12 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     try:
         HMM_engaged = pool.calc.performance.engaged(
             run, across_run=False)[trial_idx]
+            # if the run is naive check that it is disengaged
+        if 'naive' in run_tags and np.any(HMM_engaged):
+            HMM_engaged = np.zeros((len(trial_idx))) > 0
+            if verbose:
+                print('{} {} {}: HMM naive engagement reset.'.format(
+                      run.mouse, run.date, run.run))
     except KeyError:
         HMM_engaged = np.zeros((len(trial_idx)))
         HMM_engaged[:] = np.nan
@@ -1996,6 +2005,9 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     # previous punishment
     prev_punishment = np.isin(prevtrialerror, [5])
 
+    # previous punishment
+    prev_blank = np.isin(prevtrialerror, [6, 7])
+
     # get cs and orientation info for each trial
     lookup = {v: k for k, v in t2p.d['codes'].items()}  # invert dict
     css = [lookup[s] for s in t2p.d['condition'][trial_idx]]
@@ -2012,14 +2024,21 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
 
     # previous cue (orientation) was the same as current cue, named by initial
     # learning cs
-    unassigned_prev_same_cue = {}
-    unassigned_prev_same_cue['plus'] = (np.isin(prevtrialerror, [0, 1, 8, 9]) & 
-                                        np.isin(prevtrialerror, [0, 1, 8, 9]))
-    unassigned_prev_same_cue['neutral'] = (np.isin(prevtrialerror, [2, 3]) & 
+    assigned_prev_same_cue = {}
+    for unk in ['plus', 'neutral', 'minus']:
+        ori_is_unk = lookups.lookup[run.mouse][unk]
+        te_to_reassign = np.unique(trialerror[np.isin(oris, ori_is_unk)])
+        if  np.all(np.isin(te_to_reassign, [0, 1, 8, 9])):
+            assigned_prev_same_cue[unk] = (np.isin(trialerror, [0, 1, 8, 9]) & 
+                                           np.isin(prevtrialerror, [0, 1, 8, 9]))
+        elif np.all(np.isin(te_to_reassign, [2, 3])):
+            assigned_prev_same_cue[unk] = (np.isin(trialerror, [2, 3]) & 
                                            np.isin(prevtrialerror, [2, 3]))
-    unassigned_prev_same_cue['minus'] = (np.isin(prevtrialerror, [4, 5]) & 
-                                         np.isin(prevtrialerror, [4, 5]))
-    dbasd
+        elif np.all(np.isin(te_to_reassign, [4, 5])):
+            assigned_prev_same_cue[unk] = (np.isin(trialerror, [4, 5]) & 
+                                           np.isin(prevtrialerror, [4, 5]))
+        else:
+            assigned_prev_same_cue[unk] = np.ones((len(trialerror))) < 1
 
     # get mean running speed for time stim is on screen
     # use first 3 seconds after onset if there is no offset
@@ -2202,9 +2221,10 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
             'trialerror': trialerror,
             'prev_reward': prev_reward,
             'prev_punish': prev_punishment,
-            'prev_same_plus': prev_same_plus,
-            'prev_same_neutral': prev_same_neutral,
-            'prev_same_minus': prev_same_minus,
+            'prev_same_plus': assigned_prev_same_cue['plus'],
+            'prev_same_neutral': assigned_prev_same_cue['neutral'],
+            'prev_same_minus': assigned_prev_same_cue['minus'],
+            'prev_blank': prev_blank,
             'hunger': hunger,
             'learning_state': learning_state,
             'tag': tags,

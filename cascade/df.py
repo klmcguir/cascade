@@ -4,9 +4,199 @@ import flow
 import pool
 import numpy as np
 import pandas as pd
+import scipy as sp
 import warnings
 from copy import deepcopy
 from . import utils, paths, tca, load
+
+# ----------------------- LOAD as DF functions -----------------------
+
+def load_tempfac_dfs(
+        mice='OA27',
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        rank=15,
+        words='bookmarks',
+        group_by='all3',
+        nan_thresh=0.95,
+        score_threshold=0.8,
+        interp_2s=False,
+        interp_norm=False,
+        verbose=False):
+    """
+    Load a TCA temporal factor as a long form DataFrame. Columns are time points.
+    """
+
+    df_list = []
+    for mi, wi in zip(mice, words):
+        model, _, _, _, _, _ = load.load_all_groupday(
+            mouse=mi,
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            word=wi,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold,
+            verbose=verbose)
+
+        # specify which TCA factors to use
+        itr_num = 0  # always load first iteration, best model
+        fac_type = 1  # temporal factors
+        facs = model.results[rank][itr_num].factors[fac_type][:, :]
+
+        # make your dataframe
+        data = {}
+        data['mouse'] = [mi]*facs.shape[1]
+        data['component'] = np.arange(1, facs.shape[1]+1)
+        for timept in range(facs.shape[0]):
+            data[timept] = facs[timept, :]
+        df = pd.DataFrame(data=data).set_index(['mouse', 'component'])
+        df_list.append(df)
+    dfs = pd.concat(df_list, axis=0)
+    
+    if interp_2s:
+        return _stim_interp_2s(dfs, normalize=interp_norm)
+    else:
+        return dfs
+
+def _stim_interp_2s(t_df, normalize=False):
+    """
+    Helper function that loops over a temporal factor dataframe and interpolates stimulus period to be the same length.
+    Deals with issue of matching things with 2 vs 3 second simulus presentations.
+    """
+    # break data in half
+    mouse_boo = t_df.reset_index()['mouse'].isin(['OA32', 'OA34', 'OA36']).values
+    threes = t_df.iloc[~mouse_boo, :]
+    twos = t_df.iloc[mouse_boo, :]
+
+    # downsample the 3 sec visual stim period to 2 sec
+    first_sec = threes.iloc[:, 0:16]
+    stim = threes.iloc[:, 16:int(15.5*4)]
+    after = threes.iloc[:, int(15.5*4):]
+    new_stim = np.zeros((stim.shape[0], int(np.ceil(stim.shape[1]*2/3))))
+    for rowi in range(stim.shape[0]):
+        x0 = np.arange(len(stim.values[rowi, :]))
+        interpfunc = sp.interpolate.interp1d(x0, stim.values[rowi, :])
+        x1 = np.arange(0, len(stim.values[rowi, :]), 3/2)
+        y1 = interpfunc(x1)
+        new_stim[rowi, :] = y1
+    new_stim_df = pd.DataFrame(data=new_stim, index=stim.index)
+    three_down = pd.concat([first_sec, new_stim_df, after], axis=1)
+    three_down = pd.DataFrame(data=three_down.values, columns=twos.columns[:93], index=three_down.index)
+    print(np.shape(three_down))
+
+    # cut off last second of twos
+    two_down = twos.drop(columns=twos.columns[-15:])
+    print(np.shape(two_down))
+
+    # stick them back together
+    all_twos_now = pd.concat([three_down, two_down], axis=0)
+    all_twos_now = all_twos_now.reindex_like(t_df) # make sure things match you input order
+
+    # normalize shape and return
+    if normalize:
+        return all_twos_now.transform(lambda x: (x - x.min()) / x.max(), axis=1)
+    else:
+        return all_twos_now
+
+
+def load_cellfac_df_list(
+        mice='OA27',
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        rank=15,
+        words='bookmarks',
+        group_by='all3',
+        nan_thresh=0.95,
+        score_threshold=0.8,
+        verbose=False):
+    """
+    Load a TCA cell factors as a long form DataFrame. Columns are cells.
+    """
+    
+    df_list = []
+    for mi, wi in zip(mice, words):
+        model, _, _, _, _, _ = load.load_all_groupday(
+            mouse=mi,
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            word=wi,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold,
+            verbose=verbose)
+
+        # specify which TCA factors to use
+        itr_num = 0  # always load first iteration, best model
+        fac_type = 0  # cell factors
+        facs = model.results[rank][itr_num].factors[fac_type][:, :]
+
+        # make your dataframe
+        data = {}
+        data['mouse'] = [mi]*facs.shape[1]
+        data['component'] = np.arange(1, facs.shape[1]+1)
+        for cell_num in range(facs.shape[0]):
+            data['cell {}'.format(cell_num)] = facs[cell_num, :]
+        df = pd.DataFrame(data=data).set_index(['mouse', 'component'])
+        df_list.append(df)
+
+    return df_list
+
+
+def load_trialfac_df_list(
+        mice='OA27',
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        rank=15,
+        words='bookmarks',
+        group_by='all3',
+        nan_thresh=0.95,
+        score_threshold=0.8,
+        verbose=False):
+    """
+    Load a TCA temporal factor as a long form DataFrame. Columns are trials.
+    """
+
+    df_list = []
+    for mi, wi in zip(mice, words):
+        model, _, _, _, _, _ = load.load_all_groupday(
+            mouse=mi,
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            word=wi,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold,
+            verbose=verbose)
+
+        # specify which TCA factors to use
+        itr_num = 0  # always load first iteration, best model
+        fac_type = 2  # trial factors
+        facs = model.results[rank][itr_num].factors[fac_type][:, :]
+
+        # make your dataframe
+        data = {}
+        data['mouse'] = [mi]*facs.shape[1]
+        data['component'] = np.arange(1, facs.shape[1]+1)
+        for trial_num in range(facs.shape[0]):
+            data[trial_num] = facs[trial_num, :]
+        df = pd.DataFrame(data=data).set_index(['mouse', 'component'])
+        df_list.append(df)
+
+    return df_list
+
 
 # ----------------------- EARLY STAGE DFs -----------------------
 

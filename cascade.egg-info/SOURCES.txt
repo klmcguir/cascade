@@ -1,6 +1,10 @@
 setup.py
 cascade/__init__.py
 cascade/df.py
+cascade/paths.py
+cascade/stitch.py
+cascade/tca.py
+cascade/utils.py
 cascade.egg-info/PKG-INFO
 cascade.egg-info/SOURCES.txt
 cascade.egg-info/dependency_links.txt

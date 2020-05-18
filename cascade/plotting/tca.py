@@ -17,6 +17,7 @@ from .. import tca
 from .. import paths
 from .. import utils
 from .. import load
+from .. import lookups
 from cascade.calc import var
 import warnings
 
@@ -215,6 +216,8 @@ def groupmouse_varex_summary(
         x0 = x_s[df_var['iteration'].values == 0]
         var0 = var_s[df_var['iteration'].values == 0]
         var_mean = df_var['variance_explained_meanmodel'].values[0]
+        if 'variance_explained_meandailymodel' in df_var.columns:
+            var_mean_daily = df_var['variance_explained_meandailymodel'].values[0]
         var_smooth = df_var['variance_explained_smoothmodel'].values[0]
         var_PCA = df_var['variance_explained_PCA'].values[0]
 
@@ -224,23 +227,23 @@ def groupmouse_varex_summary(
         if add_dropout_line:
             ax.scatter(x_drop, var_drop, color=cmap[c*2+1], alpha=0.5)
         ax.scatter([R+2], var_mean, color=cmap[c*2], alpha=0.5)
-        # ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
-        ax.scatter([R+4], var_PCA, color=cmap[c*2], alpha=0.5)
+        ax.scatter([R+4], var_mean_daily, color=cmap[c*2], alpha=0.5)
+        ax.scatter([R+6], var_PCA, color=cmap[c*2], alpha=0.5)
         ax.plot(x0, var0, label=('mouse ' + mouse), color=cmap[c*2])
         if add_dropout_line:
             ax.plot(x_drop, var_drop, label=(r'$mouse_-$ ' + mouse), color=cmap[c*2+1])
         ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c*2])
-        # ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
-        ax.plot([R+3.5, R+4.5], [var_PCA, var_PCA], color=cmap[c*2])
+        ax.plot([R+3.5, R+4.5], [var_mean_daily, var_mean_daily], color=cmap[c*2]) 
+        ax.plot([R+5.5, R+6.5], [var_PCA, var_PCA], color=cmap[c*2])
 
     # add labels/titles
     x_labels = [str(R) for R in V.results]
     x_labels.extend(
-        ['', 'mean\ncell\nresponse',
-         # '', 'smooth\nresponse\n(0.3s)',
+        ['', 'mean\ncell\nresp.',
+         '', 'daily\nmean\ncell\nresp.',
          '', 'PCA$_{20}$'])
     ax.set_xticks(range(1, len(V.results) + 7))
-    ax.set_xticklabels(x_labels, size=14)
+    ax.set_xticklabels(x_labels, size=12)
     ax.set_yticklabels([round(s, 2) for s in ax.get_yticks()], size=14)
     ax.set_xlabel('model rank', size=18)
     ax.set_ylabel('variance explained', size=18)
@@ -259,7 +262,7 @@ def groupmouse_varex_summary(
 def groupday_longform_factors_annotated(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
@@ -271,6 +274,8 @@ def groupday_longform_factors_annotated(
         plot_running=True,
         filetype='png',
         scale_y=False,
+        hmm_engaged=True,
+        add_prev_cols=False,
         verbose=False):
 
     """
@@ -352,6 +357,11 @@ def groupday_longform_factors_annotated(
     speed = meta['speed']
     dates = meta.reset_index()['date']
     learning_state = meta['learning_state']
+    if hmm_engaged and 'hmm_engaged' in meta.columns:
+        hmm = meta['hmm_engaged']
+    else:
+        if verbose:
+            print('hmm_engaged not in columns: Final row removed.')
 
     # calculate change indices for days and reversal/learning
     udays = {d: c for c, d in enumerate(np.unique(dates))}
@@ -366,7 +376,13 @@ def groupday_longform_factors_annotated(
     hunger[tags == 'disengaged'] = 'disengaged'
 
     # plot
-    rows = 5
+    if hmm_engaged:
+        rows = 7
+    else:
+        rows = 6
+    if add_prev_cols:
+        rows += 6
+
     cols = 3
     for r in sort_ensemble.results:
 
@@ -376,6 +392,9 @@ def groupday_longform_factors_annotated(
             fig, axes = plt.subplots(
                 rows, cols, figsize=(17, rows),
                 gridspec_kw={'width_ratios': [2, 2, 17]})
+
+            #reset previous col (trial history variables) counter
+            prev_col_counter = 0
 
             # reshape for easier indexing
             ax = np.array(axes).reshape((rows, -1))
@@ -401,10 +420,7 @@ def groupday_longform_factors_annotated(
 
             # add a line for stim onset and offset
             # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
-            if mouse in ['OA32', 'OA34', 'OA37', 'OA36', 'CB173', 'AS20', 'AS41']:
-                off_time = 2
-            else:
-                off_time = 3
+            off_time = lookups.stim_length[mouse]
             y_lim = ax[0, 1].get_ylim()
             ons = 15.5*1
             offs = ons+15.5*off_time
@@ -549,6 +565,139 @@ def groupday_longform_factors_annotated(
                             borderaxespad=0, title='Trialerror', markerscale=2,
                             prop={'size': 8})
                     ax[i, col].autoscale(enable=True, axis='both', tight=True)
+                    ax[i, col].set_xticklabels([])
+
+                # High/low speed 5 cm/s threshold - main variable to plot
+                elif i == 5:
+                    speed_bool = speed.values > 4
+                    color_vals = sns.color_palette("hls", 2)
+                    
+                    ax[i, col].plot(trial_num[~speed_bool],
+                                    U.factors[2][~speed_bool, comp], 'o',
+                                        label='stationary',
+                                        color=color_vals[1],
+                                        alpha=0.3,
+                                        markersize=2)
+                    ax[i, col].plot(trial_num[speed_bool],
+                                    U.factors[2][speed_bool, comp], 'o',
+                                        label='running',
+                                        color=color_vals[0],
+                                        alpha=0.3,
+                                        markersize=2)
+
+                    ax[i, col].legend(
+                        bbox_to_anchor=(1.02, 1), loc='upper left',
+                        borderaxespad=0, title='Running', markerscale=2,
+                        prop={'size': 8})
+                    ax[i, col].autoscale(enable=True, axis='both', tight=True)
+
+                    if hmm_engaged or add_prev_cols:
+                        ax[i, col].set_xticklabels([])
+
+                # HMM engagement - main variable to plot
+                elif i == 6:
+                    h_vals = ['engaged', 'disengaged']
+                    h_labels = ['engaged', 'disengaged']
+                    color_vals = [[1, 0.6, 0.3, alpha],
+                                  [0.7, 0.9, 0.4, alpha]]
+                    
+                    ax[i, col].plot(trial_num[hmm],
+                                    U.factors[2][hmm, comp], 'o',
+                                        label=str(h_labels[0]),
+                                        color=color_vals[0],
+                                        markersize=2)
+                    ax[i, col].plot(trial_num[~hmm],
+                                    U.factors[2][~hmm, comp], 'o',
+                                        label=str(h_labels[1]),
+                                        color=color_vals[1],
+                                        markersize=2)
+                    ax[i, col].legend(
+                        bbox_to_anchor=(1.02, 1), loc='upper left',
+                        borderaxespad=0, title='HMM engaged', markerscale=2,
+                        prop={'size': 8})
+                    ax[i, col].autoscale(enable=True, axis='both', tight=True)
+                    if add_prev_cols:
+                        ax[i, col].set_xticklabels([])
+
+                if add_prev_cols:
+                    # Trial history in some form - main variable to plot
+                    if i >= 7:
+                        on_color = ['#9fff73', '#ff663c', '#a5ff89', '#63e5ff', '#ff5249', '#6b54ff']
+                        off_color = ['#ff739f', '#3cffec', '#ff89a5', '#ff8f63', '#49ff6a', '#ffb554']
+                        # here CS is for the initial learning period
+                        prev_col_list = [
+                            'prev_reward',
+                            'prev_punish',
+                            'prev_same_plus',
+                            'prev_same_neutral',
+                            'prev_same_minus',
+                            'prev_blank']
+                        prev_col_titles = [
+                            'Prev Reward',
+                            'Prev Punishment',
+                            'Prev Same Cue: initial plus',
+                            'Prev Same Cue: initial neutral',
+                            'Prev Same Cue: initial minus',
+                            'Prev Blank']
+                        prev_col_labels = [
+                            'rewarded [-1]',
+                            'punishment [-1]',
+                            'initial plus [-1]',
+                            'initial neutral [-1]',
+                            'initial minus [-1]',
+                            'blank [-1]']
+                        current_col = prev_col_list[prev_col_counter]
+                    
+                        # skip column if it is not in metadata (will result
+                        # in blank axes at end)
+                        if current_col not in meta.columns:
+                            continue
+
+                        # boolean of trial history
+                        prev_same_bool = meta[current_col].values
+                        if 'plus' in current_col:
+                            matched_ori = [lookups.lookup[mouse]['plus']]
+                        elif 'minus' in current_col:
+                            matched_ori = [lookups.lookup[mouse]['minus']]
+                        elif 'neutral' in current_col:
+                            matched_ori = [lookups.lookup[mouse]['neutral']]
+                        else:
+                            matched_ori = [0, 135, 270]
+                        same_ori_bool = meta['orientation'].isin(matched_ori).values
+                        
+                        ax[i, col].plot(
+                            trial_num[~prev_same_bool & same_ori_bool],
+                            U.factors[2][~prev_same_bool & same_ori_bool, comp],
+                            'o',
+                            label='not {}'.format(prev_col_labels[prev_col_counter]),
+                            color=off_color[prev_col_counter],
+                            alpha=alpha,
+                            markersize=2)
+
+                        ax[i, col].plot(
+                            trial_num[prev_same_bool & same_ori_bool],
+                            U.factors[2][prev_same_bool & same_ori_bool, comp],
+                            'o',
+                            label=prev_col_labels[prev_col_counter],
+                            color=on_color[prev_col_counter],
+                            alpha=alpha,
+                            markersize=2)
+
+                        ax[i, col].legend(
+                            bbox_to_anchor=(1.02, 1), loc='upper left',
+                            borderaxespad=0,
+                            title=prev_col_titles[prev_col_counter],
+                            markerscale=2,
+                            prop={'size': 8})
+                        ax[i, col].autoscale(enable=True, axis='both', tight=True)
+
+                        # if i is less than the last row
+                        if i < rows-1:
+                            ax[i, col].set_xticklabels([])
+
+                        # increment counter
+                        prev_col_counter += 1
+
 
                 # plot days, reversal, or learning lines if there are any
                 if col >= 1:
@@ -608,19 +757,20 @@ def groupday_longform_factors_annotated(
 def groupday_factors_annotated(
         mouse,
         trace_type='zscore_day',
-        method='mncp_hals',
+        method='ncp_hals',
         cs='',
         warp=False,
         word=None,
-        group_by='all',
+        group_by='all3',
         nan_thresh=0.85,
         score_threshold=0.8,
-        extra_col=4,
+        extra_col=5,
         alpha=0.6,
         plot_running=True,
         filetype='png',
         scale_y=False,
         hunger_or_hmm='hmm',
+        add_prev_cols=False,
         verbose=False):
 
     """
@@ -796,12 +946,16 @@ def groupday_factors_annotated(
     tags = meta['tag']
     hunger[tags == 'disengaged'] = 'disengaged'
 
+    # add columns to plot conditionally for previous trial info
+    if add_prev_cols:
+        extra_col += 6
+
     # plot
     for r in sort_ensemble.results:
 
         U = sort_ensemble.results[r][0].factors
 
-        fig, axes = plt.subplots(U.rank, U.ndim + extra_col, figsize=(9 + extra_col, U.rank))
+        fig, axes = plt.subplots(U.rank, U.ndim + extra_col, figsize=(9 + extra_col*2, U.rank))
         figt = tt.plot_factors(U, plots=['scatter', 'line', 'scatter'],
                         axes=None,
                         fig=fig,
@@ -841,16 +995,17 @@ def groupday_factors_annotated(
 
         # add a line for stim onset and offset
         # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
-        if mouse in ['OA32', 'OA34', 'OA36', 'CB173', 'AS20']:
-            off_time = 2
-        else:
-            off_time = 3
+        off_time = lookups.stim_length[mouse]
         for i in range(U.rank):
             y_lim = ax[i, 1].get_ylim()
             ons = 15.5*1
             offs = ons+15.5*off_time
             ax[i, 1].plot([ons, ons], y_lim, ':k')
             ax[i, 1].plot([offs, offs], y_lim, ':k')
+
+        # reset counter
+        if add_prev_cols:
+            prev_col_counter = 0
 
         for col in range(3, 3+extra_col):
             for i in range(U.rank):
@@ -919,7 +1074,7 @@ def groupday_factors_annotated(
                         ax[i, col].set_title('Trialerror')
                         ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                           borderaxespad=2.5)
-                # State - main variable to plot
+                # State or HMM engagement - main variable to plot
                 elif col == 6:
                     if hunger_or_hmm == 'hunger':
                         h_vals = ['hungry', 'sated', 'disengaged']
@@ -935,8 +1090,8 @@ def groupday_factors_annotated(
                             ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                               borderaxespad=2.5)
                     elif hunger_or_hmm == 'hmm':
-                        h_vals = ['hmm_engaged', 'hmm_disengaged']
-                        h_labels = ['hmm_engaged', 'hmm_disengaged']
+                        h_vals = ['engaged', 'disengaged']
+                        h_labels = ['engaged', 'disengaged']
                         color_vals = [[1, 0.6, 0.3, alpha],
                                       [0.7, 0.9, 0.4, alpha]]
                         
@@ -950,6 +1105,105 @@ def groupday_factors_annotated(
                             ax[i, col].set_title('HMM engaged')
                             ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                               borderaxespad=2.5)
+
+                # Running thresholded at 5 cm/s - main variable to plot
+                elif col == 7:
+                    speed_bool = speed.values > 4
+                    color_vals = sns.color_palette("hls", 2)
+                    
+                    ax[i, col].plot(trial_num[~speed_bool],
+                                    U.factors[2][~speed_bool, i], 'o',
+                                        label='stationary',
+                                        color=color_vals[1],
+                                        alpha=0.3,
+                                        markersize=2)
+
+                    ax[i, col].plot(trial_num[speed_bool],
+                                    U.factors[2][speed_bool, i], 'o',
+                                        label='running',
+                                        color=color_vals[0],
+                                        alpha=0.3,
+                                        markersize=2)
+                    if i == 0:
+                        ax[i, col].set_title('Running')
+                        ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
+                                          borderaxespad=2.5)
+
+                if add_prev_cols:
+                    # Trial history in some form - main variable to plot
+                    if col >= 8:
+                        on_color = ['#9fff73', '#ff663c', '#a5ff89', '#63e5ff', '#ff5249', '#6b54ff']
+                        off_color = ['#ff739f', '#3cffec', '#ff89a5', '#ff8f63', '#49ff6a', '#ffb554']
+                        # here CS is for the initial learning period
+                        prev_col_list = [
+                            'prev_reward',
+                            'prev_punish',
+                            'prev_same_plus',
+                            'prev_same_neutral',
+                            'prev_same_minus',
+                            'prev_blank']
+                        prev_col_titles = [
+                            'Prev Reward',
+                            'Prev Punishment',
+                            'Prev Same Cue: initial plus',
+                            'Prev Same Cue: initial neutral',
+                            'Prev Same Cue: initial minus',
+                            'Prev Blank']
+                        prev_col_labels = [
+                            'rewarded [-1]',
+                            'punishment [-1]',
+                            'initial plus [-1]',
+                            'initial neutral [-1]',
+                            'initial minus [-1]',
+                            'blank [-1]']
+                        current_col = prev_col_list[prev_col_counter]
+                    
+                        # skip column if it is not in metadata (will result
+                        # in blank axes at end)
+                        if current_col not in meta.columns:
+                            continue
+
+                        # boolean of trial history
+                        prev_same_bool = meta[current_col].values
+                        if 'plus' in current_col:
+                            matched_ori = [lookups.lookup[mouse]['plus']]
+                        elif 'minus' in current_col:
+                            matched_ori = [lookups.lookup[mouse]['minus']]
+                        elif 'neutral' in current_col:
+                            matched_ori = [lookups.lookup[mouse]['neutral']]
+                        else:
+                            matched_ori = [0, 135, 270]
+                        same_ori_bool = meta['orientation'].isin(matched_ori).values
+                        
+                        ax[i, col].plot(
+                            trial_num[~prev_same_bool & same_ori_bool],
+                            U.factors[2][~prev_same_bool & same_ori_bool, i],
+                            'o',
+                            label='not {}'.format(prev_col_labels[prev_col_counter]),
+                            color=off_color[prev_col_counter],
+                            alpha=alpha,
+                            markersize=2)
+
+                        ax[i, col].plot(
+                            trial_num[prev_same_bool & same_ori_bool],
+                            U.factors[2][prev_same_bool & same_ori_bool, i],
+                            'o',
+                            label=prev_col_labels[prev_col_counter],
+                            color=on_color[prev_col_counter],
+                            alpha=alpha,
+                            markersize=2)
+
+                        if i == 0:
+                            ax[i, col].set_title(prev_col_titles[prev_col_counter])
+                            ax[i, col].legend(
+                                bbox_to_anchor=(0.5, 1.1),
+                                loc='lower center',
+                                borderaxespad=2.5)
+
+                        # move onto next column
+                        if i == U.rank-1:
+                            prev_col_counter += 1
+
 
                 # plot days, reversal, or learning lines if there are any
                 if col >= 2:
@@ -1015,6 +1269,7 @@ def groupday_varex_summary(
         nan_thresh=0.85,
         score_threshold=0.8,
         rectified=True,
+        add_dropout_line=True,
         verbose=False):
     """
     Plot reconstruction error as variance explained across all whole groupday
@@ -1073,7 +1328,7 @@ def groupday_varex_summary(
     save_dir = os.path.join(save_dir, 'qc' + save_tag)
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path = os.path.join(
-        save_dir, str(mouse) + '_summary_variance_cubehelix.pdf')
+        save_dir, str(mouse) + '_summary_variance_explained.pdf')
 
     # load your data
     ensemble = np.load(tensor_path)
@@ -1116,6 +1371,10 @@ def groupday_varex_summary(
     var_mean = df_var['variance_explained_meanmodel'].values[0]
     var_smooth = df_var['variance_explained_smoothmodel'].values[0]
     var_PCA = df_var['variance_explained_PCA'].values[0]
+    if 'variance_explained_meandailymodel' in df_var.columns:
+        var_mean_daily = df_var['variance_explained_meandailymodel'].values[0]
+    else:
+        var_mean_daily = []
 
     # create figure and axes
     buffer = 5
@@ -1125,32 +1384,34 @@ def groupday_varex_summary(
         100, 100, figure=fig, left=0.05, right=.95, top=.95, bottom=0.05)
     ax = fig.add_subplot(gs[10:90-buffer, :90-right_pad])
     c = 0
-    # cmap = sns.color_palette(sns.cubehelix_palette(c+1))
     cmap = sns.color_palette('Paired', 2)
 
     # plot
     R = np.max([r for r in V.results.keys()])
     ax.scatter(x_s, var_s, color=cmap[c*2], alpha=0.5)
-    ax.scatter(x_drop, var_drop, color=cmap[c*2+1], alpha=0.5)
-    ax.scatter([R+2], var_mean, color=cmap[c], alpha=0.5)
-    # ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
-    ax.scatter([R+4], var_PCA, color=cmap[c], alpha=0.5)
+    if add_dropout_line:
+        ax.scatter(x_drop, var_drop, color=cmap[c*2+1], alpha=0.5)
+    ax.scatter([R+2], var_mean, color=cmap[c*2], alpha=0.5)
+    ax.scatter([R+4], var_mean_daily, color=cmap[c*2], alpha=0.5)
+    ax.scatter([R+6], var_PCA, color=cmap[c*2], alpha=0.5)
     ax.plot(x0, var0, label=('mouse ' + mouse), color=cmap[c*2])
-    ax.plot(x_drop, var_drop, label=(r'$mouse_-$ ' + mouse), color=cmap[c*2+1])
-    ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c])
-    # ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
-    ax.plot([R+3.5, R+4.5], [var_PCA, var_PCA], color=cmap[c])
+    if add_dropout_line:
+        ax.plot(x_drop, var_drop, label=('$mouse_-$ ' + mouse), color=cmap[c*2+1])
+    ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c*2])
+    ax.plot([R+3.5, R+4.5], [var_mean_daily, var_mean_daily], color=cmap[c*2]) 
+    ax.plot([R+5.5, R+6.5], [var_PCA, var_PCA], color=cmap[c*2])
 
     # add labels/titles
     x_labels = [str(R) for R in V.results]
     x_labels.extend(
-        ['', 'mean\ncell\nresponse',
-         # '', 'smooth\nresponse\n(0.3s)',
+        ['', 'mean\ncell\nresp.',
+         '', 'daily\nmean\ncell\nresp.',
          '', 'PCA$_{20}$'])
     ax.set_xticks(range(1, len(V.results) + 7))
-    ax.set_xticklabels(x_labels)
-    ax.set_xlabel('model rank')
-    ax.set_ylabel('fractional variance explained')
+    ax.set_xticklabels(x_labels, size=12)
+    ax.set_yticklabels([round(s, 2) for s in ax.get_yticks()], size=14)
+    ax.set_xlabel('model rank', size=18)
+    ax.set_ylabel('variance explained', size=18)
     ax.set_title(
         'Variance Explained: ' + str(method) + r_tag + ', ' + str(mouse))
     ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)

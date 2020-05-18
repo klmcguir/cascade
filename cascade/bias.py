@@ -39,6 +39,9 @@ def get_bias(
     FC_ten = np.zeros((np.shape(ten)[0], np.shape(ten)[1], date_num))
     QC_ten = np.zeros((np.shape(ten)[0], np.shape(ten)[1], date_num))
     NC_ten = np.zeros((np.shape(ten)[0], np.shape(ten)[1], date_num))
+    FC_ten[:] = np.nan
+    QC_ten[:] = np.nan
+    NC_ten[:] = np.nan
 
     # preallocate lists
     ls_list = []
@@ -113,6 +116,9 @@ def get_mean_response(
     FC_ten = np.zeros((np.shape(ten)[0], np.shape(ten)[1], date_num))
     QC_ten = np.zeros((np.shape(ten)[0], np.shape(ten)[1], date_num))
     NC_ten = np.zeros((np.shape(ten)[0], np.shape(ten)[1], date_num))
+    FC_ten[:] = np.nan
+    QC_ten[:] = np.nan
+    NC_ten[:] = np.nan
 
     # preallocate lists
     ls_list = []

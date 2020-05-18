@@ -246,6 +246,9 @@ def groupday_tensor(
         days = flow.DateSorter.frommeta(
             mice=[mouse], tags=tags, exclude_tags=['bad'])
 
+    # only include days with xday alignment
+    days = [s for s in days if 'xday' in s.tags]
+
     # filter DateSorter object if you are filtering on dprime
     if use_dprime:
         dprime = []
@@ -322,7 +325,7 @@ def groupday_tensor(
         # TODO add in additional filter for being able to check for quality of xday alignment
 
         # get all runs for both days
-        d1_runs = day1.runs(exclude_tags=['bad'])
+        d1_runs = day1.runs(exclude_tags=['bad'], run_types='training')
 
         # filter for only runs without certain tags
         d1_runs = [run for run in d1_runs if not
@@ -482,7 +485,6 @@ def load_all_groupday(
         method='ncp_hals',
         cs='',
         warp=False,
-        rank=15,
         word='prints',
         group_by='all2',
         nan_thresh=0.85,
