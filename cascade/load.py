@@ -9,7 +9,7 @@ import os
 from . import utils
 from . import paths
 from .tca import _trialmetafromrun, _sortfactors, _group_ids_score
-from .tca import _group_drive_ids, _get_speed_pupil_traces
+from .tca import _group_drive_ids, _get_speed_pupil_npil_traces
 from .tca import _remove_stimulus_corr, _three_point_temporal_trace
 from copy import deepcopy
 
@@ -211,6 +211,29 @@ def groupday_tensor(
                             'retinotopy', 'sated', 'reversal2_start', 'reversal2')
 
 
+    elif group_by.lower() == 'all100':  #first 100 trials of every day
+        tags = None
+        use_dprime = False
+        if mouse == 'OA27':
+            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                            'retinotopy', 'sated', 'learning_start',
+                            'reversal2_start', 'reversal2')
+        else:
+            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                            'retinotopy', 'sated', 'reversal2_start', 'reversal2')
+
+    elif group_by.lower() == 'all3':
+        tags = None
+        use_dprime = False
+        if mouse == 'OA27':
+            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                            'retinotopy', 'sated', 'learning_start',
+                            'reversal2_start', 'reversal2')
+        else:
+            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+                        'retinotopy', 'sated', 'reversal2_start', 'reversal2')
+
+
     else:
         print('Using input parameters without modification by group_by=...')
 
@@ -248,6 +271,9 @@ def groupday_tensor(
 
     # only include days with xday alignment
     days = [s for s in days if 'xday' in s.tags]
+
+    # add monitor condition to exclusions
+    exclude_conds += ('monitor',)
 
     # filter DateSorter object if you are filtering on dprime
     if use_dprime:
@@ -345,7 +371,7 @@ def groupday_tensor(
                     downsample=downsample, clean_artifacts=clean_artifacts,
                     thresh=thresh, warp=warp, smooth=smooth,
                     smooth_win=smooth_win, exclude_tags=exclude_tags)
-                bhv_traces = _get_speed_pupil_traces(
+                bhv_traces = _get_speed_pupil_npil_traces(
                     run,
                     cs=cs,
                     start_time=start_time,
@@ -486,6 +512,7 @@ def load_all_groupday(
         cs='',
         warp=False,
         word='prints',
+        rank=15,
         group_by='all2',
         nan_thresh=0.85,
         score_threshold=0.8,
@@ -506,6 +533,7 @@ def load_all_groupday(
             cs=cs,
             warp=warp,
             word=word,
+            rank=rank,
             group_by=group_by,
             nan_thresh=nan_thresh,
             score_threshold=score_threshold,

@@ -5,6 +5,7 @@ import numpy as np
 import warnings
 import pandas as pd
 from . import tca
+from . import lookups
 
 def correct_nonneg(ensemble):
     """
@@ -59,6 +60,288 @@ def add_dprime_to_meta(meta):
     return meta
 
 
+def add_dprime_run_to_meta(meta):
+    """
+    Helper function that takes a pd metadata dataframe and adds in an extra
+    column of the dprime calculated per day.
+    """
+
+    # meta can only be a data frame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+
+    # collect useful variables
+    new_dprime = np.zeros(len(meta))
+    days = meta.reset_index()['date']
+    unique_days = days.unique()
+    mouse = meta.reset_index()['mouse']
+    runs = meta.reset_index()['run']
+
+    # loop over unique days filling in dprime for all trial per day at once
+    for di in unique_days:
+        day_bool = days == di
+        mi = mouse[day_bool].unique()[0]
+        for ri in runs[day_bool].unique():
+            run_bool = runs == ri
+            run_bool = day_bool & run_bool
+            new_dprime[run_bool] = pool.calc.performance.dprime_run(
+                                flow.Run(mouse=mi, date=di, run=ri),
+                                hmm_engaged=True)
+
+    # save new_dprime into meta
+    meta['dprime_run'] = new_dprime
+
+    return meta
+
+
+def add_firstlick_wmedian_to_meta(meta):
+    """
+    Helper function that adds in the median lick time for all plus trials for trials with
+    no, or slow licking. If the actual time to lick is shorter latency then that is used.
+    """
+
+    # make sure that the date vec allows for 0.5 days at reversal and learning
+    meta = update_meta_date_vec(meta)
+    mouse = meta.reset_index()['mouse'].unique()[0]
+
+    # buffer = 1/15.5*2 = 129 ms
+    buffer_ms = 2
+
+    # get vector for looping over
+    u_days = np.unique(meta.reset_index()['date'])
+    all_days = meta.reset_index()['date'].values
+
+    # get lick latency in terms of frames
+    lick = meta['firstlick'].values
+    cs = meta['condition'].values
+    new_lick = np.zeros(len(lick))
+
+    # find median lick latency for all plus trials
+    last_stim_frame = (1+lookups.stim_length[mouse])*15.5
+    median_for_plus = np.nanmedian(lick[(lick < last_stim_frame) & np.isin(cs, 'plus')])
+    new_lick[:] = median_for_plus
+
+    # break if you will have less than 7.5 datapoints for your bias calculation
+    assert median_for_plus > 15.5 and median_for_plus - buffer_ms >= 23
+
+    # add in existing licks with 129 ms buffer before them
+    lick_in_window_boo = lick < last_stim_frame
+    new_lick[lick_in_window_boo & np.isin(cs, 'plus')] = lick[lick_in_window_boo & np.isin(cs, 'plus')] - buffer_ms
+    meta['firstlick_med'] = new_lick
+    
+    return meta
+
+
+def add_firstlickbout_wmedian_to_meta(meta):
+    """
+    Helper function that adds in the median lick time for all plus trials for trials with
+    no, or slow licking. If the actual time to lick is shorter latency then that is used.
+    """
+
+    # make sure that the date vec allows for 0.5 days at reversal and learning
+    meta = update_meta_date_vec(meta)
+    mouse = meta.reset_index()['mouse'].unique()[0]
+
+    # buffer = 1/15.5*2 = 129 ms
+    buffer_ms = 2
+
+    # get vector for looping over
+    u_days = np.unique(meta.reset_index()['date'])
+    all_days = meta.reset_index()['date'].values
+
+    # get lick latency in terms of frames
+    lick = meta['firstlickbout'].values
+    cs = meta['condition'].values
+    new_lick = np.zeros(len(lick))
+
+    # find median lick latency for all plus trials
+    last_stim_frame = (1+lookups.stim_length[mouse])*15.5
+    median_for_plus = np.nanmedian(lick[(lick < last_stim_frame) & np.isin(cs, 'plus')])
+    new_lick[:] = median_for_plus
+
+    print(median_for_plus)
+    
+    # break if you will have less than 7.5 datapoints for your bias calculation
+    assert median_for_plus > 15.5 and median_for_plus - buffer_ms >= 23
+
+    # add in existing licks with 129 ms buffer before them
+    lick_in_window_boo = lick < last_stim_frame
+    new_lick[lick_in_window_boo] = lick[lick_in_window_boo] - buffer_ms
+    meta['firstlickbout_med'] = new_lick
+    
+    return meta
+
+
+def add_firstlick_wmedian_run_to_meta(meta):
+    """
+    Helper function that adds in the median lick time for all plus trials for trials with
+    no, or slow licking. If the actual time to lick is shorter latency then that is used.
+    """
+
+    # make sure that the date vec allows for 0.5 days at reversal and learning
+    meta = update_meta_date_vec(meta)
+    mouse = meta.reset_index()['mouse'].unique()[0]
+
+    # buffer = 1/15.5*2 = 129 ms
+    buffer_ms = 2
+
+    # get vector for looping over
+    u_days = np.unique(meta.reset_index()['date'])
+    all_days = meta.reset_index()['date'].values
+
+    # get lick latency in terms of frames
+    lick = meta['firstlick'].values
+    cs = meta['condition'].values
+    new_lick = np.zeros(len(lick))
+
+    # find median lick latency for all plus trials
+    last_stim_frame = (1+lookups.stim_length[mouse])*15.5
+    median_for_plus = np.nanmedian(lick[(lick < last_stim_frame) & np.isin(cs, 'plus')])
+    new_lick[:] = median_for_plus - buffer_ms
+
+    # break if you will have less than 7.5 datapoints for your bias calculation
+    assert median_for_plus > 15.5 and median_for_plus - buffer_ms >= 23
+
+    # add in existing licks with 129 ms buffer before them
+    lick_in_window_boo = lick < last_stim_frame
+    new_lick[lick_in_window_boo] = lick[lick_in_window_boo] - buffer_ms
+    meta['firstlick_med'] = new_lick
+    
+    return meta
+
+
+def add_prev_ori_cols_to_meta(meta):
+    """
+    Helper function to add in useful columns to metadata related to
+    previous orientation presentations. This relies on prev_cue presentations
+    in metadata, which will still correctly handle dropped pavlovians. Meaning
+    a previous pavlovian cue will still be counted as a previous plus cue
+    presentation even if pavlovians were exluded. This uses this CS info to
+    create similar columns for orientation presentations. 
+    """
+
+    # meta can only be a data frame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+    mouse = meta.reset_index()['mouse'].unique()[0]
+
+    # boolean for cues preceded by the same cue
+    prev_same_boo = (meta['prev_same_plus'].gt(0)
+        | meta['prev_same_neutral'].gt(0)
+        | meta['prev_same_minus'].gt(0))
+
+    # create column for each ori if it was preceded by the same ori
+    for ori in [0, 135, 270]:
+        curr_ori_bool = meta['orientation'].isin([ori]).values
+        new_meta = {}
+        new_meta[f'prev_same_{ori}'] = np.zeros(len(meta))
+        new_meta[f'prev_same_{ori}'][prev_same_boo & curr_ori_bool] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta = pd.concat([meta, new_meta_df], axis=1)
+
+    return meta
+
+
+def add_cue_prob_to_meta(meta):
+    """
+    Helper function to add in useful columns to metadata related to
+    trial history. 
+    """
+
+    # meta can only be a data frame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+    mouse = meta.reset_index()['mouse'].unique()[0]
+
+    # add a binary column for choice, 1 for go 0 for nogo
+    new_meta = {}
+    new_meta['go'] = np.zeros(len(meta))
+    new_meta['go'][meta['trialerror'].isin([0, 3, 5, 7]).values] = 1
+    new_meta_df1 = pd.DataFrame(data=new_meta, index=meta.index)
+    # new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+
+    # add a binary column for reward
+    new_meta = {}
+    new_meta['reward'] = np.zeros(len(new_meta_df1))
+    new_meta['reward'][meta['trialerror'].isin([0]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+
+    # add a binary column for punishment
+    new_meta = {}
+    new_meta['punishment'] = np.zeros(len(new_meta_df1))
+    new_meta['punishment'][meta['trialerror'].isin([5]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+
+    # rename oris according to their meaning during learning
+    new_meta = {}
+    for ori in ['plus', 'minus', 'neutral']:
+        new_meta = {}
+        new_meta['initial_{}'.format(ori)] = np.zeros(len(new_meta_df1))
+        new_meta['initial_{}'.format(ori)][meta['orientation'].isin([lookups.lookup[mouse][ori]]).values] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+
+    # create epochs since last reward
+    c = 0
+    vec = []
+    for s in new_meta_df1['reward'].values:
+        if s == 0: 
+            vec.append(c)
+        else:
+            vec.append(c)
+            c += 1
+    new_meta_df1['reward_cum'] = vec
+
+    # since last go
+    c = 0
+    vec = []
+    for s in new_meta_df1['go'].values:
+        if s == 0: 
+            vec.append(c)
+        else:
+            vec.append(c)
+            c += 1
+    new_meta_df1['go_cum'] = vec
+
+    # since last of same cue type
+    for ori in ['plus', 'minus', 'neutral']:
+        c = 0
+        vec = []
+        for s in new_meta_df1['initial_{}'.format(ori)].values:
+            if s == 0: 
+                vec.append(c)
+            else:
+                vec.append(c)
+                c += 1
+        new_meta_df1['initial_{}_cum'.format(ori)] = vec
+
+    # vec of ones for finding denominator across a number of trials
+    new_meta_df1['trial_number'] = np.ones((len(new_meta_df1)))
+
+    # loop over different accumulators to get full length interaction terms
+    p_cols = []
+    for aci in ['initial_plus', 'initial_minus', 'initial_neutral', 'go', 'reward']:
+        accumulated_df = new_meta_df1.groupby('{}_cum'.format(aci)).sum()
+        prob_since_last = accumulated_df.divide(accumulated_df['trial_number'], axis=0)
+        for vali in ['initial_plus', 'initial_minus', 'initial_neutral', 'go', 'reward']:
+            new_vec = np.zeros(len(new_meta_df1))
+            new_vec[:] = np.nan
+            new_bool = new_meta_df1[aci].gt(0).values
+            new_vec[new_bool] = prob_since_last[vali].values[0:np.sum(new_bool)] # use only matched trials
+            new_meta_df1['p_{}_since_last_{}'.format(vali, aci)] = new_vec
+            p_cols.append('p_{}_since_last_{}'.format(vali, aci))
+
+    # turn go, reward, punishment into boolean
+    grp_df = new_meta_df1.loc[:, ['go', 'reward', 'punishment']].gt(0)
+
+    # get only columns for probability 
+    p_df = new_meta_df1.loc[:, p_cols]
+
+    # add new columns to original df
+    new_dfr = pd.concat([meta, grp_df, p_df], axis=1)
+
+    return new_dfr
+
+
 def update_meta_date_vec(meta):
     """
     Helper function to get change date vector in metadata to be .5 for learning
@@ -84,7 +367,7 @@ def update_meta_date_vec(meta):
     return new_meta
 
 
-def add_5stages_to_meta(meta):
+def add_5stages_to_meta(meta, dp_by_run=True):
     """
     Helper function to add the stage of learning to metadata.
     """
@@ -94,11 +377,16 @@ def add_5stages_to_meta(meta):
     
     if 'dprime' not in meta.columns:
         meta = add_dprime_to_meta(meta)
+    if 'dprime_run' not in meta.columns:
+        meta = add_dprime_run_to_meta(meta)
     meta = update_meta_date_vec(meta)
     u_days = np.unique(meta.reset_index()['date'])
     all_days = meta.reset_index()['date'].values
     ls = meta['learning_state'].values
-    dp = meta['dprime'].values
+    if dp_by_run:
+        dp = meta['dprime'].values
+    else:
+        dp = meta['dprime'].values
     
     stage_vec = []
     for lsi, dpi in zip(ls, dp):
@@ -121,7 +409,7 @@ def add_5stages_to_meta(meta):
     return meta
 
 
-def add_10stages_to_meta(meta, simple=True):
+def add_10stages_to_meta(meta, simple=True, dp_by_run=True):
     """
     Helper function to add the stage of learning to metadata breaking
     each of the 5 major stages ['naive', 'low_dp learning', 'high_dp learning',
@@ -140,7 +428,7 @@ def add_10stages_to_meta(meta, simple=True):
     
     # make sure paresed stage exists so you can loop over this.
     if 'parsed_stage' not in meta.columns:
-        meta = add_5stages_to_meta(meta)
+        meta = add_5stages_to_meta(meta, dp_by_run=dp_by_run)
     meta = update_meta_date_vec(meta)
     
     # get days and parsed stages of learning
@@ -362,7 +650,7 @@ def getcstraces(
         warp=False,
         smooth=True,
         smooth_win=6,
-        smooth_win_dec=3,
+        smooth_win_dec=12,
         exclude_tags=('disengaged', 'orientation_mapping', 'contrast', 'retinotopy', 'sated')):
     """
     Wrapper function for flow.Trace2P.cstraces() or .warpsctraces().
@@ -514,12 +802,23 @@ def getcstraces(
 
     # trigger all trials around stimulus onsets
     if warp:
-        run_traces = t2p.warpcstraces(cs, start_s=start_time, end_s=end_time,
+        if 'deconvolved' in trace_type.lower():
+            run_traces = t2p.warpcstraces(cs, start_s=start_time, end_s=end_time,
+                                      trace_type=trace_type, cutoff_before_lick_ms=-1,
+                                      errortrials=-1, baseline=None,
+                                      move_outcome_to=5)
+        else:
+            run_traces = t2p.warpcstraces(cs, start_s=start_time, end_s=end_time,
                                       trace_type=trace_type, cutoff_before_lick_ms=-1,
                                       errortrials=-1, baseline=(-1, 0),
                                       move_outcome_to=5, baseline_to_stimulus=True)
     else:
-        run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
+        if 'deconvolved' in trace_type.lower():
+            run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
+                                  trace_type=trace_type, cutoff_before_lick_ms=-1,
+                                  errortrials=-1, baseline=None)
+        else:
+            run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
                                   trace_type=trace_type, cutoff_before_lick_ms=-1,
                                   errortrials=-1, baseline=(-1, 0),
                                   baseline_to_stimulus=True)
@@ -539,15 +838,38 @@ def getcstraces(
                 ds_traces = np.zeros((sz[0], int(sz[1]/2), sz[2]))
                 for trial in range(sz[2]):
                     a = run_traces[:, :, trial].reshape(sz[0], int(sz[1]/2), 2)
-                    if trace_type.lower() == 'deconvolved':
+                    if 'deconvolved' in trace_type.lower():
                         ds_traces[:, :, trial] = np.nanmax(a, axis=2)
                     else:
                         ds_traces[:, :, trial] = np.nanmean(a, axis=2)
 
         run_traces = ds_traces
 
+    # bin data
+    if '_bin' in trace_type.lower():
+        assert 'deconvolved' in trace_type.lower(), 'Only deconvolved traces can be binned'
+        bin_factor = 4
+        # make sure divisible by bin factor
+        sz = np.shape(run_traces)  # dims: (cells, time, trials)
+        if sz[1] % bin_factor > 0:
+            mod = z[1] % bin_factor
+            run_traces = run_traces[:, :-mod, :]
+            sz = np.shape(run_traces)
+        # bin
+        # ignore python and numpy divide by zero warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            with np.errstate(invalid='ignore', divide='ignore'):
+                ds_traces = np.zeros((sz[0], int(sz[1]/bin_factor), sz[2]))
+                for trial in range(sz[2]):
+                    a = run_traces[:, :, trial].reshape(
+                            sz[0], int(sz[1]/bin_factor), bin_factor)
+                    ds_traces[:, :, trial] = np.nansum(a, axis=2)
+
+        run_traces = ds_traces
+
     # smooth deconvolved data
-    if smooth and (trace_type.lower() == 'deconvolved'):
+    if smooth and 'deconvolved' in trace_type.lower():
         sz = np.shape(run_traces)  # dims: (cells, time, trials)
         run_traces = run_traces.reshape((sz[0], sz[1]*sz[2]))
         for cell in range(sz[0]):
@@ -557,9 +879,31 @@ def getcstraces(
                                               'same')
         run_traces = run_traces.reshape((sz[0], sz[1], sz[2]))
 
+    # invert values (to explicitly model inhibition)
+    if '_flip' in trace_type.lower():
+        run_traces = run_traces*-1
+
     # truncate negative values (for NMF)
     if 'trunc_' in trace_type.lower():
         run_traces[run_traces < 0] = 0
+
+    # only look at stimulus period 
+    if '_onset' in trace_type.lower():
+        time_to_off = lookups.stim_length[run.mouse] + 1
+        assert downsample
+        frames_to_off = int(np.floor(time_to_off*15.5))
+        run_traces = run_traces[:, :frames_to_off, :]
+
+    # cap positive values for deconvolution at 2
+    if '_cap' in trace_type.lower():
+        run_traces[run_traces > 2] = 2
+        # if any entire trial now equals 2 set to nan
+        trial_mins = run_traces.min(axis=1)
+        for rt_cells in range(trial_mins.shape[0]):
+            for rt_trials in range(trial_mins.shape[1]):
+                if trial_mins[rt_cells, rt_trials] == 2:
+                    run_traces[rt_cells, :, rt_trials] = np.nan
+
 
     return run_traces
 
@@ -688,6 +1032,7 @@ def build_tensor(
 
     Returns
     -------
+    :param use_dprime:
 
     """
 

@@ -20,26 +20,6 @@ default_pars = {
         np.array([1.3003, 2.1746, 2.1746, 2.1746, 0.1195, 0.3035, 0.6393])
                 }
 
-"""
-Define lookup tables that make your life easier for checking which 
-cue was associated with which outcome during learning.
-"""
-lookup = {'OA27': {'plus': 270, 'minus': 135, 'neutral': 0},
-     'VF226': {'plus': 0, 'minus': 270, 'neutral': 135},
-     'OA67': {'plus': 0, 'minus': 270, 'neutral': 135},
-     'OA32': {'plus': 135, 'minus': 0, 'neutral': 270},
-     'OA34': {'plus': 270, 'minus': 135, 'neutral': 0},
-     'OA36': {'plus': 0, 'minus': 270, 'neutral': 135},
-     'OA26': {'plus': 270, 'minus': 135, 'neutral': 0}}
-
-lookup_ori = {'OA27': {270: 'plus', 135: 'minus', 0: 'neutral'},
-     'VF226': {0: 'plus', 270: 'minus', 135: 'neutral'},
-     'OA67': {0: 'plus', 270: 'minus', 135: 'neutral'},
-     'OA32': {135: 'plus', 0: 'minus', 270: 'neutral'},
-     'OA34': {270: 'plus', 135: 'minus', 0: 'neutral'},
-     'OA36': {0: 'plus', 270: 'minus', 135: 'neutral'},
-     'OA26': {270: 'plus', 135: 'minus', 0: 'neutral'}}
-
 
 def train(
         runs,
@@ -425,6 +405,7 @@ def sync_tca_pillow(
     load_kwargs = {'mouse': mouse,
                    'method': method,
                    'cs': cs,
+                   'trace_type': trace_type,
                    'warp': warp,
                    'word': word,
                    'group_by': group_by,

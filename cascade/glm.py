@@ -24,7 +24,7 @@ default_sigmas = {
 """ ----------- Design matrix functions that operate on metadata ---------- """
 
 
-def trial_history_columns_df(mouse, meta1_df):
+def trial_history_columns_df(mouse, meta):
     """ 
     Function for creating DataFrame of trial history related variables. Can
     be used for design matrix X or to pick and choose useful columns.
@@ -32,91 +32,91 @@ def trial_history_columns_df(mouse, meta1_df):
     """
     # add a binary column for choice, 1 for go 0 for nogo
     new_meta = {}
-    new_meta['choice'] = np.zeros(len(meta1_df))
-    new_meta['choice'][meta1_df['trialerror'].isin([0, 3, 5, 7]).values] = 1
-    new_meta_df1 = pd.DataFrame(data=new_meta, index=meta1_df.index)
-    # new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+    new_meta['choice'] = np.zeros(len(meta))
+    new_meta['choice'][meta['trialerror'].isin([0, 3, 5, 7]).values] = 1
+    meta_df_out = pd.DataFrame(data=new_meta, index=meta.index)
+    # meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
 
     # add a binary column for reward
     new_meta = {}
-    new_meta['reward'] = np.zeros(len(new_meta_df1))
-    new_meta['reward'][meta1_df['trialerror'].isin([0]).values] = 1
-    new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+    new_meta['reward'] = np.zeros(len(meta_df_out))
+    new_meta['reward'][meta['trialerror'].isin([0]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
 
     # add a binary column for punishment
     new_meta = {}
-    new_meta['punishment'] = np.zeros(len(new_meta_df1))
-    new_meta['punishment'][meta1_df['trialerror'].isin([5]).values] = 1
-    new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+    new_meta['punishment'] = np.zeros(len(meta_df_out))
+    new_meta['punishment'][meta['trialerror'].isin([5]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
 
     # rename oris according to their meaning during learning
     new_meta = {}
     for ori in ['plus', 'minus', 'neutral']:
         new_meta = {}
-        new_meta['initial_{}'.format(ori)] = np.zeros(len(new_meta_df1))
-        new_meta['initial_{}'.format(ori)][meta1_df['orientation'].isin([lookup[mouse][ori]]).values] = 1
-        new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-        new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+        new_meta['initial_{}'.format(ori)] = np.zeros(len(meta_df_out))
+        new_meta['initial_{}'.format(ori)][meta['orientation'].isin([lookup[mouse][ori]]).values] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
         
     # rename oris according to their meaning during learning
     new_meta = {}
     cs_codes = {'plus': [0, 1], 'neutral': [2, 3], 'minus': [4, 5]}
     for ori in ['plus', 'minus', 'neutral']:
         new_meta = {}
-        new_meta['cs_{}'.format(ori)] = np.zeros(len(new_meta_df1))
-        new_meta['cs_{}'.format(ori)][meta1_df['trialerror'].isin(cs_codes[ori]).values] = 1
-        new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-        new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+        new_meta['cs_{}'.format(ori)] = np.zeros(len(meta_df_out))
+        new_meta['cs_{}'.format(ori)][meta['trialerror'].isin(cs_codes[ori]).values] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
 
     # create epochs since last reward
     c = 0
     vec = []
-    for s in new_meta_df1['reward'].values:
+    for s in meta_df_out['reward'].values:
         if s == 0: 
             vec.append(c)
         else:
             vec.append(c)
             c += 1
-    new_meta_df1['reward_cum'] = vec
+    meta_df_out['reward_cum'] = vec
 
     # since last go
     c = 0
     vec = []
-    for s in new_meta_df1['choice'].values:
+    for s in meta_df_out['choice'].values:
         if s == 0: 
             vec.append(c)
         else:
             vec.append(c)
             c += 1
-    new_meta_df1['choice_cum'] = vec
+    meta_df_out['choice_cum'] = vec
 
     # since last of same cue type
     for ori in ['plus', 'minus', 'neutral']:
         c = 0
         vec = []
-        for s in new_meta_df1['initial_{}'.format(ori)].values:
+        for s in meta_df_out['initial_{}'.format(ori)].values:
             if s == 0: 
                 vec.append(c)
             else:
                 vec.append(c)
                 c += 1
-        new_meta_df1['initial_{}_cum'.format(ori)] = vec
+        meta_df_out['initial_{}_cum'.format(ori)] = vec
 
     # vec of ones for finding denominator across a number of trials
-    new_meta_df1['trial_number'] = np.ones((len(new_meta_df1)))
+    meta_df_out['trial_number'] = np.ones((len(meta_df_out)))
 
     # loop over different accumulators to get full length interaction terms
     p_cols = []
     for aci in ['initial_plus', 'initial_minus', 'initial_neutral', 'choice', 'reward']:
-        accumulated_df = new_meta_df1.groupby('{}_cum'.format(aci)).sum()
+        accumulated_df = meta_df_out.groupby('{}_cum'.format(aci)).sum()
         prob_since_last = accumulated_df.divide(accumulated_df['trial_number'], axis=0)
         for vali in ['initial_plus', 'initial_minus', 'initial_neutral', 'choice', 'reward']:
-            new_vec = np.zeros(len(new_meta_df1))
-            new_bool = new_meta_df1[aci].gt(0).values
+            new_vec = np.zeros(len(meta_df_out))
+            new_bool = meta_df_out[aci].gt(0).values
             new_vec[new_bool] = prob_since_last[vali].values[0:np.sum(new_bool)] # use only matched trials
-            new_meta_df1['p_{}_since_last_{}'.format(vali, aci)] = new_vec
+            meta_df_out['p_{}_since_last_{}'.format(vali, aci)] = new_vec
             p_cols.append('p_{}_since_last_{}'.format(vali, aci))
     
     # also return binary columns for orientation
@@ -125,56 +125,56 @@ def trial_history_columns_df(mouse, meta1_df):
         i_cols.append('initial_{}'.format(ori))
         cs_cols.append('cs_{}'.format(ori))
         
-    return new_meta_df1, p_cols, i_cols, cs_cols
+    return meta_df_out, p_cols, i_cols, cs_cols
 
 
-def simple_trial_history_columns_df(mouse, meta1_df):
+def simple_trial_history_columns_df(mouse, meta):
     """
     Trial history evaluated by simply having 9 extra stimulus columns one for each cue preceded by a cue.
     """
     # add a binary column for choice, 1 for go 0 for nogo
     new_meta = {}
-    new_meta['choice'] = np.zeros(len(meta1_df))
-    new_meta['choice'][meta1_df['trialerror'].isin([0, 3, 5, 7]).values] = 1
-    new_meta_df1 = pd.DataFrame(data=new_meta, index=meta1_df.index)
-    # new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+    new_meta['choice'] = np.zeros(len(meta))
+    new_meta['choice'][meta['trialerror'].isin([0, 3, 5, 7]).values] = 1
+    meta_df_out = pd.DataFrame(data=new_meta, index=meta.index)
+    # meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
 
     # add a binary column for reward
     new_meta = {}
-    new_meta['reward'] = np.zeros(len(new_meta_df1))
-    new_meta['reward'][meta1_df['trialerror'].isin([0]).values] = 1
-    new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+    new_meta['reward'] = np.zeros(len(meta_df_out))
+    new_meta['reward'][meta['trialerror'].isin([0]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
 
     # add a binary column for punishment
     new_meta = {}
-    new_meta['punishment'] = np.zeros(len(new_meta_df1))
-    new_meta['punishment'][meta1_df['trialerror'].isin([5]).values] = 1
-    new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+    new_meta['punishment'] = np.zeros(len(meta_df_out))
+    new_meta['punishment'][meta['trialerror'].isin([5]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
     
     # rename oris according to their meaning during learning
     new_meta = {}
     for ori in ['plus', 'minus', 'neutral']:
         new_meta = {}
-        new_meta['initial_{}'.format(ori)] = np.zeros(len(new_meta_df1))
-        new_meta['initial_{}'.format(ori)][meta1_df['orientation'].isin([lookup[mouse][ori]]).values] = 1
-        new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-        new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+        new_meta['initial_{}'.format(ori)] = np.zeros(len(meta_df_out))
+        new_meta['initial_{}'.format(ori)][meta['orientation'].isin([lookup[mouse][ori]]).values] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
 
     # rename oris according to their meaning during learning broken up by preceding ori
     new_meta = {}
     p_cols = []
-    prev_ori_vec = np.insert(np.array(meta1_df['orientation'].values[:-1], dtype='float'), 0, np.nan)
+    prev_ori_vec = np.insert(np.array(meta['orientation'].values[:-1], dtype='float'), 0, np.nan)
     for ori in ['plus', 'minus', 'neutral']:
-        curr_ori_bool = meta1_df['orientation'].isin([lookup[mouse][ori]]).values
+        curr_ori_bool = meta['orientation'].isin([lookup[mouse][ori]]).values
         for prev_ori in ['plus', 'minus', 'neutral']:
             prev_ori_bool = np.isin(prev_ori_vec, lookup[mouse][prev_ori])
             new_meta = {}
-            new_meta['initial_{}, initial_{}'.format(prev_ori, ori)] = np.zeros(len(new_meta_df1))
+            new_meta['initial_{}, initial_{}'.format(prev_ori, ori)] = np.zeros(len(meta_df_out))
             new_meta['initial_{}, initial_{}'.format(prev_ori, ori)][prev_ori_bool & curr_ori_bool] = 1
-            new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-            new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+            new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+            meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
             p_cols.append('initial_{}, initial_{}'.format(prev_ori, ori))
         
     # rename oris according to their meaning during learning
@@ -182,10 +182,10 @@ def simple_trial_history_columns_df(mouse, meta1_df):
     cs_codes = {'plus': [0, 1], 'neutral': [2, 3], 'minus': [4, 5]}
     for ori in ['plus', 'minus', 'neutral']:
         new_meta = {}
-        new_meta['cs_{}'.format(ori)] = np.zeros(len(new_meta_df1))
-        new_meta['cs_{}'.format(ori)][meta1_df['trialerror'].isin(cs_codes[ori]).values] = 1
-        new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-        new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+        new_meta['cs_{}'.format(ori)] = np.zeros(len(meta_df_out))
+        new_meta['cs_{}'.format(ori)][meta['trialerror'].isin(cs_codes[ori]).values] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
 
     # also return binary columns for orientation
     i_cols, cs_cols = [], []
@@ -193,58 +193,58 @@ def simple_trial_history_columns_df(mouse, meta1_df):
         i_cols.append('initial_{}'.format(ori))
         cs_cols.append('cs_{}'.format(ori))
         
-    return new_meta_df1, p_cols, i_cols, cs_cols
+    return meta_df_out, p_cols, i_cols, cs_cols
 
 
-def simpler_trial_history_columns_df(mouse, meta1_df):
+def simpler_trial_history_columns_df(mouse, meta):
     """
     Trial history evaluated by simply having 6 extra stimulus columns one for each cue preceded by a cue.
     """
     # add a binary column for choice, 1 for go 0 for nogo
     new_meta = {}
-    new_meta['choice'] = np.zeros(len(meta1_df))
-    new_meta['choice'][meta1_df['trialerror'].isin([0, 3, 5, 7]).values] = 1
-    new_meta_df1 = pd.DataFrame(data=new_meta, index=meta1_df.index)
-    # new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+    new_meta['choice'] = np.zeros(len(meta))
+    new_meta['choice'][meta['trialerror'].isin([0, 3, 5, 7]).values] = 1
+    meta_df_out = pd.DataFrame(data=new_meta, index=meta.index)
+    # meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
 
     # add a binary column for reward
     new_meta = {}
-    new_meta['reward'] = np.zeros(len(new_meta_df1))
-    new_meta['reward'][meta1_df['trialerror'].isin([0]).values] = 1
-    new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+    new_meta['reward'] = np.zeros(len(meta_df_out))
+    new_meta['reward'][meta['trialerror'].isin([0]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
 
     # add a binary column for punishment
     new_meta = {}
-    new_meta['punishment'] = np.zeros(len(new_meta_df1))
-    new_meta['punishment'][meta1_df['trialerror'].isin([5]).values] = 1
-    new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+    new_meta['punishment'] = np.zeros(len(meta_df_out))
+    new_meta['punishment'][meta['trialerror'].isin([5]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
     
     # rename oris according to their meaning during learning
     new_meta = {}
     for ori in ['plus', 'minus', 'neutral']:
         new_meta = {}
-        new_meta['initial_{}'.format(ori)] = np.zeros(len(new_meta_df1))
-        new_meta['initial_{}'.format(ori)][meta1_df['orientation'].isin([lookup[mouse][ori]]).values] = 1
-        new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-        new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+        new_meta['initial_{}'.format(ori)] = np.zeros(len(meta_df_out))
+        new_meta['initial_{}'.format(ori)][meta['orientation'].isin([lookup[mouse][ori]]).values] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
 
     # rename oris according to their meaning during learning broken up by preceding ori
     new_meta = {}
     p_cols = []
-    prev_ori_vec = np.insert(np.array(meta1_df['orientation'].values[:-1], dtype='float'), 0, np.nan)
+    prev_ori_vec = np.insert(np.array(meta['orientation'].values[:-1], dtype='float'), 0, np.nan)
     for ori in ['plus', 'minus', 'neutral']:
-        curr_ori_bool = meta1_df['orientation'].isin([lookup[mouse][ori]]).values
+        curr_ori_bool = meta['orientation'].isin([lookup[mouse][ori]]).values
         prev_same = np.isin(prev_ori_vec, lookup[mouse][ori])
         prev_diff = np.isin(prev_ori_vec, [0, 135, 270]) & ~prev_same
         new_meta = {}
-        new_meta['prev_same_init_{}'.format(ori)] = np.zeros(len(new_meta_df1))
+        new_meta['prev_same_init_{}'.format(ori)] = np.zeros(len(meta_df_out))
         new_meta['prev_same_init_{}'.format(ori)][prev_same & curr_ori_bool] = 1
-        new_meta['prev_diff_init_{}'.format(ori)] = np.zeros(len(new_meta_df1))
+        new_meta['prev_diff_init_{}'.format(ori)] = np.zeros(len(meta_df_out))
         new_meta['prev_diff_init_{}'.format(ori)][prev_diff & curr_ori_bool] = 1
-        new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-        new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
         p_cols.append('prev_same_init_{}'.format(ori))
         p_cols.append('prev_diff_init_{}'.format(ori))
         
@@ -253,10 +253,10 @@ def simpler_trial_history_columns_df(mouse, meta1_df):
     cs_codes = {'plus': [0, 1], 'neutral': [2, 3], 'minus': [4, 5]}
     for ori in ['plus', 'minus', 'neutral']:
         new_meta = {}
-        new_meta['cs_{}'.format(ori)] = np.zeros(len(new_meta_df1))
-        new_meta['cs_{}'.format(ori)][meta1_df['trialerror'].isin(cs_codes[ori]).values] = 1
-        new_meta_df = pd.DataFrame(data=new_meta, index=meta1_df.index)
-        new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+        new_meta['cs_{}'.format(ori)] = np.zeros(len(meta_df_out))
+        new_meta['cs_{}'.format(ori)][meta['trialerror'].isin(cs_codes[ori]).values] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
 
     # also return binary columns for orientation
     i_cols, cs_cols = [], []
@@ -264,14 +264,134 @@ def simpler_trial_history_columns_df(mouse, meta1_df):
         i_cols.append('initial_{}'.format(ori))
         cs_cols.append('cs_{}'.format(ori))
         
-    return new_meta_df1, p_cols, i_cols, cs_cols
+    return meta_df_out, p_cols, i_cols, cs_cols
 
 
-def _add_hmm_to_design_mat(orig_df, meta1_df):
+def double_th_decay_columns_df(mouse, meta):
+    """
+    Trial history evaluated by simply having 6 extra stimulus columns one for each cue preceded by a cue.
+    """
+    # add a binary column for choice, 1 for go 0 for nogo
+    new_meta = {}
+    new_meta['choice'] = np.zeros(len(meta))
+    new_meta['choice'][meta['trialerror'].isin([0, 3, 5, 7]).values] = 1
+    meta_df_out = pd.DataFrame(data=new_meta, index=meta.index)
+    # meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # add a binary column for reward
+    new_meta = {}
+    new_meta['reward'] = np.zeros(len(meta_df_out))
+    new_meta['reward'][meta['trialerror'].isin([0]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # add a binary column for punishment
+    new_meta = {}
+    new_meta['punishment'] = np.zeros(len(meta_df_out))
+    new_meta['punishment'][meta['trialerror'].isin([5]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+    
+    # rename oris according to their meaning during learning
+    for ori in ['plus', 'minus', 'neutral']:
+        new_meta = {}
+        new_meta['initial_{}'.format(ori)] = np.zeros(len(meta_df_out))
+        new_meta['initial_{}'.format(ori)][meta['orientation'].isin([lookup[mouse][ori]]).values] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # rename oris according to their meaning during learning broken up by preceding ori
+    if 'prev_same_0' not in meta.columns:
+        meta = utils.add_prev_ori_cols_to_meta(meta)
+
+    p_cols = []
+    for ori in ['plus', 'minus', 'neutral']:
+        initial_ori = lookup[mouse][ori]
+        curr_ori_bool = meta['orientation'].isin([initial_ori]).values
+        same_ori_bool = meta[f'prev_same_{initial_ori}'].gt(0).values
+        new_meta = {}
+        new_meta[f'prev_same_init_{ori}'] = np.zeros(len(meta_df_out))
+        new_meta[f'prev_same_init_{ori}'][same_ori_bool & curr_ori_bool] = 1
+        new_meta[f'prev_diff_init_{ori}'] = np.zeros(len(meta_df_out))
+        new_meta[f'prev_diff_init_{ori}'][~same_ori_bool & curr_ori_bool] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+        p_cols.append(f'prev_same_init_{ori}')
+        p_cols.append(f'prev_diff_init_{ori}')
+        
+    # rename oris according to their meaning during learning broken up by preceding ori
+    for cs in ['plus', 'minus', 'neutral']:
+        curr_cs_bool = meta['condition'].isin([cs]).values
+        same_cs_bool = meta[f'prev_same_{cs}'].gt(0).values
+        new_meta = {}
+        new_meta[f'prev_same_cs_{cs}'] = np.zeros(len(meta_df_out))
+        new_meta[f'prev_same_cs_{cs}'][same_cs_bool & curr_cs_bool] = 1
+        new_meta[f'prev_diff_cs_{cs}'] = np.zeros(len(meta_df_out))
+        new_meta[f'prev_diff_cs_{cs}'][~same_cs_bool & curr_cs_bool] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+        p_cols.append(f'prev_same_cs_{cs}')
+        p_cols.append(f'prev_diff_cs_{cs}')
+        
+    # make decaying and incrementing filters for each ori and cs.
+    day_vec = meta.reset_index()['date'].values
+    daily_decay_linear = np.zeros(len(day_vec))
+    daily_decay_exp = np.zeros(len(day_vec))
+    for dayi in np.unique(day_vec):
+        day_bool = day_vec == dayi
+        x_vec = np.arange(np.sum(day_bool))
+        expdec = _exp_decay_func(x_vec)
+        lindec = _lin_decay_func(x_vec)
+        daily_decay_linear[day_bool] = lindec
+        daily_decay_exp[day_bool] = expdec
+    for ori in ['plus', 'minus', 'neutral']:    
+        curr_ori_bool = meta['condition'].isin([ori]).values
+        new_meta = {}
+        new_meta['init_{}_exp_decay'.format(ori)] = np.zeros(len(meta_df_out))
+        new_meta['init_{}_exp_decay'.format(ori)][curr_ori_bool] = daily_decay_exp[curr_ori_bool]
+        new_meta['init_{}_lin_decay'.format(ori)] = np.zeros(len(meta_df_out))
+        new_meta['init_{}_lin_decay'.format(ori)][curr_ori_bool] = daily_decay_linear[curr_ori_bool]
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+        p_cols.append('init_{}_lin_decay'.format(ori))
+        p_cols.append('init_{}_exp_decay'.format(ori))
+        
+    # rename oris according to their meaning during learning
+    new_meta = {}
+    cs_codes = {'plus': [0, 1], 'neutral': [2, 3], 'minus': [4, 5]}
+    for ori in ['plus', 'minus', 'neutral']:
+        new_meta = {}
+        new_meta['cs_{}'.format(ori)] = np.zeros(len(meta_df_out))
+        new_meta['cs_{}'.format(ori)][meta['trialerror'].isin(cs_codes[ori]).values] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # also return binary columns for orientation
+    i_cols, cs_cols = [], []
+    for ori in ['plus', 'minus', 'neutral']:
+        i_cols.append('initial_{}'.format(ori))
+        cs_cols.append('cs_{}'.format(ori))
+        
+    return meta_df_out, p_cols, i_cols, cs_cols
+
+def _exp_decay_func(t, A=1, K=-0.05, C=0):
+    # Exponential decay function. Decays to 0 in ~100 trials.
+    return A * np.exp(K * t) + C
+
+def _lin_decay_func(t, M=-.005, B=1):
+    # Decays to zero after 200 trials linearly. Rectified after 200.
+    return _rect(M * t + B)
+
+def _rect(trace):
+    # rectify trace
+    trace[trace < 0] = 0
+    return trace
+
+def _add_hmm_to_design_mat(orig_df, meta):
     """ Helper function to add a hmm engagment column to a df."""
     
-    new_vec = np.zeros(len(meta1_df))
-    engaged_bool = meta1_df['hmm_engaged'].values
+    new_vec = np.zeros(len(meta))
+    engaged_bool = meta['hmm_engaged'].values
     new_vec[engaged_bool] = 1
     orig_df['hmm_engaged'] = new_vec
     

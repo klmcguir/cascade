@@ -9,13 +9,122 @@ import seaborn as sns
 from . import paths
 from . import tca
 from . import utils
+from . import lookups
+from copy import deepcopy
+
+
+def get_lick_mask(meta, tensor):
+    """
+    Create a boolean mask in the shape of your tensor that is 1 wherever data preceded
+    a lick and is 0 following licks. Trials with no licking during the stimulus
+    window are set to the median lick latency on plus trials. 
+    """
+
+    # make sure that you have a full size 15.5 Hz tensor 
+    assert tensor.shape[1] == 108
+
+    # make sure that you have a matching tensor and meta
+    assert tensor.shape[2] == len(meta)
+
+    # get lick latency, adjusted with median for trials without licking
+    meta = utils.add_firstlickbout_wmedian_to_meta(meta)
+    mask = np.zeros(tensor.shape)
+    lick_lat = meta['firstlickbout_med'].values
+
+    # loop over trials to create your licking mask, setting values to 1
+    frame_number = np.arange(tensor.shape[1])
+    for tri in range(tensor.shape[2]):
+        lick_boo = ((frame_number < lick_lat[tri]) # frames less than
+                    & (frame_number > 15.5)) # frames greater than baseline
+        mask[:, lick_boo, tri] = 1
+
+    return mask > 0
+
+
+def get_bias_from_tensor(meta, tensor, staging='parsed_10stage', checkup=0):
+    """
+    Calculate bias for stages of learning for a tensor and meta.
+    """
+    
+    # make sure that you have a full size 15.5 Hz tensor 
+    assert tensor.shape[1] == 108
+
+    # make sure that you have a matching tensor and meta
+    assert tensor.shape[2] == len(meta)
+
+    # add learning stages to meta
+    if 'parsed_stage' not in meta.columns:
+        meta = utils.add_5stages_to_meta(meta)
+
+    # make sure that the date includes half days for learning/reversal1
+    meta = utils.update_meta_date_vec(meta)
+
+    # get tensor-shaped mask of values that exclude licking 
+    # this accounts for differences in stimulus length between mice
+    # baseline is also set to false
+    mask = get_lick_mask(meta, tensor)
+
+    # baseline period boolean
+    base_boo = np.arange(tensor.shape[1]) < 15.5
+    baseline_mean = np.nanmean(tensor[:, base_boo, :], axis=1)
+
+    # get mean for each trial
+    ablated_tensor = deepcopy(tensor)
+    ablated_tensor[~mask] = np.nan
+    stim_mean_nolick = np.nanmean(ablated_tensor, axis=1)
+
+    # get amplitude compared to baseline
+    amplitude_nolick = stim_mean_nolick - baseline_mean
+    # return amplitude_nolick, stim_mean_nolick, baseline_mean
+    amplitude_nolick[amplitude_nolick < checkup] = 0  # rectify 
+
+    # boolean of first 100 trials per day
+    first100_bool = _first100_bool(meta)
+
+    # loop over 5stages
+    mean_per_stage = np.zeros((amplitude_nolick.shape[0], 10, 3))
+    stage = meta[staging]
+    for cstagi, stagi in enumerate(meta[staging].unique()):
+        stage_bool = stage.isin([stagi]).values
+        for ccue, cue in enumerate(['plus', 'minus', 'neutral']):
+            cue_bool = meta['condition'].isin([cue]).values
+            mean_per_stage[:, cstagi, ccue] = np.nanmean(
+                amplitude_nolick[:, cue_bool & stage_bool & first100_bool], axis=1)
+    
+    # normalize
+    max_response = np.nanmax(mean_per_stage, axis=2)
+    for cue_n in range(mean_per_stage.shape[2]):
+        mean_per_stage[:, :, cue_n] = mean_per_stage[:, :, cue_n]/max_response
+
+    # return mean_per_stage
+
+    # rewind ... unwrap your means for a DataFrame
+    means_in = []
+    stages_in = []
+    cues_in = []
+    bias_in = []
+    for cstagi, stagi in enumerate(meta[staging].unique()):
+        for ccue, cue in enumerate(['plus', 'minus', 'neutral']):
+            mean_vec = mean_per_stage[:, cstagi, ccue]
+            bias_vec = mean_per_stage[:, cstagi, ccue]/np.nansum(mean_per_stage, axis=2)[:, cstagi]
+            bias_in.extend(bias_vec)
+            means_in.extend(mean_vec)
+            cues_in.extend([cue]*len(mean_vec))
+            stages_in.extend([stagi]*len(mean_vec))
+
+    data = {'cue': cues_in, 'learning stage': stages_in,
+            'mean response': means_in, 'FC bias': bias_in}
+    mean_df = pd.DataFrame(data)
+
+    return mean_df
 
 
 def get_bias(
         mouse,
         trace_type='zscore_day',
         drive_threshold=20,
-        drive_type='visual'):
+        drive_type='visual',
+        drop_licking=True):
     """
     Returns:
     --------
@@ -29,9 +138,10 @@ def get_bias(
 
     # get boolean indexer for period stim is on screen
     stim_window = np.arange(-1, 7, 1/15.5)[0:108]
-    stim_window = (stim_window > 0) & (stim_window < 3)
+    stim_window = (stim_window > 0) & (stim_window < lookups.stim_length[mouse])
 
     # get vector and count of dates for the loop
+    met = utils.update_meta_date_vec(met)
     date_vec = met.reset_index()['date']
     date_num = len(np.unique(date_vec))
 
@@ -51,6 +161,11 @@ def get_bias(
     FC_bool = met['condition'].isin(['plus']).values
     QC_bool = met['condition'].isin(['minus']).values
     NC_bool = met['condition'].isin(['neutral']).values
+
+    # blank periods after first lick in trial 
+    if drop_licking:
+        mask = get_lick_mask(met, ten)
+        ten[~mask] = np.nan
 
     # loop through and get mean response of each cell per day for three CSs
     for c, day in enumerate(np.unique(date_vec)):
@@ -98,7 +213,8 @@ def get_mean_response(
         mouse,
         trace_type='zscore_day',
         drive_threshold=20,
-        drive_type='visual'):
+        drive_type='visual',
+        drop_licking=True):
 
     # get tensor, metadata, and ids to get things rolling
     ten, met, id = utils.build_tensor(
@@ -109,6 +225,7 @@ def get_mean_response(
     stim_window = (stim_window > 0) & (stim_window < 3)
 
     # get vector and count of dates for the loop
+    met = utils.update_meta_date_vec(met)
     date_vec = met.reset_index()['date']
     date_num = len(np.unique(date_vec))
 
@@ -128,6 +245,11 @@ def get_mean_response(
     FC_bool = met['condition'].isin(['plus']).values
     QC_bool = met['condition'].isin(['minus']).values
     NC_bool = met['condition'].isin(['neutral']).values
+
+    # blank periods after first lick in trial 
+    if drop_licking:
+        mask = get_lick_mask(met, ten)
+        ten[~mask] = np.nan
 
     # loop through and get mean response of each cell per day for three CSs
     for c, day in enumerate(np.unique(date_vec)):
@@ -225,3 +347,25 @@ def get_stage_average(FC_bias, dprime_list, ls_list, dprime_thresh=2):
                 np.nanmean(np.nanmean(high_rev1_bias, axis=1), axis=0))
 
     return stage_mean1, stage_mean2
+
+
+
+def _first100_bool(meta):
+    """
+    Helper function to get a boolean vector of the first 100 trials for each day.
+    If a day is shorter than 100 trials use the whole day. 
+    """
+    
+    days = meta.reset_index()['date'].unique()
+
+    first100 = np.zeros((len(meta)))
+    for di in days:
+        dboo  = meta.reset_index()['date'].isin([di]).values
+        daylength = np.sum(dboo)
+        if daylength > 100:
+            first100[np.where(dboo)[0][:100]] = 1
+        else:
+            first100[dboo] = 1
+    firstboo = first100 > 0
+    
+    return firstboo

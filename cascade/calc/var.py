@@ -8,6 +8,7 @@ import bottleneck as bn
 import os
 from sklearn.decomposition import PCA
 from copy import deepcopy
+from tensortools.tensors import KTensor
 
 
 @memoize(across='mouse', updated=191203, returns='other', large_output=True)
@@ -899,6 +900,123 @@ def groupday_varex_bycomp(
 
     return dfvar
 
+
+@memoize(across='mouse', updated=200415, returns='other', large_output=True)
+def groupday_varex_bycomp_ablated(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        word=None,
+        group_by='all3',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        rectified=True,
+        verbose=False):
+    """
+    Plot reconstruction error as variance explained across all whole groupday
+    TCA decomposition ensemble.
+
+    Parameters:
+    -----------
+    mouse : str; mouse object
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../qc
+    """
+
+    # save sorter object for later use
+    mdr_obj = mouse
+    mouse = mouse.mouse
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        nt_tag = '_nantrial' + str(nan_thresh)
+    else:
+        nt_tag = ''
+
+    # load dir
+    load_kwargs = {'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'trace_type': trace_type,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+    V, _ = load.groupday_tca_model(mouse, unsorted=True, **load_kwargs)
+    X = load.groupday_tca_input_tensor(mouse, **load_kwargs)
+
+    # rectify input tensor (only look at nonnegative variance)
+    if rectified:
+        X[X < 0] = 0
+
+    # calculate or load your best guess
+    best_mod = groupday_varex(mdr_obj, rectified=rectified, verbose=verbose,
+                                **load_kwargs)
+    
+    # create vectors for dataframe
+    best_varex = []
+    ablated_varex = []
+    var_data = []
+    var_model = []
+    rank = []
+    component = []
+
+    # get total data variance
+    total_X_var = bn.nanvar(X)
+    for r in V.results:
+
+        # can't ablate with only one value
+        if r == 1:
+            continue
+
+        rX = V.results[r][0].factors.full()
+        best_dvar = bn.nanvar(X - rX)
+        rboo = best_mod['rank'].isin([r]) & best_mod['iteration'].isin([0])
+        rvarex = best_mod.loc[rboo, 'variance_explained_tcamodel'].values[0]
+
+        for fac_num in range(np.shape(V.results[r][0].factors[0][:, :])[1]):
+            # reconstruct single component ablated model
+            bUd = _full_ablated(V.results[r][0].factors, fac_num)
+            rank.append(r)
+            component.append(fac_num+1)
+            ablated_dvar  = bn.nanvar(X - bUd)
+            rvarex_sub = 1 - (ablated_dvar/total_X_var)
+            ablated_varex.append(rvarex_sub)
+            best_varex.append(rvarex)
+            var_data.append(total_X_var)
+            var_model.append(bn.nanvar(bUd))
+
+    dvarex = np.array(best_varex) - np.array(ablated_varex)
+    frac_explainable = dvarex/np.array(best_varex)
+
+    # make dataframe of data
+    # create your index out of relevant variables
+    index = pd.MultiIndex.from_arrays(
+        [[mouse]*len(best_varex)],
+        names=['mouse'])
+
+    data = {'rank': rank,
+            'component': component,
+            'variance_of_data': var_data,
+            'variance_of_comp_tcamodel': var_model,
+            'variance_explained_best_tcamodel': best_varex,
+            'variance_explained_ablated_tcamodel': ablated_varex,
+            'delta_variance_explained': dvarex,
+            'fraction_total_explainable_variance': frac_explainable}
+
+    dfvar = pd.DataFrame(data, index=index)
+
+    return dfvar
+
+
 @memoize(across='mouse', updated=190805, returns='other', large_output=True)
 def groupday_varex_byday_bycell(
         mouse,
@@ -1165,3 +1283,17 @@ def groupday_varex_bycell(
     dfvar = pd.DataFrame(data, index=index)
 
     return dfvar
+
+
+def _full_ablated(tt_factors, fac_num_to_remove):
+    """Create full matrix from an ablated (one factor removed) KTensor."""
+    
+    # turn factors into tuple, then remove factor from each mode's matrix
+    factors = tuple(tt_factors)
+    factors = tuple([np.delete(f, fac_num_to_remove, axis=1) for f in factors])
+
+    # create a KTensor from tensortools to speed up some math
+    kt = KTensor(factors)
+
+    # create full tensor
+    return kt.full()

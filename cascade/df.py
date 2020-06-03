@@ -7,7 +7,7 @@ import pandas as pd
 import scipy as sp
 import warnings
 from copy import deepcopy
-from . import utils, paths, tca, load
+from . import utils, paths, tca, load, lookups
 
 # ----------------------- LOAD as DF functions -----------------------
 
@@ -69,7 +69,7 @@ def _stim_interp_2s(t_df, normalize=False):
     Deals with issue of matching things with 2 vs 3 second simulus presentations.
     """
     # break data in half
-    mouse_boo = t_df.reset_index()['mouse'].isin(['OA32', 'OA34', 'OA36']).values
+    mouse_boo = t_df.reset_index()['mouse'].isin(lookups.mice['stim2']).values
     threes = t_df.iloc[~mouse_boo, :]
     twos = t_df.iloc[mouse_boo, :]
 
@@ -87,11 +87,11 @@ def _stim_interp_2s(t_df, normalize=False):
     new_stim_df = pd.DataFrame(data=new_stim, index=stim.index)
     three_down = pd.concat([first_sec, new_stim_df, after], axis=1)
     three_down = pd.DataFrame(data=three_down.values, columns=twos.columns[:93], index=three_down.index)
-    print(np.shape(three_down))
+    # print(np.shape(three_down))
 
     # cut off last second of twos
     two_down = twos.drop(columns=twos.columns[-15:])
-    print(np.shape(two_down))
+    # print(np.shape(two_down))
 
     # stick them back together
     all_twos_now = pd.concat([three_down, two_down], axis=0)
@@ -1219,6 +1219,7 @@ def groupmouse_trialfac_summary_stages(
         # load your data
         load_kwargs = {'mouse': mouse,
                        'method': method,
+                       'trace_type': trace_type,
                        'cs': cs,
                        'warp': warp,
                        'word': words[mnum],
@@ -1228,6 +1229,7 @@ def groupmouse_trialfac_summary_stages(
                        'rank': rank_num}
         load_kwargs_meta = {'mouse': mouse,
                        'method': method,
+                       'trace_type': trace_type,
                        'cs': cs,
                        'warp': warp,
                        'word': words[mnum],

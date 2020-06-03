@@ -27,7 +27,7 @@ lookup = {'OA27': {'plus': 270, 'minus': 135, 'neutral': 0, 'blank': -1},
      'OA34': {'plus': 270, 'minus': 135, 'neutral': 0, 'blank': -1},
      'OA36': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
      'OA26': {'plus': 270, 'minus': 135, 'neutral': 0, 'blank': -1},
-     'CC175': {'plus': 270, 'minus': 135, 'neutral': 0, 'blank': -1},
+     'CC175': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
      'CB173': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
      'AS23': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
      'AS20': {'plus': 135, 'minus': 270, 'neutral': 135, 'blank': -1},
@@ -44,7 +44,7 @@ lookup_ori = {'OA27': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank'},
      'OA34': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank'},
      'OA36': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
      'OA26': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank'},
-     'CC175': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank'},
+     'CC175': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
      'CB173': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
      'AS23': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
      'AS20': {135: 'plus', 270: 'minus', 0: 'neutral', -1: 'blank'},
@@ -70,3 +70,85 @@ stim_length = {
      'AS41': 2,
      'OA38': 2,
      'AS57': 2}
+
+"""Useful lists so I don't have to type out names of mice I commonly use"""
+mice = {
+    # all mice with crossday alignment completed
+    'all15': sorted(['AS23', 'AS20', 'CB173', 'AS47', 'AS41', 'AS57', 'OA38',
+        'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26',  'CC175']),
+    'all14': sorted(['AS23', 'AS20', 'CB173', 'AS47', 'AS41', 'AS57', 'OA38',
+        'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26',  'CC175']),
+    # reversal mice. CB173 also has reversal but never looked well trained.
+    # AS57 is included but only had one day that looked well trained before
+    # reversal. AS23 had seizures. AS20 was well trained when AUS got him. 
+    'rev10': sorted(['AS23', 'AS20', 'AS57',
+        'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26']),
+    # Original big learning animals
+    'core4': sorted(['OA27', 'OA67', 'VF226', 'OA26']),
+    # Big learning animals. OA38 has 4 days of naive immediately before
+    # learning begins here that we too large a shift to align FOVs
+    'core9': sorted(['OA27', 'OA67', 'VF226', 'OA26', 
+        'OA32', 'OA34', 'OA36', 'AS47', 'OA38', 'AS23']),
+    # Animals with naive. OA38 has 4 days of naive immediately before
+    # learning begins here that we too large a shift to align FOVs
+    'naive6': sorted(['OA27', 'OA67', 'VF226', 'OA26',  'AS47', 'CC175']),
+    # all mice with 2 second stimulus
+    'stim2': sorted(['AS23', 'AS20', 'CB173', 'AS47', 'AS41', 'AS57', 'OA38',
+        'OA32', 'OA34', 'OA36']),
+    'stim3': sorted(['OA27', 'OA67', 'VF226', 'OA26', 'CC175'])
+    }
+
+""" Suppressed factors trun_zscore_day, lion/citation {mouse: {rank: comp}}"""
+supress = {
+     'OA27': {15: [14], 12: [11], 10: [9], 9: [8]},
+     'VF226': {15: [1], 10: [6]}, #10: 1 seems like an important comparison.
+     'OA67': {15: [13], 10: [8, 5]}, #15: 13 isn't great, 10: 8 has offset but is low for plus only.
+     'OA32': {15: [15], 10: [10]},
+     'OA34': {15: [], 10: [10]},
+     'OA36': {15: [], 10: []},
+     'OA26': {15: [], 10: []},
+     'CC175': {15: [], 10: []},
+     'CB173': {15: [], 10: []},
+     'AS23': {15: [], 10: []},
+     'AS20': {15: [12], 10: [9]}, #15: sucks, 10: is great
+     'AS47': {15: [], 10: []},
+     'AS41': {15: [], 10: []},
+     'OA38': {15: [], 10: []},
+     'AS57': {15: [8, 14], 10: [9]}
+     }
+
+offset = {
+     'OA27': {15: [7], 12: [6], 10: [5], 9: []}, 
+     'VF226': {15: [6, 11], 10: [5]}, 
+     'OA67': {15: [2], 10: [2]}, 
+     'OA32': {15: [14], 10: [8]},
+     'OA34': {15: [], 10: [8]}, # 10: 3 looks like a plus offset
+     'OA36': {15: [], 10: []},
+     'OA26': {15: [], 10: []},
+     'CC175': {15: [], 10: []},
+     'CB173': {15: [], 10: []},
+     'AS23': {15: [], 10: []},
+     'AS20': {15: [9, 11, 15], 10: [6, 8]}, # 15:1 is longer like ensure, but tuned neut-minus
+     'AS47': {15: [], 10: []},
+     'AS41': {15: [], 10: []},
+     'OA38': {15: [], 10: []},
+     'AS57': {15: [4], 15: [3]}
+     }
+
+ensure = { 
+     'OA27': {15: [4], 12: [3], 10: [3], 9: [3]}, 
+     'VF226': {15: [8], 10: [1]}, 
+     'OA67': {15: [6, 7], 10: [4]}, 
+     'OA32': {15: [12], 10: [3]},
+     'OA34': {15: [], 10: [1]},
+     'OA36': {15: [], 10: []},
+     'OA26': {15: [], 10: []},
+     'CC175': {15: [], 10: []},
+     'CB173': {15: [], 10: []},
+     'AS23': {15: [], 10: []},
+     'AS20': {15: [4], 10: [3]},
+     'AS47': {15: [], 10: []},
+     'AS41': {15: [], 10: []},
+     'OA38': {15: [], 10: []},
+     'AS57': {15: [10, 15], 10: [10]}, # unclear which it is
+     }

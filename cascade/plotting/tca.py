@@ -177,6 +177,7 @@ def groupmouse_varex_summary(
                        'cs': cs,
                        'warp': warp,
                        'word': words[c],
+                       'trace_type': trace_type,
                        'group_by': group_by,
                        'nan_thresh': nan_thresh,
                        'score_threshold': score_threshold}
@@ -275,7 +276,7 @@ def groupday_longform_factors_annotated(
         filetype='png',
         scale_y=False,
         hmm_engaged=True,
-        add_prev_cols=False,
+        add_prev_cols=True,
         verbose=False):
 
     """
@@ -343,6 +344,7 @@ def groupday_longform_factors_annotated(
                    'cs': cs,
                    'warp': warp,
                    'word': word,
+                   'trace_type': trace_type,
                    'group_by': group_by,
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold}
@@ -419,13 +421,18 @@ def groupday_longform_factors_annotated(
             ax[0, 1].autoscale(enable=True, axis='both', tight=True)
 
             # add a line for stim onset and offset
-            # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
+            # NOTE: assumes downsample, 1 sec before onset, default is 15.5 Hz
+            if '_bin' in trace_type.lower():
+                one_sec = 3.9  # 27 frames for 7 sec, 1 pre, 6, post
+            else:
+                one_sec = 15.5
             off_time = lookups.stim_length[mouse]
             y_lim = ax[0, 1].get_ylim()
-            ons = 15.5*1
-            offs = ons+15.5*off_time
+            ons = one_sec*1
+            offs = ons+one_sec*off_time
             ax[0, 1].plot([ons, ons], y_lim, ':k')
-            ax[0, 1].plot([offs, offs], y_lim, ':k')
+            if '_onset' not in trace_type.lower():
+                ax[0, 1].plot([offs, offs], y_lim, ':k')
 
             col = cols - 1
             for i in range(rows):
@@ -913,6 +920,7 @@ def groupday_factors_annotated(
                    'cs': cs,
                    'warp': warp,
                    'word': word,
+                   'trace_type': trace_type,
                    'group_by': group_by,
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold}
@@ -995,13 +1003,18 @@ def groupday_factors_annotated(
 
         # add a line for stim onset and offset
         # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
+        if '_bin' in trace_type.lower():
+            one_sec = 3.9  # 27 frames for 7 sec, 1 pre, 6, post
+        else:
+            one_sec = 15.5
         off_time = lookups.stim_length[mouse]
         for i in range(U.rank):
             y_lim = ax[i, 1].get_ylim()
-            ons = 15.5*1
-            offs = ons+15.5*off_time
+            ons = one_sec*1
+            offs = ons+one_sec*off_time
             ax[i, 1].plot([ons, ons], y_lim, ':k')
-            ax[i, 1].plot([offs, offs], y_lim, ':k')
+            if '_onset' not in trace_type.lower():
+                ax[i, 1].plot([offs, offs], y_lim, ':k')
 
         # reset counter
         if add_prev_cols:

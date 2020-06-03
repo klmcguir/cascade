@@ -1233,6 +1233,9 @@ def groupday_tca(
     # only include days with xday alignment
     days = [s for s in days if 'xday' in s.tags]
 
+    # add monitor condition to exclusions
+    exclude_conds += ('monitor',)
+
     # filter DateSorter object if you are filtering on dprime
     if use_dprime:
         dprime = []
@@ -1329,7 +1332,7 @@ def groupday_tca(
                     downsample=downsample, clean_artifacts=clean_artifacts,
                     thresh=thresh, warp=warp, smooth=smooth,
                     smooth_win=smooth_win, exclude_tags=exclude_tags)
-                bhv_traces = _get_speed_pupil_traces(
+                bhv_traces = _get_speed_pupil_npil_traces(
                     run,
                     cs=cs,
                     start_time=start_time,
@@ -1370,6 +1373,10 @@ def groupday_tca(
                     run_traces = run_traces[:, :, (~dfr['condition'].isin(exclude_conds))]
                     bhv_traces = bhv_traces[:, :, (~dfr['condition'].isin(exclude_conds))]
                     dfr = dfr.loc[(~dfr['condition'].isin(exclude_conds)), :]
+
+                # assertions that your filtering worked
+                if 'blank' in exclude_conds:
+                    assert np.sum(dfr['orientation'].isin([-1])) == 0
 
                 # drop trials with nans and add to lists
                 keep = np.sum(np.sum(np.isnan(run_traces), axis=0,
@@ -1518,7 +1525,7 @@ def groupday_tca(
         print(str(day1.mouse) + ': group_by=' + str(group_by) + ': done.')
 
 
-def _get_speed_pupil_traces(
+def _get_speed_pupil_npil_traces(
         run,
         cs='',
         start_time=-1,
@@ -1549,9 +1556,9 @@ def _get_speed_pupil_traces(
         run,
         cs=cs,
         trace_type='pupil',
-        start_time=-1,
-        end_time=6,
-        downsample=True,
+        start_time=start_time,
+        end_time=end_time,
+        downsample=downsample,
         baseline=(-1,0),
         cutoff_before_lick_ms=-1)
 
@@ -1569,14 +1576,36 @@ def _get_speed_pupil_traces(
         run,
         cs=cs,
         trace_type='speed',
-        start_time=-1,
-        end_time=6,
-        downsample=True,
+        start_time=start_time,
+        end_time=end_time,
+        downsample=downsample,
+        baseline=(-1,0),
+        cutoff_before_lick_ms=-1)
+
+    neuropil_traces = utils.getcsbehavior(
+        run,
+        cs=cs,
+        trace_type='neuropil',
+        start_time=start_time,
+        end_time=end_time,
+        downsample=downsample,
+        baseline=None,
+        cutoff_before_lick_ms=cutoff_before_lick_ms)
+
+    dneuropil_traces = utils.getcsbehavior(
+        run,
+        cs=cs,
+        trace_type='neuropil',
+        start_time=start_time,
+        end_time=end_time,
+        downsample=downsample,
         baseline=(-1,0),
         cutoff_before_lick_ms=-1)
 
     all_behaviors_list = (
-        pupil_traces, dpupil_traces, speed_traces, dspeed_traces)
+        pupil_traces, dpupil_traces,
+        speed_traces, dspeed_traces,
+        neuropil_traces, dneuropil_traces)
     bhv_traces = np.concatenate(all_behaviors_list, axis=0)
 
     return bhv_traces
@@ -1892,7 +1921,7 @@ def _triggerfromrun(run, trace_type='zscore_day', cs='', downsample=True,
 
 
 def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
-                      downsample=True, add_p_cols=True, verbose=True):
+                      downsample=True, add_p_cols=False, verbose=True):
     """
     Create pandas dataframe of trial metadata from run.
 
@@ -2086,6 +2115,37 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     else:
         pre_speed = np.full(len(trial_idx), np.nan)
 
+    # calculate running speed during trial
+    if t2p.d['neuropil'].size > 0:
+        npil_vec = t2p.d['neuropil']
+        npil = []
+        for s in trial_idx:
+            try:
+                npil.append(
+                    np.nanmean(
+                        npil_vec[all_onsets[s]:all_offsets[s]]))
+            except:
+                npil.append(np.nan)
+        npil = np.array(npil)
+    else:
+        npil = np.full(len(trial_idx), np.nan)
+
+    # calculate neuropil speed preceding trial
+    if t2p.d['neuropil'].size > 0:
+        pre_npil_vec = t2p.d['neuropil']
+        nframe_back = np.round(t2p.d['framerate'])
+        pre_npil = []
+        for s in trial_idx:
+            try:
+                pre_npil.append(
+                    np.nanmean(
+                        pre_npil_vec[int(all_onsets[s] - nframe_back):all_onsets[s]]))
+            except:
+                pre_npil.append(np.nan)
+        pre_npil = np.array(pre_npil)
+    else:
+        pre_npil = np.full(len(trial_idx), np.nan)
+
     # get mean brainmotion for time stim is on screen
     # use first 3 seconds after onset if there is no offset
     if t2p.d['brainmotion'].size > 0:
@@ -2239,6 +2299,8 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
             'pre_licks': pre_lick,
             'pupil': pupil,
             'pre_pupil': pre_pupil,
+            'neuropil': npil,
+            'pre_neuropil': pre_npil,
             'brainmotion': brainmotion}
 
     dfr = pd.DataFrame(data, index=index)
