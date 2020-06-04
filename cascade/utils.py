@@ -106,26 +106,26 @@ def add_firstlick_wmedian_to_meta(meta):
     # buffer = 1/15.5*2 = 129 ms
     buffer_ms = 2
 
-    # get vector for looping over
-    u_days = np.unique(meta.reset_index()['date'])
-    all_days = meta.reset_index()['date'].values
-
     # get lick latency in terms of frames
     lick = meta['firstlick'].values
     cs = meta['condition'].values
     new_lick = np.zeros(len(lick))
 
-    # find median lick latency for all plus trials
-    last_stim_frame = (1+lookups.stim_length[mouse])*15.5
-    median_for_plus = np.nanmedian(lick[(lick < last_stim_frame) & np.isin(cs, 'plus')])
+    # find median lick latency for all plus trials (looking across stim and response window)
+    last_trial_frame = (1 + 2 + lookups.stim_length[mouse]) * 15.5  # last frame of response window
+    last_stim_frame = (1 + lookups.stim_length[mouse]) * 15.5  # last frame of stimulus window
+    median_for_plus = np.nanmedian(lick[(lick < last_trial_frame) & np.isin(cs, 'plus')])
     new_lick[:] = median_for_plus
 
     # break if you will have less than 7.5 datapoints for your bias calculation
-    assert median_for_plus > 15.5 and median_for_plus - buffer_ms >= 23
+    assert median_for_plus > 21
 
-    # add in existing licks with 129 ms buffer before them
+    # add in existing licks with 129 ms buffer before them, only update lick latency on plus trials
+    # for all other trials use the median lick latency of plus trials or first lick, whichever is sooner
     lick_in_window_boo = lick < last_stim_frame
+    lick_before_median = lick < median_for_plus
     new_lick[lick_in_window_boo & np.isin(cs, 'plus')] = lick[lick_in_window_boo & np.isin(cs, 'plus')] - buffer_ms
+    new_lick[lick_before_median & ~np.isin(cs, 'plus')] = lick[lick_before_median & ~np.isin(cs, 'plus')]
     meta['firstlick_med'] = new_lick
     
     return meta
@@ -144,37 +144,37 @@ def add_firstlickbout_wmedian_to_meta(meta):
     # buffer = 1/15.5*2 = 129 ms
     buffer_ms = 2
 
-    # get vector for looping over
-    u_days = np.unique(meta.reset_index()['date'])
-    all_days = meta.reset_index()['date'].values
-
     # get lick latency in terms of frames
     lick = meta['firstlickbout'].values
     cs = meta['condition'].values
     new_lick = np.zeros(len(lick))
 
-    # find median lick latency for all plus trials
-    last_stim_frame = (1+lookups.stim_length[mouse])*15.5
-    median_for_plus = np.nanmedian(lick[(lick < last_stim_frame) & np.isin(cs, 'plus')])
+    # find median lick latency for all plus trials (looking across stim and response window)
+    last_trial_frame = (1 + 2 + lookups.stim_length[mouse]) * 15.5  # last frame of response window
+    last_stim_frame = (1 + lookups.stim_length[mouse]) * 15.5  # last frame of stimulus window
+    median_for_plus = np.nanmedian(lick[(lick < last_trial_frame) & np.isin(cs, 'plus')])
     new_lick[:] = median_for_plus
 
-    print(median_for_plus)
-    
     # break if you will have less than 7.5 datapoints for your bias calculation
-    assert median_for_plus > 15.5 and median_for_plus - buffer_ms >= 23
+    assert median_for_plus > 21
 
-    # add in existing licks with 129 ms buffer before them
+    # add in existing licks with 129 ms buffer before them, only update lick latency on plus trials
+    # for all other trials use the median lick latency of plus trials or first lick, whichever is sooner
     lick_in_window_boo = lick < last_stim_frame
-    new_lick[lick_in_window_boo] = lick[lick_in_window_boo] - buffer_ms
+    lick_before_median = lick < median_for_plus
+    new_lick[lick_in_window_boo & np.isin(cs, 'plus')] = lick[lick_in_window_boo & np.isin(cs, 'plus')] - buffer_ms
+    new_lick[lick_before_median & ~np.isin(cs, 'plus')] = lick[lick_before_median & ~np.isin(cs, 'plus')]
     meta['firstlickbout_med'] = new_lick
-    
+
     return meta
 
 
 def add_firstlick_wmedian_run_to_meta(meta):
     """
     Helper function that adds in the median lick time for all plus trials for trials with
-    no, or slow licking. If the actual time to lick is shorter latency then that is used.
+    no, or slow licking. Median licking is calculated for each imaging session. In general this method
+    seems like it punishes high dprime behavior because animals with incredibly fast lick latency on individual
+    sessions have very little neural data left for neutral and minus trials calculated this way.
     """
 
     # make sure that the date vec allows for 0.5 days at reversal and learning
@@ -194,17 +194,26 @@ def add_firstlick_wmedian_run_to_meta(meta):
     new_lick = np.zeros(len(lick))
 
     # find median lick latency for all plus trials
-    last_stim_frame = (1+lookups.stim_length[mouse])*15.5
-    median_for_plus = np.nanmedian(lick[(lick < last_stim_frame) & np.isin(cs, 'plus')])
-    new_lick[:] = median_for_plus - buffer_ms
+    median_for_plus = np.zeros(len(meta))
+    last_trial_frame = (1 + 2 + lookups.stim_length[mouse]) * 15.5
+    last_stim_frame = (1 + lookups.stim_length[mouse]) * 15.5
+    day_vec = meta.reset_index()['date']
+    run_vec = meta.reset_index()['run']
+    for di in day_vec.unique():
+        day_bool = day_vec.isin([di])
+        curr_runs = run_vec.iloc[day_bool.values]
+        for ri in curr_runs.unique():
+            run_bool = day_bool & run_vec.isin([ri])
+            median_for_plus[run_bool] = np.nanmedian(lick[(lick < last_trial_frame) & np.isin(cs, 'plus') & run_bool])
+    new_lick = median_for_plus
 
-    # break if you will have less than 7.5 datapoints for your bias calculation
-    assert median_for_plus > 15.5 and median_for_plus - buffer_ms >= 23
+    # break if you will have less than 300 ms of datapoints for your bias calculation
+    assert np.nanmin(median_for_plus) > 21
 
     # add in existing licks with 129 ms buffer before them
     lick_in_window_boo = lick < last_stim_frame
     new_lick[lick_in_window_boo] = lick[lick_in_window_boo] - buffer_ms
-    meta['firstlick_med'] = new_lick
+    meta['firstlick_med_run'] = new_lick
     
     return meta
 

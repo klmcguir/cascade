@@ -29,7 +29,7 @@ def get_lick_mask(meta, tensor):
     # get lick latency, adjusted with median for trials without licking
     meta = utils.add_firstlickbout_wmedian_to_meta(meta)
     mask = np.zeros(tensor.shape)
-    lick_lat = meta['firstlickbout_med'].values
+    lick_lat = meta['firstlickbout_med'].values  # see utils for other options for getting lick latency
 
     # loop over trials to create your licking mask, setting values to 1
     frame_number = np.arange(tensor.shape[1])
@@ -41,7 +41,7 @@ def get_lick_mask(meta, tensor):
     return mask > 0
 
 
-def get_bias_from_tensor(meta, tensor, staging='parsed_10stage', checkup=0):
+def get_bias_from_tensor(meta, tensor, staging='parsed_10stage'):
     """
     Calculate bias for stages of learning for a tensor and meta.
     """
@@ -53,7 +53,9 @@ def get_bias_from_tensor(meta, tensor, staging='parsed_10stage', checkup=0):
     assert tensor.shape[2] == len(meta)
 
     # add learning stages to meta
-    if 'parsed_stage' not in meta.columns:
+    if 'parsed_stage' not in meta.columns and 'parsed_stage' in staging:
+        meta = utils.add_5stages_to_meta(meta)
+    if 'parsed_10stage' not in meta.columns and 'parsed_10stage' in staging:
         meta = utils.add_5stages_to_meta(meta)
 
     # make sure that the date includes half days for learning/reversal1
@@ -65,33 +67,45 @@ def get_bias_from_tensor(meta, tensor, staging='parsed_10stage', checkup=0):
     mask = get_lick_mask(meta, tensor)
 
     # baseline period boolean
-    base_boo = np.arange(tensor.shape[1]) < 15.5
-    baseline_mean = np.nanmean(tensor[:, base_boo, :], axis=1)
+    timepts = np.arange(tensor.shape[1])
+    base_boo = timepts <= 15.5
+    # baseline_mean = np.nanmean(tensor[:, base_boo, :], axis=1)
 
     # get mean for each trial
     ablated_tensor = deepcopy(tensor)
-    ablated_tensor[~mask] = np.nan
-    stim_mean_nolick = np.nanmean(ablated_tensor, axis=1)
+    ablated_tensor[~mask] = np.nan  # this sets baseline to NaN as well
+    # stim_mean_nolick = np.nanmean(ablated_tensor, axis=1)
 
     # get amplitude compared to baseline
-    amplitude_nolick = stim_mean_nolick - baseline_mean
+    # amplitude_nolick = stim_mean_nolick - baseline_mean
     # return amplitude_nolick, stim_mean_nolick, baseline_mean
-    amplitude_nolick[amplitude_nolick < checkup] = 0  # rectify 
+    # amplitude_nolick[amplitude_nolick < checkup] = 0  # rectify
 
     # boolean of first 100 trials per day
     first100_bool = _first100_bool(meta)
 
     # loop over 5stages
-    mean_per_stage = np.zeros((amplitude_nolick.shape[0], 10, 3))
+    mean_per_stage = np.zeros((tensor.shape[0], 10, 3))
     stage = meta[staging]
     for cstagi, stagi in enumerate(meta[staging].unique()):
         stage_bool = stage.isin([stagi]).values
         for ccue, cue in enumerate(['plus', 'minus', 'neutral']):
             cue_bool = meta['condition'].isin([cue]).values
-            mean_per_stage[:, cstagi, ccue] = np.nanmean(
-                amplitude_nolick[:, cue_bool & stage_bool & first100_bool], axis=1)
+            # mean_per_stage[:, cstagi, ccue] = np.nanmean(
+            #     amplitude_nolick[:, cue_bool & stage_bool & first100_bool], axis=1)
+            # calculate mean response of each cell for each stage of learning
+            # first average over trials to help clean up noise from dropped trials and NaNs.
+            # next average over timepoints during the stimulus window.
+            mean_resp = np.nanmean(
+                np.nanmean(ablated_tensor[:, :, cue_bool & stage_bool & first100_bool], axis=2), axis=1)
+            # calculate baseline as you would response period overaging over trials then timepoint
+            mean_base = np.nanmean(
+                np.nanmean(tensor[:, base_boo, :][:, :, cue_bool & stage_bool & first100_bool], axis=2), axis=1)
+            mean_amplitude = mean_resp - mean_base
+            mean_amplitude[mean_amplitude < 0] = 0  # rectify, little negatives break this calculation
+            mean_per_stage[:, cstagi, ccue] = mean_amplitude
     
-    # normalize
+    # normalize by the max response
     max_response = np.nanmax(mean_per_stage, axis=2)
     for cue_n in range(mean_per_stage.shape[2]):
         mean_per_stage[:, :, cue_n] = mean_per_stage[:, :, cue_n]/max_response
@@ -113,7 +127,7 @@ def get_bias_from_tensor(meta, tensor, staging='parsed_10stage', checkup=0):
             stages_in.extend([stagi]*len(mean_vec))
 
     data = {'cue': cues_in, 'learning stage': stages_in,
-            'mean response': means_in, 'FC bias': bias_in}
+            'mean response': means_in, 'bias': bias_in}
     mean_df = pd.DataFrame(data)
 
     return mean_df
@@ -355,7 +369,7 @@ def _first100_bool(meta):
     Helper function to get a boolean vector of the first 100 trials for each day.
     If a day is shorter than 100 trials use the whole day. 
     """
-    
+
     days = meta.reset_index()['date'].unique()
 
     first100 = np.zeros((len(meta)))
