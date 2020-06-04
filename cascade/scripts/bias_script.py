@@ -8,7 +8,7 @@ mice = cas.lookups.mice['all15']
 words = ['bookmarks' if m in 'OA27' else 'horrible' for m in mice]
 rank_num = 10
 
-save_folder = save_dir_groupmouse(
+save_folder = cas.paths.save_dir_groupmouse(
         mice,
         'FC bias and mean across learning all mice',
         method='ncp_hals',
@@ -22,7 +22,7 @@ save_folder = save_dir_groupmouse(
 
 for mi, wi in zip(mice, words):
 
-    model, ids, tensor, meta, bhv, sorts = load_all_groupday(
+    model, ids, tensor, meta, bhv, sorts = cas.load.load_all_groupday(
         mouse=mi,
         trace_type='zscore_day',
         method='ncp_hals',
