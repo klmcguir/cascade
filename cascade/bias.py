@@ -53,7 +53,7 @@ def get_bias_from_tensor(meta, tensor, staging='parsed_10stage'):
     if 'parsed_stage' not in meta.columns and 'parsed_stage' in staging:
         meta = utils.add_5stages_to_meta(meta)
     if 'parsed_10stage' not in meta.columns and 'parsed_10stage' in staging:
-        meta = utils.add_5stages_to_meta(meta)
+        meta = utils.add_10stages_to_meta(meta)
 
     # make sure that the date includes half days for learning/reversal1
     meta = utils.update_meta_date_vec(meta)
