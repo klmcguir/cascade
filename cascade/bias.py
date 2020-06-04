@@ -3,11 +3,6 @@ import pandas as pd
 import numpy as np
 import flow
 import pool
-import os
-import matplotlib.pyplot as plt
-import seaborn as sns
-from . import paths
-from . import tca
 from . import utils
 from . import lookups
 from copy import deepcopy
