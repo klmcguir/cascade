@@ -117,7 +117,7 @@ def add_firstlick_wmedian_to_meta(meta):
     median_for_plus = np.nanmedian(lick[(lick < last_trial_frame) & np.isin(cs, 'plus')])
     new_lick[:] = median_for_plus
 
-    # break if you will have less than 7.5 datapoints for your bias calculation
+    # break if you will have less than 350 ms of datapoints for your bias calculation
     assert median_for_plus > 21
 
     # add in existing licks with 129 ms buffer before them, only update lick latency on plus trials
@@ -155,7 +155,7 @@ def add_firstlickbout_wmedian_to_meta(meta):
     median_for_plus = np.nanmedian(lick[(lick < last_trial_frame) & np.isin(cs, 'plus')])
     new_lick[:] = median_for_plus
 
-    # break if you will have less than 7.5 datapoints for your bias calculation
+    # break if you will have less than 350 ms of datapoints for your bias calculation
     assert median_for_plus > 21
 
     # add in existing licks with 129 ms buffer before them, only update lick latency on plus trials

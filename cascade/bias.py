@@ -3,9 +3,11 @@ import pandas as pd
 import numpy as np
 import flow
 import pool
+import os
 from . import utils
 from . import lookups
 from copy import deepcopy
+from tensortools.tensors import KTensor
 
 
 def get_lick_mask(meta, tensor):
@@ -22,9 +24,9 @@ def get_lick_mask(meta, tensor):
     assert tensor.shape[2] == len(meta)
 
     # get lick latency, adjusted with median for trials without licking
-    meta = utils.add_firstlickbout_wmedian_to_meta(meta)
+    meta = utils.add_firstlick_wmedian_to_meta(meta)
     mask = np.zeros(tensor.shape)
-    lick_lat = meta['firstlickbout_med'].values  # see utils for other options for getting lick latency
+    lick_lat = meta['firstlick_med'].values  # see utils for other options for getting lick latency
 
     # loop over trials to create your licking mask, setting values to 1
     frame_number = np.arange(tensor.shape[1])
@@ -126,6 +128,121 @@ def get_bias_from_tensor(meta, tensor, staging='parsed_10stage'):
     mean_df = pd.DataFrame(data)
 
     return mean_df
+
+
+def get_bias_from_ablated_tensor(meta, model, model_rank, save_folder='', staging='parsed_10stage'):
+    """
+    Calculate bias for stages of learning for a tensor and meta.
+    """
+
+    for fac_num in range(model_rank):
+        tensor = ablate_Ktensor(model.results[model_rank][0].factors, fac_num)
+
+        # make sure that you have a full size 15.5 Hz tensor
+        assert tensor.shape[1] == 108
+
+        # make sure that you have a matching tensor and meta
+        assert tensor.shape[2] == len(meta)
+
+        # add learning stages to meta
+        if 'parsed_stage' not in meta.columns and 'parsed_stage' in staging:
+            meta = utils.add_5stages_to_meta(meta)
+        if 'parsed_10stage' not in meta.columns and 'parsed_10stage' in staging:
+            meta = utils.add_5stages_to_meta(meta)
+
+        # make sure that the date includes half days for learning/reversal1
+        meta = utils.update_meta_date_vec(meta)
+
+        # get tensor-shaped mask of values that exclude licking
+        # this accounts for differences in stimulus length between mice
+        # baseline is also set to false
+        mask = get_lick_mask(meta, tensor)
+
+        # baseline period boolean
+        timepts = np.arange(tensor.shape[1])
+        base_boo = timepts <= 15.5
+        # baseline_mean = np.nanmean(tensor[:, base_boo, :], axis=1)
+
+        # get mean for each trial
+        ablated_tensor = deepcopy(tensor)
+        ablated_tensor[~mask] = np.nan  # this sets baseline to NaN as well
+        # stim_mean_nolick = np.nanmean(ablated_tensor, axis=1)
+
+        # get amplitude compared to baseline
+        # amplitude_nolick = stim_mean_nolick - baseline_mean
+        # return amplitude_nolick, stim_mean_nolick, baseline_mean
+        # amplitude_nolick[amplitude_nolick < checkup] = 0  # rectify
+
+        # boolean of first 100 trials per day
+        first100_bool = _first100_bool(meta)
+
+        # loop over 5stages
+        mean_per_stage = np.zeros((tensor.shape[0], 10, 3))
+        stage = meta[staging]
+        for cstagi, stagi in enumerate(meta[staging].unique()):
+            stage_bool = stage.isin([stagi]).values
+            for ccue, cue in enumerate(['plus', 'minus', 'neutral']):
+                cue_bool = meta['condition'].isin([cue]).values
+                # mean_per_stage[:, cstagi, ccue] = np.nanmean(
+                #     amplitude_nolick[:, cue_bool & stage_bool & first100_bool], axis=1)
+                # calculate mean response of each cell for each stage of learning
+                # first average over trials to help clean up noise from dropped trials and NaNs.
+                # next average over timepoints during the stimulus window.
+                mean_resp = np.nanmean(
+                    np.nanmean(ablated_tensor[:, :, cue_bool & stage_bool & first100_bool], axis=2), axis=1)
+                # calculate baseline as you would response period overaging over trials then timepoint
+                mean_base = np.nanmean(
+                    np.nanmean(tensor[:, base_boo, :][:, :, cue_bool & stage_bool & first100_bool], axis=2), axis=1)
+                mean_amplitude = mean_resp - mean_base
+                mean_amplitude[mean_amplitude < 0] = 0  # rectify, little negatives break this calculation
+                mean_per_stage[:, cstagi, ccue] = mean_amplitude
+
+        # normalize by the max response
+        max_response = np.nanmax(mean_per_stage, axis=2)
+        for cue_n in range(mean_per_stage.shape[2]):
+            mean_per_stage[:, :, cue_n] = mean_per_stage[:, :, cue_n] / max_response
+
+        # return mean_per_stage
+
+        # rewind ... unwrap your means for a DataFrame
+        means_in = []
+        stages_in = []
+        cues_in = []
+        bias_in = []
+        for cstagi, stagi in enumerate(meta[staging].unique()):
+            for ccue, cue in enumerate(['plus', 'minus', 'neutral']):
+                mean_vec = mean_per_stage[:, cstagi, ccue]
+                bias_vec = mean_per_stage[:, cstagi, ccue] / np.nansum(mean_per_stage, axis=2)[:, cstagi]
+                bias_in.extend(bias_vec)
+                means_in.extend(mean_vec)
+                cues_in.extend([cue] * len(mean_vec))
+                stages_in.extend([stagi] * len(mean_vec))
+
+        data = {'cue': cues_in, 'learning stage': stages_in,
+                'mean response': means_in, 'bias': bias_in, 'ablated component': }
+        mean_df = pd.DataFrame(data)
+        mean_df_list.append(mean_df)
+
+    all_mean_df = pd.concat(mean_df_list, axis=0)
+
+    mouse = meta.reset_index()['mouse'].unique()[0]
+    all_mean_df.to_pickle(os.path.join(save_folder, f'{mouse}_rank{model_rank}_model_bias_and_mean_df_wablation.pkl'))
+
+    return all_mean_df
+
+
+def ablate_Ktensor(tt_factors, fac_num_to_remove):
+    """Create full matrix from an ablated (one factor removed) KTensor from tensortool."""
+
+    # turn factors into tuple, then remove factor from each mode's matrix
+    factors = tuple(tt_factors)
+    factors = tuple([np.delete(f, fac_num_to_remove, axis=1) for f in factors])
+
+    # create a KTensor from tensortools to speed up some math
+    kt = KTensor(factors)
+
+    # create full tensor
+    return kt.full()
 
 
 def get_bias(
