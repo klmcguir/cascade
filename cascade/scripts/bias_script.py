@@ -18,7 +18,7 @@ save_folder = cas.paths.save_dir_groupmouse(
         words=words,
         rank_num=rank_num,
         grouping='group',
-        group_pars='all3')
+        group_pars={'group_by': 'all3'})
 
 for mi, wi in zip(mice, words):
 
