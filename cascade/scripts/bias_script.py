@@ -58,4 +58,4 @@ for mi, wi in zip(mice, words):
     plt.ylabel('Food cue bias index\nFC / (FC+QC+NC)', size=14)
     plt.title(f'{mi}: Food cue bias', size=16)
     plt.legend(bbox_to_anchor=(1.05, 1))
-    plt.savefig(os.path.join(save_folder, f'{mi}_rank_{rank_num}_mean_cue_response.pdf'), bbox_inches='tight')
+    plt.savefig(os.path.join(save_folder, f'{mi}_rank_{rank_num}_FC_bias.pdf'), bbox_inches='tight')
