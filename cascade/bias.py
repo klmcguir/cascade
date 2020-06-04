@@ -130,103 +130,68 @@ def get_bias_from_tensor(meta, tensor, staging='parsed_10stage'):
     return mean_df
 
 
-def get_bias_from_ablated_tensor(meta, model, model_rank, save_folder='', staging='parsed_10stage'):
+def get_bias_from_model(meta, input_tensor, model, model_rank, save_folder='', staging='parsed_10stage'):
     """
-    Calculate bias for stages of learning for a tensor and meta.
+    Calculate bias for stages of learning for a tensor and meta on TCA model itself.
     """
 
-    for fac_num in range(model_rank):
-        tensor = ablate_Ktensor(model.results[model_rank][0].factors, fac_num)
+    # loop over removing each component from TCA model, -1 is the whole model without ablation
+    mean_df_list = []
+    for fac_num in range(-1, model_rank):
 
-        # make sure that you have a full size 15.5 Hz tensor
-        assert tensor.shape[1] == 108
+        # create a tensor from your TCA factors, for -1
+        if fac_num == -1:
+            tensor = model.results[model_rank][0].factors.full()
+            fac_label = 'full'
+        else:
+            tensor = ablate_Ktensor(model.results[model_rank][0].factors, fac_num)
+            fac_label = f'ablated component {fac_num + 1}'
 
-        # make sure that you have a matching tensor and meta
-        assert tensor.shape[2] == len(meta)
+        # mask values that are NaN in you original data
+        mask = np.isnan(input_tensor)
+        tensor[mask] = np.nan
 
-        # add learning stages to meta
-        if 'parsed_stage' not in meta.columns and 'parsed_stage' in staging:
-            meta = utils.add_5stages_to_meta(meta)
-        if 'parsed_10stage' not in meta.columns and 'parsed_10stage' in staging:
-            meta = utils.add_5stages_to_meta(meta)
-
-        # make sure that the date includes half days for learning/reversal1
-        meta = utils.update_meta_date_vec(meta)
-
-        # get tensor-shaped mask of values that exclude licking
-        # this accounts for differences in stimulus length between mice
-        # baseline is also set to false
-        mask = get_lick_mask(meta, tensor)
-
-        # baseline period boolean
-        timepts = np.arange(tensor.shape[1])
-        base_boo = timepts <= 15.5
-        # baseline_mean = np.nanmean(tensor[:, base_boo, :], axis=1)
-
-        # get mean for each trial
-        ablated_tensor = deepcopy(tensor)
-        ablated_tensor[~mask] = np.nan  # this sets baseline to NaN as well
-        # stim_mean_nolick = np.nanmean(ablated_tensor, axis=1)
-
-        # get amplitude compared to baseline
-        # amplitude_nolick = stim_mean_nolick - baseline_mean
-        # return amplitude_nolick, stim_mean_nolick, baseline_mean
-        # amplitude_nolick[amplitude_nolick < checkup] = 0  # rectify
-
-        # boolean of first 100 trials per day
-        first100_bool = _first100_bool(meta)
-
-        # loop over 5stages
-        mean_per_stage = np.zeros((tensor.shape[0], 10, 3))
-        stage = meta[staging]
-        for cstagi, stagi in enumerate(meta[staging].unique()):
-            stage_bool = stage.isin([stagi]).values
-            for ccue, cue in enumerate(['plus', 'minus', 'neutral']):
-                cue_bool = meta['condition'].isin([cue]).values
-                # mean_per_stage[:, cstagi, ccue] = np.nanmean(
-                #     amplitude_nolick[:, cue_bool & stage_bool & first100_bool], axis=1)
-                # calculate mean response of each cell for each stage of learning
-                # first average over trials to help clean up noise from dropped trials and NaNs.
-                # next average over timepoints during the stimulus window.
-                mean_resp = np.nanmean(
-                    np.nanmean(ablated_tensor[:, :, cue_bool & stage_bool & first100_bool], axis=2), axis=1)
-                # calculate baseline as you would response period overaging over trials then timepoint
-                mean_base = np.nanmean(
-                    np.nanmean(tensor[:, base_boo, :][:, :, cue_bool & stage_bool & first100_bool], axis=2), axis=1)
-                mean_amplitude = mean_resp - mean_base
-                mean_amplitude[mean_amplitude < 0] = 0  # rectify, little negatives break this calculation
-                mean_per_stage[:, cstagi, ccue] = mean_amplitude
-
-        # normalize by the max response
-        max_response = np.nanmax(mean_per_stage, axis=2)
-        for cue_n in range(mean_per_stage.shape[2]):
-            mean_per_stage[:, :, cue_n] = mean_per_stage[:, :, cue_n] / max_response
-
-        # return mean_per_stage
-
-        # rewind ... unwrap your means for a DataFrame
-        means_in = []
-        stages_in = []
-        cues_in = []
-        bias_in = []
-        for cstagi, stagi in enumerate(meta[staging].unique()):
-            for ccue, cue in enumerate(['plus', 'minus', 'neutral']):
-                mean_vec = mean_per_stage[:, cstagi, ccue]
-                bias_vec = mean_per_stage[:, cstagi, ccue] / np.nansum(mean_per_stage, axis=2)[:, cstagi]
-                bias_in.extend(bias_vec)
-                means_in.extend(mean_vec)
-                cues_in.extend([cue] * len(mean_vec))
-                stages_in.extend([stagi] * len(mean_vec))
-
-        data = {'cue': cues_in, 'learning stage': stages_in,
-                'mean response': means_in, 'bias': bias_in, 'ablated component': }
-        mean_df = pd.DataFrame(data)
+        # get bias and mean from TCA model of data
+        mean_df = get_bias_from_tensor(meta, tensor, staging=staging)
+        mean_df['component'] = [fac_label]*len(mean_df)
         mean_df_list.append(mean_df)
 
     all_mean_df = pd.concat(mean_df_list, axis=0)
 
+    # save your dataframe before returning
     mouse = meta.reset_index()['mouse'].unique()[0]
     all_mean_df.to_pickle(os.path.join(save_folder, f'{mouse}_rank{model_rank}_model_bias_and_mean_df_wablation.pkl'))
+
+    return all_mean_df
+
+
+def get_bias_from_ablated_data(meta, input_tensor, model, model_rank, save_folder='', staging='parsed_10stage'):
+    """
+    Calculate bias for stages of learning for a tensor and meta on TCA model itself.
+    """
+
+    # loop over removing each component from TCA model
+    mean_df_list = []
+    for fac_num in range(model_rank):
+
+        # create a tensor removing one of you your TCA factors from your data
+        tensor = ablate_data_with_Ktensor(input_tensor, model.results[model_rank][0].factors, fac_num)
+        fac_label = f'ablated component {fac_num + 1} from data'
+
+        # mask values that are NaN in you original data (this may be redundant for this version)
+        mask = np.isnan(input_tensor)
+        tensor[mask] = np.nan
+
+        # get bias and mean from TCA model of data
+        mean_df = get_bias_from_tensor(meta, tensor, staging=staging)
+        mean_df['component'] = [fac_label]*len(mean_df)
+        mean_df_list.append(mean_df)
+
+    all_mean_df = pd.concat(mean_df_list, axis=0)
+
+    # save your dataframe before returning
+    mouse = meta.reset_index()['mouse'].unique()[0]
+    all_mean_df.to_pickle(os.path.join(save_folder, f'{mouse}_rank{model_rank}_data_bias_and_mean_df_wablation.pkl'))
 
     return all_mean_df
 
@@ -243,6 +208,21 @@ def ablate_Ktensor(tt_factors, fac_num_to_remove):
 
     # create full tensor
     return kt.full()
+
+
+def ablate_data_with_Ktensor(data_tensor, tt_factors, fac_num_to_keep):
+    """Create full matrix removing a single tensor component from your data."""
+
+    # turn factors into tuple, then select a single factor from each mode's matrix
+    factors = tuple(tt_factors)
+    factors = tuple([f[:, fac_num_to_keep] for f in factors])
+
+    # create a KTensor from tensortools to speed up some math
+    kt = KTensor(factors)
+    full_factor = kt.full()
+
+    # return a full tensor minus a single component
+    return data_tensor - full_factor
 
 
 def get_bias(
