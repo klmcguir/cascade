@@ -40,7 +40,9 @@ for mi, wi in zip(mice, words):
 
     bias_df = cas.bias.get_bias_from_tensor(meta, tensor, staging='parsed_10stage')
 
+    plt.figure()
     sns.barplot(data=bias_df, x='learning stage', y='mean response', hue='cue', palette=cas.lookups.color_dict)
+    sns.despine()
     plt.xticks(rotation=45, ha='right')
     plt.xlabel('learning stage', size=14)
     plt.ylabel('mean cue response\n(normalized)', size=14)
@@ -48,10 +50,12 @@ for mi, wi in zip(mice, words):
     plt.legend(bbox_to_anchor=(1.05, 1))
     plt.savefig(os.path.join(save_folder, f'{mi}_rank_{rank_num}_mean_cue_response.pdf'), bbox_inches='tight')
 
+    plt.figure()
     sns.barplot(data=bias_df.loc[bias_df['cue'].isin(['plus']), :], x='learning stage', y='bias', hue='cue', palette=cas.lookups.color_dict)
+    sns.despine()
     plt.xticks(rotation=45, ha='right')
     plt.xlabel('learning stage', size=14)
-    plt.ylabel('Food cue bias index\n(FC / FC+QC+NC)', size=14)
+    plt.ylabel('Food cue bias index\nFC / (FC+QC+NC)', size=14)
     plt.title(f'{mi}: Food cue bias', size=16)
     plt.legend(bbox_to_anchor=(1.05, 1))
     plt.savefig(os.path.join(save_folder, f'{mi}_rank_{rank_num}_mean_cue_response.pdf'), bbox_inches='tight')
