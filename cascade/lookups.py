@@ -86,7 +86,7 @@ mice = {
     # Original big learning animals
     'core4': sorted(['OA27', 'OA67', 'VF226', 'OA26']),
     # Big learning animals. OA38 has 4 days of naive immediately before
-    # learning begins here that we too large a shift to align FOVs
+    # learning begins here that had too large a shift to align FOVs
     'core9': sorted(['OA27', 'OA67', 'VF226', 'OA26', 
         'OA32', 'OA34', 'OA36', 'AS47', 'OA38', 'AS23']),
     # Animals with naive. OA38 has 4 days of naive immediately before
@@ -98,7 +98,7 @@ mice = {
     'stim3': sorted(['OA27', 'OA67', 'VF226', 'OA26', 'CC175'])
     }
 
-""" Suppressed factors trun_zscore_day, lion/citation {mouse: {rank: comp}}"""
+""" Suppressed factors trunc_zscore_day, lion/citation {mouse: {rank: comp}}"""
 supress = {
      'OA27': {15: [14], 12: [11], 10: [9], 9: [8]},
      'VF226': {15: [1], 10: [6]}, #10: 1 seems like an important comparison.

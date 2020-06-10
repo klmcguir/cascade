@@ -101,7 +101,10 @@ def get_bias_from_tensor(meta, tensor, staging='parsed_10stage'):
             mean_amplitude = mean_resp - mean_base
             mean_amplitude[mean_amplitude < 0] = 0  # rectify, little negatives break this calculation
             mean_per_stage[:, cstagi, ccue] = mean_amplitude
-    
+
+    # save mean_per_stage before normalization
+    mean_per_stage_raw = deepcopy(mean_per_stage)
+
     # normalize by the max response
     max_response = np.nanmax(mean_per_stage, axis=2)
     for cue_n in range(mean_per_stage.shape[2]):
@@ -111,23 +114,71 @@ def get_bias_from_tensor(meta, tensor, staging='parsed_10stage'):
 
     # rewind ... unwrap your means for a DataFrame
     means_in = []
+    means_raw_in = []
     stages_in = []
     cues_in = []
     bias_in = []
     for cstagi, stagi in enumerate(meta[staging].unique()):
         for ccue, cue in enumerate(['plus', 'minus', 'neutral']):
+            mean_raw_vec = mean_per_stage_raw[:, cstagi, ccue]
             mean_vec = mean_per_stage[:, cstagi, ccue]
             bias_vec = mean_per_stage[:, cstagi, ccue]/np.nansum(mean_per_stage, axis=2)[:, cstagi]
             bias_in.extend(bias_vec)
             means_in.extend(mean_vec)
+            means_raw_in.extend(mean_raw_vec)
             cues_in.extend([cue]*len(mean_vec))
             stages_in.extend([stagi]*len(mean_vec))
 
     data = {'cue': cues_in, 'learning stage': stages_in,
-            'mean response': means_in, 'bias': bias_in}
+            'mean response': means_in, 'mean response raw': means_raw_in, 'bias': bias_in}
     mean_df = pd.DataFrame(data)
 
     return mean_df
+
+
+def get_bias_from_model_simple(meta, input_tensor, model, model_rank, save_folder='', staging='parsed_10stage'):
+    """
+    Calculate bias for stages of learning for a tensor and meta on TCA model itself.
+    """
+
+    # loop over removing each component from TCA model, -1 is the whole model without ablation
+
+    tensor = model.results[model_rank][0].factors.full()
+
+    # mask values that are NaN in you original data
+    mask = np.isnan(input_tensor)
+    tensor[mask] = np.nan
+
+    # get bias and mean from TCA model of data
+    all_mean_df = get_bias_from_tensor(meta, tensor, staging=staging)
+
+    # save your dataframe before returning
+    mouse = meta.reset_index()['mouse'].unique()[0]
+    all_mean_df.to_pickle(os.path.join(save_folder, f'{mouse}_rank{model_rank}_model_bias_and_mean_df_simp.pkl'))
+
+    return all_mean_df
+
+
+def get_bias_from_ablated_data_simple(meta, input_tensor, model, model_rank, save_folder='', staging='parsed_10stage'):
+    """
+    Calculate bias for stages of learning for a tensor and meta on TCA model itself.
+    """
+
+    # create a tensor removing one of you your TCA factors from your data
+    tensor = input_tensor - model.results[model_rank][0].factors.full()
+
+    # mask values that are NaN in you original data (this may be redundant for this version)
+    mask = np.isnan(input_tensor)
+    tensor[mask] = np.nan
+
+    # get bias and mean from TCA model of data
+    all_mean_df = get_bias_from_tensor(meta, tensor, staging=staging)
+
+    # save your dataframe before returning
+    mouse = meta.reset_index()['mouse'].unique()[0]
+    all_mean_df.to_pickle(os.path.join(save_folder, f'{mouse}_rank{model_rank}_data_bias_and_mean_df_full_ablation.pkl'))
+
+    return all_mean_df
 
 
 def get_bias_from_model(meta, input_tensor, model, model_rank, save_folder='', staging='parsed_10stage'):
@@ -215,7 +266,7 @@ def ablate_data_with_Ktensor(data_tensor, tt_factors, fac_num_to_keep):
 
     # turn factors into tuple, then select a single factor from each mode's matrix
     factors = tuple(tt_factors)
-    factors = tuple([f[:, fac_num_to_keep] for f in factors])
+    factors = tuple([f[:, fac_num_to_keep][:, None] for f in factors])
 
     # create a KTensor from tensortools to speed up some math
     kt = KTensor(factors)
@@ -223,6 +274,21 @@ def ablate_data_with_Ktensor(data_tensor, tt_factors, fac_num_to_keep):
 
     # return a full tensor minus a single component
     return data_tensor - full_factor
+
+
+def full_factor(tt_factors, fac_num_to_keep):
+    """Create full matrix removing a single tensor component from your data."""
+
+    # turn factors into tuple, then select a single factor from each mode's matrix
+    factors = tuple(tt_factors)
+    factors = tuple([f[:, fac_num_to_keep][:, None] for f in factors])
+
+    # create a KTensor from tensortools to speed up some math
+    kt = KTensor(factors)
+    full_factor = kt.full()
+
+    # return a full tensor component
+    return full_factor
 
 
 def get_bias(

@@ -7,6 +7,7 @@ import pandas as pd
 from . import tca
 from . import lookups
 
+
 def correct_nonneg(ensemble):
     """
     Helper function that takes a tensortools ensemble and adds forces cell
@@ -24,10 +25,10 @@ def correct_nonneg(ensemble):
                     flip_facs = list(np.where(neg_cellfac_vec < 0)[0])
                     for fac in flip_facs:
                         ensemble[method].results[r][i].factors[0][:, fac] = \
-                           ensemble[method].results[r][i].factors[0][:, fac]*-1
+                            ensemble[method].results[r][i].factors[0][:, fac] * -1
                         ensemble[method].results[r][i].factors[2][:, fac] = \
-                           ensemble[method].results[r][i].factors[2][:, fac]*-1
-    
+                            ensemble[method].results[r][i].factors[2][:, fac] * -1
+
     return ensemble
 
 
@@ -51,8 +52,8 @@ def add_dprime_to_meta(meta):
         day_bool = days == di
         mi = mouse[day_bool].unique()[0]
         new_dprime[day_bool] = pool.calc.performance.dprime(
-                                flow.Date(mouse=mi, date=di),
-                                hmm_engaged=True)
+            flow.Date(mouse=mi, date=di),
+            hmm_engaged=True)
 
     # save new_dprime into meta
     meta['dprime'] = new_dprime
@@ -84,8 +85,8 @@ def add_dprime_run_to_meta(meta):
             run_bool = runs == ri
             run_bool = day_bool & run_bool
             new_dprime[run_bool] = pool.calc.performance.dprime_run(
-                                flow.Run(mouse=mi, date=di, run=ri),
-                                hmm_engaged=True)
+                flow.Run(mouse=mi, date=di, run=ri),
+                hmm_engaged=True)
 
     # save new_dprime into meta
     meta['dprime_run'] = new_dprime
@@ -127,7 +128,7 @@ def add_firstlick_wmedian_to_meta(meta):
     new_lick[lick_in_window_boo & np.isin(cs, 'plus')] = lick[lick_in_window_boo & np.isin(cs, 'plus')] - buffer_ms
     new_lick[lick_before_median & ~np.isin(cs, 'plus')] = lick[lick_before_median & ~np.isin(cs, 'plus')]
     meta['firstlick_med'] = new_lick
-    
+
     return meta
 
 
@@ -214,7 +215,7 @@ def add_firstlick_wmedian_run_to_meta(meta):
     lick_in_window_boo = lick < last_stim_frame
     new_lick[lick_in_window_boo] = lick[lick_in_window_boo] - buffer_ms
     meta['firstlick_med_run'] = new_lick
-    
+
     return meta
 
 
@@ -234,8 +235,8 @@ def add_prev_ori_cols_to_meta(meta):
 
     # boolean for cues preceded by the same cue
     prev_same_boo = (meta['prev_same_plus'].gt(0)
-        | meta['prev_same_neutral'].gt(0)
-        | meta['prev_same_minus'].gt(0))
+                     | meta['prev_same_neutral'].gt(0)
+                     | meta['prev_same_minus'].gt(0))
 
     # create column for each ori if it was preceded by the same ori
     for ori in [0, 135, 270]:
@@ -293,7 +294,7 @@ def add_cue_prob_to_meta(meta):
     c = 0
     vec = []
     for s in new_meta_df1['reward'].values:
-        if s == 0: 
+        if s == 0:
             vec.append(c)
         else:
             vec.append(c)
@@ -304,7 +305,7 @@ def add_cue_prob_to_meta(meta):
     c = 0
     vec = []
     for s in new_meta_df1['go'].values:
-        if s == 0: 
+        if s == 0:
             vec.append(c)
         else:
             vec.append(c)
@@ -316,7 +317,7 @@ def add_cue_prob_to_meta(meta):
         c = 0
         vec = []
         for s in new_meta_df1['initial_{}'.format(ori)].values:
-            if s == 0: 
+            if s == 0:
                 vec.append(c)
             else:
                 vec.append(c)
@@ -335,7 +336,7 @@ def add_cue_prob_to_meta(meta):
             new_vec = np.zeros(len(new_meta_df1))
             new_vec[:] = np.nan
             new_bool = new_meta_df1[aci].gt(0).values
-            new_vec[new_bool] = prob_since_last[vali].values[0:np.sum(new_bool)] # use only matched trials
+            new_vec[new_bool] = prob_since_last[vali].values[0:np.sum(new_bool)]  # use only matched trials
             new_meta_df1['p_{}_since_last_{}'.format(vali, aci)] = new_vec
             p_cols.append('p_{}_since_last_{}'.format(vali, aci))
 
@@ -356,23 +357,23 @@ def update_meta_date_vec(meta):
     Helper function to get change date vector in metadata to be .5 for learning
     and reversal transitions in the middle of the day.
     """
-    
+
     day_vec = np.array(meta.reset_index()['date'].values, dtype='float')
     days = np.unique(day_vec)
     ls = meta['learning_state'].values
     for di in days:
-        dboo  = np.isin(day_vec, di)
+        dboo = np.isin(day_vec, di)
         states_vec = ls[dboo]
         u_states = np.unique(states_vec)
         if len(u_states) > 1:
             second_state = dboo & (ls == u_states[1])
             day_vec[second_state] += 0.5
-    
+
     # replace
     new_meta = meta.reset_index()
     new_meta['date'] = day_vec
     new_meta = new_meta.set_index(['mouse', 'date', 'run', 'trial_idx'])
-    
+
     return new_meta
 
 
@@ -380,10 +381,10 @@ def add_5stages_to_meta(meta, dp_by_run=True):
     """
     Helper function to add the stage of learning to metadata.
     """
-    
+
     stages = ['naive', 'low_dp learning', 'high_dp learning',
               'low_dp reversal1', 'high_dp reversal1']
-    
+
     if 'dprime' not in meta.columns:
         meta = add_dprime_to_meta(meta)
     if 'dprime_run' not in meta.columns:
@@ -396,29 +397,29 @@ def add_5stages_to_meta(meta, dp_by_run=True):
         dp = meta['dprime'].values
     else:
         dp = meta['dprime'].values
-    
+
     stage_vec = []
     for lsi, dpi in zip(ls, dp):
-    
+
         if 'naive' in lsi:
             stage_vec.append('naive')
         elif 'learning' in lsi:
             if dpi < 2:
                 stage_vec.append('low_dp learning')
-            elif dpi >=2:
+            elif dpi >= 2:
                 stage_vec.append('high_dp learning')
         elif 'reversal1' in lsi:
             if dpi < 2:
                 stage_vec.append('low_dp reversal1')
-            elif dpi >=2:
+            elif dpi >= 2:
                 stage_vec.append('high_dp reversal1')
-    
+
     meta['parsed_stage'] = stage_vec
-    
+
     return meta
 
 
-def add_10stages_to_meta(meta, simple=True, dp_by_run=True):
+def add_10stages_to_meta(meta, simple=False, dp_by_run=True):
     """
     Helper function to add the stage of learning to metadata breaking
     each of the 5 major stages ['naive', 'low_dp learning', 'high_dp learning',
@@ -434,12 +435,12 @@ def add_10stages_to_meta(meta, simple=True, dp_by_run=True):
     responsive at the beginning of the day but not at the end.
 
     """
-    
+
     # make sure paresed stage exists so you can loop over this.
     if 'parsed_stage' not in meta.columns:
         meta = add_5stages_to_meta(meta, dp_by_run=dp_by_run)
     meta = update_meta_date_vec(meta)
-    
+
     # get days and parsed stages of learning
     u_stages = meta['parsed_stage'].unique()
     u_days = meta.reset_index()['date'].unique()
@@ -448,13 +449,13 @@ def add_10stages_to_meta(meta, simple=True, dp_by_run=True):
 
     stage_vec = []
     for ic, istage in enumerate(u_stages):
-        
+
         # simple=False; break a stage in half but assign shared days to later
         # period. i.e., if there are 3 days, 1 day is early and 2 are late.
         if simple:
             stage_bool = parse.isin([istage]).values
             stage_inds = np.where(stage_bool)[0]
-            midpoint = int(np.ceil(len(stage_inds)/2))
+            midpoint = int(np.ceil(len(stage_inds) / 2))
             first_half = stage_inds[:midpoint]
             last_half = stage_inds[midpoint:]
 
@@ -474,7 +475,7 @@ def add_10stages_to_meta(meta, simple=True, dp_by_run=True):
                 for s in stage_inds:
                     stage_vec.append('late {}'.format(istage))
             else:
-                day_mid = int(np.floor(len(stage_days)/2))
+                day_mid = int(np.floor(len(stage_days) / 2))
                 first_days = stage_days[:day_mid]
                 last_days = stage_days[day_mid:]
                 day_bool1 = np.isin(all_days.values, first_days)
@@ -485,14 +486,13 @@ def add_10stages_to_meta(meta, simple=True, dp_by_run=True):
                     stage_vec.append('early {}'.format(istage))
                 for s in clean_last_inds:
                     stage_vec.append('late {}'.format(istage))
-    
+
     meta['parsed_10stage'] = stage_vec
-    
+
     return meta
 
 
 def update_naive_meta(meta, verbose=True):
-
     """
     Helper function that takes a pd metadata dataframe and makes sure that cses
     and trial error match between naive and learning.
@@ -616,11 +616,11 @@ def getdailycstraces(
     runlist = []
     for run in runs:
         trs = getcstraces(
-                run, cs=cs, trace_type=trace_type,
-                start_time=start_time, end_time=end_time,
-                downsample=downsample, clean_artifacts=clean_artifacts,
-                thresh=thresh, warp=warp, smooth=smooth,
-                smooth_win=smooth_win, smooth_win_dec=smooth_win_dec)
+            run, cs=cs, trace_type=trace_type,
+            start_time=start_time, end_time=end_time,
+            downsample=downsample, clean_artifacts=clean_artifacts,
+            thresh=thresh, warp=warp, smooth=smooth,
+            smooth_win=smooth_win, smooth_win_dec=smooth_win_dec)
         runlist.append(trs)
     cstraces = np.concatenate(runlist, axis=2)
 
@@ -759,7 +759,7 @@ def getcstraces(
                                                    thresh=thresh)
             else:
                 print('WARNING: did not recognize z-scoring method.')
-            traces = ((traces.T - mu)/sigma).T
+            traces = ((traces.T - mu) / sigma).T
 
         # smooth data
         # should always be even to treat both 15 and 30 Hz data equivalently
@@ -768,12 +768,12 @@ def getcstraces(
             for cell in range(np.shape(traces)[0]):
                 traces[cell, :] = np.convolve(
                     traces[cell, :], np.ones(smooth_win,
-                    dtype=np.float64)/smooth_win, 'same')
+                                             dtype=np.float64) / smooth_win, 'same')
         elif smooth and (t2p.d['framerate'] < 16):
             for cell in range(np.shape(traces)[0]):
                 traces[cell, :] = np.convolve(
-                    traces[cell, :], np.ones(int(smooth_win/2),
-                    dtype=np.float64)/(smooth_win/2), 'same')
+                    traces[cell, :], np.ones(int(smooth_win / 2),
+                                             dtype=np.float64) / (smooth_win / 2), 'same')
 
         # add new trace type into t2p
         t2p.add_trace(trace_type, traces)
@@ -790,7 +790,7 @@ def getcstraces(
                                        thresh=thresh)
         mn = pool.calc.zscore.stim_min(date, window=5, nan_artifacts=arti,
                                        thresh=thresh)
-        traces = ((traces.T - mn)/mx).T
+        traces = ((traces.T - mn) / mx).T
 
         # smooth traces
         # should always be even to treat both 15 and 30 Hz data equivalently
@@ -799,38 +799,38 @@ def getcstraces(
             for cell in range(np.shape(traces)[0]):
                 traces[cell, :] = np.convolve(
                     traces[cell, :], np.ones(smooth_win,
-                    dtype=np.float64)/smooth_win, 'same')
+                                             dtype=np.float64) / smooth_win, 'same')
         elif smooth and (t2p.d['framerate'] < 16):
             for cell in range(np.shape(traces)[0]):
                 traces[cell, :] = np.convolve(
-                    traces[cell, :], np.ones(int(smooth_win/2),
-                    dtype=np.float64)/(smooth_win/2), 'same')
+                    traces[cell, :], np.ones(int(smooth_win / 2),
+                                             dtype=np.float64) / (smooth_win / 2), 'same')
 
         # add new trace type into t2p
         t2p.add_trace(trace_type, traces)
 
     # trigger all trials around stimulus onsets
     if warp:
-        if 'deconvolved' in trace_type.lower():
+        if 'deconvolved' in trace_type.lower() or '_nobs' in trace_type.lower():
             run_traces = t2p.warpcstraces(cs, start_s=start_time, end_s=end_time,
-                                      trace_type=trace_type, cutoff_before_lick_ms=-1,
-                                      errortrials=-1, baseline=None,
-                                      move_outcome_to=5)
+                                          trace_type=trace_type, cutoff_before_lick_ms=-1,
+                                          errortrials=-1, baseline=None,
+                                          move_outcome_to=5)
         else:
             run_traces = t2p.warpcstraces(cs, start_s=start_time, end_s=end_time,
+                                          trace_type=trace_type, cutoff_before_lick_ms=-1,
+                                          errortrials=-1, baseline=(-1, 0),
+                                          move_outcome_to=5, baseline_to_stimulus=True)
+    else:
+        if 'deconvolved' in trace_type.lower() or '_nobs' in trace_type.lower():
+            run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
+                                      trace_type=trace_type, cutoff_before_lick_ms=-1,
+                                      errortrials=-1, baseline=None)
+        else:
+            run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
                                       trace_type=trace_type, cutoff_before_lick_ms=-1,
                                       errortrials=-1, baseline=(-1, 0),
-                                      move_outcome_to=5, baseline_to_stimulus=True)
-    else:
-        if 'deconvolved' in trace_type.lower():
-            run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
-                                  trace_type=trace_type, cutoff_before_lick_ms=-1,
-                                  errortrials=-1, baseline=None)
-        else:
-            run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
-                                  trace_type=trace_type, cutoff_before_lick_ms=-1,
-                                  errortrials=-1, baseline=(-1, 0),
-                                  baseline_to_stimulus=True)
+                                      baseline_to_stimulus=True)
 
     # downsample all traces/timestamps to 15Hz if framerate is 31Hz
     if (t2p.d['framerate'] > 30) and downsample:
@@ -844,9 +844,9 @@ def getcstraces(
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             with np.errstate(invalid='ignore', divide='ignore'):
-                ds_traces = np.zeros((sz[0], int(sz[1]/2), sz[2]))
+                ds_traces = np.zeros((sz[0], int(sz[1] / 2), sz[2]))
                 for trial in range(sz[2]):
-                    a = run_traces[:, :, trial].reshape(sz[0], int(sz[1]/2), 2)
+                    a = run_traces[:, :, trial].reshape(sz[0], int(sz[1] / 2), 2)
                     if 'deconvolved' in trace_type.lower():
                         ds_traces[:, :, trial] = np.nanmax(a, axis=2)
                     else:
@@ -869,10 +869,10 @@ def getcstraces(
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             with np.errstate(invalid='ignore', divide='ignore'):
-                ds_traces = np.zeros((sz[0], int(sz[1]/bin_factor), sz[2]))
+                ds_traces = np.zeros((sz[0], int(sz[1] / bin_factor), sz[2]))
                 for trial in range(sz[2]):
                     a = run_traces[:, :, trial].reshape(
-                            sz[0], int(sz[1]/bin_factor), bin_factor)
+                        sz[0], int(sz[1] / bin_factor), bin_factor)
                     ds_traces[:, :, trial] = np.nansum(a, axis=2)
 
         run_traces = ds_traces
@@ -880,27 +880,31 @@ def getcstraces(
     # smooth deconvolved data
     if smooth and 'deconvolved' in trace_type.lower():
         sz = np.shape(run_traces)  # dims: (cells, time, trials)
-        run_traces = run_traces.reshape((sz[0], sz[1]*sz[2]))
+        run_traces = run_traces.reshape((sz[0], sz[1] * sz[2]))
         for cell in range(sz[0]):
             run_traces[cell, :] = np.convolve(run_traces[cell, :],
                                               np.ones(smooth_win_dec,
-                                              dtype=np.float64)/smooth_win_dec,
+                                                      dtype=np.float64) / smooth_win_dec,
                                               'same')
         run_traces = run_traces.reshape((sz[0], sz[1], sz[2]))
 
     # invert values (to explicitly model inhibition)
     if '_flip' in trace_type.lower():
-        run_traces = run_traces*-1
+        run_traces = run_traces * -1
+
+    # shift baselines slightly positive
+    if '_bump' in trace_type.lower():
+        run_traces += 0.1
 
     # truncate negative values (for NMF)
-    if 'trunc_' in trace_type.lower():
+    if '_trunc' in trace_type.lower():
         run_traces[run_traces < 0] = 0
 
     # only look at stimulus period 
     if '_onset' in trace_type.lower():
         time_to_off = lookups.stim_length[run.mouse] + 1
         assert downsample
-        frames_to_off = int(np.floor(time_to_off*15.5))
+        frames_to_off = int(np.floor(time_to_off * 15.5))
         run_traces = run_traces[:, :frames_to_off, :]
 
     # cap positive values for deconvolution at 2
@@ -912,7 +916,6 @@ def getcstraces(
             for rt_trials in range(trial_mins.shape[1]):
                 if trial_mins[rt_cells, rt_trials] == 2:
                     run_traces[rt_cells, :, rt_trials] = np.nan
-
 
     return run_traces
 
@@ -948,12 +951,12 @@ def getcsbehavior(
     """
 
     t2p = run.trace2p()
-    
+
     run_traces = t2p.csbehaviortraces(cs, start_s=start_time, end_s=end_time,
-                              trace_type=trace_type, 
-                              cutoff_before_lick_ms=cutoff_before_lick_ms,
-                              errortrials=-1, baseline=baseline,
-                              baseline_to_stimulus=True)
+                                      trace_type=trace_type,
+                                      cutoff_before_lick_ms=cutoff_before_lick_ms,
+                                      errortrials=-1, baseline=baseline,
+                                      baseline_to_stimulus=True)
 
     # downsample all traces/timestamps to 15Hz if framerate is 31Hz
     if (t2p.d['framerate'] > 30) and downsample and (trace_type.lower() not in ['pupil']):
@@ -967,9 +970,9 @@ def getcsbehavior(
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             with np.errstate(invalid='ignore', divide='ignore'):
-                ds_traces = np.zeros((sz[0], int(sz[1]/2), sz[2]))
+                ds_traces = np.zeros((sz[0], int(sz[1] / 2), sz[2]))
                 for trial in range(sz[2]):
-                    a = run_traces[:, :, trial].reshape(sz[0], int(sz[1]/2), 2)
+                    a = run_traces[:, :, trial].reshape(sz[0], int(sz[1] / 2), 2)
                     if trace_type.lower() == 'deconvolved':
                         ds_traces[:, :, trial] = np.nanmax(a, axis=2)
                     else:
@@ -1014,7 +1017,6 @@ def build_tensor(
         drive_css=('0', '135', '270'),
         drive_threshold=15,
         drive_type='visual'):
-
     """
     Builds inputs for tensor component analysis (TCA) without running TCA.
 
@@ -1215,7 +1217,7 @@ def build_tensor(
 
         # filter for only runs without certain tags
         d1_runs = [run for run in d1_runs if not
-                   any(np.isin(run.tags, exclude_tags))]
+        any(np.isin(run.tags, exclude_tags))]
 
         # build tensors for all correct runs and trials after filtering
         if d1_runs:
@@ -1255,7 +1257,7 @@ def build_tensor(
 
                 # drop trials with nans and add to lists
                 keep = np.sum(np.sum(np.isnan(run_traces), axis=0,
-                              keepdims=True),
+                                     keepdims=True),
                               axis=1, keepdims=True).flatten() == 0
                 dfr = dfr.iloc[keep, :]
                 d1_tensor_list.append(run_traces[:, :, keep])
@@ -1298,7 +1300,7 @@ def build_tensor(
         # remove cells with too many nan trials
         ntrials = np.shape(group_tensor)[2]
         nbadtrials = np.sum(np.isnan(group_tensor[:, 0, :]), 1)
-        badtrialratio = nbadtrials/ntrials
+        badtrialratio = nbadtrials / ntrials
         badcell_indexer = badtrialratio < nan_trial_threshold
         group_tensor = group_tensor[badcell_indexer, :, :]
         if verbose:

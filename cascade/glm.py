@@ -357,7 +357,6 @@ def double_th_decay_columns_df(mouse, meta):
         p_cols.append('init_{}_exp_decay'.format(ori))
         
     # rename oris according to their meaning during learning
-    new_meta = {}
     cs_codes = {'plus': [0, 1], 'neutral': [2, 3], 'minus': [4, 5]}
     for ori in ['plus', 'minus', 'neutral']:
         new_meta = {}
@@ -371,7 +370,19 @@ def double_th_decay_columns_df(mouse, meta):
     for ori in ['plus', 'minus', 'neutral']:
         i_cols.append('initial_{}'.format(ori))
         cs_cols.append('cs_{}'.format(ori))
-        
+
+    # return interaction columns for CS and dprime_run
+    if 'dprime_run' not in meta.columns:
+        meta = utils.add_dprime_run_to_meta(meta)
+    dp_vec = meta['dprime_run'].values
+    for ori in ['plus', 'minus', 'neutral']:
+        new_meta = {}
+        new_meta[f'dp_{ori}'] = np.zeros(len(meta))
+        new_meta[f'dp_{ori}'][meta['condition'].isin([ori])] = dp_vec[meta['condition'].isin([ori])]
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+        p_cols.append(f'dp_{ori}')
+
     return meta_df_out, p_cols, i_cols, cs_cols
 
 def _exp_decay_func(t, A=1, K=-0.05, C=0):
