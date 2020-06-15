@@ -17,6 +17,8 @@ color_dict = {
     'neutral1': '#74c3ff',
     'neutral2': '#db77ff',
     'neutral3': '#9476ff',
+    'dprime': '#7c7ce4',
+    'dprime1': '#e47ce4',
     }
 
 # lookup table of conditions during initial learning matched to orientations
@@ -78,11 +80,29 @@ mice = {
         'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26',  'CC175']),
     'all14': sorted(['AS23', 'AS20', 'CB173', 'AS47', 'AS41', 'AS57', 'OA38',
         'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26',  'CC175']),
-    # reversal mice. CB173 also has reversal but never looked well trained.
-    # AS57 is included but only had one day that looked well trained before
-    # reversal. AS23 had seizures. AS20 was well trained when AUS got him. 
-    'rev10': sorted(['AS23', 'AS20', 'AS57',
+    # removed AS57 for poor training, CB173 actually has behavioral understanding, included.
+    # removed CC175 because it was mostly naive data
+    'all13': sorted(['AS23', 'AS20', 'CB173', 'AS47', 'AS41', 'OA38',
         'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26']),
+    # removed AS57 and CB173 for poor training, removed CC175 because it was mostly naive data
+    'all12': sorted(['AS23', 'AS20', 'AS47', 'AS41', 'OA38',
+        'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26']),
+
+    # reversal mice. CB173 also has reversal but never looked well trained.
+    # AS57 is only had one day that looked well trained before
+    # reversal. AS23 had seizures. AS20 was well trained when AUS got him.
+    # all good mice with reversals: CB173 and AS57 were never well trained, removed
+    'rev9': sorted(['AS23', 'AS20',
+        'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26']),
+    # all possible mice with behavioral reversal: CB173 actually shows licking and running deltas to FC
+    'rev10': sorted(['AS23', 'AS20', 'CB173',
+                     'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26']),
+    # for posterity: AS57 shows poor perforamnce and behavioral understanding, don't use
+    'rev10v2': sorted(['AS23', 'AS20', 'AS57',
+                     'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26']),
+    # all mice with reversals
+    'rev11': sorted(['AS23', 'AS20', 'CB173', 'AS57',
+                     'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26']),
     # Original big learning animals
     'core4': sorted(['OA27', 'OA67', 'VF226', 'OA26']),
     # Big learning animals. OA38 has 4 days of naive immediately before

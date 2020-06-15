@@ -382,19 +382,15 @@ def add_5stages_to_meta(meta, dp_by_run=True):
     Helper function to add the stage of learning to metadata.
     """
 
-    stages = ['naive', 'low_dp learning', 'high_dp learning',
-              'low_dp reversal1', 'high_dp reversal1']
-
     if 'dprime' not in meta.columns:
         meta = add_dprime_to_meta(meta)
     if 'dprime_run' not in meta.columns:
         meta = add_dprime_run_to_meta(meta)
     meta = update_meta_date_vec(meta)
-    u_days = np.unique(meta.reset_index()['date'])
-    all_days = meta.reset_index()['date'].values
+
     ls = meta['learning_state'].values
     if dp_by_run:
-        dp = meta['dprime'].values
+        dp = meta['dprime_run'].values
     else:
         dp = meta['dprime'].values
 
@@ -419,6 +415,57 @@ def add_5stages_to_meta(meta, dp_by_run=True):
     return meta
 
 
+def add_11stages_to_meta(meta, dp_by_run=True):
+    """
+    Helper function to add the stage of learning to metadata. Uses evenly spaced dprime bins.
+    Naive is treated as a single bin.
+    """
+
+    if 'dprime' not in meta.columns:
+        meta = add_dprime_to_meta(meta)
+    if 'dprime_run' not in meta.columns:
+        meta = add_dprime_run_to_meta(meta)
+    meta = update_meta_date_vec(meta)
+
+    ls = meta['learning_state'].values
+    if dp_by_run:
+        dp = meta['dprime_run'].values
+    else:
+        dp = meta['dprime'].values
+
+    stage_vec = []
+    for lsi, dpi in zip(ls, dp):
+
+        if 'naive' in lsi:
+            stage_vec.append('L0 naive')
+        elif 'learning' in lsi:
+            if dpi <= 1:
+                stage_vec.append('L1 learning')
+            elif 1 < dpi <= 2:
+                stage_vec.append('L2 learning')
+            elif 2 < dpi <= 3:
+                stage_vec.append('L3 learning')
+            elif 3 < dpi <= 4:
+                stage_vec.append('L4 learning')
+            elif dpi > 4:
+                stage_vec.append('L5 learning')
+        elif 'reversal1' in lsi:
+            if dpi <= 1:
+                stage_vec.append('L1 reversal1')
+            elif 1 < dpi <= 2:
+                stage_vec.append('L2 reversal1')
+            elif 2 < dpi <= 3:
+                stage_vec.append('L3 reversal1')
+            elif 3 < dpi <= 4:
+                stage_vec.append('L4 reversal1')
+            elif dpi > 4:
+                stage_vec.append('L5 reversal1')
+
+    meta['parsed_11stage'] = stage_vec
+
+    return meta
+
+
 def add_10stages_to_meta(meta, simple=False, dp_by_run=True):
     """
     Helper function to add the stage of learning to metadata breaking
@@ -436,16 +483,22 @@ def add_10stages_to_meta(meta, simple=False, dp_by_run=True):
 
     """
 
-    # make sure paresed stage exists so you can loop over this.
+    # make sure parsed stage exists so you can loop over this.
     if 'parsed_stage' not in meta.columns:
         meta = add_5stages_to_meta(meta, dp_by_run=dp_by_run)
     meta = update_meta_date_vec(meta)
 
     # get days and parsed stages of learning
     u_stages = meta['parsed_stage'].unique()
-    u_days = meta.reset_index()['date'].unique()
-    all_days = meta.reset_index()['date']
     parse = meta['parsed_stage']
+
+    # get days or run-days if dp is being set by training run/session
+    if dp_by_run:
+        # run number must be less than 10 for decimals for runs to work (+.2 for run 2, etc)
+        assert all(meta.reset_index()['run'].unique() < 10)
+        all_days = meta.reset_index()['date'] + meta.reset_index()['run']/10
+    else:
+        all_days = meta.reset_index()['date']
 
     stage_vec = []
     for ic, istage in enumerate(u_stages):
@@ -460,6 +513,7 @@ def add_10stages_to_meta(meta, simple=False, dp_by_run=True):
             last_half = stage_inds[midpoint:]
 
             # add the appropriate number of stage values to the list
+            # s is not used, it is just important that the loop run this many iteration
             for s in first_half:
                 stage_vec.append('early {}'.format(istage))
             for s in last_half:
@@ -482,6 +536,7 @@ def add_10stages_to_meta(meta, simple=False, dp_by_run=True):
                 day_bool2 = np.isin(all_days.values, last_days)
                 clean_first_inds = np.where(day_bool1)[0]
                 clean_last_inds = np.where(day_bool2)[0]
+                # s is not used, it is just important that the loop run this many iteration
                 for s in clean_first_inds:
                     stage_vec.append('early {}'.format(istage))
                 for s in clean_last_inds:

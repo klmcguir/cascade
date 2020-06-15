@@ -324,7 +324,7 @@ def groupday_longform_factors_annotated(
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
+        save_tag = ' score ' + str(score_threshold) + save_tag
 
     # update saving tag if you used a cell score threshold
     if scale_y:

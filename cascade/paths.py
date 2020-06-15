@@ -2,6 +2,7 @@
 import os
 import json
 import flow
+import numpy as np
 
 
 def groupmouse_word(mouse_dict):
@@ -18,6 +19,10 @@ def groupmouse_word(mouse_dict):
     word : str
         hash word
     """
+
+    # if a list is passed reformat it into a dict
+    if type(mouse_dict) in [list, np.ndarray]:
+        mouse_dict = {'mice': mouse_dict}
 
     # sort list of names so that user order is irrelevant
     mouse_dict['mice'] = sorted(mouse_dict['mice'])
@@ -97,7 +102,7 @@ def save_dir_groupmouse(
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
+        save_tag = ' score ' + str(score_threshold) + save_tag
 
     # you are making a folder for a specific rank number
     if rank_num:
@@ -487,3 +492,74 @@ def df_plots(mouse, pars=None, word=None, plot_type='heatmap'):
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
 
     return save_dir
+
+
+def mouse_analysis_path(base_folder, **kwargs):
+    """
+    Create a directory for saving any analysis.
+    :param kwargs: your default loading and TCA parameters: mouse, trace_type, etc.
+    :return: path: str, the path to your new save directory
+    """
+
+    # require your default loading and saving kwargs as input, but allow extra
+    required_kwargs = ['mouse', 'method', 'cs', 'warp', 'word', 'trace_type', 'group_by',
+                       'nan_thresh', 'score_threshold']
+    assert sum([s in required_kwargs for s in kwargs.keys()]) == len(required_kwargs)
+
+    # if cells were removed with too many nan trials
+    if 'nan_thresh' in kwargs.keys() and bool(kwargs['nan_thresh']):
+        save_tag = ' nantrial ' + str(kwargs['nan_thresh'])
+    else:
+        save_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if 'score_threshold' in kwargs.keys() and bool(kwargs['score_threshold']):
+        save_tag = ' score ' + str(kwargs['score_threshold']) + save_tag
+
+    # define other parameters for saving in an organized fashion
+    pars = {'trace_type': kwargs['trace_type'], 'cs': kwargs['cs'], 'warp': kwargs['warp']}
+    group_pars = {'group_by': kwargs['group_by']}
+
+    # save dir
+    save_dir = tca_plots(
+        kwargs['mouse'], 'group', pars=pars, word=kwargs['word'], group_pars=group_pars)
+    save_dir = os.path.join(save_dir, base_folder + save_tag)
+    if not os.path.isdir(save_dir):
+        os.mkdir(save_dir)
+    path = os.path.join(save_dir, str(kwargs['group_by']) + ' ' + kwargs['method'])
+    if not os.path.isdir(path):
+        os.mkdir(path)
+
+    return path
+
+
+def groupmouse_analysis_path(base_folder, rank_num=0, **kwargs):
+    """
+    Create a directory for saving any analysis.
+    :param kwargs: your default loading and TCA parameters: mouse, trace_type, etc.
+    :return: path: str, the path to your new save directory
+    """
+
+    # require your default loading and saving kwargs as input, but allow extra
+    required_kwargs = ['mice', 'method', 'cs', 'warp', 'words', 'trace_type', 'group_by',
+                       'nan_thresh', 'score_threshold']
+    assert sum([s in required_kwargs for s in kwargs.keys()]) == len(required_kwargs)
+
+    # define other parameters for saving in an organized fashion
+    pars = {'trace_type': kwargs['trace_type'], 'cs': kwargs['cs'], 'warp': kwargs['warp']}
+    group_pars = {'group_by': kwargs['group_by']}
+
+    # save
+    path = save_dir_groupmouse(
+        kwargs['mice'],
+        base_folder,
+        method=kwargs['method'],
+        nan_thresh=kwargs['nan_thresh'],
+        score_threshold=kwargs['score_threshold'],
+        pars=pars,
+        words=kwargs['words'],
+        rank_num=rank_num,
+        grouping='group',
+        group_pars=group_pars)
+
+    return path
