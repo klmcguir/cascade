@@ -4,8 +4,77 @@ import pool
 import numpy as np
 import warnings
 import pandas as pd
-from . import tca
-from . import lookups
+from . import lookups, bias, tca
+from copy import deepcopy
+
+
+def tensor_mean_per_day(meta, tensor, initial_cue=True, cue='plus', nan_licking=False):
+    """
+    Helper function to calculate mean per day for axis of same length as meta for a single cue.
+    """
+
+    # meta can only be a DataFrame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+
+    # make sure that the date vec allows for 0.5 days at reversal and learning
+    meta = update_meta_date_vec(meta)
+
+    # choose to average over initial_condition (orientation) or condition (switches orientation at reversal)
+    if initial_cue:
+        cue_vec = meta['initial_condition']
+    else:
+        cue_vec = meta['condition']
+    cue_bool = cue_vec.isin([cue])
+
+    # optionally nan all times after licking (median cs plus lick latency for non-lick trials)
+    if nan_licking:
+        mask = bias.get_lick_mask(meta, tensor)
+        ablated_tensor = deepcopy(tensor)
+        ablated_tensor[~mask] = np.nan
+    else:
+        ablated_tensor = tensor
+
+    # get average response per day to a single cue
+    days = meta.reset_index()['date'].unique()
+    new_tensor = np.zeros((tensor.shape[0], tensor.shape[1], len(days)))
+    new_tensor[:] = np.nan
+    for c, di in enumerate(meta.reset_index()['date'].unique()):
+        day_boo = meta.reset_index()['date'].isin([di]).values
+        new_tensor[:, :, c] = np.nanmean(ablated_tensor[:, :, day_boo & cue_bool], axis=2)
+
+    return new_tensor
+
+
+def tensor_mean_per_trial(meta, tensor, nan_licking=False):
+    """
+    Helper function to calculate mean per trial meta for a single mouse, correctly accounting for stimulus length.
+    Optionally only use
+    """
+
+    # meta can only be a DataFrame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+    mouse = meta.reset_index()['mouse'].unique()[0]
+
+    # assume 15.5 Hz sampling or downsampling for 7 seconds per trial (n = 108 timepoints)
+    assert tensor.shape[1] == 108
+    times = np.arange(-1, 6, 1 / 15.5)[:108]
+    stim_bool = (times > 0) & (times < lookups.stim_length[mouse])
+
+    # make sure that the date vec allows for 0.5 days at reversal and learning
+    meta = update_meta_date_vec(meta)
+
+    # optionally nan all times after licking (median cs plus lick latency for non-lick trials)
+    if nan_licking:
+        mask = bias.get_lick_mask(meta, tensor)
+        ablated_tensor = deepcopy(tensor)
+        ablated_tensor[~mask] = np.nan
+    else:
+        ablated_tensor = tensor
+
+    # get average response per trial
+    new_mat = np.nanmean(ablated_tensor[:, stim_bool, :], axis=1)
+
+    return new_mat
 
 
 def correct_nonneg(ensemble):
@@ -59,6 +128,58 @@ def add_dprime_to_meta(meta):
     meta['dprime'] = new_dprime
 
     return meta
+
+
+def calc_tuning_from_meta_and_vec(meta, trial_avg_vec):
+    """
+    Helper function for calculating the preferred tuning of any vector (trial averaged responses)
+    and metadata DataFrame (subset to match vector of reponses). Based on initial CS values.
+
+    :param meta: pandas.DataFrame, trial metadata
+    :param trial_avg_vec: vector of responses, one per trial, must be same length as meta
+    :return: preferred_tuning: str, string of preferred tuning of this vector
+    """
+
+    # get initial conditions
+    u_conds = meta['initial_condition'].unique()
+
+    # assume you are getting 3 cues
+    assert len(u_conds) == 3
+
+    # rectify vector
+    rect_trial_avg_vec = deepcopy(trial_avg_vec)
+    rect_trial_avg_vec[rect_trial_avg_vec < 0] = 0
+
+    # get mean response per cue across all trials provided as a single tuning vector
+    mean_cue = []
+    for cue in u_conds:
+        cue_boo = meta['initial_condition'].isin([cue])
+        mean_cue.append(np.nanmean(rect_trial_avg_vec[cue_boo]))
+
+    # get unit vector for tuning vector
+    unit_vec_tuning = mean_cue/np.linalg.norm(mean_cue)
+
+    # compare tuning standards for perfect tuning to one of the three cues to tuning vector
+    standard_vecs = [np.array([1, 0, 0]), np.array([0, 1, 0]), np.array([0, 0, 1])]
+    distances = []
+    for standi in standard_vecs:
+        # calculate cosine distance by hand (for unit vectors this is just 1 - inner prod)
+        distances.append(1 - np.inner(standi, unit_vec_tuning))
+    distances = np.array(distances)
+    print(distances)
+
+    # pick tuning type
+    if np.sum(distances < 0.6) == 1:  # ~ cosine_dist([1, 0], [0.85, 1]) to allow for joint tuning
+        preferred_tuning = u_conds[np.argsort(distances)[0]]
+    elif np.sum(distances < 0.6) == 2:
+        preferred_tuning = u_conds[np.argsort(distances)[0]] + '-' + u_conds[np.argsort(distances)[1]]
+    elif np.sum(distances == 0) == 3 or np.sum(~np.isfinite(distances)) == 3:
+        preferred_tuning = 'none'
+    else:
+        preferred_tuning = 'broad'
+
+    return preferred_tuning
+
 
 
 def add_dprime_run_to_meta(meta):
@@ -282,7 +403,6 @@ def add_cue_prob_to_meta(meta):
     new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
 
     # rename oris according to their meaning during learning
-    new_meta = {}
     for ori in ['plus', 'minus', 'neutral']:
         new_meta = {}
         new_meta['initial_{}'.format(ori)] = np.zeros(len(new_meta_df1))
@@ -415,7 +535,7 @@ def add_5stages_to_meta(meta, dp_by_run=True):
     return meta
 
 
-def add_11stages_to_meta(meta, dp_by_run=True):
+def add_11stages_to_meta(meta, dp_by_run=True, bin_scale=0.75):
     """
     Helper function to add the stage of learning to metadata. Uses evenly spaced dprime bins.
     Naive is treated as a single bin.
@@ -439,26 +559,26 @@ def add_11stages_to_meta(meta, dp_by_run=True):
         if 'naive' in lsi:
             stage_vec.append('L0 naive')
         elif 'learning' in lsi:
-            if dpi <= 1:
+            if dpi <= 1 * bin_scale:
                 stage_vec.append('L1 learning')
-            elif 1 < dpi <= 2:
+            elif 1 * bin_scale < dpi <= 2 * bin_scale:
                 stage_vec.append('L2 learning')
-            elif 2 < dpi <= 3:
+            elif 2 * bin_scale < dpi <= 3 * bin_scale:
                 stage_vec.append('L3 learning')
-            elif 3 < dpi <= 4:
+            elif 3 * bin_scale < dpi <= 4 * bin_scale:
                 stage_vec.append('L4 learning')
-            elif dpi > 4:
+            elif dpi > 4 * bin_scale:
                 stage_vec.append('L5 learning')
         elif 'reversal1' in lsi:
-            if dpi <= 1:
+            if dpi <= 1 * bin_scale:
                 stage_vec.append('L1 reversal1')
-            elif 1 < dpi <= 2:
+            elif 1 * bin_scale < dpi <= 2 * bin_scale:
                 stage_vec.append('L2 reversal1')
-            elif 2 < dpi <= 3:
+            elif 2 * bin_scale < dpi <= 3 * bin_scale:
                 stage_vec.append('L3 reversal1')
-            elif 3 < dpi <= 4:
+            elif 3 * bin_scale < dpi <= 4 * bin_scale:
                 stage_vec.append('L4 reversal1')
-            elif dpi > 4:
+            elif dpi > 4 * bin_scale:
                 stage_vec.append('L5 reversal1')
 
     meta['parsed_11stage'] = stage_vec
@@ -496,7 +616,7 @@ def add_10stages_to_meta(meta, simple=False, dp_by_run=True):
     if dp_by_run:
         # run number must be less than 10 for decimals for runs to work (+.2 for run 2, etc)
         assert all(meta.reset_index()['run'].unique() < 10)
-        all_days = meta.reset_index()['date'] + meta.reset_index()['run']/10
+        all_days = meta.reset_index()['date'] + meta.reset_index()['run'] / 10
     else:
         all_days = meta.reset_index()['date']
 

@@ -1691,7 +1691,7 @@ def _three_point_temporal_trace(tensor, metadata):
 
 
 
-def _group_drive_ids(days, drive_css, drive_threshold, drive_type='trial_abs'):
+def _group_drive_ids(days, drive_css, drive_threshold, drive_type='visual'):
     """
     Get an array of all unique ids driven on any day for a given DaySorter.
     """

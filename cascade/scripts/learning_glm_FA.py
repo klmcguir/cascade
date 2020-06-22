@@ -11,7 +11,7 @@ from statsmodels.distributions.empirical_distribution import ECDF
 mice = cas.lookups.mice['all15']
 words = ['facilitate'] * len(mice)
 trace_type = 'zscore_day'
-folder_name = 'cvGLM trial history motor interactions'
+folder_name = 'cvGLM trial history motor interactions FA nomiss'
 group_by = 'learning'
 nan_thresh = 0.95
 score_threshold = 0.8
@@ -50,7 +50,7 @@ for rank_num in [10, 15]:
         psy1_df = psy1_df.drop(columns=['prev_choice', 'prev_punish', 'prev_reward'])
 
         # add a binary column for possible category/semantic representations
-        new_meta_df1, p_cols, i_cols, cs_cols = cas.glm.learning_columns_df(m, meta1_df)
+        new_meta_df1, p_cols, i_cols, cs_cols = cas.glm.learning_columns_df_FA(m, meta1_df)
 
         # add engagement from HMM
         new_meta_df1 = cas.glm._add_hmm_to_design_mat(new_meta_df1, meta1_df)
@@ -58,7 +58,7 @@ for rank_num in [10, 15]:
         # start design matrix
         design_X = pd.concat([new_meta_df1.loc[:, p_cols],
                               new_meta_df1.loc[:, cs_cols],
-                              new_meta_df1.loc[:, ['choice', 'reward']],
+                              new_meta_df1.loc[:, ['choice', 'reward', 'punishment', 'false_alarm', 'correct_reject']],
                               new_meta_df1.loc[:, ['hmm_engaged']],
                               # new_meta_df1.loc[:, pillow_cols],
                               new_meta_df1.loc[:, i_cols]
@@ -78,7 +78,7 @@ for rank_num in [10, 15]:
         design_X = design_X.loc[ls_bool, :]
 
         # create design matrix, X
-        X = pd.concat([design_X, meta1_df.loc[:, ['anticipatory_licks', 'speed', 'firstlickbout']]], axis=1)
+        X = pd.concat([design_X, meta1_df.loc[:, ['anticipatory_licks', 'speed']]], axis=1)
 
         # warn user against the use of pupil in models
         if 'pupil' in X.columns:
@@ -89,12 +89,12 @@ for rank_num in [10, 15]:
         # missing licks are set as nans right now. This interaction term needs a value otherwise it will blow things up.
         # Close of reward period is 93 for 3 sec, and 77.5 for 2 sec stim.
         # Set values above this to an arbitrary point in the ITI 2 seconds later
-        if m not in ['OA27', 'OA26', 'OA67', 'VF226', 'CC175']:
-            response_closes = 93
-        else:
-            response_closes = 77.5
-        late_or_none = X['firstlickbout'].gt(response_closes) | X['firstlickbout'].isna()
-        X.loc[late_or_none, 'firstlickbout'] = response_closes + 15.5 * 2
+        # if m not in ['OA27', 'OA26', 'OA67', 'VF226', 'CC175']:
+        #     response_closes = 93
+        # else:
+        #     response_closes = 77.5
+        # late_or_none = X['firstlickbout'].gt(response_closes) | X['firstlickbout'].isna()
+        # X.loc[late_or_none, 'firstlickbout'] = response_closes + 15.5 * 2
 
         # add in interaction terms for all three cues
         new_meta = {}

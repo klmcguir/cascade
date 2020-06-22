@@ -7,6 +7,122 @@ import numpy as np
 import pandas as pd
 
 
+def hmm_engaged_from_meta(meta, save_folder=''):
+    """
+    Function for plotting hmm engagement, contained in your metadata DataFrame, across learning.
+
+    :param meta: pandas.DataFrame, metadata DataFrame where each index is a unique trial
+    :param save_folder: str, directory to save plots into
+    :return: saves plot of HMM performance over time
+    """
+
+    # get mouse from metadata index, must have only one mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+    mouse = meta.reset_index()['mouse'].unique()
+
+    plt.figure(figsize=(20, 4))
+    plt.xlabel('trial number', size=14)
+    plt.ylabel('engagment', size=14)
+    plt.yticks([0, 1], labels=['disengaged', 'engaged'], size=12)
+    plt.title(f'{mouse}: HMM Engagement', size=16)
+
+    # calculate change indices for days and reversal/learning
+    dates = meta.reset_index()['date']
+    ndays = np.diff(dates.values)
+    day_x = np.where(ndays)[0] + 0.5
+
+    # get your learning and reversal start indices
+    rev_ind = np.where(meta['learning_state'].isin(['learning']).values)[0][-1]
+    lear_ind = np.where(meta['learning_state'].isin(['learning']).values)[0][0]
+
+    # plot date a d rev
+    y_min = 0
+    y_max = 1
+    first_day = True
+    if len(day_x) > 0:
+        for k in day_x:
+            if first_day:
+                plt.plot([k, k], [y_min, y_max], color=lookups.color_dict['gray'], linewidth=2, label='day transitions')
+                first_day = False
+            else:
+                plt.plot([k, k], [y_min, y_max], color=lookups.color_dict['gray'], linewidth=2)
+    plt.plot([lear_ind, lear_ind], [y_min, y_max], '--', color=lookups.color_dict['learning'], linewidth=3,
+             label='learning starts')
+    plt.plot([rev_ind, rev_ind], [y_min, y_max], '--', color=lookups.color_dict['reversal'], linewidth=3,
+             label='reversal starts')
+
+    # plot hmm on top
+    plt.plot(meta['hmm_engaged'].rolling(30).mean().values, label='30-trial smoothing', color='orange')
+    plt.plot(meta['hmm_engaged'].values, 'o', markeredgecolor='w', markeredgewidth=0.1, markerfacecolor='#734f96',
+             label='individual trials')
+
+    # add legend
+    plt.legend(bbox_to_anchor=(1.01, 1.03), loc='upper left')
+
+    # save
+    dp_save_folder = save_folder + ' hmm'
+    if not os.path.isdir(dp_save_folder):
+        os.mkdir(dp_save_folder)
+    plt.savefig(os.path.join(dp_save_folder, f'{mouse}_hmm_engagement_all_trials.pdf'), bbox_inches='tight')
+
+
+def hmm_summary_groupmouse(
+        mice,
+        words=None,
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        trace_type='zscore_day',
+        group_by='all3',
+        nan_thresh=0.95,
+        score_threshold=0.8):
+    """
+    Function for plotting hmm engagement across stages of learning.
+    Creates plots for multiple mice.
+
+    :param mice: list of str, names of mice for analysis
+    :param words: list of str, associated parameter hash words
+    :param method: str, fit method from tensortools package
+        'cp_als', fits CP Decomposition using Alternating
+            Least Squares (ALS).
+        'ncp_bcd', fits nonnegative CP Decomposition using
+            the Block Coordinate Descent (BCD) Method.
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method.
+        'mncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method with missing data.
+        'mcp_als', fits CP Decomposition with missing data using
+            Alternating Least Squares (ALS).
+    :param cs: str, conditioned stimuli, '' defaults to all CSes
+    :param warp: boolean, warp trace offset so ensure delivery is a single point in time
+    :param trace_type: str, type of calcium imaging trace being used in associated analysis
+    :param group_by: str, period of time being analyzed across animal training
+    :param nan_thresh: float, fraction of trials that must contain non-NaN entries
+    :param score_threshold: float, score threshold for CellReg package alignment score
+    """
+
+    # load your metadata
+    for mouse, word in zip(mice, words):
+        load_kwargs = {'mouse': mouse,
+                       'method': method,
+                       'cs': cs,
+                       'warp': warp,
+                       'word': word,
+                       'trace_type': trace_type,
+                       'group_by': group_by,
+                       'nan_thresh': nan_thresh,
+                       'score_threshold': score_threshold}
+        meta = load.groupday_tca_meta(**load_kwargs)
+
+        # create a new analysis directory for your mouse named 'behavior'
+        save_path = paths.groupmouse_analysis_path('behavior', mice=mice, words=words, **load_kwargs)
+
+        # create plots of your hmm engagement
+        hmm_engaged_from_meta(meta,  save_folder=save_path)
+
+
 def barplots_group_summary_from_meta(meta, staging='parsed_10stage', save_folder='', sharey='row'):
     """
     Function for plotting behavioral data contained in your metadata DataFrame across mice.

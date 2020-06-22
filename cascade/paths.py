@@ -5,6 +5,29 @@ import flow
 import numpy as np
 
 
+def default_dir(filename='', foldername=''):
+    """
+
+    :param filename: name of file you wish to load or save
+    :param foldername: str, name of folder to use
+    :return: path: str of the base directory for all mice
+    """
+    default_path = 'S:\\twophoton_analysis\\Data\\analysis\\Group-counted\\'
+
+    # default directory must already exist
+    assert os.path.isdir(default_path)
+
+    # create a new folder to save your file in if it does not already exist
+    folderpath = os.path.join(default_path, foldername)
+    if not os.path.isdir(folderpath):
+        os.mkdir(folderpath)
+
+    # add filename to path
+    filepath = os.path.join(folderpath, filename)
+
+    return filepath
+
+
 def groupmouse_word(mouse_dict):
     """
     Hash a dictionary of mouse names into a single identifying word.

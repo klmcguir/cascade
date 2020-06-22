@@ -432,29 +432,116 @@ def learning_columns_df(mouse, meta):
         p_cols.append(f'prev_same_init_{ori}')
         p_cols.append(f'prev_diff_init_{ori}')
 
-
-    # make decaying and incrementing filters for each ori and cs.
-    day_vec = meta.reset_index()['date'].values
-    daily_decay_linear = np.zeros(len(day_vec))
-    daily_decay_exp = np.zeros(len(day_vec))
-    for dayi in np.unique(day_vec):
-        day_bool = day_vec == dayi
-        x_vec = np.arange(np.sum(day_bool))
-        expdec = _exp_decay_func(x_vec)
-        lindec = _lin_decay_func(x_vec)
-        daily_decay_linear[day_bool] = lindec
-        daily_decay_exp[day_bool] = expdec
+    # rename oris according to their meaning during learning
+    cs_codes = {'plus': [0, 1], 'neutral': [2, 3], 'minus': [4, 5]}
     for ori in ['plus', 'minus', 'neutral']:
-        curr_ori_bool = meta['condition'].isin([ori]).values
         new_meta = {}
-        new_meta['init_{}_exp_decay'.format(ori)] = np.zeros(len(meta_df_out))
-        new_meta['init_{}_exp_decay'.format(ori)][curr_ori_bool] = daily_decay_exp[curr_ori_bool]
-        new_meta['init_{}_lin_decay'.format(ori)] = np.zeros(len(meta_df_out))
-        new_meta['init_{}_lin_decay'.format(ori)][curr_ori_bool] = daily_decay_linear[curr_ori_bool]
+        new_meta['cs_{}'.format(ori)] = np.zeros(len(meta_df_out))
+        new_meta['cs_{}'.format(ori)][meta['trialerror'].isin(cs_codes[ori]).values] = 1
         new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
         meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
-        p_cols.append('init_{}_lin_decay'.format(ori))
-        p_cols.append('init_{}_exp_decay'.format(ori))
+
+    # also return binary columns for orientation
+    i_cols, cs_cols = [], []
+    for ori in ['plus', 'minus', 'neutral']:
+        i_cols.append('initial_{}'.format(ori))
+        cs_cols.append('cs_{}'.format(ori))
+
+    # return interaction columns for CS and dprime_run
+    if 'dprime_run' not in meta.columns:
+        meta = utils.add_dprime_run_to_meta(meta)
+    dp_vec = meta['dprime_run'].values
+    for ori in ['plus', 'minus', 'neutral']:
+        new_meta = {}
+        new_meta[f'dp_{ori}'] = np.zeros(len(meta))
+        new_meta[f'dp_{ori}'][meta['condition'].isin([ori])] = dp_vec[meta['condition'].isin([ori])]
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+        p_cols.append(f'dp_{ori}')
+
+    # # add pillow interaction terms
+    # new_meta_df1, pillow_cols = cas.glm.add_pillow_interactions(m, new_meta_df1, psy1_df)
+    #
+    # # add engagement from HMM
+    # new_meta_df1 = cas.glm._add_hmm_to_design_mat(new_meta_df1, meta1_df)
+
+    return meta_df_out, p_cols, i_cols, cs_cols
+
+
+def learning_columns_df_FA(mouse, meta):
+    """
+    Trial history evaluated by simply having 6 extra stimulus columns one for each cue preceded by a cue.
+
+    This adds in a FA
+    """
+    # add a binary column for choice, 1 for go 0 for nogo
+    new_meta = {}
+    new_meta['choice'] = np.zeros(len(meta))
+    new_meta['choice'][meta['trialerror'].isin([0, 3, 5, 7]).values] = 1
+    meta_df_out = pd.DataFrame(data=new_meta, index=meta.index)
+    # meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # add a binary column for reward
+    new_meta = {}
+    new_meta['reward'] = np.zeros(len(meta_df_out))
+    new_meta['reward'][meta['trialerror'].isin([0]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # add a binary column for punishment
+    new_meta = {}
+    new_meta['punishment'] = np.zeros(len(meta_df_out))
+    new_meta['punishment'][meta['trialerror'].isin([5]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # add a binary column for FA
+    new_meta = {}
+    new_meta['false_alarm'] = np.zeros(len(meta_df_out))
+    new_meta['false_alarm'][meta['trialerror'].isin([3, 5]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # add a binary column for CR
+    new_meta = {}
+    new_meta['correct_reject'] = np.zeros(len(meta_df_out))
+    new_meta['correct_reject'][meta['trialerror'].isin([2, 4]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # add a binary column for CR
+    new_meta = {}
+    new_meta['miss'] = np.zeros(len(meta_df_out))
+    new_meta['miss'][meta['trialerror'].isin([1]).values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # rename oris according to their meaning during learning
+    for ori in ['plus', 'minus', 'neutral']:
+        new_meta = {}
+        new_meta['initial_{}'.format(ori)] = np.zeros(len(meta_df_out))
+        new_meta['initial_{}'.format(ori)][meta['orientation'].isin([lookups.lookup[mouse][ori]]).values] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # rename oris according to their meaning during learning broken up by preceding ori
+    if 'prev_same_0' not in meta.columns:
+        meta = utils.add_prev_ori_cols_to_meta(meta)
+
+    p_cols = []
+    for ori in ['plus', 'minus', 'neutral']:
+        initial_ori = lookups.lookup[mouse][ori]
+        curr_ori_bool = meta['orientation'].isin([initial_ori]).values
+        same_ori_bool = meta[f'prev_same_{initial_ori}'].gt(0).values
+        new_meta = {}
+        new_meta[f'prev_same_init_{ori}'] = np.zeros(len(meta_df_out))
+        new_meta[f'prev_same_init_{ori}'][same_ori_bool & curr_ori_bool] = 1
+        new_meta[f'prev_diff_init_{ori}'] = np.zeros(len(meta_df_out))
+        new_meta[f'prev_diff_init_{ori}'][~same_ori_bool & curr_ori_bool] = 1
+        new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+        meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+        p_cols.append(f'prev_same_init_{ori}')
+        p_cols.append(f'prev_diff_init_{ori}')
 
     # rename oris according to their meaning during learning
     cs_codes = {'plus': [0, 1], 'neutral': [2, 3], 'minus': [4, 5]}
@@ -482,6 +569,12 @@ def learning_columns_df(mouse, meta):
         new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
         meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
         p_cols.append(f'dp_{ori}')
+
+    # # add pillow interaction terms
+    # new_meta_df1, pillow_cols = cas.glm.add_pillow_interactions(m, new_meta_df1, psy1_df)
+    #
+    # # add engagement from HMM
+    # new_meta_df1 = cas.glm._add_hmm_to_design_mat(new_meta_df1, meta1_df)
 
     return meta_df_out, p_cols, i_cols, cs_cols
 

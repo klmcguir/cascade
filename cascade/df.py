@@ -7,9 +7,366 @@ import pandas as pd
 import scipy as sp
 import warnings
 from copy import deepcopy
-from . import utils, paths, tca, load, lookups
+from . import utils, paths, adaptation, load, lookups
+
 
 # ----------------------- LOAD as DF functions -----------------------
+
+
+def load_daily_ramp_df_stages(mice,
+                              words=None,
+                              method='ncp_hals',
+                              cs='',
+                              warp=False,
+                              trace_type='zscore_day',
+                              group_by='all3',
+                              nan_thresh=0.95,
+                              score_threshold=0.8,
+                              rank=15,
+                              staging='parsed_11stage'):
+    """
+    Function for plotting hmm engagement across stages of learning.
+    Creates plots for multiple mice.
+
+    :param mice: list of str, names of mice for analysis
+    :param words: list of str, associated parameter hash words
+    :param method: str, fit method from tensortools package
+        'cp_als', fits CP Decomposition using Alternating
+            Least Squares (ALS).
+        'ncp_bcd', fits nonnegative CP Decomposition using
+            the Block Coordinate Descent (BCD) Method.
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method.
+        'mncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method with missing data.
+        'mcp_als', fits CP Decomposition with missing data using
+            Alternating Least Squares (ALS).
+    :param cs: str, conditioned stimuli, '' defaults to all CSes
+    :param warp: boolean, warp trace offset so ensure delivery is a single point in time
+    :param trace_type: str, type of calcium imaging trace being used in associated analysis
+    :param group_by: str, period of time being analyzed across animal training
+    :param nan_thresh: float, fraction of trials that must contain non-NaN entries
+    :param score_threshold: float, score threshold for CellReg package alignment score
+    :param rank: int, rank of TCA model to use for fitting
+    :param fit_offset: boolean, fit exponential decay with or without an offset parameter
+    :param norm: boolean, normalize each day before fitting
+    :param staging: str, assign predetermined binning method for associated analysis
+    :return group_adapt_df: pandas.DataFrame, mean grouped parameters and error for fitting decay to TCA trial factors
+    """
+
+    # set load kwargs
+    load_kwargs = {'mouse': mice[0],
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': words[0],
+                   'trace_type': trace_type,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+
+    # find analysis directory for your mice named 'behavior'
+    save_path = paths.groupmouse_analysis_path('ramp', mice=mice, words=words, **load_kwargs)
+
+    # load
+    save_folder = save_path + f' day ramp rank {rank}'
+    assert os.path.isdir(save_folder)
+    adapt_df = pd.read_pickle(
+        os.path.join(save_folder, f'TCA_daily_ramp_r{rank}.pkl'))
+
+    # use staging or take mean across all time, get single value for each fit per day first since it is fit this way
+    if staging in ['parsed_11stage', 'parsed_10stage', 'parsed_stage']:
+        # mean per day
+        group_adapt = adapt_df.groupby(['mouse', staging, 'date', 'initial_condition', 'component']).mean()
+        # mean across days per stage
+        group_adapt = group_adapt.groupby(['mouse', staging, 'initial_condition', 'component']).mean()
+        group_adapt_df = group_adapt.loc[:, 'ramp index'].unstack(level=['initial_condition']).unstack(level=[staging])
+
+    else:
+        print("Unrecognized 'staging' kwarg: pandas.DataFrame.groupby() will take mean across all days")
+        # mean per day
+        group_adapt = adapt_df.groupby(['mouse', 'date', 'initial_condition', 'component']).mean()
+        # mean across days over all time
+        group_adapt = group_adapt.groupby(['mouse', 'initial_condition', 'component']).mean()
+        group_adapt_df = group_adapt.loc[:, 'ramp index'].unstack(level=['initial_condition'])
+
+        # # find maximum initial value parameter 'a' and choose decay constant lambda only for highest 'a'
+        # highest_baseline = group_adapt_df.a.idxmax(axis=1)
+        # group_adapt_df['lambda'] = group_adapt_df['ramp index'].lookup(
+        #     row_labels=highest_baseline.index, col_labels=highest_baseline.values
+
+    return group_adapt_df
+
+
+def load_daily_adaptation_df_stages(mice,
+                                    words=None,
+                                    method='ncp_hals',
+                                    cs='',
+                                    warp=False,
+                                    trace_type='zscore_day',
+                                    group_by='all3',
+                                    nan_thresh=0.95,
+                                    score_threshold=0.8,
+                                    rank=15,
+                                    fit_offset=False,
+                                    norm=True,
+                                    staging='parsed_11stage'):
+    """
+    Function for plotting hmm engagement across stages of learning.
+    Creates plots for multiple mice.
+
+    :param mice: list of str, names of mice for analysis
+    :param words: list of str, associated parameter hash words
+    :param method: str, fit method from tensortools package
+        'cp_als', fits CP Decomposition using Alternating
+            Least Squares (ALS).
+        'ncp_bcd', fits nonnegative CP Decomposition using
+            the Block Coordinate Descent (BCD) Method.
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method.
+        'mncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method with missing data.
+        'mcp_als', fits CP Decomposition with missing data using
+            Alternating Least Squares (ALS).
+    :param cs: str, conditioned stimuli, '' defaults to all CSes
+    :param warp: boolean, warp trace offset so ensure delivery is a single point in time
+    :param trace_type: str, type of calcium imaging trace being used in associated analysis
+    :param group_by: str, period of time being analyzed across animal training
+    :param nan_thresh: float, fraction of trials that must contain non-NaN entries
+    :param score_threshold: float, score threshold for CellReg package alignment score
+    :param rank: int, rank of TCA model to use for fitting
+    :param fit_offset: boolean, fit exponential decay with or without an offset parameter
+    :param norm: boolean, normalize each day before fitting
+    :param staging: str, assign predetermined binning method for associated analysis
+    :return group_adapt_df: pandas.DataFrame, mean grouped parameters and error for fitting decay to TCA trial factors
+    """
+
+    # set load kwargs
+    load_kwargs = {'mouse': mice[0],
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': words[0],
+                   'trace_type': trace_type,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+
+    # find analysis directory for your mice named 'behavior'
+    save_path = paths.groupmouse_analysis_path('adaptation', mice=mice, words=words, **load_kwargs)
+
+    # load
+    normtxt = '_norm' if norm else ''
+    offtxt = 'offset_incl_' if fit_offset else ''
+    save_folder = save_path + f' day adapt rank {rank}'
+    assert os.path.isdir(save_folder)
+    adapt_df = pd.read_pickle(
+        os.path.join(save_folder, f'{offtxt}TCA_daily_adaptation_r{rank}{normtxt}.pkl'))
+
+    # only analyze fits with error < 0.5 and b decay constant < 1, beyond these limits fit seems to fail
+    group_adapt = adapt_df.loc[(adapt_df.error < 0.5) & (adapt_df.b < 1), :]  # & (adapt_df.b < 1)
+
+    # use staging or take mean across all time, get single value for each fit per day first since it is fit this way
+    if staging in ['parsed_11stage', 'parsed_10stage', 'parsed_stage']:
+        # mean per day
+        group_adapt = group_adapt.groupby(['mouse', staging, 'date', 'initial_condition', 'component']).mean()
+        # mean across days per stage
+        group_adapt = group_adapt.groupby(['mouse', staging, 'initial_condition', 'component']).mean()
+        group_adapt_df = group_adapt.loc[:, ['a', 'b']].unstack(level=['initial_condition']).unstack(level=[staging])
+
+    else:
+        print("Unrecognized 'staging' kwarg: pandas.DataFrame.groupby() will take mean across all days")
+        # mean per day
+        group_adapt = group_adapt.groupby(['mouse', 'date', 'initial_condition', 'component']).mean()
+        # mean across days over all time
+        group_adapt = group_adapt.groupby(['mouse', 'initial_condition', 'component']).mean()
+        group_adapt_df = group_adapt.loc[:, ['a', 'b']].unstack(level=['initial_condition'])
+
+        # find maximum initial value parameter 'a' and choose decay constant lambda only for highest 'a'
+        highest_baseline = group_adapt_df.a.idxmax(axis=1)
+        group_adapt_df['lambda'] = group_adapt_df.b.lookup(
+            row_labels=highest_baseline.index, col_labels=highest_baseline.values
+        )
+        # TODO - improve metric or find a new one
+        #  Right now the outputs for parsed and '' inputs are different.
+        #  This seems to correctly identify adapting components for '' but they have
+        #  a decay constant of around 0.02 and there are many false positives it seems.
+
+    return group_adapt_df
+
+
+def load_trialfac_df_tuning(
+        mice='OA27',
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        rank=15,
+        words='bookmarks',
+        group_by='all3',
+        nan_thresh=0.95,
+        score_threshold=0.8,
+        staging='parsed_11stage',
+        verbose=False,
+        tuning=True):
+    """
+    Function for returning a DataFrame of the tuning or mean response of each TCA trial factor for a given binning
+    method set by 'staging'. DataFrame is unstacked for easy seaborn.heatmap plotting.
+
+    :param mouse: list of str, names of mice for analysis
+    :param word: list of str, associated parameter hash words
+    :param method: str, fit method from tensortools package
+        'cp_als', fits CP Decomposition using Alternating
+            Least Squares (ALS).
+        'ncp_bcd', fits nonnegative CP Decomposition using
+            the Block Coordinate Descent (BCD) Method.
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method.
+        'mncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method with missing data.
+        'mcp_als', fits CP Decomposition with missing data using
+            Alternating Least Squares (ALS).
+    :param cs: str, conditioned stimuli, '' defaults to all CSes
+    :param warp: boolean, warp trace offset so ensure delivery is a single point in time
+    :param rank: number of components used in fitting TCA model
+    :param trace_type: str, type of calcium imaging trace being used in associated analysis
+    :param group_by: str, period of time being analyzed across animal training
+    :param nan_thresh: float, fraction of trials that must contain non-NaN entries
+    :param score_threshold: float, score threshold for CellReg package alignment score
+    :param staging: str, assign predetermined binning method for associated analysis
+    :param verbose: boolean, print various outputs for seeing progress of functions
+    :param tuning: boolean, return tuning or mean response
+    :return: all_mouse_df: pandas.DataFrame
+    """
+
+    # get your tidy df_lists for tuning or mean trial factor response amplitude
+    df_list = load_trialfac_df_stages(
+        mice=mice,
+        trace_type=trace_type,
+        method=method,
+        cs=cs,
+        warp=warp,
+        rank=rank,
+        words=words,
+        group_by=group_by,
+        nan_thresh=nan_thresh,
+        score_threshold=score_threshold,
+        staging=staging,
+        verbose=verbose,
+        tuning=tuning)
+
+    # reshape DataFrames to have columns of initial tuning/response and learning stage heirarchially
+    new_df_list = []
+    for df in df_list:
+        new_df_list.append(df.unstack(level=['initial_condition']).unstack(level=[staging]))
+    all_mouse_df = pd.concat(new_df_list, axis=0)
+
+    return all_mouse_df
+
+
+def load_trialfac_df_stages(
+        mice='OA27',
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        rank=15,
+        words='bookmarks',
+        group_by='all3',
+        nan_thresh=0.95,
+        score_threshold=0.8,
+        staging='parsed_11stage',
+        verbose=False,
+        tuning=True):
+    """
+    Function for returning a tidy DataFrame of the tuning or mean response of each TCA trial factor for a given
+    binning method set by 'staging'.
+
+    :param mouse: list of str, names of mice for analysis
+    :param word: list of str, associated parameter hash words
+    :param method: str, fit method from tensortools package
+        'cp_als', fits CP Decomposition using Alternating
+            Least Squares (ALS).
+        'ncp_bcd', fits nonnegative CP Decomposition using
+            the Block Coordinate Descent (BCD) Method.
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method.
+        'mncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method with missing data.
+        'mcp_als', fits CP Decomposition with missing data using
+            Alternating Least Squares (ALS).
+    :param cs: str, conditioned stimuli, '' defaults to all CSes
+    :param warp: boolean, warp trace offset so ensure delivery is a single point in time
+    :param rank: number of components used in fitting TCA model
+    :param trace_type: str, type of calcium imaging trace being used in associated analysis
+    :param group_by: str, period of time being analyzed across animal training
+    :param nan_thresh: float, fraction of trials that must contain non-NaN entries
+    :param score_threshold: float, score threshold for CellReg package alignment score
+    :param staging: str, assign predetermined binning method for associated analysis
+    :param verbose: boolean, print various outputs for seeing progress of functions
+    :param tuning: boolean, return tuning or mean response
+    :return: df_list: list of pandas.DataFrame
+    """
+
+    df_list = []
+    for mi, wi in zip(mice, words):
+        model, _, _, meta, _, _ = load.load_all_groupday(
+            mouse=mi,
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            word=wi,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold,
+            verbose=verbose)
+
+        # add learning stages to meta
+        if 'parsed_stage' not in meta.columns and 'parsed_stage' in staging:
+            meta = utils.add_5stages_to_meta(meta)
+        if 'parsed_10stage' not in meta.columns and 'parsed_10stage' in staging:
+            meta = utils.add_10stages_to_meta(meta)
+        if 'parsed_11stage' not in meta.columns and 'parsed_11stage' in staging:
+            meta = utils.add_11stages_to_meta(meta, dp_by_run=True)
+
+        # specify which TCA factors to use
+        itr_num = 0  # always load first iteration, best model
+        fac_type = 2  # trial factors
+        facs = model.results[rank][itr_num].factors[fac_type][:, :]
+
+        # add components to meta so you can groupby
+        fac_df = []
+        for comp_n in range(facs.shape[1]):
+            # col = f'component_{comp_n+1}'
+            # comp_cols.append(col)
+            # meta[col] = facs[:, comp_n]
+            meta['mean response'] = facs[:, comp_n]
+            meta['component'] = comp_n + 1
+            fac_df.append(deepcopy(meta))
+        all_fac_df = pd.concat(fac_df, axis=0)
+
+        # get your mean responses for bins set by staging
+        mouse_stage_df = all_fac_df.groupby(
+            ['mouse', staging, 'initial_condition', 'component']).mean().loc[:, 'mean response']
+        denom_df = mouse_stage_df.groupby(['mouse', staging, 'component']).sum()
+
+        # append tuning or mean responses
+        if tuning:
+            df_list.append(mouse_stage_df / denom_df)
+        else:
+            df_list.append(mouse_stage_df)
+
+    return df_list
+
 
 def load_tempfac_dfs(
         mice='OA27',
@@ -50,18 +407,19 @@ def load_tempfac_dfs(
 
         # make your dataframe
         data = {}
-        data['mouse'] = [mi]*facs.shape[1]
-        data['component'] = np.arange(1, facs.shape[1]+1)
+        data['mouse'] = [mi] * facs.shape[1]
+        data['component'] = np.arange(1, facs.shape[1] + 1)
         for timept in range(facs.shape[0]):
             data[timept] = facs[timept, :]
         df = pd.DataFrame(data=data).set_index(['mouse', 'component'])
         df_list.append(df)
     dfs = pd.concat(df_list, axis=0)
-    
+
     if interp_2s:
         return _stim_interp_2s(dfs, normalize=interp_norm)
     else:
         return dfs
+
 
 def _stim_interp_2s(t_df, normalize=False):
     """
@@ -75,13 +433,13 @@ def _stim_interp_2s(t_df, normalize=False):
 
     # downsample the 3 sec visual stim period to 2 sec
     first_sec = threes.iloc[:, 0:16]
-    stim = threes.iloc[:, 16:int(15.5*4)]
-    after = threes.iloc[:, int(15.5*4):]
-    new_stim = np.zeros((stim.shape[0], int(np.ceil(stim.shape[1]*2/3))))
+    stim = threes.iloc[:, 16:int(15.5 * 4)]
+    after = threes.iloc[:, int(15.5 * 4):]
+    new_stim = np.zeros((stim.shape[0], int(np.ceil(stim.shape[1] * 2 / 3))))
     for rowi in range(stim.shape[0]):
         x0 = np.arange(len(stim.values[rowi, :]))
         interpfunc = sp.interpolate.interp1d(x0, stim.values[rowi, :])
-        x1 = np.arange(0, len(stim.values[rowi, :]), 3/2)
+        x1 = np.arange(0, len(stim.values[rowi, :]), 3 / 2)
         y1 = interpfunc(x1)
         new_stim[rowi, :] = y1
     new_stim_df = pd.DataFrame(data=new_stim, index=stim.index)
@@ -95,7 +453,7 @@ def _stim_interp_2s(t_df, normalize=False):
 
     # stick them back together
     all_twos_now = pd.concat([three_down, two_down], axis=0)
-    all_twos_now = all_twos_now.reindex_like(t_df) # make sure things match you input order
+    all_twos_now = all_twos_now.reindex_like(t_df)  # make sure things match you input order
 
     # normalize shape and return
     if normalize:
@@ -119,7 +477,7 @@ def load_cellfac_df_list(
     """
     Load a TCA cell factors as a long form DataFrame. Columns are cells.
     """
-    
+
     df_list = []
     for mi, wi in zip(mice, words):
         model, _, _, _, _, _ = load.load_all_groupday(
@@ -141,8 +499,8 @@ def load_cellfac_df_list(
 
         # make your dataframe
         data = {}
-        data['mouse'] = [mi]*facs.shape[1]
-        data['component'] = np.arange(1, facs.shape[1]+1)
+        data['mouse'] = [mi] * facs.shape[1]
+        data['component'] = np.arange(1, facs.shape[1] + 1)
         for cell_num in range(facs.shape[0]):
             data['cell {}'.format(cell_num)] = facs[cell_num, :]
         df = pd.DataFrame(data=data).set_index(['mouse', 'component'])
@@ -188,8 +546,8 @@ def load_trialfac_df_list(
 
         # make your dataframe
         data = {}
-        data['mouse'] = [mi]*facs.shape[1]
-        data['component'] = np.arange(1, facs.shape[1]+1)
+        data['mouse'] = [mi] * facs.shape[1]
+        data['component'] = np.arange(1, facs.shape[1] + 1)
         for trial_num in range(facs.shape[0]):
             data[trial_num] = facs[trial_num, :]
         df = pd.DataFrame(data=data).set_index(['mouse', 'component'])
@@ -269,13 +627,13 @@ def trigger(mouse, trace_type='zscore_day', cs='', downsample=True,
 
             # trigger all trials around stimulus onsets
             run_traces = utils.getcstraces(run, cs=cs, trace_type=trace_type,
-                                     start_time=start_time, end_time=end_time,
-                                     downsample=True, clean_artifacts=clean_artifacts,
-                                     thresh=thresh, warp=warp, smooth=smooth,
-                                     smooth_win=smooth_win)
+                                           start_time=start_time, end_time=end_time,
+                                           downsample=True, clean_artifacts=clean_artifacts,
+                                           thresh=thresh, warp=warp, smooth=smooth,
+                                           smooth_win=smooth_win)
 
             # make timestamps, downsample is necessary
-            timestep = 1/t2p.d['framerate']
+            timestep = 1 / t2p.d['framerate']
             timestamps = np.arange(start_time, end_time, timestep)
 
             if (t2p.d['framerate'] > 30) and downsample:
@@ -283,7 +641,7 @@ def trigger(mouse, trace_type='zscore_day', cs='', downsample=True,
 
             # check that you don't have extra cells
             if len(cell_ids) != np.shape(run_traces)[0]:
-                run_traces = run_traces[range(0,len(cell_ids)), :, :]
+                run_traces = run_traces[range(0, len(cell_ids)), :, :]
                 warnings.warn(str(run) + ': You have more cell traces than cell_idx: skipping extra cells.')
 
             # build matrices to match cell, trial, time variables to traces
@@ -308,7 +666,7 @@ def trigger(mouse, trace_type='zscore_day', cs='', downsample=True,
                 trial_mat.reshape(vec_sz),
                 cell_mat.reshape(vec_sz),
                 time_mat.reshape(vec_sz)
-                ],
+            ],
                 names=['mouse', 'date', 'run', 'trial_idx',
                        'cell_idx', 'timestamp'])
 
@@ -326,7 +684,7 @@ def trigger(mouse, trace_type='zscore_day', cs='', downsample=True,
 
         # print output so you don't go crazy waiting
         if verbose:
-            print('Day: ' + str(count+1) + ': ' + str(d.mouse)
+            print('Day: ' + str(count + 1) + ': ' + str(d.mouse)
                   + '_' + str(d.date) + ': ' + str(len(trial_list)))
 
         # reset trial list before starting new day
@@ -393,14 +751,14 @@ def trialmeta(mouse, downsample=True, verbose=True):
             learning_state = 'reversal1'
         elif 'reversal2' in run_tags:
             learning_state = 'reversal2'
-        learning_state = [learning_state]*len(trial_idx)
+        learning_state = [learning_state] * len(trial_idx)
 
         # get hunger-state for all trials, consider hungry if not sated
         if 'sated' in run_tags:
             hunger = 'sated'
         else:
             hunger = 'hungry'
-        hunger = [hunger]*len(trial_idx)
+        hunger = [hunger] * len(trial_idx)
 
         # get relevant trial-distinguising tags excluding kelly, hunger-state, learning-state
         tags = [str(run_tags[s]) for s in range(len(run_tags)) if run_tags[s] != hunger[0]
@@ -411,7 +769,7 @@ def trialmeta(mouse, downsample=True, verbose=True):
                 and run_tags[s] != 'reversal2_start']
         if tags == []:  # define as "standard" if the run is not another option
             tags = ['standard']
-        tags = [tags[0]]*len(trial_idx)
+        tags = [tags[0]] * len(trial_idx)
 
         # get trialerror ensuring you don't include runthrough at end of trials
         trialerror = np.array(t2p.d['trialerror'][trial_idx])
@@ -427,7 +785,7 @@ def trialmeta(mouse, downsample=True, verbose=True):
         try:
             all_offsets = t2p.d['offsets'][0:len(all_onsets)]
         except KeyError:
-            all_offsets = all_onsets + (np.round(t2p.d['framerate'])*3)
+            all_offsets = all_onsets + (np.round(t2p.d['framerate']) * 3)
         if all_offsets[-1] > t2p.nframes:
             all_offsets[-1] = t2p.nframes
         if t2p.d['running'].size > 0:
@@ -461,32 +819,32 @@ def trialmeta(mouse, downsample=True, verbose=True):
         ensure = t2p.ensure()
         ensure = ensure.astype('float')
         ensure[ensure == 0] = np.nan
-        ensure = ensure - all_onsets + (np.abs(start_time)*np.round(t2p.d['framerate']))
+        ensure = ensure - all_onsets + (np.abs(start_time) * np.round(t2p.d['framerate']))
 
         quinine = t2p.quinine()
         quinine = quinine.astype('float')
         quinine[quinine == 0] = np.nan
-        quinine = quinine - all_onsets + (np.abs(start_time)*np.round(t2p.d['framerate']))
+        quinine = quinine - all_onsets + (np.abs(start_time) * np.round(t2p.d['framerate']))
 
         firstlick = t2p.firstlick('')[trial_idx]
-        firstlick = firstlick + (np.abs(start_time)*np.round(t2p.d['framerate']))
+        firstlick = firstlick + (np.abs(start_time) * np.round(t2p.d['framerate']))
 
         # downsample all timestamps to 15Hz if framerate is 31Hz
         if (t2p.d['framerate'] > 30) and downsample:
-            ensure = ensure/2
-            quinine = quinine/2
-            firstlick = firstlick/2
+            ensure = ensure / 2
+            quinine = quinine / 2
+            firstlick = firstlick / 2
 
         # create your index out of relevant variables
         index = pd.MultiIndex.from_arrays([
-                    [run.mouse]*len(trial_idx),
-                    [run.date]*len(trial_idx),
-                    [run.run]*len(trial_idx),
-                    trial_idx
-                    ],
-                    names=['mouse', 'date', 'run', 'trial_idx'])
+            [run.mouse] * len(trial_idx),
+            [run.date] * len(trial_idx),
+            [run.run] * len(trial_idx),
+            trial_idx
+        ],
+            names=['mouse', 'date', 'run', 'trial_idx'])
 
-        data = {'orientation':  oris, 'condition': css,
+        data = {'orientation': oris, 'condition': css,
                 'trialerror': trialerror, 'hunger': hunger,
                 'learning_state': learning_state, 'tag': tags,
                 'firstlick': firstlick, 'ensure': ensure,
@@ -591,7 +949,6 @@ def singlecell(mouse, trace_type, cell_idx, xmap=None, word=None):
     # load all dfs into list that contain the cell of interest
     cell_xday = []
     for d in np.where(xmap[cell_num, :] == 1)[0]:
-
         path = os.path.join(save_dir, str(days[d].mouse) + '_'
                             + str(days[d].date) + '_df_' + trace_type + '.pkl')
         dft = pd.read_pickle(path)
@@ -632,27 +989,27 @@ def trialbhv(mouse, start_time=-1, end_time=6, verbose=True):
 
         # trigger all running speed around stim onsets
         speed_traces = behaviortraces(t2p, '', start_s=start_time, end_s=end_time,
-                                           trace_type='speed', cutoff_before_lick_ms=-1)
+                                      trace_type='speed', cutoff_before_lick_ms=-1)
         print(np.shape(speed_trace))
         # trigger all running speed around stim onsets
         lick_traces = behaviortraces(t2p, '', start_s=start_time, end_s=end_time,
-                                           trace_type='lick', cutoff_before_lick_ms=-1)
+                                     trace_type='lick', cutoff_before_lick_ms=-1)
         print(np.shape(lick_trace))
         # make timestamps
-        timestep = 1/np.round(t2p.d['framerate'])
+        timestep = 1 / np.round(t2p.d['framerate'])
         timestamps = np.concatenate((np.arange(start_time, 0, timestep),
                                      np.arange(0, end_time, timestep)))
 
         # loop through and append each trial (slice of cstraces)
         for trial in range(np.shape(run_traces)[2]):
             index = pd.MultiIndex.from_arrays([
-                        [run.mouse] * np.shape(run_traces)[1],
-                        [run.date] * np.shape(run_traces)[1],
-                        [run.run] * np.shape(run_traces)[1],
-                        [int(trial)] * np.shape(run_traces)[1],
-                        timestamps
-                        ],
-                        names=['mouse', 'date', 'run', 'trial_idx', 'timestamp'])
+                [run.mouse] * np.shape(run_traces)[1],
+                [run.date] * np.shape(run_traces)[1],
+                [run.run] * np.shape(run_traces)[1],
+                [int(trial)] * np.shape(run_traces)[1],
+                timestamps
+            ],
+                names=['mouse', 'date', 'run', 'trial_idx', 'timestamp'])
 
             data = {'speed': np.squeeze(speed_traces[0, :, trial]),
                     'licking': np.squeeze(lick_traces[0, :, trial])}
@@ -699,9 +1056,9 @@ def behaviortraces(t2p, cs, start_s=-1, end_s=6, trace_type='speed',
     if isinstance(start_s, dict):
         raise ValueError('Dicts are no longer accepted')
 
-    start_frame = int(round(start_s*t2p.framerate))
-    end_frame = int(round(end_s*t2p.framerate))
-    cutoff_frame = int(round(cutoff_before_lick_ms/1000.0*t2p.framerate))
+    start_frame = int(round(start_s * t2p.framerate))
+    end_frame = int(round(end_s * t2p.framerate))
+    cutoff_frame = int(round(cutoff_before_lick_ms / 1000.0 * t2p.framerate))
 
     if trace_type == 'speed' or trace_type == 'running':
         trace = t2p.speed()
@@ -735,7 +1092,7 @@ def behaviortraces(t2p, cs, start_s=-1, end_s=6, trace_type='speed',
                 end = t2p.nframes
             if end > start:
                 if np.shape(trace) > 0:
-                    out[:, :end-start, i] = trace[:, start:end]
+                    out[:, :end - start, i] = trace[:, start:end]
 
     return out
 
@@ -756,7 +1113,6 @@ def groupmouse_trialfac_summary_days(
         speed_thresh=5,
         rank_num=18,
         verbose=False):
-
     """
     Cluster tca trial factors based on tuning to different oris, conditions,
     and trialerror values.
@@ -820,7 +1176,6 @@ def groupmouse_trialfac_summary_days(
         dates = dates['date']  # turn into series for index matching for bool
         learning_state = meta['learning_state']
 
-
         df_mouse_tuning = []
         df_mouse_tuning_scaled = []
         df_mouse_conds = []
@@ -843,7 +1198,7 @@ def groupmouse_trialfac_summary_days(
             # ------------ GET DPRIME
 
             date_obj = flow.Date(mouse, date=day, exclude_tags=['bad'])
-            data = [pool.calc.performance.dprime(date_obj)]*rank_num
+            data = [pool.calc.performance.dprime(date_obj)] * rank_num
             dprime_data = {}
             dprime_data['dprime'] = data
 
@@ -904,7 +1259,7 @@ def groupmouse_trialfac_summary_days(
                 response_calc[1, c] = np.nanmean(
                     trial_weights[pref_indexer & indexer, c])
             # normalize using summed mean response to both running states
-            maxnorm = response_calc[1, :]  #/response_calc[0, :]
+            maxnorm = response_calc[1, :]  # /response_calc[0, :]
             # dict for creating dataframe
             # take only running/(running + stationary) value
             tuning_sc_data = {}
@@ -923,7 +1278,7 @@ def groupmouse_trialfac_summary_days(
                 running_calc[1, c] = np.nanmean(
                     trial_weights[pref_indexer & indexer, c], axis=0)
             # normalize using summed mean response to both running states
-            fano = running_calc[0, :]/running_calc[1, :]
+            fano = running_calc[0, :] / running_calc[1, :]
             # dict for creating dataframe
             # take only running/(running + stationary) value
             fano_data = {}
@@ -934,7 +1289,7 @@ def groupmouse_trialfac_summary_days(
                     trial_weights[pref_indexer & indexer, :], axis=0)
                 running_calc[1, :] = np.nanmean(
                     trial_weights[pref_indexer & indexer, :], axis=0)
-                fano = running_calc[0, :]/running_calc[1, :]
+                fano = running_calc[0, :] / running_calc[1, :]
                 fano_data['fano_factor_' + str(ori)] = fano
 
             # ------------- GET Condition TUNING
@@ -1000,7 +1355,7 @@ def groupmouse_trialfac_summary_days(
                         indexer, c],
                     axis=0)
             # normalize using summed mean response to both running states
-            running_mod = np.log2(running_calc[0, :]/running_calc[1, :])
+            running_mod = np.log2(running_calc[0, :] / running_calc[1, :])
             # dict for creating dataframe
             # take only running/(running + stationary) value
             running_data = {}
@@ -1018,8 +1373,8 @@ def groupmouse_trialfac_summary_days(
             late_indexer = orientation.isin(['not_this'])
             for d in np.unique(dates):
                 day_idx = np.where(dates.isin([d]))[0]
-                early_indexer[day_idx[0:int(len(day_idx)/2)]] = True
-                late_indexer[day_idx[int(len(day_idx)/2):-1]] = True
+                early_indexer[day_idx[0:int(len(day_idx) / 2)]] = True
+                late_indexer[day_idx[int(len(day_idx) / 2):-1]] = True
             # get early vs late mean dff for preferred ori per component
             for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
                 pref_indexer = (orientation == oris_to_check[ori])
@@ -1036,7 +1391,7 @@ def groupmouse_trialfac_summary_days(
                         indexer, c],
                     axis=0)
             # normalize using summed mean response to both early/late
-            ramp_index = np.log2(ramp_calc[1, :]/ramp_calc[0, :])
+            ramp_index = np.log2(ramp_calc[1, :] / ramp_calc[0, :])
             ramp_data = {}
             ramp_data['ramp_index_trials'] = ramp_index
 
@@ -1045,8 +1400,8 @@ def groupmouse_trialfac_summary_days(
             index = pd.MultiIndex.from_arrays([
                 [mouse] * rank_num,
                 [day] * rank_num,
-                range(1, rank_num+1)
-                ],
+                range(1, rank_num + 1)
+            ],
                 names=['mouse',
                        'date',
                        'component'])
@@ -1079,19 +1434,19 @@ def groupmouse_trialfac_summary_days(
         learning_indexer = learning_state.isin(['naive', 'learning'])
         trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
         pref_ori_idx = np.argmax(tuning_weights, axis=0)
-        pos = np.arange(1, len(orientation)+1)
+        pos = np.arange(1, len(orientation) + 1)
         cm_learning = []
         for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
             pref_indexer = (orientation == oris_to_check[ori])
             pos_pref = pos[learning_indexer & pref_indexer]
             weights_pref = trial_weights[learning_indexer & pref_indexer, c]
             cm_learning.append(
-                np.sum(weights_pref * pos_pref)/np.sum(weights_pref))
+                np.sum(weights_pref * pos_pref) / np.sum(weights_pref))
         data = {'center_of_mass_trials_learning': cm_learning}
         index = pd.MultiIndex.from_arrays([
             [mouse] * rank_num,
-            range(1, rank_num+1)
-            ],
+            range(1, rank_num + 1)
+        ],
             names=['mouse',
                    'component'])
         cm_learning_df = pd.DataFrame(data=data, index=index)
@@ -1099,18 +1454,18 @@ def groupmouse_trialfac_summary_days(
         # only get the temporal factors once
         index = pd.MultiIndex.from_arrays([
             [mouse] * rank_num,
-            range(1, rank_num+1)
-            ],
+            range(1, rank_num + 1)
+        ],
             names=['mouse',
                    'component'])
         tempo_df = pd.DataFrame(
-                sort_ensemble.results[rank_num][0].factors[1][:, :].T,
-                index=index)
+            sort_ensemble.results[rank_num][0].factors[1][:, :].T,
+            index=index)
 
         # normalize mag of response        df_calc = df_mouse_dprime.pivot(
         df_calc = pd.concat(df_mouse_tuning_scaled, axis=0)
         df_calc = df_calc.unstack()
-        df_calc = df_calc/df_calc.max(axis=0)
+        df_calc = df_calc / df_calc.max(axis=0)
         df_calc = df_calc.stack()
 
         # concatenate different columns per mouse
@@ -1140,15 +1495,15 @@ def groupmouse_trialfac_summary_days(
 
     # all_index_df = pd.concat(df_list_index, axis=0)
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_tuning_sc_df,
-                                all_error_df, all_fano_df, all_dprime_df,
-                                all_runmod_df, all_ramp_df], axis=1)
+                                 all_error_df, all_fano_df, all_dprime_df,
+                                 all_runmod_df, all_ramp_df], axis=1)
 
     # calculate center of mass for your temporal components
     tr = all_tempo_df.values
-    pos = np.arange(1, np.shape(tr)[1]+1)
+    pos = np.arange(1, np.shape(tr)[1] + 1)
     center_of_mass = []
     for i in range(np.shape(tr)[0]):
-        center_of_mass.append(np.sum(tr[i, :] * pos)/np.sum(tr[i, :]))
+        center_of_mass.append(np.sum(tr[i, :] * pos) / np.sum(tr[i, :]))
     data = {'center_of_mass': center_of_mass}
     new_tempo_df = pd.DataFrame(data=data, index=all_tempo_df.index)
     trial_factor_df = pd.merge(
@@ -1177,7 +1532,6 @@ def groupmouse_trialfac_summary_stages(
         rank_num=18,
         matched_only=True,
         verbose=False):
-
     """
     Cluster tca trial factors based on tuning to different oris, conditions,
     and trialerror values.
@@ -1228,14 +1582,14 @@ def groupmouse_trialfac_summary_stages(
                        'score_threshold': score_threshold,
                        'rank': rank_num}
         load_kwargs_meta = {'mouse': mouse,
-                       'method': method,
-                       'trace_type': trace_type,
-                       'cs': cs,
-                       'warp': warp,
-                       'word': words[mnum],
-                       'group_by': group_by,
-                       'nan_thresh': nan_thresh,
-                       'score_threshold': score_threshold}
+                            'method': method,
+                            'trace_type': trace_type,
+                            'cs': cs,
+                            'warp': warp,
+                            'word': words[mnum],
+                            'group_by': group_by,
+                            'nan_thresh': nan_thresh,
+                            'score_threshold': score_threshold}
         sort_ensemble, cell_ids, cell_clusters = load.groupday_tca_model(
             **load_kwargs, full_output=True)
         meta = load.groupday_tca_meta(**load_kwargs_meta)
@@ -1326,7 +1680,7 @@ def groupmouse_trialfac_summary_stages(
             # dict for creating dataframe
             tuning_data = {}
             for c, errset in enumerate(oris_to_check):
-                 tuning_data['t' + str(errset) + '_' + stage] = tuning_weights[c, :]
+                tuning_data['t' + str(errset) + '_' + stage] = tuning_weights[c, :]
 
             # ------------- GET Condition TUNING
 
@@ -1394,7 +1748,7 @@ def groupmouse_trialfac_summary_stages(
             # run_total = np.nansum(running_calc, axis=0)
             # running_mod = running_calc[0, :]/(running_calc[0, :] +
             #                                   running_calc[1, :])
-            running_mod = np.log2(running_calc[0, :]/running_calc[1, :])
+            running_mod = np.log2(running_calc[0, :] / running_calc[1, :])
             # dict for creating dataframe
             # take only running/(running + stationary) value
             running_data = {}
@@ -1412,8 +1766,8 @@ def groupmouse_trialfac_summary_stages(
             late_indexer = orientation.isin(['not_this'])
             for day in np.unique(dates):
                 day_idx = np.where(dates.isin([day]))[0]
-                early_indexer[day_idx[0:int(len(day_idx)/2)]] = True
-                late_indexer[day_idx[int(len(day_idx)/2):-1]] = True
+                early_indexer[day_idx[0:int(len(day_idx) / 2)]] = True
+                late_indexer[day_idx[int(len(day_idx) / 2):-1]] = True
             # get early vs late mean dff for preferred ori per component
             for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
                 pref_indexer = (orientation == oris_to_check[ori])
@@ -1430,7 +1784,7 @@ def groupmouse_trialfac_summary_stages(
                         indexer, c],
                     axis=0)
             # normalize using summed mean response to both late/early
-            ramp_index = np.log2(ramp_calc[1, :]/ramp_calc[0, :])
+            ramp_index = np.log2(ramp_calc[1, :] / ramp_calc[0, :])
             ramp_data = {}
             ramp_data['ramp_index_trials_' + stage] = ramp_index
 
@@ -1438,10 +1792,10 @@ def groupmouse_trialfac_summary_stages(
 
             index = pd.MultiIndex.from_arrays([
                 [mouse] * rank_num,
-                range(1, rank_num+1)
-                ],
+                range(1, rank_num + 1)
+            ],
                 names=['mouse',
-                'component'])
+                       'component'])
             tuning_df = pd.DataFrame(tuning_data, index=index)
             conds_df = pd.DataFrame(conds_data, index=index)
             error_df = pd.DataFrame(error_data, index=index)
@@ -1462,8 +1816,8 @@ def groupmouse_trialfac_summary_stages(
 
         # only get the temporal factors once
         tempo_df = pd.DataFrame(
-                sort_ensemble.results[rank_num][0].factors[1][:, :].T,
-                index=index)
+            sort_ensemble.results[rank_num][0].factors[1][:, :].T,
+            index=index)
 
         # ------------- CENTER OF MASS for preferred ori trials across learning
         # only calculate once for all days
@@ -1472,19 +1826,19 @@ def groupmouse_trialfac_summary_stages(
         learning_indexer = learning_state.isin(['naive', 'learning'])
         trial_weights = sort_ensemble.results[rank_num][0].factors[2][:, :]
         pref_ori_idx = np.argmax(tuning_weights, axis=0)
-        pos = np.arange(1, len(orientation)+1)
+        pos = np.arange(1, len(orientation) + 1)
         cm_learning = []
         for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
             pref_indexer = (orientation == oris_to_check[ori])
             pos_pref = pos[learning_indexer & pref_indexer]
             weights_pref = trial_weights[learning_indexer & pref_indexer, c]
             cm_learning.append(
-                np.sum(weights_pref * pos_pref)/np.sum(weights_pref))
+                np.sum(weights_pref * pos_pref) / np.sum(weights_pref))
         data = {'center_of_mass_trials_learning': cm_learning}
         index = pd.MultiIndex.from_arrays([
             [mouse] * rank_num,
-            range(1, rank_num+1)
-            ],
+            range(1, rank_num + 1)
+        ],
             names=['mouse',
                    'component'])
         cm_learning_df = pd.DataFrame(data=data, index=index)
@@ -1499,18 +1853,18 @@ def groupmouse_trialfac_summary_stages(
         for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
             pref_indexer = (orientation == oris_to_check[ori])
             weights_pref_low_dp = np.nanmean(trial_weights[
-                learning_indexer & (dprime < 2) & pref_indexer, c],
-                axis=0)
+                                                 learning_indexer & (dprime < 2) & pref_indexer, c],
+                                             axis=0)
             weights_pref_high_dp = np.nanmean(trial_weights[
-                learning_indexer & (dprime >= 2) & pref_indexer, c],
-                axis=0)
+                                                  learning_indexer & (dprime >= 2) & pref_indexer, c],
+                                              axis=0)
             ramp_learning.append(
-                np.log2(weights_pref_high_dp/weights_pref_low_dp))
+                np.log2(weights_pref_high_dp / weights_pref_low_dp))
         data = {'ramp_index_learning': ramp_learning}
         index = pd.MultiIndex.from_arrays([
             [mouse] * rank_num,
-            range(1, rank_num+1)
-            ],
+            range(1, rank_num + 1)
+        ],
             names=['mouse',
                    'component'])
         ramp_learning_df = pd.DataFrame(data=data, index=index)
@@ -1525,16 +1879,16 @@ def groupmouse_trialfac_summary_stages(
         for c, ori in enumerate(pref_ori_idx):  # this is as long as rank #
             pref_indexer = (orientation == oris_to_check[ori])
             weights_pref_low_dp = np.nanmean(trial_weights[
-                learning_indexer & (dprime < 2) & pref_indexer])
+                                                 learning_indexer & (dprime < 2) & pref_indexer])
             weights_pref_high_dp = np.nanmean(trial_weights[
-                learning_indexer & (dprime >= 2) & pref_indexer])
+                                                  learning_indexer & (dprime >= 2) & pref_indexer])
             ramp_learning.append(
-                np.log2(weights_pref_high_dp/weights_pref_low_dp))
+                np.log2(weights_pref_high_dp / weights_pref_low_dp))
         data = {'ramp_index_speed_learning': ramp_learning}
         index = pd.MultiIndex.from_arrays([
             [mouse] * rank_num,
-            range(1, rank_num+1)
-            ],
+            range(1, rank_num + 1)
+        ],
             names=['mouse',
                    'component'])
         speed_learning_df = pd.DataFrame(data=data, index=index)
@@ -1564,22 +1918,22 @@ def groupmouse_trialfac_summary_stages(
     all_ramp_learning_df = pd.concat(df_list_ramp_learning, axis=0)
     all_speed_learning_df = pd.concat(df_list_speed_learning, axis=0)
     trial_factor_df = pd.concat([all_conds_df, all_tuning_df, all_error_df,
-                                all_cm_learning_df, all_ramp_learning_df,
-                                all_speed_learning_df, all_amplitude_df,
-                                all_runmod_df, all_ramp_df], axis=1)
+                                 all_cm_learning_df, all_ramp_learning_df,
+                                 all_speed_learning_df, all_amplitude_df,
+                                 all_runmod_df, all_ramp_df], axis=1)
 
     # calculate center of mass amd ramp index for your temporal components
     tr = all_tempo_df.values
-    pos = np.arange(1, np.shape(tr)[1]+1)
+    pos = np.arange(1, np.shape(tr)[1] + 1)
     center_of_mass = []
     ramp_index_trace = []
     offset_index_trace = []
     for i in range(np.shape(tr)[0]):
-        center_of_mass.append(np.sum(tr[i, :] * pos)/np.sum(tr[i, :]))
+        center_of_mass.append(np.sum(tr[i, :] * pos) / np.sum(tr[i, :]))
         ramp_index_trace.append(
-            np.log2(np.nanmean(tr[i, 39:62])/np.nanmean(tr[i, 16:39])))
+            np.log2(np.nanmean(tr[i, 39:62]) / np.nanmean(tr[i, 16:39])))
         offset_index_trace.append(
-            np.log2(np.nanmean(tr[i, 62:93])/np.nanmean(tr[i, 16:62])))
+            np.log2(np.nanmean(tr[i, 62:93]) / np.nanmean(tr[i, 16:62])))
     trial_factor_df['center_of_mass'] = center_of_mass
     trial_factor_df['ramp_index_trace'] = ramp_index_trace
     trial_factor_df['ramp_index_trace_offset'] = offset_index_trace
