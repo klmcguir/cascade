@@ -352,7 +352,6 @@ def add_prev_ori_cols_to_meta(meta):
 
     # meta can only be a data frame of a single mouse
     assert len(meta.reset_index()['mouse'].unique()) == 1
-    mouse = meta.reset_index()['mouse'].unique()[0]
 
     # boolean for cues preceded by the same cue
     prev_same_boo = (meta['prev_same_plus'].gt(0)
@@ -362,8 +361,7 @@ def add_prev_ori_cols_to_meta(meta):
     # create column for each ori if it was preceded by the same ori
     for ori in [0, 135, 270]:
         curr_ori_bool = meta['orientation'].isin([ori]).values
-        new_meta = {}
-        new_meta[f'prev_same_{ori}'] = np.zeros(len(meta))
+        new_meta = {f'prev_same_{ori}': np.zeros(len(meta))}
         new_meta[f'prev_same_{ori}'][prev_same_boo & curr_ori_bool] = 1
         new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
         meta = pd.concat([meta, new_meta_df], axis=1)
@@ -495,6 +493,34 @@ def update_meta_date_vec(meta):
     new_meta = new_meta.set_index(['mouse', 'date', 'run', 'trial_idx'])
 
     return new_meta
+
+
+def add_stages_to_meta(meta, staging, dp_by_run=True, simple=False, bin_scale=0.75):
+    """
+    Helper function to allow single function to check and create other staging vectors.
+
+    :param meta: pandas.DataFrame, trial metadata
+    :param staging: str, type of binning to be used to define stages of learning
+    :param dp_by_run: boolean, use dprime calculated over runs (instead of over days)
+    :param simple: boolean, for 10stage
+            simple=True: Divide trials in a stage right down the middle.
+            simple=False: Divide days. Single days are NOT broken in half. They are
+            attributed to the later period. This is to prevent groups of cells that
+            change dramatically within a day from affecting results if they are highly
+            responsive at the beginning of the day but not at the end.
+    :param bin_scale: float, for 11stage, width of dprime bins
+    :return: meta, now with one new column
+    """
+    # make sure parsed stage exists so you can loop over this.
+    # add learning stages to meta
+    if 'parsed_stage' not in meta.columns and 'parsed_stage' in staging:
+        meta = utils.add_5stages_to_meta(meta, dp_by_run=dp_by_run)
+    if 'parsed_10stage' not in meta.columns and 'parsed_10stage' in staging:
+        meta = utils.add_10stages_to_meta(meta, dp_by_run=dp_by_run, simple=simple)
+    if 'parsed_11stage' not in meta.columns and 'parsed_11stage' in staging:
+        meta = utils.add_10stages_to_meta(meta, dp_by_run=dp_by_run, bin_scale=bin_scale)
+
+    return meta
 
 
 def add_5stages_to_meta(meta, dp_by_run=True):

@@ -1,5 +1,4 @@
 """Functions for fitting analyzing different timescales of adaptation."""
-from sklearn.cluster import KMeans
 from scipy.optimize import curve_fit
 import pandas as pd
 import seaborn as sns
@@ -8,7 +7,7 @@ from matplotlib.patches import Rectangle
 from matplotlib.collections import PatchCollection
 import numpy as np
 import os
-from . import load, paths, utils, lookups
+from . import load, paths, utils, lookups, tuning
 from copy import deepcopy
 import scipy as sp
 
@@ -194,7 +193,7 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
     # get tuning per cell and per component-average
     tuning_vec_comps = []
     for comp_n in range(mean_trial_mat_comps.shape[0]):
-        tuning_vec_comps.append(utils.calc_tuning_from_meta_and_vec(meta, mean_trial_mat_comps[comp_n, :]))
+        tuning_vec_comps.append(tuning.calc_tuning_from_meta_and_vec(meta, mean_trial_mat_comps[comp_n, :]))
 
     # plot and create DataFrame
     df_list = []
@@ -455,7 +454,7 @@ def transientness_from_cells(meta, model, tensor, sorts, ids, rank=15, save_fold
     # get tuning per cell
     tuning_vec_cells = []
     for cell_n in range(mean_trial_mat_cells.shape[0]):
-        tuning_vec_cells.append(utils.calc_tuning_from_meta_and_vec(meta, mean_trial_mat_cells[cell_n, :]))
+        tuning_vec_cells.append(tuning.calc_tuning_from_meta_and_vec(meta, mean_trial_mat_cells[cell_n, :]))
 
     # plot and create DataFrame
     df_list = []
@@ -801,7 +800,7 @@ def ramp_from_meta_model(meta, model, rank=15, save_folder='', annotate=True):
         y_txt = np.max(comp_vec[first_boo])  # get y lim upper bound for plotting text annotations
 
         # get tuning of cue as string
-        tuning = utils.calc_tuning_from_meta_and_vec(meta, comp_vec)
+        tuning = tuning.calc_tuning_from_meta_and_vec(meta, comp_vec)
 
         for di in meta.reset_index()['date'].unique():
 

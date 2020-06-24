@@ -419,12 +419,7 @@ def load_trialfac_df_stages(
             verbose=verbose)
 
         # add learning stages to meta
-        if 'parsed_stage' not in meta.columns and 'parsed_stage' in staging:
-            meta = utils.add_5stages_to_meta(meta)
-        if 'parsed_10stage' not in meta.columns and 'parsed_10stage' in staging:
-            meta = utils.add_10stages_to_meta(meta)
-        if 'parsed_11stage' not in meta.columns and 'parsed_11stage' in staging:
-            meta = utils.add_11stages_to_meta(meta, dp_by_run=True)
+        meta = utils.add_stages_to_meta(meta, staging)
 
         # specify which TCA factors to use
         itr_num = 0  # always load first iteration, best model
