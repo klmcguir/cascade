@@ -12,6 +12,94 @@ from . import utils, paths, adaptation, load, lookups
 
 # ----------------------- LOAD as DF functions -----------------------
 
+def load_tranientness_df_stages(mice,
+                              words=None,
+                              method='ncp_hals',
+                              cs='',
+                              warp=False,
+                              trace_type='zscore_day',
+                              group_by='all3',
+                              nan_thresh=0.95,
+                              score_threshold=0.8,
+                              rank=15,
+                              staging='parsed_11stage',
+                              over_components=False):
+    """
+    Function for plotting hmm engagement across stages of learning.
+    Creates plots for multiple mice.
+
+    :param mice: list of str, names of mice for analysis
+    :param words: list of str, associated parameter hash words
+    :param method: str, fit method from tensortools package
+        'cp_als', fits CP Decomposition using Alternating
+            Least Squares (ALS).
+        'ncp_bcd', fits nonnegative CP Decomposition using
+            the Block Coordinate Descent (BCD) Method.
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method.
+        'mncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method with missing data.
+        'mcp_als', fits CP Decomposition with missing data using
+            Alternating Least Squares (ALS).
+    :param cs: str, conditioned stimuli, '' defaults to all CSes
+    :param warp: boolean, warp trace offset so ensure delivery is a single point in time
+    :param trace_type: str, type of calcium imaging trace being used in associated analysis
+    :param group_by: str, period of time being analyzed across animal training
+    :param nan_thresh: float, fraction of trials that must contain non-NaN entries
+    :param score_threshold: float, score threshold for CellReg package alignment score
+    :param rank: int, rank of TCA model to use for fitting
+    :param fit_offset: boolean, fit exponential decay with or without an offset parameter
+    :param norm: boolean, normalize each day before fitting
+    :param staging: str, assign predetermined binning method for associated analysis
+    :return group_adapt_df: pandas.DataFrame, mean grouped parameters and error for fitting decay to TCA trial factors
+    """
+
+    # set load kwargs
+    load_kwargs = {'mouse': mice[0],
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': words[0],
+                   'trace_type': trace_type,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+
+    # find analysis directory for your mice named 'behavior'
+    save_path = paths.groupmouse_analysis_path('transient', mice=mice, words=words, **load_kwargs)
+
+    # load
+    comp_or_cell = 'comp' if over_components else 'cell'
+    save_folder = save_path + f' day transient {comp_or_cell} rank {rank}'
+    assert os.path.isdir(save_folder)
+    adapt_df = pd.read_pickle(
+        os.path.join(save_folder, f'TCA_daily_transientness_r{rank}_{comp_or_cell}.pkl'))
+
+    # # use staging or take mean across all time, get single value for each fit per day first since it is fit this way
+    # if staging in ['parsed_11stage', 'parsed_10stage', 'parsed_stage']:
+    #     # mean per day
+    #     group_adapt = adapt_df.groupby(['mouse', staging, 'date', 'initial_condition', 'component']).mean()
+    #     # mean across days per stage
+    #     group_adapt = group_adapt.groupby(['mouse', staging, 'initial_condition', 'component']).mean()
+    #     group_adapt_df = group_adapt.loc[:, 'ramp index'].unstack(level=['initial_condition']).unstack(level=[staging])
+    #
+    # else:
+    #     print("Unrecognized 'staging' kwarg: pandas.DataFrame.groupby() will take mean across all days")
+    #     # mean per day
+    #     group_adapt = adapt_df.groupby(['mouse', 'date', 'initial_condition', 'component']).mean()
+    #     # mean across days over all time
+    #     group_adapt = group_adapt.groupby(['mouse', 'initial_condition', 'component']).mean()
+    #     group_adapt_df = group_adapt.loc[:, 'ramp index'].unstack(level=['initial_condition'])
+    #
+    #     # # find maximum initial value parameter 'a' and choose decay constant lambda only for highest 'a'
+    #     # highest_baseline = group_adapt_df.a.idxmax(axis=1)
+    #     # group_adapt_df['lambda'] = group_adapt_df['ramp index'].lookup(
+    #     #     row_labels=highest_baseline.index, col_labels=highest_baseline.values
+
+    return adapt_df
+
 
 def load_daily_ramp_df_stages(mice,
                               words=None,

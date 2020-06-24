@@ -17,7 +17,7 @@ color_dict = {
     'minus1': '#ff5e79',
     'minus2': '#ffa561',
     'minus3': '#ff7b60',
-    'neutral1': '#74c3ff',
+    'neutral1': '#cfc3ff',
     'neutral2': '#db77ff',
     'neutral3': '#9476ff',
     'dprime': '#7c7ce4',

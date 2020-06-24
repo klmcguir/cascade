@@ -4,13 +4,14 @@ from scipy.optimize import curve_fit
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+from matplotlib.collections import PatchCollection
 import numpy as np
-import bottleneck as bt
 import os
-import flow
 from . import load, paths, utils, lookups
 from copy import deepcopy
 import scipy as sp
+
 
 # TODO
 #  def calc_daily_adaptation_of_sustainedness()
@@ -76,7 +77,7 @@ def calc_daily_transientness(
                        'group_by': group_by,
                        'nan_thresh': nan_thresh,
                        'score_threshold': score_threshold}
-        model, _, tensor, meta, _, sorts = load.load_all_groupday(**load_kwargs)
+        model, ids, tensor, meta, _, sorts = load.load_all_groupday(**load_kwargs)
 
         # create a new analysis directory for your mouse named 'sustained'
         save_path = paths.groupmouse_analysis_path('transient', mice=mice, words=words, **load_kwargs)
@@ -87,14 +88,14 @@ def calc_daily_transientness(
                 meta, model, tensor, sorts, rank=rank, save_folder=save_path, annotate=annotate)
         else:
             df = transientness_from_cells(
-                meta, model, tensor, sorts, rank=rank, save_folder=save_path, annotate=annotate)
+                meta, model, tensor, sorts, ids, rank=rank, save_folder=save_path, annotate=annotate)
         sus_list.append(df)
 
     transientness_df = pd.concat(sus_list, axis=0)
 
     # save
     comp_or_cell = 'comp' if over_components else 'cell'
-    save_folder = save_path + f' day transient {comps_or_cell} rank {rank}'
+    save_folder = save_path + f' day transient {comp_or_cell} rank {rank}'
     if not os.path.isdir(save_folder):
         os.mkdir(save_folder)
     transientness_df.to_pickle(
@@ -110,6 +111,8 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
 
     :param meta: pandas.DataFrame, metadata DataFrame where each index is a unique trial
     :param model: tensortools.ensemble, TCA results
+    :param tensor: numpy.ndarray (3D), input data for TCA, trials triggered on stimulus onset
+    :param sorts: list of numpy.ndarray, sorting schemes for each rank of decomposition based on cell factors
     :param rank: int, rank of TCA model to use for fitting
     :param save_folder: str, directory to save plots into
     :param annotate: boolean, add text annotations per day of fitting results
@@ -129,11 +132,11 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
     meta = utils.add_11stages_to_meta(meta)
 
     # create dprime and day vector that has 108 points per day to match timepoints in a trial
-    day_meta =  meta.groupby('date').max()
+    day_meta = meta.groupby('date').max()
     dp_single_day = day_meta['dprime']
-    dp100 = np.zeros(len(dp_single_day)*108)
-    adjusted_date_vec = np.zeros(len(dp_single_day)*108)
-    adjusted_learning_state = np.zeros(len(dp_single_day)*108)
+    dp100 = np.zeros(len(dp_single_day) * 108)
+    adjusted_date_vec = np.zeros(len(dp_single_day) * 108)
+    adjusted_learning_state = np.empty(len(dp_single_day) * 108, dtype='<U8')
     for c, dps in enumerate(dp_single_day):
         x = np.arange(108) + (108 * c)
         dp100[x] = np.ones(108) * dps
@@ -141,10 +144,14 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
         adjusted_learning_state[x] = np.array([day_meta['learning_state'].values[c]] * 108)
 
     # calculate change indices for days and reversal/learning
-    ndays = np.diff(adjusted_date_vec.values)
+    ndays = np.diff(adjusted_date_vec)
     day_x = np.where(ndays)[0] + 0.5
-    rev_ind = np.where(np.isin(adjusted_learning_state, 'learning').values)[0][-1]
-    lear_ind = np.where(np.isin(adjusted_learning_state, 'learning').values)[0][0]
+    rev_ind = np.where(np.isin(adjusted_learning_state, 'learning'))[0][-1]
+    lear_ind = np.where(np.isin(adjusted_learning_state, 'learning'))[0][0]
+
+    # create a stereotypical time vector for stimulus box
+    time_vec = np.arange(-1, 6, 1 / 15.5)[:108]
+    stim_bool = (time_vec > 0) & (time_vec < lookups.stim_length[mouse])
 
     # sort your tensor and model
     rank_sorter = sorts[rank - 1]
@@ -178,6 +185,7 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
             tensor_comp_dict[cue_n][clus_n, :, :] = np.nanmean(tensor_cell_dict[cue_n][clus_bool, :, :], axis=0)
 
     # create component-averaged trial matrices
+    mean_trial_mat_cells = utils.tensor_mean_per_trial(meta, tensor_sorted, nan_licking=False)
     mat_df = pd.DataFrame(data=mean_trial_mat_cells)
     mat_df['groups'] = best_cluster
     mean_trial_mat_comps = mat_df.groupby('groups').mean().values
@@ -197,14 +205,20 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
         # drop broadly tuned cells and components (permisive, allows tuning == 'plus-neutral' for plus)
         # drop components with an offset response as well
         # comp_bool = np.array([cue_n in s for s in tuning_vec_cells])  # permissive
-        comp_bool = np.array([s in cue_n for s in tuning_vec_cells])  # strict
+        comp_bool = np.array([s in cue_n for s in tuning_vec_comps])  # strict
         off_bool = np.argmax(model.results[rank][0].factors[1][:, :], axis=0) > 15.5 * (1 + lookups.stim_length[mouse])
 
         cue_tensor = tensor_comp_dict[cue_n][comp_bool & ~off_bool, :, :]
-        tuning_vec = np.array(tuning_vec_cells)[comp_bool & ~off_bool]
-        cue_clusters = best_cluster[comp_bool & ~off_bool]
+        tuning_vec = np.array(tuning_vec_comps)[comp_bool & ~off_bool]
+        cue_clusters = np.unique(best_cluster)[comp_bool & ~off_bool] + 1  # +1 so that cluster matches component #
 
         fig, ax = plt.subplots(cue_tensor.shape[0], 1, figsize=(30, 4 * cue_tensor.shape[0]), sharey=True, sharex=True)
+        lbl_done = False  # only add to legend once
+        # is only one component is tuned to a cue make sure indexing doesn't break
+        if cue_tensor.shape[0] == 1:
+            ax = [ax]
+        elif cue_tensor.shape[0] == 0:
+            continue
         for comp_n in range(cue_tensor.shape[0]):
 
             # preallocate ramp fit vector, same length as meta
@@ -222,7 +236,7 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
                 for k in day_x:
                     if first_day:
                         ax[comp_n].axvline(k, color=lookups.color_dict['gray'], linewidth=2,
-                                 label='day transitions')
+                                           label='day transitions')
                         first_day = False
                     else:
                         ax[comp_n].axvline(k, color=lookups.color_dict['gray'], linewidth=2)
@@ -248,11 +262,15 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
                     continue
 
                 # plot mean response for each day
-                ax[comp_n].plot(inds, fit_comp_vec, linewidth=3, color=lookups.color_dict[cue_n], alpha=0.3)
+                if comp_n == 0 and not lbl_done:
+                    ax[comp_n].plot(inds, fit_comp_vec, linewidth=3, color=lookups.color_dict[cue_n],
+                                    label='stimulus response')
+                else:
+                    ax[comp_n].plot(inds, fit_comp_vec, linewidth=3, color=lookups.color_dict[cue_n])
 
                 # for ramp index calc
                 epsilon = 0.00001  # tiny value to prevent divide by zero
-                mid_ind = int(np.floor((lookups.stim_length[mouse]/2 + 1) * 15.5))
+                mid_ind = int(np.floor((lookups.stim_length[mouse] / 2 + 1) * 15.5))
                 last_ind = int(np.floor((lookups.stim_length[mouse] + 1) * 15.5))
                 y1 = fit_comp_vec[16:mid_ind]  # first half of response
                 y2 = fit_comp_vec[mid_ind:last_ind]  # second half of response
@@ -260,7 +278,7 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
                 my2 = np.mean(y2) + epsilon
 
                 # calculate log2 ramp index
-                day_ramp_index = np.log2(my1/my2)
+                day_ramp_index = np.log2(my1 / my2)
                 all_fits[day_n, -1] = day_ramp_index
 
                 # add text for fits
@@ -282,7 +300,7 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
                 fit_comp_vec[fit_comp_vec < 0] = 0  # rectify for non-negative fitting
                 nnls_fits = sp.optimize.nnls(filters, fit_comp_vec)[0]
                 all_fits[day_n, :-2] = nnls_fits
-                trans = nnls_fits[0]/(nnls_fits[0] + nnls_fits[1])
+                trans = nnls_fits[0] / (nnls_fits[0] + nnls_fits[1])
                 all_fits[day_n, -2] = trans
 
                 # add text for nnls fits
@@ -290,27 +308,45 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
                     f'{cue_n} trans: {round(trans, 2)}\n')
 
                 # plot NNLS fit
-                reconstruction = filters@nnls_fits[:, None]
-                ax[comp_n].plot(inds, reconstruction, linewidth=3, color=lookups.color_dict[cue_n + '1'], alpha=0.3)
+                reconstruction = filters @ nnls_fits[:, None]
+                if comp_n == 0 and not lbl_done:
+                    ax[comp_n].plot(inds, reconstruction, linewidth=3, color=lookups.color_dict[cue_n + '2'],
+                                    label='NNLS fit')
+                    lbl_done = True
+                else:
+                    ax[comp_n].plot(inds, reconstruction, linewidth=3, color=lookups.color_dict[cue_n + '2'])
 
                 # add text summary of fits per day
                 if annotate:
                     txt_label = ''
                     for s in txt_results:
                         txt_label = txt_label + s
-                    ax[comp_n].text(inds[int(np.floor(len(inds)/2))], y_txt, txt_label, ha='center', va='top')
+                    ax[comp_n].text(inds[int(np.floor(len(inds) / 2))], y_txt, txt_label, ha='center', va='top')
 
             # set labels for subplots
-            ax[comp_n].set_ylabel(f'component {cue_clusters[comp_n]}\n\nresponse amplitude\n\u0394F/F\u2080 (z-score)', size=14)
+            ax[comp_n].set_ylabel(f'component {cue_clusters[comp_n]}\n\nresponse amplitude\n\u0394F/F\u2080 (z-score)',
+                                  size=14)
             if comp_n == 0:
-                ax[comp_n].set_title(f'{mouse}: cue {cue_n}:\nNNLS fits and ramp index for within trial dynamics', size=16)
+                ax[comp_n].set_title(f'{mouse}: cue {cue_n}:\nNNLS fits and ramp index for within trial dynamics',
+                                     size=16)
                 ax[comp_n].legend(bbox_to_anchor=(1.05, 1.05), loc='upper left')
             elif comp_n == cue_tensor.shape[0] - 1:
                 ax[comp_n].set_xlabel('average response per day', size=14)
 
+            # plot Rectangle for stimulus period
+            boxes = []
+            for day_n in range(len(date_vec)):
+                inds = np.where(adjusted_date_vec == date_vec[day_n])[0]
+                box_inds = inds[stim_bool]
+                if comp_n == 0:
+                    y = ax[comp_n].get_ylim()[0]
+                boxes.append(Rectangle((box_inds[0], y * 1.1), np.sum(stim_bool), np.abs(y)))
+            pc = PatchCollection(boxes, facecolor=lookups.color_dict['gray'], edgecolor=lookups.color_dict['gray'],
+                                 alpha=0.7)
+            ax[comp_n].add_collection(pc)
+
             # create a dataframe for the results from each cell, rows are days
             comp_fit_df = pd.DataFrame(data=all_fits, columns=df_columns)
-            comp_fit_df['cell'] = comp_n + 1
             comp_fit_df['date'] = date_vec
             comp_fit_df['mouse'] = mouse
             comp_fit_df['tuning'] = tuning
@@ -319,7 +355,7 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
 
             # share some useful columns from meta
             for col in ['parsed_stage', 'parsed_10stage', 'parsed_11stage', 'dprime']:
-                comp_fit_df[col] = day_meta[col]
+                comp_fit_df[col] = day_meta[col].values
 
             # collect fit results for each component
             df_list.append(comp_fit_df)
@@ -333,7 +369,7 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
             os.path.join(
                 dp_save_folder,
                 f'{mouse}_r{rank}_{cue_n}_comp_daily_nnls_ramp{annotxt}.png'),
-                bbox_inches='tight')
+            bbox_inches='tight')
         plt.close('all')
 
     exp_fit_df = pd.concat(df_list, axis=0)
@@ -341,13 +377,16 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
     return exp_fit_df
 
 
-def transientness_from_cells(meta, model, tensor, sorts, rank=15, save_folder='', annotate=True):
+def transientness_from_cells(meta, model, tensor, sorts, ids, rank=15, save_folder='', annotate=True):
     """
     Function for fitting daily adaptation of TCA trial factors across learning.
     Saves plot of fit performance as well as returning a DataFrame of fit parameters.
 
     :param meta: pandas.DataFrame, metadata DataFrame where each index is a unique trial
     :param model: tensortools.ensemble, TCA results
+    :param tensor: numpy.ndarray (3D), input data for TCA, trials triggered on stimulus onset
+    :param sorts: list of numpy.ndarray, sorting schemes for each rank of decomposition based on cell factors
+    :param ids: list of numpy.ndarray, unique cell ids
     :param rank: int, rank of TCA model to use for fitting
     :param save_folder: str, directory to save plots into
     :param annotate: boolean, add text annotations per day of fitting results
@@ -369,9 +408,9 @@ def transientness_from_cells(meta, model, tensor, sorts, rank=15, save_folder=''
     # create dprime and day vector that has 108 points per day to match timepoints in a trial
     day_meta = meta.groupby('date').max()
     dp_single_day = day_meta['dprime']
-    dp100 = np.zeros(len(dp_single_day)*108)
-    adjusted_date_vec = np.zeros(len(dp_single_day)*108)
-    adjusted_learning_state = np.empty(len(dp_single_day)*108, dtype='<U8')
+    dp100 = np.zeros(len(dp_single_day) * 108)
+    adjusted_date_vec = np.zeros(len(dp_single_day) * 108)
+    adjusted_learning_state = np.empty(len(dp_single_day) * 108, dtype='<U8')
     for c, dps in enumerate(dp_single_day):
         x = np.arange(108) + (108 * c)
         dp100[x] = np.ones(108) * dps
@@ -384,10 +423,15 @@ def transientness_from_cells(meta, model, tensor, sorts, rank=15, save_folder=''
     rev_ind = np.where(np.isin(adjusted_learning_state, 'learning'))[0][-1]
     lear_ind = np.where(np.isin(adjusted_learning_state, 'learning'))[0][0]
 
+    # create a stereotypical time vector for stimulus box
+    time_vec = np.arange(-1, 6, 1 / 15.5)[:108]
+    stim_bool = (time_vec > 0) & (time_vec < lookups.stim_length[mouse])
+
     # sort your tensor and model
     rank_sorter = sorts[rank - 1]
     cells_sorted = model.results[rank][0].factors[0][rank_sorter, :]
     tensor_sorted = tensor[rank_sorter, :, :]
+    ids_sorted = ids[rank_sorter]
 
     # get cell groupings for cells above 1 std deviation weight per cell factor
     thresh = np.std(cells_sorted, axis=0) * 1
@@ -397,6 +441,7 @@ def transientness_from_cells(meta, model, tensor, sorts, rank=15, save_folder=''
     above_thresh = ~np.isnan(np.nanmax(weights, axis=1))
     best_cluster = np.argmax(cells_sorted, axis=1)[above_thresh] + 1  # to make clusters match component number
     tensor_sorted = tensor_sorted[above_thresh, :, :]
+    ids_sorted = ids_sorted[above_thresh]
 
     # calculate mean cell response per day for tensor
     tensor_cell_dict = {}
@@ -426,10 +471,16 @@ def transientness_from_cells(meta, model, tensor, sorts, rank=15, save_folder=''
 
         cue_tensor = tensor_cell_dict[cue_n][cell_bool, :, :]
         tuning_vec = np.array(tuning_vec_cells)[cell_bool]
-        cue_clusters = best_cluster[cell_bool]
+        cue_clusters = best_cluster[cell_bool] + 1  # +1 so that cluster matches component #
+        cue_ids = ids_sorted[cell_bool]
+
+        # if you have no cells skip this plot
+        if cue_tensor.shape[0] == 0:
+            continue
 
         for cell_n in range(cue_tensor.shape[0]):
-            fig, ax = plt.subplots(1, 1, figsize=(30, 4*1), sharey=True, sharex=True)
+            fig, ax = plt.subplots(1, 1, figsize=(30, 4 * 1), sharey=True, sharex=True)
+            lbl_done = False  # only add to legend once
 
             # preallocate ramp fit vector, same length as meta
             all_fits = np.zeros((len(date_vec), len(df_columns)))
@@ -446,14 +497,14 @@ def transientness_from_cells(meta, model, tensor, sorts, rank=15, save_folder=''
                 for k in day_x:
                     if first_day:
                         ax.axvline(k, color=lookups.color_dict['gray'], linewidth=2,
-                                 label='day transitions')
+                                   label='day transitions')
                         first_day = False
                     else:
                         ax.axvline(k, color=lookups.color_dict['gray'], linewidth=2)
             ax.axvline(lear_ind, linestyle='--', color=lookups.color_dict['learning'],
-                               linewidth=3, label='learning starts')
+                       linewidth=3, label='learning starts')
             ax.axvline(rev_ind, linestyle='--', color=lookups.color_dict['reversal'],
-                               linewidth=3, label='reversal starts')
+                       linewidth=3, label='reversal starts')
 
             # get y lim upper bound for plotting text annotations
             y_txt = np.nanmax(cue_tensor[cell_n, :, :])
@@ -472,11 +523,15 @@ def transientness_from_cells(meta, model, tensor, sorts, rank=15, save_folder=''
                     continue
 
                 # plot mean response for each day
-                ax.plot(inds, fit_comp_vec, linewidth=3, color=lookups.color_dict[cue_n], alpha=0.3)
+                if not lbl_done:
+                    ax.plot(inds, fit_comp_vec, linewidth=3, color=lookups.color_dict[cue_n],
+                            label='stimulus response')
+                else:
+                    ax.plot(inds, fit_comp_vec, linewidth=3, color=lookups.color_dict[cue_n])
 
                 # for ramp index calc
                 epsilon = 0.00001  # tiny value to prevent divide by zero
-                mid_ind = int(np.floor((lookups.stim_length[mouse]/2 + 1) * 15.5))
+                mid_ind = int(np.floor((lookups.stim_length[mouse] / 2 + 1) * 15.5))
                 last_ind = int(np.floor((lookups.stim_length[mouse] + 1) * 15.5))
                 y1 = fit_comp_vec[16:mid_ind]  # first half of response
                 y2 = fit_comp_vec[mid_ind:last_ind]  # second half of response
@@ -484,7 +539,7 @@ def transientness_from_cells(meta, model, tensor, sorts, rank=15, save_folder=''
                 my2 = np.mean(y2) + epsilon
 
                 # calculate log2 ramp index
-                day_ramp_index = np.log2(my1/my2)
+                day_ramp_index = np.log2(my1 / my2)
                 all_fits[day_n, -1] = day_ramp_index
 
                 # add text for fits
@@ -506,7 +561,7 @@ def transientness_from_cells(meta, model, tensor, sorts, rank=15, save_folder=''
                 fit_comp_vec[fit_comp_vec < 0] = 0  # rectify for non-negative fitting
                 nnls_fits = sp.optimize.nnls(filters, fit_comp_vec)[0]
                 all_fits[day_n, :-2] = nnls_fits
-                trans = nnls_fits[0]/(nnls_fits[0] + nnls_fits[1])
+                trans = nnls_fits[0] / (nnls_fits[0] + nnls_fits[1])
                 all_fits[day_n, -2] = trans
 
                 # add text for nnls fits
@@ -514,25 +569,43 @@ def transientness_from_cells(meta, model, tensor, sorts, rank=15, save_folder=''
                     f'{cue_n} trans: {round(trans, 2)}\n')
 
                 # plot NNLS fit
-                reconstruction = filters@nnls_fits[:, None]
-                ax.plot(inds, reconstruction, linewidth=3, color=lookups.color_dict[cue_n + '1'], alpha=0.3)
+                reconstruction = filters @ nnls_fits[:, None]
+                if not lbl_done:
+                    ax.plot(inds, reconstruction, linewidth=3, color=lookups.color_dict[cue_n + '2'],
+                            label='NNLS fit')
+                    lbl_done = True
+                else:
+                    ax.plot(inds, reconstruction, linewidth=3, color=lookups.color_dict[cue_n + '2'])
 
                 # add text summary of fits per day
                 if annotate:
                     txt_label = ''
                     for s in txt_results:
                         txt_label = txt_label + s
-                    ax.text(inds[int(np.floor(len(inds)/2))], y_txt, txt_label, ha='center', va='top')
+                    ax.text(inds[int(np.floor(len(inds) / 2))], y_txt, txt_label, ha='center', va='top')
 
             # set labels for subplots
             ax.set_ylabel(f'cell {cell_n + 1}\n\nresponse amplitude\n\u0394F/F\u2080 (z-score)', size=14)
-            ax.set_title(f'{mouse}: cell {cell_n}: cue {cue_n}: best comp {cue_clusters[cell_n]}:\nNNLS fits and ramp index for within trial dynamics', size=16)
+            ax.set_title(
+                f'{mouse}: cell {cell_n}: cue {cue_n}: best comp {cue_clusters[cell_n]}:\nNNLS fits and ramp index for within trial dynamics',
+                size=16)
             ax.legend(bbox_to_anchor=(1.05, 1.05), loc='upper left')
             ax.set_xlabel('average response per day', size=14)
 
+            # plot Rectangle for stimulus period
+            boxes = []
+            for day_n in range(len(date_vec)):
+                inds = np.where(adjusted_date_vec == date_vec[day_n])[0]
+                box_inds = inds[stim_bool]
+                y = ax.get_ylim()[0]
+                boxes.append(Rectangle((box_inds[0], y * 1.1), np.sum(stim_bool), np.abs(y)))
+            pc = PatchCollection(boxes, facecolor=lookups.color_dict['gray'], edgecolor=lookups.color_dict['gray'],
+                                 alpha=0.7)
+            ax.add_collection(pc)
+
             # create a dataframe for the results from each cell, rows are days
             comp_fit_df = pd.DataFrame(data=all_fits, columns=df_columns)
-            comp_fit_df['cell'] = cell_n + 1
+            comp_fit_df['cell'] = cue_ids[cell_n]
             comp_fit_df['date'] = date_vec
             comp_fit_df['mouse'] = mouse
             comp_fit_df['tuning'] = tuning
@@ -541,7 +614,7 @@ def transientness_from_cells(meta, model, tensor, sorts, rank=15, save_folder=''
 
             # share some useful columns from meta
             for col in ['parsed_stage', 'parsed_10stage', 'parsed_11stage', 'dprime']:
-                comp_fit_df[col] = day_meta[col]
+                comp_fit_df[col] = day_meta[col].values
 
             # collect fit results for each component
             df_list.append(comp_fit_df)
@@ -558,7 +631,7 @@ def transientness_from_cells(meta, model, tensor, sorts, rank=15, save_folder=''
                 os.path.join(
                     dp_save_folder,
                     f'{mouse}_r{rank}_{cue_n}_{cell_n}_TCA_daily_nnls_ramp{annotxt}.png'),
-                    bbox_inches='tight')
+                bbox_inches='tight')
             plt.close('all')
 
     exp_fit_df = pd.concat(df_list, axis=0)
@@ -696,7 +769,7 @@ def ramp_from_meta_model(meta, model, rank=15, save_folder='', annotate=True):
     df_list = []
 
     # plot
-    fig, ax = plt.subplots(rank, 1, figsize=(30, 4*rank), sharey=True, sharex=True)
+    fig, ax = plt.subplots(rank, 1, figsize=(30, 4 * rank), sharey=True, sharex=True)
     for comp_n in range(model.results[rank][0].factors[2].shape[1]):
 
         # preallocate ramp fit vector, same length as meta
@@ -714,7 +787,7 @@ def ramp_from_meta_model(meta, model, rank=15, save_folder='', annotate=True):
             for k in day_x:
                 if first_day:
                     ax[comp_n].axvline(k, color=lookups.color_dict['gray'], linewidth=2,
-                             label='day transitions')
+                                       label='day transitions')
                     first_day = False
                 else:
                     ax[comp_n].axvline(k, color=lookups.color_dict['gray'], linewidth=2)
@@ -767,14 +840,14 @@ def ramp_from_meta_model(meta, model, rank=15, save_folder='', annotate=True):
 
                 # rename for compactness in fitting function
                 epsilon = 0.00001  # tiny value to prevent divide by zero
-                mid_ind = int(np.floor(len(fit_comp_vec)/2))
+                mid_ind = int(np.floor(len(fit_comp_vec) / 2))
                 y1 = fit_comp_vec[:mid_ind]  # first half of first 100 trials
                 y2 = fit_comp_vec[-mid_ind:]  # second half of first 100 trials
                 my1 = np.mean(y1) + epsilon
                 my2 = np.mean(y2) + epsilon
 
                 # calculate log2 ramp index
-                day_ramp_index = np.log2(my1/my2)
+                day_ramp_index = np.log2(my1 / my2)
                 ramp_fits[first_boo & day_boo & cue_boo] = day_ramp_index
 
                 # add text for fits
@@ -795,7 +868,7 @@ def ramp_from_meta_model(meta, model, rank=15, save_folder='', annotate=True):
                 txt_label = ''
                 for s in txt_results:
                     txt_label = txt_label + s
-                ax[comp_n].text(inds[int(np.floor(len(inds)/2))], y_txt, txt_label, ha='center', va='top')
+                ax[comp_n].text(inds[int(np.floor(len(inds) / 2))], y_txt, txt_label, ha='center', va='top')
 
         # set labels for subplots
         ax[comp_n].set_ylabel(f'component {comp_n + 1}\n\ntrial factor amplitude\n(weighted z-score)', size=14)
@@ -981,7 +1054,7 @@ def adaptation_from_meta_model(meta, model, rank=15, save_folder='', fit_offset=
     df_list = []
 
     # plot
-    fig, ax = plt.subplots(rank, 1, figsize=(30, 4*rank), sharey=True, sharex=True)
+    fig, ax = plt.subplots(rank, 1, figsize=(30, 4 * rank), sharey=True, sharex=True)
     for comp_n in range(model.results[rank][0].factors[2].shape[1]):
 
         # preallocate fitting parameters
@@ -1006,7 +1079,7 @@ def adaptation_from_meta_model(meta, model, rank=15, save_folder='', fit_offset=
             for k in day_x:
                 if first_day:
                     ax[comp_n].axvline(k, color=lookups.color_dict['gray'], linewidth=2,
-                             label='day transitions')
+                                       label='day transitions')
                     first_day = False
                 else:
                     ax[comp_n].axvline(k, color=lookups.color_dict['gray'], linewidth=2)
@@ -1050,7 +1123,7 @@ def adaptation_from_meta_model(meta, model, rank=15, save_folder='', fit_offset=
                 inds = inds_pseudo[first_boo & day_boo & cue_boo]
                 fit_comp_vec = comp_vec[first_boo & day_boo & cue_boo]
                 if norm:
-                    fit_comp_vec = fit_comp_vec/np.nanmax(fit_comp_vec)
+                    fit_comp_vec = fit_comp_vec / np.nanmax(fit_comp_vec)
 
                 # plot all trials for each day
                 ax[comp_n].plot(inds, fit_comp_vec, 'o', color=lookups.color_dict[cue], alpha=0.3)
@@ -1088,7 +1161,7 @@ def adaptation_from_meta_model(meta, model, rank=15, save_folder='', fit_offset=
                 txt_label = ''
                 for s in txt_results:
                     txt_label = txt_label + s
-                ax[comp_n].text(inds[int(np.floor(len(inds)/2))], y_txt, txt_label, ha='center', va='top')
+                ax[comp_n].text(inds[int(np.floor(len(inds) / 2))], y_txt, txt_label, ha='center', va='top')
 
             # set labels for subplots
         ax[comp_n].set_ylabel(f'component {comp_n + 1}\n\ntrial factor amplitude\n(weighted z-score)', size=14)
