@@ -2,15 +2,15 @@
 
 # table of colors I like
 color_dict = {
-    'plus': [0.46, 0.85, 0.47, 1],
-    'minus': [0.84, 0.12, 0.13, 1],
-    'neutral': [0.28, 0.68, 0.93, 1],
-    'initial_plus': [0.46, 0.85, 0.47, 1],
-    'initial_minus': [0.84, 0.12, 0.13, 1],
-    'initial_neutral': [0.28, 0.68, 0.93, 1],
-    'learning': [34/255, 110/255, 54/255, 1],
-    'reversal': [173/255, 38/255, 26/255, 1],
-    'gray': [163/255, 163/255, 163/255, 1],
+    'plus': '#75d978',
+    'minus': '#d61f21',
+    'neutral': '#47aded',
+    'initial_plus': '#75d978',
+    'initial_minus': '#d61f21',
+    'initial_neutral': '#47aded',
+    'learning': '#226e36',
+    'reversal': '#ad261a',
+    'gray': '#a3a3a3',
     'plus1': '#cae85e',
     'plus2': '#61e6a4',
     'plus3': '#85eb60',
@@ -22,6 +22,13 @@ color_dict = {
     'neutral3': '#9476ff',
     'dprime': '#7c7ce4',
     'dprime1': '#e47ce4',
+    'plus-neutral': '#6ACE95',
+    'plus-minus': '#8DAB62',
+    'neutral-plus': '#53B8D0',
+    'neutral-minus': '#6B8ABA',
+    'minus-plus': '#BE4E37',
+    'minus-neutral': '#B24354',
+    'broad': '#ccc2ba'
     }
 
 # lookup table of conditions during initial learning matched to orientations

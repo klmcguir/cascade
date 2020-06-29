@@ -201,7 +201,7 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
     date_vec = meta.reset_index()['date'].unique()
     for cue_n in ['plus', 'minus', 'neutral']:
 
-        # drop broadly tuned cells and components (permisive, allows tuning == 'plus-neutral' for plus)
+        # drop broadly tuned cells and components (permissive, allows tuning == 'plus-neutral' for plus)
         # drop components with an offset response as well
         # comp_bool = np.array([cue_n in s for s in tuning_vec_cells])  # permissive
         comp_bool = np.array([s in cue_n for s in tuning_vec_comps])  # strict
@@ -248,7 +248,7 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
             y_txt = np.nanmax(cue_tensor[comp_n, :, :])
 
             # get tuning of cue as string
-            tuning = tuning_vec[comp_n]
+            pref_tuning = tuning_vec[comp_n]
 
             for day_n in range(len(date_vec)):
 
@@ -282,7 +282,7 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
 
                 # add text for fits
                 txt_results = []
-                txt_results.append(f'tuned: {tuning}\n')
+                txt_results.append(f'tuned: {pref_tuning}\n')
                 txt_results.append(
                     f'{cue_n} ramp: {round(day_ramp_index, 2)}\n')
 
@@ -291,7 +291,7 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
                     all_fits[day_n, -1] = 0
 
                 # set ramp to 0 it is being calculated on a non-preferred or broadly tuned cell/component
-                if cue_n not in tuning:
+                if cue_n not in pref_tuning:
                     all_fits[day_n, -1] = 0
 
                 # NNLS fitting
@@ -348,7 +348,7 @@ def transientness_from_components(meta, model, tensor, sorts, rank=15, save_fold
             comp_fit_df = pd.DataFrame(data=all_fits, columns=df_columns)
             comp_fit_df['date'] = date_vec
             comp_fit_df['mouse'] = mouse
-            comp_fit_df['tuning'] = tuning
+            comp_fit_df['tuning'] = pref_tuning
             comp_fit_df['initial cue'] = cue_n
             comp_fit_df['best component'] = cue_clusters[comp_n]
 
@@ -509,7 +509,7 @@ def transientness_from_cells(meta, model, tensor, sorts, ids, rank=15, save_fold
             y_txt = np.nanmax(cue_tensor[cell_n, :, :])
 
             # get tuning of cue as string
-            tuning = tuning_vec[cell_n]
+            pref_tuning = tuning_vec[cell_n]
 
             for day_n in range(len(date_vec)):
 
@@ -543,7 +543,7 @@ def transientness_from_cells(meta, model, tensor, sorts, ids, rank=15, save_fold
 
                 # add text for fits
                 txt_results = []
-                txt_results.append(f'tuned: {tuning}\n')
+                txt_results.append(f'tuned: {pref_tuning}\n')
                 txt_results.append(
                     f'{cue_n} ramp: {round(day_ramp_index, 2)}\n')
 
@@ -552,7 +552,7 @@ def transientness_from_cells(meta, model, tensor, sorts, ids, rank=15, save_fold
                     all_fits[day_n, -1] = 0
 
                 # set ramp to 0 it is being calculated on a non-preferred or broadly tuned cell/component
-                if cue_n not in tuning:
+                if cue_n not in pref_tuning:
                     all_fits[day_n, -1] = 0
 
                 # NNLS fitting
@@ -607,7 +607,7 @@ def transientness_from_cells(meta, model, tensor, sorts, ids, rank=15, save_fold
             comp_fit_df['cell'] = cue_ids[cell_n]
             comp_fit_df['date'] = date_vec
             comp_fit_df['mouse'] = mouse
-            comp_fit_df['tuning'] = tuning
+            comp_fit_df['tuning'] = pref_tuning
             comp_fit_df['initial cue'] = cue_n
             comp_fit_df['best component'] = cue_clusters[cell_n]
 
@@ -651,8 +651,8 @@ def calc_daily_ramp(
         rank=15,
         annotate=True):
     """
-    Function for plotting and saving exponential decay fitting per day across stages of learning.
-    Fits TCA resuls for individual results and saves a plot for each mouse. Saves DataFrame of results for all mice.
+    Function for plotting and saving ramp index (not exponential decay) fitting per day across stages of learning.
+    Fits trial factors and saves a plot for each mouse. Saves DataFrame of results for all mice.
 
     :param mice: list of str, names of mice for analysis
     :param words: list of str, associated parameter hash words
@@ -800,7 +800,7 @@ def ramp_from_meta_model(meta, model, rank=15, save_folder='', annotate=True):
         y_txt = np.max(comp_vec[first_boo])  # get y lim upper bound for plotting text annotations
 
         # get tuning of cue as string
-        tuning = tuning.calc_tuning_from_meta_and_vec(meta, comp_vec)
+        pref_tuning = tuning.calc_tuning_from_meta_and_vec(meta, comp_vec)
 
         for di in meta.reset_index()['date'].unique():
 
@@ -814,7 +814,7 @@ def ramp_from_meta_model(meta, model, rank=15, save_folder='', annotate=True):
                 continue
 
             txt_results = []
-            txt_results.append(f'tuned: {tuning}\n')
+            txt_results.append(f'tuned: {pref_tuning}\n')
             for cue in meta['initial_condition'].unique():
 
                 # boolean for each cue type
@@ -858,9 +858,9 @@ def ramp_from_meta_model(meta, model, rank=15, save_folder='', annotate=True):
                     ramp_fits[first_boo & day_boo & cue_boo] = 0
 
                 # set ramp to 0 it is being calculated on a non-preferred or broadly tuned cell/component
-                if cue not in tuning:
-                    ramp_fits[first_boo & day_boo & cue_boo] = 0
-                # TODO consider making this nan
+                if cue not in pref_tuning:
+                    ramp_fits[first_boo & day_boo & cue_boo] = np.nan
+                # TODO consider making this nan, was a zero
 
             # add text summary of fits per day
             if annotate:
@@ -921,7 +921,7 @@ def calc_daily_adaptation(
         norm=True):
     """
     Function for plotting and saving exponential decay fitting per day across stages of learning.
-    Fits TCA resuls for individual results and saves a plot for each mouse. Saves DataFrame of results for all mice.
+    Fits TCA trial factors and saves a plot for each mouse. Saves DataFrame of results for all mice.
 
     :param mice: list of str, names of mice for analysis
     :param words: list of str, associated parameter hash words
