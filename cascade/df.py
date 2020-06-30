@@ -25,8 +25,7 @@ def load_transientness_df_stages(mice,
                                  staging='parsed_11stage',
                                  over_components=False):
     """
-    Function for plotting hmm engagement across stages of learning.
-    Creates plots for multiple mice.
+    Function for loading transientness df and binning by stages of learning.
 
     :param mice: list of str, names of mice for analysis
     :param words: list of str, associated parameter hash words
@@ -75,7 +74,7 @@ def load_transientness_df_stages(mice,
     adapt_df = pd.read_pickle(
         os.path.join(save_folder, f'TCA_daily_transientness_r{rank}_{comp_or_cell}.pkl'))
 
-    # organize according to staging, update component to be 1-indexed and used in index
+    # organize according to staging, update component to be used in index
     group_df = adapt_df.groupby(['mouse', 'best component', staging]).mean()['transientness']
     unstacked_df = group_df.unstack(staging)
     trans_comp = unstacked_df.reset_index().rename(columns={'best component': 'component'})
@@ -96,8 +95,7 @@ def load_daily_ramp_df_stages(mice,
                               rank=15,
                               staging='parsed_11stage'):
     """
-    Function for plotting hmm engagement across stages of learning.
-    Creates plots for multiple mice.
+    Function for loading daily ramp index df and binning by stages of learning.
 
     :param mice: list of str, names of mice for analysis
     :param words: list of str, associated parameter hash words

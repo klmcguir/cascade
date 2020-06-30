@@ -143,7 +143,7 @@ def tuning_by_stage(meta, trial_avg_vec, staging='parsed_11stage', tuning_type='
 
 def tuning_not_by_stage(meta, trial_avg_vec, tuning_type='initial'):
     """
-    Function for calculating tuning not ccounting for stages of learning for the same cell or
+    Function for calculating tuning not accounting for stages of learning for the same cell or
     component.
 
     :param meta: pandas.DataFrame, trial metadata

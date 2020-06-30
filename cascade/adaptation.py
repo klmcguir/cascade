@@ -742,15 +742,22 @@ def ramp_from_meta_model(meta, model, rank=15, save_folder='', annotate=True):
     meta = utils.add_10stages_to_meta(meta)
     meta = utils.add_11stages_to_meta(meta)
 
+    # control for running (either choose all running or all stationary)
+    loco_boo = stable_locomotor_behavior(meta, select_on_early_trials=True)
+
     # construct boolean of early runs across all training
     # run number has to be three or less to be considered for fitting
     session_boo = meta.reset_index()['run'].values <= 3
 
     # only consider the first 100 trials from each day
     first_boo = _first100_bool(meta)
+    first21_boo, last21_boo = _first21_bool(meta)
+
+    lick_boo = meta.reset_index()['anticipatory_licks'].values/lookups.stim_length[mouse] <= 1
+    hmm_boo = meta.reset_index()['hmm_engaged'].values
 
     # set firstboo to only include early runs/sessions
-    first_boo = first_boo & session_boo
+    first_boo = first_boo & session_boo & loco_boo & hmm_boo
 
     # create dprime vector
     if 'dprime_run' not in meta.columns:
@@ -823,7 +830,9 @@ def ramp_from_meta_model(meta, model, rank=15, save_folder='', annotate=True):
                 # skip if too few values are returned for fitting
                 trial_count = np.sum(first_boo & day_boo & cue_boo)
                 if trial_count < 10:
-                    print(f'{mouse}: {trial_count} < required trial number. cue: {cue},  day: {di}, comp: {comp_n + 1}')
+                    # only print skips when they are on the cue that matters
+                    if cue in pref_tuning:
+                        print(f'{mouse}: {trial_count} < required trial number. cue: {cue},  day: {di}, comp: {comp_n + 1}')
                     continue
 
                 # create consecutive indices for plotting from full length meta
@@ -833,6 +842,13 @@ def ramp_from_meta_model(meta, model, rank=15, save_folder='', annotate=True):
                 # select indices and TCA data for a single day and cue
                 inds = inds_pseudo[first_boo & day_boo & cue_boo]
                 fit_comp_vec = comp_vec[first_boo & day_boo & cue_boo]
+
+                # first21_boo, last21_boo
+                # fit_comp_first = comp_vec[first_boo & day_boo & cue_boo & first21_boo]
+                # fit_comp_last = comp_vec[first_boo & day_boo & cue_boo & last21_boo]
+                # if len(fit_comp_first) == 0 or len(fit_comp_first) == 0:
+                #     print(f'{mouse}: 21 first/last failed (no trials). cue: {cue},  day: {di}, comp: {comp_n + 1}')
+                #     continue
 
                 # plot all trials for each day
                 ax[comp_n].plot(inds, fit_comp_vec, 'o', color=lookups.color_dict[cue], alpha=0.3)
@@ -844,6 +860,8 @@ def ramp_from_meta_model(meta, model, rank=15, save_folder='', annotate=True):
                 y2 = fit_comp_vec[-mid_ind:]  # second half of first 100 trials
                 my1 = np.mean(y1) + epsilon
                 my2 = np.mean(y2) + epsilon
+                # my1 = np.mean(fit_comp_first) + epsilon
+                # my2 = np.mean(fit_comp_last) + epsilon
 
                 # calculate log2 ramp index
                 day_ramp_index = np.log2(my1 / my2)
@@ -860,10 +878,10 @@ def ramp_from_meta_model(meta, model, rank=15, save_folder='', annotate=True):
                 # set ramp to 0 it is being calculated on a non-preferred or broadly tuned cell/component
                 if cue not in pref_tuning:
                     ramp_fits[first_boo & day_boo & cue_boo] = np.nan
-                # TODO consider making this nan, was a zero
+                # TODO considering making this nan, was a zero
 
             # add text summary of fits per day
-            if annotate:
+            if annotate and len(txt_results) > 1:
                 txt_label = ''
                 for s in txt_results:
                     txt_label = txt_label + s
@@ -1247,6 +1265,32 @@ def _first100_bool(meta):
     return firstboo
 
 
+def _first21_bool(meta):
+    """
+    Helper function to get a boolean vector of the first and last 21 trials for each day.
+    If a day is shorter than 42 trials skip the whole day.
+    """
+
+    days = meta.reset_index()['date'].unique()
+    first100 = _first100_bool(meta)
+
+    first21 = np.zeros((len(meta)))
+    last21 = np.zeros((len(meta)))
+    for di in days:
+        dboo = meta.reset_index()['date'].isin([di]).values & first100
+        day_inds = np.where(dboo)[0]
+        if len(day_inds) < 60:
+            print(f'adaptation._first21_bool: {di} skipped: only {len(day_inds)} trials in day')
+            continue
+        first21[day_inds[:30]] = 1
+        last21[day_inds[-30:]] = 1
+
+    firstboo = first21 > 0
+    lastboo = last21 > 0
+
+    return firstboo, lastboo
+
+
 def _get_gaussian_fitting_template(mouse, sigma=3.5, shift=0, sec=15.5, normalize=True):
     """
         Helper function for convolving Gaussian kernel with onset, sustained
@@ -1345,5 +1389,84 @@ def plot_test_of_template(mouse):
     ax[1].set_ylabel('weight (AU)')
     ax[1].set_title(f'{mouse} NNLS templates:\nChanging onset filter')
     plt.savefig(
-        paths.default_dir(foldername='NNLS tempaltes', filename=f'{mouse}_test_sustainedess_template.png'),
+        paths.default_dir(foldername='NNLS templates', filename=f'{mouse}_test_sustainedess_template.png'),
         bbox_inches='tight')
+
+def stable_locomotor_behavior(meta, select_on_early_trials=False):
+    """
+    Helper function to decide if the animal tends to run or remain stationary during stimulus presentations.
+    Returns a boolean for stable running or stationary behavior based on mouses behavioral trends.
+    :param meta: pandas.DataFrame, trial metadata
+    :return: motor_bool: boolean, trials with matched locomotor behavior
+    """
+
+    # check your mouse name and make sure there is only one in metadata
+    mouse = meta.reset_index()['mouse'].unique()
+    assert len(mouse) == 1
+    mouse = mouse[0]
+
+    # get your running speed during the stimulus presentation
+    speed_vec = meta['speed'].values
+
+    # if you want to assign behavior based on earliest trials
+    # i.e., if you want to make a comparison to something early in a day, but match for behavior
+    if select_on_early_trials:
+        first21, last21 = _first21_bool(meta)
+        speed_vec = speed_vec[first21]
+
+    low_speed = np.sum(speed_vec < 5)
+    high_speed = np.sum(speed_vec > 10)
+
+    if low_speed >= high_speed:
+        motor_bool = meta['speed'].values < 5
+        print(f'{mouse}: motor behavior set to "LOW speed" <5 cm/s, {low_speed} > {high_speed} trials.')
+        print(f'    "LOW speed", n = {np.sum(motor_bool)} trials total.')
+    else:
+        motor_bool = meta['speed'].values > 10
+        print(f'{mouse}: motor behavior set to "HIGH speed" >10 cm/s, {high_speed} > {low_speed} trials.')
+        print(f'    "HIGH speed", n = {np.sum(motor_bool)} trials total.')
+
+    return motor_bool
+
+
+def get_sensory_history_mod_from_betas(beta_df):
+
+    # TODO add in component tuning from cascade.tuning to select columns per component
+
+    # useful lookups
+    cols = ['prev_same_init_plus', 'prev_diff_init_plus'
+            'prev_same_init_minus', 'prev_diff_init_minus'
+            'prev_same_init_neutral', 'prev_diff_init_neutral']
+    cols_by_cue = {'plus': ['prev_same_init_plus', 'prev_diff_init_plus'],
+                   'minus': ['prev_same_init_minus', 'prev_diff_init_minus'],
+                   'neutral': ['prev_same_init_neutral', 'prev_diff_init_neutral']}
+
+    # calculate a sensory history modulation index per cue
+    all_cue_indices = np.zeros((beta_df.shape[0], 3))
+    for c, cue in enumerate(['plus', 'minus', 'neutral']):
+        cue_df = beta_df.loc[:, cols_by_cue[cue]]
+        following_same = cue_df.iloc[:, 0]
+        following_diff = cue_df.iloc[:, 1]
+        # index_vec = following_same / (following_same + following_diff)
+        index_vec = (following_diff - following_same) / (following_same + following_diff)
+        all_cue_indices[:, c] = index_vec
+
+    # create single vector that only accounts for preferred cue
+    highest_beta = np.zeros((beta_df.shape[0], 3))
+    for c, cue in enumerate(['plus', 'minus', 'neutral']):
+        cue_df = beta_df.loc[:, cols_by_cue[cue]]
+        highest_beta[:, c] = cue_df.iloc[:, 1]
+    best_col = np.argmax(highest_beta, axis=1)
+
+    # only calculate sensory history if one of the cues is the highest beta
+    sensory_betas = np.argmax(beta_df.values, axis=1) < 6
+
+    # account for preferred cue and sensory drive
+    preferred_sensory_history_mod = np.array([all_cue_indices[c, s] for c, s in enumerate(best_col)])
+    preferred_sensory_history_mod[~sensory_betas] = np.nan
+
+    return preferred_sensory_history_mod
+
+
+
+
