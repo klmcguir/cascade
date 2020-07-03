@@ -997,13 +997,15 @@ def groupday_tca(
         driven=True,
         drive_css=('0', '135', '270'),
         drive_threshold=1.31,
+        drive_type='trial',
         nan_trial_threshold=0.85,
         score_threshold=0.8,
 
         # other params
         update_meta=False,
         three_pt_tf=False,
-        remove_stim_corr=False):
+        remove_stim_corr=False,
+        cv=False):
 
     """
     Perform tensor component analysis (TCA) on data aligned
@@ -1207,7 +1209,7 @@ def groupday_tca(
             'warp': warp, 'smooth': smooth, 'smooth_win': smooth_win,
             'exclude_tags': exclude_tags, 'exclude_conds': exclude_conds,
             'driven': driven, 'drive_css': drive_css,
-            'drive_threshold': drive_threshold}
+            'drive_threshold': drive_threshold, 'drive_type': drive_type}
     if three_pt_tf:
         pars['three_pt_trace'] = True
     if remove_stim_corr:
@@ -1272,7 +1274,7 @@ def groupday_tca(
         # filter cells based on visual/trial drive across all cs, prevent
         # breaking when only pavs are shown
         if driven:
-            good_ids = _group_drive_ids(days, drive_css, drive_threshold)
+            good_ids = _group_drive_ids(days, drive_css, drive_threshold, drive_type=drive_type)
             # filter for being able to check for quality of xday alignment
             if score_threshold > 0:
                 orig_num_ids = len(good_ids)
@@ -1308,8 +1310,6 @@ def groupday_tca(
             d1_ids_bool = np.isin(d1_ids, good_ids)
             d1_sorter = np.argsort(d1_ids[d1_ids_bool])
         ids = d1_ids[d1_ids_bool][d1_sorter]
-
-        # TODO add in additional filter for being able to check for quality of xday alignment
 
         # get all runs for both days
         d1_runs = day1.runs(exclude_tags=['bad'], run_types='training')
@@ -1465,6 +1465,17 @@ def groupday_tca(
     if three_pt_tf:
         group_tensor = _three_point_temporal_trace(group_tensor, meta)
 
+    # optionally remove 20% of trials for testing model success using variance explained later
+    if cv:
+        cv_tag = '_cv'
+        group_tensor, test_tensor = test_set_from_tensor(group_tensor)
+        test_tensor_path = os.path.join(
+            save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag + cv_tag +
+                      '_test_tensor_' + str(trace_type) + '.npy')
+        np.save(test_tensor_path, test_tensor)
+    else:
+        cv_tag = ''
+
     # just so you have a clue how big the tensor is
     if verbose:
         print('Tensor decomp about to begin: tensor shape = '
@@ -1475,7 +1486,7 @@ def groupday_tca(
         save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag +
         '_df_group_meta.pkl')
     input_tensor_path = os.path.join(
-        save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag +
+        save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag + cv_tag +
         '_group_tensor_' + str(trace_type) + '.npy')
     input_bhv_path = os.path.join(
         save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag +
@@ -1484,7 +1495,7 @@ def groupday_tca(
         save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag +
         '_group_ids_' + str(trace_type) + '.npy')
     output_tensor_path = os.path.join(
-        save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag +
+        save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag + cv_tag +
         '_group_decomp_' + str(trace_type) + '.npy')
     meta.to_pickle(meta_path)
     np.save(input_tensor_path, group_tensor)
@@ -1525,6 +1536,39 @@ def groupday_tca(
         print(str(day1.mouse) + ': group_by=' + str(group_by) + ': done.')
 
 
+def test_set_from_tensor(tensor):
+    """
+    Function to remove 20% of trials from each cell to be used as a test for model performance
+
+    :param tensor: numpy_ndarray, 3D matrix cells x timepoints x trials
+    :return: tensor, test_tensor
+    """
+
+    # train-test split
+    frac_train = 0.80  # 80% train, 20% test
+    np.random.seed(seed=42)  # seed random state
+    ncells = tensor.shape[0]
+    test_tensor = deepcopy(tensor)
+    test_tensor[:] = np.nan
+
+    # loop over cells to remove 20% of trials per cell
+    for n in range(ncells):
+
+        # randomly select 20% of existing (non-NaN) trials
+        ntrials = np.sum(~np.isnan(tensor[n, 0, :]))
+        trial_inds = np.where(~np.isnan(tensor[n, 0, :]))[0].astype(int)
+        ntoselect = np.round(ntrials * (1. - frac_train)).astype(int)
+        test_inds = np.random.choice(trial_inds, ntoselect, replace=False)
+
+        # save test trials into new test_tensor
+        test_tensor[n, :, test_inds] = tensor[n, :, test_inds]
+
+        # remove test trials from the input tensor
+        tensor[n, :, test_inds] = np.nan
+
+    return tensor, test_tensor
+
+
 def _get_speed_pupil_npil_traces(
         run,
         cs='',
@@ -1534,7 +1578,7 @@ def _get_speed_pupil_npil_traces(
         cutoff_before_lick_ms=-1):
     """
     Helper function that makes a tensor stacking pupil and running speed
-    into a single tensor. dpupil and dpspeed are baseline subtracted from
+    into a single tensor. dpupil and dspeed are baseline subtracted from
     -1 to 0 sec before stimulus onset.
     
     Returns: array
@@ -1690,7 +1734,6 @@ def _three_point_temporal_trace(tensor, metadata):
     return new_tensor
 
 
-
 def _group_drive_ids(days, drive_css, drive_threshold, drive_type='visual'):
     """
     Get an array of all unique ids driven on any day for a given DaySorter.
@@ -1751,71 +1794,6 @@ def _group_ids_score(days, score_threshold):
         good_ids.extend(d1_highscore_ids)
 
     return np.unique(good_ids)
-
-
-def _sortfactors(my_method):
-    """
-    Sort a set of neuron factors by which factor they contribute
-    to the most.
-
-    Input
-    -------
-    Tensortools ensemble with method. (set of multiple initializations of TCA)
-        i.e., _sortfactors(ensemble['ncp_bcd'])
-
-    Returns
-    -------
-    my_method, copy of tensortools ensemble method now with neuron factors sorted.
-    my_rank_sorts, sort indexes to keep track of cell identity
-
-    """
-
-    my_method = deepcopy(my_method)
-
-    # only use the lowest error replicate, index 0, to define sort order
-    rep_num = 0
-
-    # keep sort indexes because these define original cell identity
-    my_rank_sorts = []
-
-    # sort each neuron factor and update the order based on strongest factor
-    # reflecting prioritized sorting of earliest to latest factors
-    for k in my_method.results.keys():
-
-        full_sort = []
-        # use the lowest index (and lowest error objective) to create sort order
-        factors = my_method.results[k][rep_num].factors[0]
-
-        # sort neuron factors according to which component had highest weight
-        max_fac = np.argmax(factors, axis=1)
-        sort_fac = np.argsort(max_fac)
-        sort_max_fac = max_fac[sort_fac]
-        first_sort = factors[sort_fac, :]
-
-        # descending sort within each group of sorted neurons
-        second_sort = []
-        for i in np.unique(max_fac):
-            second_inds = (np.where(sort_max_fac == i)[0])
-            second_sub_sort = np.argsort(first_sort[sort_max_fac == i, i])
-            second_sort.extend(second_inds[second_sub_sort][::-1])
-
-        # apply the second sort
-        full_sort = sort_fac[second_sort]
-        sorted_factors = factors[full_sort, :]
-
-        # check for zero-weight factors
-        no_weight_binary = np.max(sorted_factors, axis=1) == 0
-        inds_to_end = full_sort[no_weight_binary]
-        full_sort = np.concatenate((full_sort[np.invert(no_weight_binary)], inds_to_end), axis=0)
-        my_rank_sorts.append(full_sort)
-
-        # reorder factors looping through each replicate and applying the same sort
-        for i in range(0,len(my_method.results[k])):
-            factors = my_method.results[k][i].factors[0]
-            sorted_factors = factors[full_sort, :]
-            my_method.results[k][i].factors[0] = sorted_factors
-
-    return my_method, my_rank_sorts
 
 
 def _triggerfromrun(run, trace_type='zscore_day', cs='', downsample=True,

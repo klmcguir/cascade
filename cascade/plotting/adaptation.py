@@ -1,5 +1,5 @@
-"""Functions for plotting tca decomp."""
-from sklearn.cluster import KMeans
+"""Functions for plotting changes in neurons and components of activity across learning."""
+
 from scipy.optimize import curve_fit
 import pandas as pd
 import seaborn as sns
@@ -8,7 +8,7 @@ import numpy as np
 import bottleneck as bt
 import os
 import flow
-from .. import load, paths, utils
+from .. import load, paths, utils, lookups
 from copy import deepcopy
 import scipy as sp
 
@@ -37,7 +37,154 @@ lookup_ori = {'OA27': {270: 'plus', 135: 'minus', 0: 'neutral'},
               'OA26': {270: 'plus', 135: 'minus', 0: 'neutral'}}
 
 
-# exponential fitting functions 
+def plot_transientness_scatter_stages(mice,
+                                      words=None,
+                                      method='ncp_hals',
+                                      cs='',
+                                      warp=False,
+                                      trace_type='zscore_day',
+                                      group_by='all3',
+                                      nan_thresh=0.95,
+                                      score_threshold=0.8,
+                                      rank=15,
+                                      staging='parsed_11stage',
+                                      project=False):
+    """
+    Plot FacetGrid scatters by stages of learning.
+
+    :param mice: list of str, names of mice for analysis
+    :param words: list of str, associated parameter hash words
+    :param method: str, fit method from tensortools package
+        'cp_als', fits CP Decomposition using Alternating
+            Least Squares (ALS).
+        'ncp_bcd', fits nonnegative CP Decomposition using
+            the Block Coordinate Descent (BCD) Method.
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method.
+        'mncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method with missing data.
+        'mcp_als', fits CP Decomposition with missing data using
+            Alternating Least Squares (ALS).
+    :param cs: str, conditioned stimuli, '' defaults to all CSes
+    :param warp: boolean, warp trace offset so ensure delivery is a single point in time
+    :param trace_type: str, type of calcium imaging trace being used in associated analysis
+    :param group_by: str, period of time being analyzed across animal training
+    :param nan_thresh: float, fraction of trials that must contain non-NaN entries
+    :param score_threshold: float, score threshold for CellReg package alignment score
+    :param rank: int, rank of TCA model to use for fitting
+    :param staging: str, assign predetermined binning method for associated analysis
+    :param project: boolean, temporally project you data (matching cells across time) to a larger dataset
+    :return
+    """
+
+    # set load kwargs
+    load_kwargs = {'mouse': mice[0],
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': words[0],
+                   'trace_type': trace_type,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+
+    # temporal projection to allow you to use TCA data tp classify larger time period
+    if project:
+        root_word = 'trans_projection'
+    else:
+        root_word = 'transient'
+
+    # find analysis directory for your mice named 'behavior'
+    save_path = paths.groupmouse_analysis_path(root_word, mice=mice, words=words, **load_kwargs)
+
+    # load df where all calculations have been done per day for each cell
+    comp_or_cell = 'cell'
+    save_folder = save_path + f' day transient {comp_or_cell} rank {rank}'
+    assert os.path.isdir(save_folder)
+    adapt_df = pd.read_pickle(
+        os.path.join(save_folder, f'TCA_daily_transientness_r{rank}_{comp_or_cell}.pkl'))
+    print(f'Saving scatterplots to: {save_folder}')
+
+    # make sure that bins are plotted in order in FacetGrid
+    if group_by in 'learning':
+        if staging in 'parsed_stage':
+            myvars = ['low_dp learning', 'high_dp learning']
+        elif staging in 'parsed_10stage':
+            myvars = ['early low_dp learning', 'late low_dp learning',
+                      'early high_dp learning', 'late high_dp learning']
+        elif staging in 'parsed_11stage':
+            myvars = ['L1 learning', 'L2 learning', 'L3 learning',
+                      'L4 learning', 'L5 learning']
+    elif group_by in 'all3':
+        if staging in 'parsed_stage':
+            myvars = ['naive',
+                      'low_dp learning', 'high_dp learning',
+                      'low_dp reversal1', 'high_dp reversal1']
+        elif staging in 'parsed_10stage':
+            myvars = ['early naive', 'late naive',
+                      'early low_dp learning', 'late low_dp learning',
+                      'early high_dp learning', 'late high_dp learning'
+                                                'early low_dp reversal1', 'late low_dp reversal1',
+                      'early high_dp reversal1', 'late high_dp reversal1']
+        elif staging in 'parsed_11stage':
+            myvars = ['L0 naive',
+                      'L1 learning', 'L2 learning', 'L3 learning',
+                      'L4 learning', 'L5 learning',
+                      'L1 reversal1', 'L2 reversal1', 'L3 reversal1',
+                      'L4 reversal1', 'L5 reversal1']
+    else:
+        print('Unrecognized group_by parameter')
+
+    # plot FacetGrig of daily ramp index per cell
+    group_df = adapt_df.groupby(['mouse', 'cell', 'best component', 'initial cue', 'parsed_11stage']).mean()[
+        'ramp index']
+    g = sns.PairGrid(group_df.unstack(level=-1).reset_index(), hue='initial cue', height=4,
+                     palette=lookups.color_dict, vars=myvars)
+    g = g.map_offdiag(sns.scatterplot, alpha=0.8)
+    g = g.map_offdiag(originline_ramp)
+    g = g.map_diag(sns.kdeplot, shade=True)
+    plt.suptitle('Ramp index by cells, binned by learning stage', y=1.05, size=18)
+    plt.savefig(os.path.join(save_folder, f'ScatterGrid_cells_ramp_index_makino_{staging}.png'),
+                bbox_inches='tight')
+
+    # plot FacetGrig of daily transientness index per cell
+    group_df = adapt_df.groupby(['mouse', 'cell', 'best component', 'initial cue', 'parsed_11stage']).mean()[
+        'transientness']
+    g = sns.PairGrid(group_df.unstack(level=-1).reset_index(), hue='initial cue', height=4,
+                     palette=lookups.color_dict, vars=myvars)
+    g = g.map_offdiag(sns.scatterplot, alpha=0.8)
+    g = g.map_offdiag(originline_trans)
+    g = g.map_diag(sns.kdeplot, shade=True)
+    plt.suptitle('Transientness by cells, binned by learning stage', y=1.05, size=18)
+    plt.savefig(os.path.join(save_folder, f'ScatterGrid_cells_trans_index_{staging}.png'),
+                bbox_inches='tight')
+
+    # plot FacetGrig of daily transientness index per cell
+    group_df = adapt_df.groupby(['mouse', 'best component', 'initial cue', 'parsed_11stage']).mean()['transientness']
+    g = sns.PairGrid(group_df.unstack(level=-1).reset_index(), hue='initial cue', height=4,
+                     palette=lookups.color_dict, vars=myvars)
+    g = g.map_offdiag(sns.scatterplot, alpha=0.8)
+    g = g.map_offdiag(originline_trans)
+    g = g.map_diag(sns.kdeplot, shade=True)
+    plt.suptitle('Transientness by components, binned by learning stage', y=1.05, size=18)
+    plt.savefig(os.path.join(save_folder, f'ScatterGrid_comps_trans_index_{staging}.png'),
+                bbox_inches='tight')
+
+
+def originline_ramp(a, b, color, label):
+    plt.plot([-4, 4], [-4, 4], '--k')
+    plt.plot([0, 0], [-4, 4], '--k')
+    plt.plot([-4, 4], [0, 0], '--k')
+    plt.ylim(-4, 4)
+    plt.xlim(-4, 4)
+
+
+def originline_trans(a, b, color, label):
+    plt.plot([0, 1], [0, 1], '--k')
+
+
 def opt_func(x, a, b):
     return a * np.exp(-b * x)
 
@@ -1685,7 +1832,7 @@ def sustainedness_daily_mean_comp_plots(
 
         plt.figure()
         dsus = ((sus_df['high_dp learning'] - sus_df['low_dp learning']) * -1) / (
-                    sus_df['high_dp learning'] + sus_df['low_dp learning'])
+                sus_df['high_dp learning'] + sus_df['low_dp learning'])
         # dsusr = (norm_sus_df['high_dp learning'] - norm_sus_df['low_dp reversal1'])*-1
         tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=sus_df.index)
         sns.regplot(x=sus_df['high_dp learning'], y=tester['delta_sus'], marker='.')
@@ -1734,7 +1881,7 @@ def sustainedness_daily_mean_comp_plots(
 
         plt.figure()
         dsus = ((sus_df['high_dp learning'] - sus_df['low_dp reversal1']) * -1) / (
-                    sus_df['high_dp learning'] + sus_df['low_dp reversal1'])
+                sus_df['high_dp learning'] + sus_df['low_dp reversal1'])
         # dsusr = (norm_sus_df['high_dp learning'] - norm_sus_df['low_dp reversal1'])*-1
         tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=sus_df.index)
         sns.regplot(x=sus_df['high_dp learning'], y=tester['delta_sus'], marker='.')
@@ -1758,7 +1905,7 @@ def sustainedness_daily_mean_comp_plots(
 
         plt.figure()
         dsus = ((sus_df['high_dp reversal1'] - sus_df['low_dp reversal1']) * -1) / (
-                    sus_df['high_dp reversal1'] + sus_df['low_dp reversal1'])
+                sus_df['high_dp reversal1'] + sus_df['low_dp reversal1'])
         # dsusr = (norm_sus_df['high_dp learning'] - norm_sus_df['low_dp reversal1'])*-1
         tester = pd.DataFrame(data=dsus.T, columns=['delta_sus'], index=sus_df.index)
         sns.regplot(x=sus_df['high_dp reversal1'], y=tester['delta_sus'], marker='.')

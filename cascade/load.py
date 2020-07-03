@@ -1,17 +1,15 @@
 """Functions for loading tensors filtering on different tags, etc."""
-import tensortools as tt
+
 import numpy as np
 import flow
-from flow.misc import wordhash
 import pool
 import pandas as pd
 import os
 from . import utils
 from . import paths
-from .tca import _trialmetafromrun, _sortfactors, _group_ids_score
+from .tca import _trialmetafromrun, _group_ids_score
 from .tca import _group_drive_ids, _get_speed_pupil_npil_traces
 from .tca import _remove_stimulus_corr, _three_point_temporal_trace
-from copy import deepcopy
 
 
 def groupday_tensor(
@@ -59,7 +57,6 @@ def groupday_tensor(
         update_meta=False,
         three_pt_tf=False,
         remove_stim_corr=False):
-
     """
     Perform tensor component analysis (TCA) on data aligned
     across a group of days. Builds one large tensor.
@@ -211,7 +208,7 @@ def groupday_tensor(
                             'retinotopy', 'sated', 'reversal2_start', 'reversal2')
 
 
-    elif group_by.lower() == 'all100':  #first 100 trials of every day
+    elif group_by.lower() == 'all100':  # first 100 trials of every day
         tags = None
         use_dprime = False
         if mouse == 'OA27':
@@ -231,7 +228,7 @@ def groupday_tensor(
                             'reversal2_start', 'reversal2')
         else:
             exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
-                        'retinotopy', 'sated', 'reversal2_start', 'reversal2')
+                            'retinotopy', 'sated', 'reversal2_start', 'reversal2')
 
 
     else:
@@ -323,7 +320,7 @@ def groupday_tensor(
                           + ' good_ids updated to ' + str(len(good_ids)) + '/'
                           + str(orig_num_ids) + ' cells.')
                 # update saving tag
-                score_tag = '_score0pt' + str(int(score_threshold*10))
+                score_tag = '_score0pt' + str(int(score_threshold * 10))
             else:
                 score_tag = ''
             d1_ids_bool = np.isin(d1_ids, good_ids)
@@ -341,21 +338,19 @@ def groupday_tensor(
                           + ' good_ids updated to ' + str(len(good_ids)) + '/'
                           + str(orig_num_ids) + ' cells.')
                 # update saving tag
-                score_tag = '_score0pt' + str(int(score_threshold*10))
+                score_tag = '_score0pt' + str(int(score_threshold * 10))
             else:
                 score_tag = ''
             d1_ids_bool = np.isin(d1_ids, good_ids)
             d1_sorter = np.argsort(d1_ids[d1_ids_bool])
         ids = d1_ids[d1_ids_bool][d1_sorter]
 
-        # TODO add in additional filter for being able to check for quality of xday alignment
-
         # get all runs for both days
         d1_runs = day1.runs(exclude_tags=['bad'], run_types='training')
 
         # filter for only runs without certain tags
         d1_runs = [run for run in d1_runs if not
-                   any(np.isin(run.tags, exclude_tags))]
+        any(np.isin(run.tags, exclude_tags))]
 
         # build tensors for all correct runs and trials after filtering
         if d1_runs:
@@ -415,7 +410,7 @@ def groupday_tensor(
 
                 # drop trials with nans and add to lists
                 keep = np.sum(np.sum(np.isnan(run_traces), axis=0,
-                              keepdims=True),
+                                     keepdims=True),
                               axis=1, keepdims=True).flatten() == 0
                 dfr = dfr.iloc[keep, :]
                 d1_tensor_list.append(run_traces[:, :, keep])
@@ -470,7 +465,7 @@ def groupday_tensor(
         # remove cells with too many nan trials
         ntrials = np.shape(group_tensor)[2]
         nbadtrials = np.sum(np.isnan(group_tensor[:, 0, :]), 1)
-        badtrialratio = nbadtrials/ntrials
+        badtrialratio = nbadtrials / ntrials
         badcell_indexer = badtrialratio < nan_trial_threshold
         group_tensor = group_tensor[badcell_indexer, :, :]
         id_union = id_union[badcell_indexer]
@@ -663,7 +658,7 @@ def singleday_tensor(
         # be false for that id
         if len(d1_drive) > len(d1_ids):
             print('Warning: ' + str(day1) + ': _ids was ' +
-                  str(len(d1_drive)-len(d1_ids)) +
+                  str(len(d1_drive) - len(d1_ids)) +
                   ' shorter than _drive: added pseudo-id.')
             d1_drive[-1] = 0
             d1_ids = np.concatenate((d1_ids, np.array([-1])))
@@ -674,8 +669,6 @@ def singleday_tensor(
         d1_ids_bool = np.ones(np.shape(d1_ids)) > 0
         d1_sorter = np.argsort(d1_ids[d1_ids_bool])
     ids = d1_ids[d1_ids_bool][d1_sorter]
-
-    # TODO add in additional filter for being able to check for quality of xday alignment
 
     # get all runs for both days
     d1_runs = day1.runs(exclude_tags=['bad'])
@@ -691,10 +684,10 @@ def singleday_tensor(
             t2p = run.trace2p()
             # trigger all trials around stimulus onsets
             run_traces = utils.getcstraces(run, cs=cs, trace_type=trace_type,
-                                     start_time=start_time, end_time=end_time,
-                                     downsample=True, clean_artifacts=clean_artifacts,
-                                     thresh=thresh, warp=warp, smooth=smooth,
-                                     smooth_win=smooth_win)
+                                           start_time=start_time, end_time=end_time,
+                                           downsample=True, clean_artifacts=clean_artifacts,
+                                           thresh=thresh, warp=warp, smooth=smooth,
+                                           smooth_win=smooth_win)
             # filter and sort
             run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
             # get matched trial metadata/variables
@@ -782,14 +775,14 @@ def groupday_tca_ids(
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        load_tag = '_score0pt' + str(int(score_threshold * 10)) + load_tag
 
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     ids_path = os.path.join(
-                load_dir, str(mouse) + '_' + str(group_by) + load_tag
-                + '_group_ids_' + str(trace_type) + '.npy')
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
+                  + '_group_ids_' + str(trace_type) + '.npy')
 
     # load your data
     ids = np.load(ids_path)
@@ -808,6 +801,7 @@ def groupday_tca_model(
         group_by='all',
         nan_thresh=0.85,
         score_threshold=None,
+        cv=False,
         full_output=False,
         unsorted=False,
         verbose=False):
@@ -834,23 +828,22 @@ def groupday_tca_model(
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        load_tag = '_score0pt' + str(int(score_threshold * 10)) + load_tag
+
+    # if train-test split was made
+    load_tag_ids = load_tag
+    if cv:
+        load_tag = load_tag + '_cv'
 
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     tensor_path = os.path.join(
         load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_group_decomp_' + str(trace_type) + '.npy')
+                  + '_group_decomp_' + str(trace_type) + '.npy')
     ids_path = os.path.join(
-                load_dir, str(mouse) + '_' + str(group_by) + load_tag
-                + '_group_ids_' + str(trace_type) + '.npy')
-    input_tensor_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_group_tensor_' + str(trace_type) + '.npy')
-    meta_path = os.path.join(
-        load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_df_group_meta.pkl')
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag_ids
+                  + '_group_ids_' + str(trace_type) + '.npy')
 
     # load your data
     ensemble = np.load(tensor_path, allow_pickle=True)
@@ -870,7 +863,7 @@ def groupday_tca_model(
     ensemble = utils.correct_nonneg(ensemble)
 
     # sort neuron factors by component they belong to most
-    sort_ensemble, my_sorts = _sortfactors(ensemble[method])
+    sort_ensemble, my_sorts = utils.sortfactors(ensemble[method])
 
     cell_ids = {}  # keys are rank
     cell_clusters = {}
@@ -881,7 +874,7 @@ def groupday_tca_model(
         factors = sort_ensemble.results[k][itr_num].factors[0]
         max_fac = np.argmax(factors, axis=1)
         cell_clusters[k] = max_fac
-        cell_ids[k] = ids[my_sorts[k-1]]
+        cell_ids[k] = ids[my_sorts[k - 1]]
 
     # Return either output for one rank, or everything for all ranks
     if unsorted:
@@ -926,14 +919,14 @@ def groupday_tca_meta(
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        load_tag = '_score0pt' + str(int(score_threshold * 10)) + load_tag
 
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     meta_path = os.path.join(
         load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_df_group_meta.pkl')
+                  + '_df_group_meta.pkl')
 
     # load your data
     meta = pd.read_pickle(meta_path)
@@ -951,7 +944,8 @@ def groupday_tca_input_tensor(
         word='tray',
         group_by='all',
         nan_thresh=0.85,
-        score_threshold=None):
+        score_threshold=None,
+        cv=False):
     """
     Load existing input tensor from tensor component analysis (TCA).
 
@@ -975,14 +969,18 @@ def groupday_tca_input_tensor(
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        load_tag = '_score0pt' + str(int(score_threshold * 10)) + load_tag
+
+    # if train-test split was made
+    if cv:
+        load_tag = load_tag + '_cv'
 
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     input_tensor_path = os.path.join(
         load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_group_tensor_' + str(trace_type) + '.npy')
+                  + '_group_tensor_' + str(trace_type) + '.npy')
 
     # load your data
     input_tensor = np.load(input_tensor_path)
@@ -1023,17 +1021,69 @@ def groupday_tca_bhv(
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        load_tag = '_score0pt' + str(int(score_threshold * 10)) + load_tag
 
     # load dir
     load_dir = paths.tca_path(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     input_tensor_path = os.path.join(
         load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_group_bhv_' + str(trace_type) + '.npy')
+                  + '_group_bhv_' + str(trace_type) + '.npy')
 
     # load your data
     input_tensor = np.load(input_tensor_path)
 
     return input_tensor
 
+
+def groupday_tca_cv_test_set_tensor(
+        mouse='OA27',
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        word='tray',
+        group_by='all',
+        nan_thresh=0.85,
+        score_threshold=None,
+        cv=False):
+    """
+    Load existing input tensor from tensor component analysis (TCA).
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
+
+    mouse = mouse
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        load_tag = '_nantrial' + str(nan_thresh)
+    else:
+        load_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold * 10)) + load_tag
+
+    # if train-test split was made
+    if cv:
+        load_tag = load_tag + '_cv'
+
+    # load dir
+    load_dir = paths.tca_path(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    input_tensor_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
+                  + '_test_tensor_' + str(trace_type) + '.npy')
+
+    # load your data
+    input_tensor = np.load(input_tensor_path)
+
+    return input_tensor

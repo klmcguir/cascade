@@ -182,3 +182,76 @@ ensure = {
      'OA38': {15: [], 10: []},
      'AS57': {15: [10, 15], 10: [10]}, # unclear which it is
      }
+
+tt_plot_options = {
+      'cp_als': {
+        'line_kw': {
+          'color': 'red',
+          'label': 'cp_als',
+        },
+        'scatter_kw': {
+          'color': 'green',
+          'alpha': 0.5,
+        },
+        'bar_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+        },
+      },
+      'ncp_hals': {
+        'line_kw': {
+          'color': 'red',
+          'label': 'ncp_hals',
+        },
+        'scatter_kw': {
+          'color': 'green',
+          'alpha': 0.5,
+        },
+        'bar_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+        },
+      },
+      'ncp_bcd': {
+        'line_kw': {
+          'color': 'red',
+          'label': 'ncp_bcd',
+        },
+        'scatter_kw': {
+          'color': 'green',
+          'alpha': 0.5,
+        },
+        'bar_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+        },
+      },
+      'mcp_als': {
+        'line_kw': {
+          'color': 'red',
+          'label': 'mcp_als',
+        },
+        'scatter_kw': {
+          'color': 'green',
+          'alpha': 0.5,
+        },
+        'bar_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+        },
+      },
+      'mncp_hals': {
+        'line_kw': {
+          'color': 'red',
+          'label': 'mcp_als',
+        },
+        'scatter_kw': {
+          'color': 'green',
+          'alpha': 0.5,
+        },
+        'bar_kw': {
+          'color': 'blue',
+          'alpha': 0.5,
+        },
+      },
+    }

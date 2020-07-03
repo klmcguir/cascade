@@ -13,7 +13,7 @@ import scipy as sp
 
 # TODO cell_tuning
 #  how should I deal with offset components here?
-#  it seems that offset compoenents (including their ramping activity)
+#  it seems that offset components (including their ramping activity)
 #  may account for a lot of the FC bias and certainly account for the
 
 
@@ -26,7 +26,7 @@ def cell_tuning(meta, tensor, model, rank, by_stage=False, nan_lick=False,
     :param meta: pandas.DataFrame, trial metadata
     :param model: tensortools.ensemble, TCA results
     :param rank: int, rank of TCA model to use for components
-    :param by_stage: boolean, choose to use stages or simply caclulate tuning over all time
+    :param by_stage: boolean, choose to use stages or simply calculate tuning over all time
     :param staging: str, binning used to define stages of learning
     :param tuning_type: str, way to define stimulus type. 'initial', 'orientation', or defaults to 'condition'
     :return: stage_tuning_df: pandas.DataFrame, columns are stages
@@ -62,7 +62,7 @@ def component_tuning(meta, model, rank, by_stage=False, staging='parsed_11stage'
     :param meta: pandas.DataFrame, trial metadata
     :param model: tensortools.ensemble, TCA results
     :param rank: int, rank of TCA model to use for components
-    :param by_stage: boolean, choose to use stages or simply caclulate tuning over all time
+    :param by_stage: boolean, choose to use stages or simply calculate tuning over all time
     :param staging: str, binning used to define stages of learning
     :param tuning_type: str, way to define stimulus type. 'initial', 'orientation', or defaults to 'condition'
     :return: stage_tuning_df: pandas.DataFrame, columns are stages
@@ -170,7 +170,7 @@ def tuning_not_by_stage(meta, trial_avg_vec, tuning_type='initial'):
 def calc_tuning_from_meta_and_vec(meta, trial_avg_vec, tuning_type='initial'):
     """
     Helper function for calculating the preferred tuning of any vector (trial averaged responses)
-    and metadata DataFrame (subset to match vector of reponses). Based on initial CS values.
+    and metadata DataFrame (subset to match vector of responses). Based on initial CS values.
 
     :param meta: pandas.DataFrame, trial metadata
     :param trial_avg_vec: vector of responses, one per trial, must be same length as meta

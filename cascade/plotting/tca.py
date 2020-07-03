@@ -326,6 +326,10 @@ def groupday_longform_factors_annotated(
     if score_threshold:
         save_tag = ' score ' + str(score_threshold) + save_tag
 
+    # update saving tag if for cv traing set
+    if cv:
+        save_tag = save_tag + ' cv'
+
     # update saving tag if you used a cell score threshold
     if scale_y:
         save_tag = ' scaley' + save_tag
@@ -349,7 +353,7 @@ def groupday_longform_factors_annotated(
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold}
     sort_ensemble, _, _ = load.groupday_tca_model(
-                            **load_kwargs, full_output=True)
+                            **load_kwargs, full_output=True, cv=cv)
     meta = load.groupday_tca_meta(**load_kwargs)
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))
@@ -778,6 +782,7 @@ def groupday_factors_annotated(
         scale_y=False,
         hunger_or_hmm='hmm',
         add_prev_cols=False,
+        cv=False,
         verbose=False):
 
     """
@@ -815,78 +820,7 @@ def groupday_factors_annotated(
     mpl.rcParams.update(mpl.rcParamsDefault)
 
     # plotting options for the unconstrained and nonnegative models.
-    plot_options = {
-      'cp_als': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'cp_als',
-        },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
-        },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
-      'ncp_hals': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'ncp_hals',
-        },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
-        },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
-      'ncp_bcd': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'ncp_bcd',
-        },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
-        },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
-      'mcp_als': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'mcp_als',
-        },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
-        },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
-      'mncp_hals': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'mcp_als',
-        },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
-        },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
-    }
+    plot_options = lookups.tt_plot_options
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
     group_pars = {'group_by': group_by}
@@ -901,6 +835,9 @@ def groupday_factors_annotated(
     if score_threshold:
         save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
 
+    # update saving tag are using the cv training set
+    if cv:
+        save_tag = save_tag + ' cv'
 
     # save dir
     save_dir = paths.tca_plots(
@@ -925,7 +862,7 @@ def groupday_factors_annotated(
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold}
     sort_ensemble, _, _ = load.groupday_tca_model(
-                            **load_kwargs, full_output=True)
+                            **load_kwargs, full_output=True, cv=cv)
     meta = load.groupday_tca_meta(**load_kwargs)
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))
@@ -1428,6 +1365,161 @@ def groupday_varex_summary(
     ax.set_title(
         'Variance Explained: ' + str(method) + r_tag + ', ' + str(mouse))
     ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+
+    fig.savefig(var_path, bbox_inches='tight')
+
+
+def groupday_varex_summary_cv(
+        mouse,
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        word=None,
+        group_by='all',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        rectified=True,
+        verbose=False):
+    """
+    Plot reconstruction error as variance explained across all whole groupday
+    TCA decomposition ensemble.
+
+    Parameters:
+    -----------
+    mouse : str; mouse name
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../qc
+    """
+
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        load_tag = '_nantrial' + str(nan_thresh)
+        save_tag = ' nantrial ' + str(nan_thresh)
+    else:
+        load_tag = ''
+        save_tag = ''
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
+
+    # update saving tag if you used a cell score threshold
+    load_tag = load_tag + '_cv'
+    save_tag = save_tag + ' cv'
+
+    # title tag for rectification
+    if rectified:
+        r_tag = ' rectified'
+        save_tag = save_tag + '_rectified'
+    else:
+        r_tag = ''
+
+    # load dir
+    load_dir = paths.tca_path(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    tensor_path = os.path.join(
+        load_dir, str(mouse) + '_' + str(group_by) + load_tag
+        + '_group_decomp_' + str(trace_type) + '.npy')
+
+    # save dir
+    save_dir = paths.tca_plots(
+        mouse, 'group', pars=pars, word=word, group_pars=group_pars)
+    save_dir = os.path.join(save_dir, 'qc' + save_tag)
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    var_path = os.path.join(
+        save_dir, str(mouse) + '_summary_variance_explained.pdf')
+
+    # load your data
+    ensemble = np.load(tensor_path)
+    ensemble = ensemble.item()
+    V = ensemble[method]
+
+    # get reconstruction error as variance explained
+    df_var = var.groupday_varex_cv_train_set(
+        flow.Mouse(mouse=mouse),
+        trace_type=trace_type,
+        method=method,
+        cs=cs,
+        warp=warp,
+        word=word,
+        group_by=group_by,
+        nan_thresh=nan_thresh,
+        score_threshold=score_threshold,
+        rectified=rectified,
+        verbose=verbose)
+    df_var_cv = var.groupday_varex_cv_test_set(
+        flow.Mouse(mouse=mouse),
+        trace_type=trace_type,
+        method=method,
+        cs=cs,
+        warp=warp,
+        word=word,
+        group_by=group_by,
+        nan_thresh=nan_thresh,
+        score_threshold=score_threshold,
+        rectified=rectified,
+        verbose=verbose)
+
+    # create figure and axes
+    fig, ax = plt.subplots(1, 2, figsize=(20, 8), sharey=True)
+    c = 0
+    cmap = sns.color_palette('Paired', 2)
+    for axc, train_test in enumerate([df_var, df_var_cv]):
+
+        # training set
+        x_s = train_test['rank'].values
+        var_s = train_test['variance_explained_tcamodel'].values
+        x0 = x_s[train_test['iteration'].values == 0]
+        var0 = var_s[train_test['iteration'].values == 0]
+        var_mean = train_test['variance_explained_meanmodel'].values[0]
+        if 'variance_explained_PCA' in train_test.columns:
+            var_PCA = train_test['variance_explained_PCA'].values[0]
+        else:
+            var_PCA = []
+        if 'variance_explained_meandailymodel' in train_test.columns:
+            var_mean_daily = train_test['variance_explained_meandailymodel'].values[0]
+        else:
+            var_mean_daily = []
+
+        # plot
+        R = np.max([r for r in V.results.keys()])
+        ax[axc].scatter(x_s, var_s, color=cmap[c*2], alpha=0.5)
+        ax[axc].scatter([R+2], var_mean, color=cmap[c*2], alpha=0.5)
+        ax[axc].scatter([R+4], var_mean_daily, color=cmap[c*2], alpha=0.5)
+        ax[axc].scatter([R+6], var_PCA, color=cmap[c*2], alpha=0.5)
+        ax[axc].plot(x0, var0, label=('mouse ' + mouse), color=cmap[c*2])
+        ax[axc].plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c*2])
+        ax[axc].plot([R+3.5, R+4.5], [var_mean_daily, var_mean_daily], color=cmap[c*2])
+        ax[axc].plot([R+5.5, R+6.5], [var_PCA, var_PCA], color=cmap[c*2])
+
+    # add labels/titles
+    x_labels = [str(R) for R in V.results]
+    x_labels.extend(
+        ['', 'mean\ncell\nresp.',
+         '', 'daily\nmean\ncell\nresp.',
+         '', 'PCA$_{20}$'])
+    ax[0].set_xticks(range(1, len(V.results) + 7))
+    ax[1].set_xticks(range(1, len(V.results) + 7))
+    ax[0].set_xticklabels(x_labels, size=12)
+    ax[1].set_xticklabels(x_labels, size=12)
+    ax[0].set_yticklabels([round(s, 2) for s in ax[0].get_yticks()], size=14)
+    ax[0].set_xlabel('model rank', size=18)
+    ax[1].set_xlabel('model rank', size=18)
+    ax[0].set_ylabel('variance explained', size=18)
+    ax[0].set_title(
+        'Variance explained training set: ' + str(method) + r_tag + ', ' + str(mouse))
+    ax[1].set_title(
+        'Variance explained test set: ' + str(method) + r_tag + ', ' + str(mouse))
+    ax[1].legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
 
     fig.savefig(var_path, bbox_inches='tight')
 

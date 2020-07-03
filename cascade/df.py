@@ -75,10 +75,16 @@ def load_transientness_df_stages(mice,
         os.path.join(save_folder, f'TCA_daily_transientness_r{rank}_{comp_or_cell}.pkl'))
 
     # organize according to staging, update component to be used in index
-    group_df = adapt_df.groupby(['mouse', 'best component', staging]).mean()['transientness']
+    if over_components:
+        group_df = adapt_df.groupby(['mouse', 'best component', staging]).mean()['transientness']
+    else:
+        group_df = adapt_df.groupby(['mouse', 'best component', 'cell', staging]).mean()['transientness']
     unstacked_df = group_df.unstack(staging)
     trans_comp = unstacked_df.reset_index().rename(columns={'best component': 'component'})
-    group_adapt_df = trans_comp.set_index(['mouse', 'component'])
+    if over_components:
+        group_adapt_df = trans_comp.set_index(['mouse', 'component'])
+    else:
+        group_adapt_df = trans_comp.set_index(['mouse', 'cell', 'component'])
 
     return group_adapt_df
 
@@ -93,7 +99,8 @@ def load_daily_ramp_df_stages(mice,
                               nan_thresh=0.95,
                               score_threshold=0.8,
                               rank=15,
-                              staging='parsed_11stage'):
+                              staging='parsed_11stage',
+                              over_components=False):
     """
     Function for loading daily ramp index df and binning by stages of learning.
 
@@ -138,10 +145,11 @@ def load_daily_ramp_df_stages(mice,
     save_path = paths.groupmouse_analysis_path('ramp', mice=mice, words=words, **load_kwargs)
 
     # load
-    save_folder = save_path + f' day ramp rank {rank}'
+    comp_or_cell = 'comp' if over_components else 'cell'
+    save_folder = save_path + f' day ramp {comp_or_cell} rank {rank}'
     assert os.path.isdir(save_folder)
     adapt_df = pd.read_pickle(
-        os.path.join(save_folder, f'TCA_daily_ramp_r{rank}.pkl'))
+        os.path.join(save_folder, f'TCA_daily_ramp_r{rank}_{comp_or_cell}.pkl'))
 
     # use staging or take mean across all time, get single value for each fit per day first since it is fit this way
     if staging in ['parsed_11stage', 'parsed_10stage', 'parsed_stage']:

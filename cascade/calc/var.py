@@ -266,6 +266,236 @@ def groupday_varex(
 
 
 @memoize(across='mouse', updated=200414, returns='other', large_output=True)
+def groupday_varex_cv_train_set(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        word=None,
+        group_by='all3',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        rectified=True,
+        verbose=False):
+    """
+    Plot reconstruction error as variance explained across all whole groupday
+    TCA decomposition ensemble.
+
+    Parameters:
+    -----------
+    mouse : str; mouse object
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../qc
+    """
+
+    mouse = mouse.mouse
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # load your data
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'trace_type': trace_type,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+    V, _ = load.groupday_tca_model(**load_kwargs, unsorted=True, cv=True)
+    X = load.groupday_tca_input_tensor(**load_kwargs, cv=True)
+    meta = load.groupday_tca_meta(**load_kwargs)
+    dates = meta.reset_index()['date']
+
+    # rectify input tensor (only look at nonnegative variance)
+    if rectified:
+        X[X < 0] = 0
+
+    # get reconstruction error as variance explained
+    # create vectors for dataframe
+    varex = []
+    rank = []
+    iteration = []
+    total_X_var = bn.nanvar(X)
+    for r in V.results:
+        for it in range(0, len(V.results[r])):
+            U = V.results[r][it].factors.full()
+            varex.append(1 - (bn.nanvar(X - U)/total_X_var))
+            rank.append(r)
+            iteration.append(it)
+
+    # mean response of neuron across trials
+    mU = np.nanmean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
+    varex_mu = 1 - (bn.nanvar(X - mU)/total_X_var)
+
+    # mean response of neurons per day
+    mU2 = np.zeros(mU.shape)
+    for day in np.unique(dates):
+        day_bool = dates.isin([day])
+        day_mean = np.nanmean(X[:, :, day_bool], axis=2, keepdims=True)
+        day_mean_chunk = day_mean * np.ones((1, 1, np.sum(day_bool.values)))
+        mU2[:, :, day_bool] = day_mean_chunk
+    mU2[~np.isfinite(X)] = np.nan
+    varex_mu_daily = 1 - (bn.nanvar(X - mU2)/total_X_var)
+
+    # smoothed response of neuron across time
+    sm_window = 15  # This should always be odd or there will be a frame shift
+    assert sm_window % 2 == 1
+    sm_shift = int(np.floor((sm_window - 1)/2) + sm_window*2)
+    pad = np.zeros((np.shape(X)[0], sm_window*2, np.shape(X)[2]))
+    smU_in = np.concatenate((pad, X, pad), axis=1)
+    smU = bn.move_mean(smU_in, sm_window, axis=1)
+    smU = smU[:, sm_shift:(np.shape(X)[1] + sm_shift), :]
+    varex_smu = 1 - (bn.nanvar(X - smU)/total_X_var)
+
+    # calculate trial concatenated PCA reconstruction of data, this is
+    # the upper bound of performance we could expect
+    if verbose:
+        print('Calculating trial concatenated PCA control: ' + mouse)
+    iX = deepcopy(X)
+    iX[np.isnan(iX)] = bn.nanmean(iX[:])  # impute empties w/ mean of data
+    sz = np.shape(iX)
+    iX = iX.reshape(sz[0], sz[1]*sz[2])
+    mu = bn.nanmean(iX, axis=0)
+    catPCA = PCA()
+    catPCA.fit(iX)
+    nComp = len(V.results)
+    Xhat = np.dot(catPCA.transform(iX)[:, :nComp],
+                  catPCA.components_[:nComp, :])
+    Xhat += mu
+    varex_PCA = [1 - (bn.nanvar(X.reshape(sz[0], sz[1]*sz[2]) - Xhat)
+                 / bn.nanvar(X.reshape(sz[0], sz[1]*sz[2])))][0]
+
+    # make dataframe of data
+    # create your index out of relevant variables
+    index = pd.MultiIndex.from_arrays(
+        [[mouse]*len(varex)],
+        names=['mouse'])
+
+    data = {'rank': rank,
+            'iteration':  iteration,
+            'variance_explained_tcamodel': varex,
+            'variance_explained_smoothmodel': [varex_smu]*len(rank),
+            'variance_explained_meanmodel': [varex_mu]*len(rank),
+            'variance_explained_meandailymodel': [varex_mu_daily]*len(rank),
+            'variance_explained_PCA': [varex_PCA]*len(rank)}
+
+    dfvar = pd.DataFrame(data, index=index)
+
+    return dfvar
+
+
+@memoize(across='mouse', updated=200414, returns='other', large_output=True)
+def groupday_varex_cv_test_set(
+        mouse,
+        trace_type='zscore_day',
+        method='ncp_hals',
+        cs='',
+        warp=False,
+        word=None,
+        group_by='all3',
+        nan_thresh=0.85,
+        score_threshold=0.8,
+        rectified=True,
+        verbose=False):
+    """
+    Plot reconstruction error as variance explained across all whole groupday
+    TCA decomposition ensemble.
+
+    Parameters:
+    -----------
+    mouse : str; mouse object
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../qc
+    """
+
+    mouse = mouse.mouse
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # load your data
+    load_kwargs = {'mouse': mouse,
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': word,
+                   'trace_type': trace_type,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+    V, _ = load.groupday_tca_model(**load_kwargs, unsorted=True)
+    X = load.groupday_tca_cv_test_set_tensor(**load_kwargs)
+    meta = load.groupday_tca_meta(**load_kwargs)
+    dates = meta.reset_index()['date']
+
+    # rectify input tensor (only look at nonnegative variance)
+    if rectified:
+        X[X < 0] = 0
+
+    # get reconstruction error as variance explained
+    # create vectors for dataframe
+    varex = []
+    rank = []
+    iteration = []
+    total_X_var = bn.nanvar(X)
+    for r in V.results:
+        for it in range(0, len(V.results[r])):
+            U = V.results[r][it].factors.full()
+            varex.append(1 - (bn.nanvar(X - U)/total_X_var))
+            rank.append(r)
+            iteration.append(it)
+
+    # mean response of neuron across trials
+    mU = np.nanmean(X, axis=2, keepdims=True) * np.ones((1, 1, np.shape(X)[2]))
+    varex_mu = 1 - (bn.nanvar(X - mU)/total_X_var)
+
+    # mean response of neurons per day
+    mU2 = np.zeros(mU.shape)
+    for day in np.unique(dates):
+        day_bool = dates.isin([day])
+        day_mean = np.nanmean(X[:, :, day_bool], axis=2, keepdims=True)
+        day_mean_chunk = day_mean * np.ones((1, 1, np.sum(day_bool.values)))
+        mU2[:, :, day_bool] = day_mean_chunk
+    mU2[~np.isfinite(X)] = np.nan
+    varex_mu_daily = 1 - (bn.nanvar(X - mU2)/total_X_var)
+
+    # smoothed response of neuron across time
+    sm_window = 15  # This should always be odd or there will be a frame shift
+    assert sm_window % 2 == 1
+    sm_shift = int(np.floor((sm_window - 1)/2) + sm_window*2)
+    pad = np.zeros((np.shape(X)[0], sm_window*2, np.shape(X)[2]))
+    smU_in = np.concatenate((pad, X, pad), axis=1)
+    smU = bn.move_mean(smU_in, sm_window, axis=1)
+    smU = smU[:, sm_shift:(np.shape(X)[1] + sm_shift), :]
+    varex_smu = 1 - (bn.nanvar(X - smU)/total_X_var)
+
+    # make dataframe of data
+    # create your index out of relevant variables
+    index = pd.MultiIndex.from_arrays(
+        [[mouse]*len(varex)],
+        names=['mouse'])
+
+    data = {'rank': rank,
+            'iteration':  iteration,
+            'variance_explained_tcamodel': varex,
+            'variance_explained_smoothmodel': [varex_smu]*len(rank),
+            'variance_explained_meanmodel': [varex_mu]*len(rank),
+            'variance_explained_meandailymodel': [varex_mu_daily]*len(rank)}
+
+    dfvar = pd.DataFrame(data, index=index)
+
+    return dfvar
+
+@memoize(across='mouse', updated=200414, returns='other', large_output=True)
 def groupday_varex_byday(
         mouse,
         trace_type='zscore_day',
