@@ -1196,3 +1196,43 @@ def sortfactors(my_method):
             my_method.results[k][i].factors[0] = sorted_factors
 
     return my_method, my_rank_sorts
+
+
+def define_high_weight_cell_factors(model, rank, threshold=1):
+    """
+    Return the highest weight cluster for a cell. Note: this is an approximation. TCA suffers from
+    a scalability issue (e.g., you can divide one factor by a value and multiply another factor by that value and
+    the component remains the same). All models are rebalanced when they load.
+    TODO: add more about what rebalance means intuitively
+
+    def rebalance(self):
+        '''Rescales factors across modes so that all norms match.'''
+
+        # Compute norms along columns for each factor matrix
+        norms = [sci.linalg.norm(f, axis=0) for f in self.factors]
+
+        # Multiply norms across all modes
+        lam = sci.multiply.reduce(norms) ** (1/self.ndim)
+
+        # Update factors
+        self.factors = [f * (lam / fn) for f, fn in zip(self.factors, norms)]
+        return self
+
+    :param model: tensortools.Ensemble, TCA model
+    :param rank: int, TCA model rank
+    :param threshold: int, standard deviation threshold
+    :return: best_cluster: numpy.ndarray, vector of components that highest weight
+    """
+
+    # parse your model
+    cell_factors = model.results[rank][0].factors[0][:, :]
+
+    thresh = np.std(cell_factors, axis=0) * threshold
+    weights = deepcopy(cell_factors)
+    for i in range(cell_factors.shape[1]):
+        weights[weights[:, i] < thresh[i], i] = np.nan
+    above_thresh = ~np.isnan(np.nanmax(weights, axis=1))
+
+    best_cluster = np.argmax(cell_factors, axis=1)[above_thresh] + 1  # to make clusters match component number
+
+    return best_cluster

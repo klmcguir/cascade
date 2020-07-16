@@ -14,14 +14,16 @@ import scipy as sp
 # TODO cell_tuning
 #  how should I deal with offset components here?
 #  it seems that offset components (including their ramping activity)
-#  may account for a lot of the FC bias and certainly account for the
+#  may account for a lot of the FC bias and certainly account for the major effect of component tuning
 
 
 def cell_tuning(meta, tensor, model, rank, by_stage=False, nan_lick=False,
-                staging='parsed_11stage', tuning_type='initial'):
+                staging='parsed_11stage', tuning_type='initial', define_best_component=True):
     """
     Function for calculating tuning for different stages of learning for the components
     from TCA.
+
+    If you want it mean "projected" for a component just group return by 'best component'
 
     :param meta: pandas.DataFrame, trial metadata
     :param model: tensortools.ensemble, TCA results
@@ -32,8 +34,9 @@ def cell_tuning(meta, tensor, model, rank, by_stage=False, nan_lick=False,
     :return: stage_tuning_df: pandas.DataFrame, columns are stages
     """
 
-    # baseline period boolean
-    timepts = np.arange(tensor.shape[1])
+    # meta can only be a DataFrame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+    mouse = meta.reset_index()['mouse'].unique()[0]
 
     # get tensor-shaped mask of values that exclude licking
     # this accounts for differences in stimulus length between mice
@@ -45,13 +48,45 @@ def cell_tuning(meta, tensor, model, rank, by_stage=False, nan_lick=False,
     else:
         ablated_tensor = tensor
 
-    # get mean for each trial
-    stim_mean_nolick = np.nanmean(ablated_tensor, axis=1)
+    # select rank of model to use
+    best_components = utils.define_high_weight_cell_factors(model, rank, threshold=1)
+    offset = np.argmax(model.results[rank][0].factors[1][:, :], axis=0) > 15.5 * (1 + lookups.stim_length[mouse])
+    offset_cells = np.isin(best_components, np.where(offset)[0] + 1)  # + 1 to match component number
 
-    # baseline period boolean
-    timepts = np.arange(tensor.shape[1])
-    base_boo = timepts <= 15.5
-    # baseline_mean = np.nanmean(tensor[:, base_boo, :], axis=1)
+    df_list = []
+    for cell_n in range(tensor.shape[0]):
+
+        if offset_cells[cell_n]:
+            # response window
+            mean_window = int(np.arange(np.floor(15.5 * (1 + lookups.stim_length[mouse])),
+                                    np.floor(15.5 * (3 + lookups.stim_length[mouse]))))
+        else:
+            # stimulus window
+            mean_window = int(np.arange(16, np.floor(15.5 * (1 + lookups.stim_length[mouse]))))
+
+        # take mean of either the stimulus or the response window depending on offset component affiliation
+        cell_mat = ablated_tensor[cell_n, mean_window, :]
+        trial_avg_vec = np.neanmean(cell_mat, axis=0)
+
+        # calculate tuning either for stages or whole component
+        if by_stage:
+            tuning_df = tuning_by_stage(meta, trial_avg_vec, staging=staging, tuning_type=tuning_type)
+        else:
+            tuning_df = tuning_not_by_stage(meta, trial_avg_vec, tuning_type=tuning_type)
+
+        # add component to index
+        tuning_df['best component'] = best_components[cell_n]
+        tuning_df['offset component'] = offset[best_components[cell_n] - 1]
+        tuning_df['offset cell'] = offset_cells[cell_n]
+        tuning_df['cell_n'] = cell_n + 1
+        tuning_df.reset_index(inplace=True)
+        tuning_df.set_index(['mouse', 'component'], inplace=True)
+        df_list.append(tuning_df)
+
+    # create final df for return
+    tuning_df_all_cells = pd.concat(df_list, axis=0)
+
+    return tuning_df_all_cells
 
 
 def component_tuning(meta, model, rank, by_stage=False, staging='parsed_11stage', tuning_type='initial'):

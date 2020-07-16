@@ -11,6 +11,77 @@ from . import utils, paths, adaptation, load, lookups
 
 
 # ----------------------- LOAD as DF functions -----------------------
+def load_transientness_proj_df(mice,
+                               words=None,
+                               method='ncp_hals',
+                               cs='',
+                               warp=False,
+                               trace_type='zscore_day',
+                               group_by='all3',
+                               nan_thresh=0.95,
+                               score_threshold=0.8,
+                               rank=15,
+                               project=True):
+    """
+    Load projected df.
+
+    :param mice: list of str, names of mice for analysis
+    :param words: list of str, associated parameter hash words
+    :param method: str, fit method from tensortools package
+        'cp_als', fits CP Decomposition using Alternating
+            Least Squares (ALS).
+        'ncp_bcd', fits nonnegative CP Decomposition using
+            the Block Coordinate Descent (BCD) Method.
+        'ncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method.
+        'mncp_hals', fits nonnegative CP Decomposition using
+            the Hierarchical Alternating Least Squares
+            (HALS) Method with missing data.
+        'mcp_als', fits CP Decomposition with missing data using
+            Alternating Least Squares (ALS).
+    :param cs: str, conditioned stimuli, '' defaults to all CSes
+    :param warp: boolean, warp trace offset so ensure delivery is a single point in time
+    :param trace_type: str, type of calcium imaging trace being used in associated analysis
+    :param group_by: str, period of time being analyzed across animal training
+    :param nan_thresh: float, fraction of trials that must contain non-NaN entries
+    :param score_threshold: float, score threshold for CellReg package alignment score
+    :param rank: int, rank of TCA model to use for fitting
+    :param staging: str, assign predetermined binning method for associated analysis
+    :param bin_range: same options as group_by, but this defines which ones will be plotted
+    :param project: boolean, temporally project you data (matching cells across time) to a larger dataset
+    :return
+    """
+
+    # set load kwargs
+    load_kwargs = {'mouse': mice[0],
+                   'method': method,
+                   'cs': cs,
+                   'warp': warp,
+                   'word': words[0],
+                   'trace_type': trace_type,
+                   'group_by': group_by,
+                   'nan_thresh': nan_thresh,
+                   'score_threshold': score_threshold}
+
+    # temporal projection to allow you to use TCA data tp classify larger time period
+    if project:
+        root_word = 'trans_projection'
+    else:
+        root_word = 'transient'
+
+    # find analysis directory for your mice named 'behavior'
+    save_path = paths.groupmouse_analysis_path(root_word, mice=mice, words=words, **load_kwargs)
+
+    # load df where all calculations have been done per day for each cell
+    comp_or_cell = 'cell'
+    save_folder = save_path + f' day transient {comp_or_cell} rank {rank}'
+    assert os.path.isdir(save_folder)
+    adapt_df = pd.read_pickle(
+        os.path.join(save_folder, f'TCA_daily_transientness_r{rank}_{comp_or_cell}.pkl'))
+
+    return adapt_df
+
 
 def load_transientness_df_stages(mice,
                                  words=None,

@@ -1005,7 +1005,13 @@ def groupday_tca(
         update_meta=False,
         three_pt_tf=False,
         remove_stim_corr=False,
-        cv=False):
+
+        # cross validation params
+        cv=False,
+        train_test_split=0.8,
+
+        # force fit/save
+        force=False):
 
     """
     Perform tensor component analysis (TCA) on data aligned
@@ -1467,12 +1473,13 @@ def groupday_tca(
 
     # optionally remove 20% of trials for testing model success using variance explained later
     if cv:
-        cv_tag = '_cv'
-        group_tensor, test_tensor = test_set_from_tensor(group_tensor)
+        cv_tag = '_cv' + str(train_test_split)
+        group_tensor, test_tensor = test_set_from_tensor(group_tensor, train_test_split=train_test_split)
         test_tensor_path = os.path.join(
             save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag + cv_tag +
                       '_test_tensor_' + str(trace_type) + '.npy')
-        np.save(test_tensor_path, test_tensor)
+        if not os.path.exists(test_tensor_path) or force:
+            np.save(test_tensor_path, test_tensor)
     else:
         cv_tag = ''
 
@@ -1497,6 +1504,13 @@ def groupday_tca(
     output_tensor_path = os.path.join(
         save_dir, str(day1.mouse) + '_' + str(group_by) + score_tag + nt_tag + cv_tag +
         '_group_decomp_' + str(trace_type) + '.npy')
+    all_paths = [meta_path, input_tensor_path, input_bhv_path, input_ids_path, output_tensor_path]
+    if all([os.path.exists(p) for p in all_paths]) and not force:
+        print(f'All paths exist, force not set. Skipping save and decomposition.\n')
+        for p in all_paths:
+            print(f'    {p}')
+        print(' \n')
+        return
     meta.to_pickle(meta_path)
     np.save(input_tensor_path, group_tensor)
     np.save(input_ids_path, id_union)
@@ -1536,7 +1550,7 @@ def groupday_tca(
         print(str(day1.mouse) + ': group_by=' + str(group_by) + ': done.')
 
 
-def test_set_from_tensor(tensor):
+def test_set_from_tensor(tensor, train_test_split=0.8):
     """
     Function to remove 20% of trials from each cell to be used as a test for model performance
 
@@ -1545,7 +1559,7 @@ def test_set_from_tensor(tensor):
     """
 
     # train-test split
-    frac_train = 0.80  # 80% train, 20% test
+    frac_train = train_test_split
     np.random.seed(seed=42)  # seed random state
     ncells = tensor.shape[0]
     test_tensor = deepcopy(tensor)

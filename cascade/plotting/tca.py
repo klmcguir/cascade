@@ -21,7 +21,6 @@ from .. import lookups
 from cascade.calc import var
 import warnings
 
-
 """
 ----------------------------- SETS OF PLOTS -----------------------------
 """
@@ -38,7 +37,6 @@ def groupday_shortlist(
         nan_thresh=0.85,
         score_threshold=0.8,
         verbose=False):
-
     groupday_factors_annotated(
         mouse, trace_type=trace_type, method=method, cs=cs, warp=warp,
         word=word, group_by=group_by, nan_thresh=nan_thresh,
@@ -61,7 +59,6 @@ def pairday_shortlist(
         warp=False,
         word=None,
         verbose=False):
-
     pairday_varex_summary(mouse, trace_type=trace_type, method=method, cs=cs,
                           warp=warp, word=word, verbose=verbose)
     pairday_factors_annotated(mouse, trace_type=trace_type, method=method,
@@ -78,7 +75,6 @@ def singleday_shortlist(
         warp=False,
         word=None,
         verbose=False):
-
     singleday_varex_summary(mouse, trace_type=trace_type, method=method, cs=cs,
                             warp=warp, word=word, verbose=verbose)
     singleday_factors_annotated(mouse, trace_type=trace_type, method=method,
@@ -135,8 +131,8 @@ def groupmouse_varex_summary(
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        file_tag = '_score0pt' + str(int(score_threshold*10)) + file_tag
-        dir_tag = ' score0pt' + str(int(score_threshold*10)) + dir_tag
+        file_tag = '_score' + str(score_threshold) + file_tag
+        dir_tag = ' score' + str(score_threshold) + dir_tag
 
     # save tag for rectification
     if rectified:
@@ -155,7 +151,7 @@ def groupmouse_varex_summary(
     if not os.path.isdir(save_dir): os.mkdir(save_dir)
     var_path = os.path.join(
         save_dir, str(mouse) + '_summary_variance_explained' + file_tag
-        + '_n' + str(len(mice)) + '.pdf')
+                  + '_n' + str(len(mice)) + '.pdf')
 
     # create figure and axes
     buffer = 5
@@ -163,11 +159,11 @@ def groupmouse_varex_summary(
     fig = plt.figure(figsize=(10, 8))
     gs = GridSpec(
         100, 100, figure=fig, left=0.05, right=.95, top=.95, bottom=0.05)
-    ax = fig.add_subplot(gs[10:90-buffer, :90-right_pad])
+    ax = fig.add_subplot(gs[10:90 - buffer, :90 - right_pad])
     if add_dropout_line:
-        cmap = sns.color_palette('Paired', len(mice)*2)
+        cmap = sns.color_palette('Paired', len(mice) * 2)
     else:
-        cmap = sns.color_palette('hls', len(mice)*2)
+        cmap = sns.color_palette('hls', len(mice) * 2)
 
     for c, mouse in enumerate(mice):
 
@@ -224,18 +220,18 @@ def groupmouse_varex_summary(
 
         # plot
         R = np.max([r for r in V.results.keys()])
-        ax.scatter(x_s, var_s, color=cmap[c*2], alpha=0.5)
+        ax.scatter(x_s, var_s, color=cmap[c * 2], alpha=0.5)
         if add_dropout_line:
-            ax.scatter(x_drop, var_drop, color=cmap[c*2+1], alpha=0.5)
-        ax.scatter([R+2], var_mean, color=cmap[c*2], alpha=0.5)
-        ax.scatter([R+4], var_mean_daily, color=cmap[c*2], alpha=0.5)
-        ax.scatter([R+6], var_PCA, color=cmap[c*2], alpha=0.5)
-        ax.plot(x0, var0, label=('mouse ' + mouse), color=cmap[c*2])
+            ax.scatter(x_drop, var_drop, color=cmap[c * 2 + 1], alpha=0.5)
+        ax.scatter([R + 2], var_mean, color=cmap[c * 2], alpha=0.5)
+        ax.scatter([R + 4], var_mean_daily, color=cmap[c * 2], alpha=0.5)
+        ax.scatter([R + 6], var_PCA, color=cmap[c * 2], alpha=0.5)
+        ax.plot(x0, var0, label=('mouse ' + mouse), color=cmap[c * 2])
         if add_dropout_line:
-            ax.plot(x_drop, var_drop, label=(r'$mouse_-$ ' + mouse), color=cmap[c*2+1])
-        ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c*2])
-        ax.plot([R+3.5, R+4.5], [var_mean_daily, var_mean_daily], color=cmap[c*2]) 
-        ax.plot([R+5.5, R+6.5], [var_PCA, var_PCA], color=cmap[c*2])
+            ax.plot(x_drop, var_drop, label=(r'$mouse_-$ ' + mouse), color=cmap[c * 2 + 1])
+        ax.plot([R + 1.5, R + 2.5], [var_mean, var_mean], color=cmap[c * 2])
+        ax.plot([R + 3.5, R + 4.5], [var_mean_daily, var_mean_daily], color=cmap[c * 2])
+        ax.plot([R + 5.5, R + 6.5], [var_PCA, var_PCA], color=cmap[c * 2])
 
     # add labels/titles
     x_labels = [str(R) for R in V.results]
@@ -252,6 +248,169 @@ def groupmouse_varex_summary(
         'Variance Explained: ' + str(method) + r_tag + ', ' + str(mice))
     ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
 
+    fig.savefig(var_path, bbox_inches='tight')
+
+
+def groupmouse_varex_summary_cv(
+        mice=lookups.mice['all15'],
+        trace_type='zscore_day',
+        method='mncp_hals',
+        cs='',
+        warp=False,
+        words=None,
+        group_by='all3',
+        nan_thresh=0.95,
+        score_threshold=0.8,
+        train_test_split=0.8,
+        rectified=True,
+        verbose=False):
+    """
+    Plot reconstruction error as variance explained with cross validation across group of mice.
+
+    Parameters:
+    -----------
+    mouse : str; mouse name
+    trace_type : str; dff, zscore, deconvolved
+    method : str; TCA fit method from tensortools
+
+    Returns:
+    --------
+    Saves figures to .../analysis folder  .../qc
+    """
+
+    pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
+    group_pars = {'group_by': group_by}
+
+    # if cells were removed with too many nan trials
+    if nan_thresh:
+        file_tag = '_nantrial' + str(nan_thresh)
+        dir_tag = ' nantrial ' + str(nan_thresh)
+    else:
+        file_tag = ''
+        dir_tag = ' nantrial ' + str(nan_thresh)
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        file_tag = '_score' + str(score_threshold) + file_tag
+        dir_tag = ' score' + str(score_threshold) + dir_tag
+
+    # update saving tag if you used a cell score threshold
+    if score_threshold:
+        file_tag = file_tag + '_cv' + str(train_test_split)
+        dir_tag = dir_tag + ' cv' + str(train_test_split)
+
+    # save tag for rectification
+    if rectified:
+        r_tag = ' rectified'
+        file_tag = file_tag + '_rectified'
+        dir_tag = dir_tag + r_tag
+    else:
+        r_tag = ''
+
+    # save dir
+    group_word = paths.groupmouse_word({'mice': mice})
+    mouse = 'Group-' + group_word
+    save_dir = paths.tca_plots(
+        mouse, 'group', pars=pars, word=words[0], group_pars=group_pars)
+    save_dir = os.path.join(save_dir, 'qc' + dir_tag)
+    if not os.path.isdir(save_dir): os.mkdir(save_dir)
+    var_path = os.path.join(
+        save_dir, str(mouse) + '_summary_variance_explained' + file_tag
+                  + '_n' + str(len(mice)) + '.pdf')
+
+    # create figure and axes
+    fig, ax = plt.subplots(1, 2, figsize=(20, 8), sharey=True)
+    cmap = sns.color_palette('hls', len(mice) * 2)
+    for c, mouse in enumerate(mice):
+
+        # load your data
+        load_kwargs = {'mouse': mouse,
+                       'method': method,
+                       'cs': cs,
+                       'warp': warp,
+                       'word': words[c],
+                       'trace_type': trace_type,
+                       'group_by': group_by,
+                       'nan_thresh': nan_thresh,
+                       'score_threshold': score_threshold}
+        V, _, _ = load.groupday_tca_model(**load_kwargs, full_output=True, cv=True, train_test_split=train_test_split)
+
+        # get reconstruction error as variance explained
+        df_var = var.groupday_varex_cv_train_set(
+            flow.Mouse(mouse=mouse),
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            word=word,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold,
+            train_test_split=train_test_split,
+            rectified=rectified,
+            verbose=verbose)
+        df_var_cv = var.groupday_varex_cv_test_set(
+            flow.Mouse(mouse=mouse),
+            trace_type=trace_type,
+            method=method,
+            cs=cs,
+            warp=warp,
+            word=word,
+            group_by=group_by,
+            nan_thresh=nan_thresh,
+            score_threshold=score_threshold,
+            train_test_split=train_test_split,
+            rectified=rectified,
+            verbose=verbose)
+
+        for axc, train_test in enumerate([df_var, df_var_cv]):
+
+            # training set
+            x_s = train_test['rank'].values
+            var_s = train_test['variance_explained_tcamodel'].values
+            x0 = x_s[train_test['iteration'].values == 0]
+            var0 = var_s[train_test['iteration'].values == 0]
+            var_mean = train_test['variance_explained_meanmodel'].values[0]
+            if 'variance_explained_PCA' in train_test.columns:
+                var_PCA = train_test['variance_explained_PCA'].values[0]
+            else:
+                var_PCA = []
+            if 'variance_explained_meandailymodel' in train_test.columns:
+                var_mean_daily = train_test['variance_explained_meandailymodel'].values[0]
+            else:
+                var_mean_daily = []
+
+            # plot
+            R = np.max([r for r in V.results.keys()])
+            ax[axc].scatter(x_s, var_s, color=cmap[c * 2], alpha=0.5)
+            ax[axc].plot(x0, var0, label=('mouse ' + mouse), color=cmap[c * 2])
+            if axc == 0:
+                ax[axc].scatter([R + 2], var_mean, color=cmap[c * 2], alpha=0.5)
+                ax[axc].scatter([R + 4], var_mean_daily, color=cmap[c * 2], alpha=0.5)
+                ax[axc].plot([R + 1.5, R + 2.5], [var_mean, var_mean], color=cmap[c * 2])
+                ax[axc].plot([R + 3.5, R + 4.5], [var_mean_daily, var_mean_daily], color=cmap[c * 2])
+                ax[axc].scatter([R + 6], var_PCA, color=cmap[c * 2], alpha=0.5)
+                ax[axc].plot([R + 5.5, R + 6.5], [var_PCA, var_PCA], color=cmap[c * 2])
+
+        # add labels/titles
+        x_labels = [str(R) for R in V.results]
+        x_labels.extend(
+            ['', 'mean\ncell\nresp.',
+             '', 'daily\nmean\ncell\nresp.',
+             '', 'PCA$_{20}$'])
+        ax[0].set_xticks(range(1, len(V.results) + 7))
+        ax[1].set_xticks(range(1, len(V.results)))
+        ax[0].set_xticklabels(x_labels, size=12)
+        ax[1].set_xticklabels([str(R) for R in V.results], size=12)
+        ax[0].set_yticklabels([round(s, 2) for s in ax[0].get_yticks()], size=14)
+        ax[0].set_xlabel('model rank', size=18)
+        ax[1].set_xlabel('model rank', size=18)
+        ax[0].set_ylabel('variance explained', size=18)
+        ax[0].set_title(f'Variance explained training set: {round(train_test_split, 2)}')
+        ax[1].set_title(f'Variance explained test set: {round(1-train_test_split, 2)}')
+        ax[1].legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
+
+    plt.suptitle(f'{mice}', y=1.05, size=18)
     fig.savefig(var_path, bbox_inches='tight')
 
 
@@ -277,8 +436,9 @@ def groupday_longform_factors_annotated(
         scale_y=False,
         hmm_engaged=True,
         add_prev_cols=True,
+        cv=False,
+        train_test_split=0.8,
         verbose=False):
-
     """
     Plot TCA factors with trial metadata annotations for all days
     and ranks/componenets for TCA decomposition ensembles.
@@ -328,7 +488,7 @@ def groupday_longform_factors_annotated(
 
     # update saving tag if for cv traing set
     if cv:
-        save_tag = save_tag + ' cv'
+        save_tag = save_tag + ' cv' + str(train_test_split)
 
     # update saving tag if you used a cell score threshold
     if scale_y:
@@ -353,7 +513,7 @@ def groupday_longform_factors_annotated(
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold}
     sort_ensemble, _, _ = load.groupday_tca_model(
-                            **load_kwargs, full_output=True, cv=cv)
+        **load_kwargs, full_output=True, cv=cv, train_test_split=train_test_split)
     meta = load.groupday_tca_meta(**load_kwargs)
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))
@@ -399,7 +559,7 @@ def groupday_longform_factors_annotated(
                 rows, cols, figsize=(17, rows),
                 gridspec_kw={'width_ratios': [2, 2, 17]})
 
-            #reset previous col (trial history variables) counter
+            # reset previous col (trial history variables) counter
             prev_col_counter = 0
 
             # reshape for easier indexing
@@ -432,8 +592,8 @@ def groupday_longform_factors_annotated(
                 one_sec = 15.5
             off_time = lookups.stim_length[mouse]
             y_lim = ax[0, 1].get_ylim()
-            ons = one_sec*1
-            offs = ons+one_sec*off_time
+            ons = one_sec * 1
+            offs = ons + one_sec * off_time
             ax[0, 1].plot([ons, ons], y_lim, ':k')
             if '_onset' not in trace_type.lower():
                 ax[0, 1].plot([offs, offs], y_lim, ':k')
@@ -445,7 +605,7 @@ def groupday_longform_factors_annotated(
                 if i == 0:
                     y_sc_factor = 4
                     if scale_y:
-                        ystd3 = np.nanstd(U.factors[2][:, comp])*y_sc_factor
+                        ystd3 = np.nanstd(U.factors[2][:, comp]) * y_sc_factor
                         ymax = np.nanmax(U.factors[2][:, comp])
                         if ystd3 < ymax:
                             y_lim = [0, ystd3]
@@ -456,10 +616,10 @@ def groupday_longform_factors_annotated(
 
                 # running
                 if plot_running:
-                    scale_by = np.nanmax(speed)/y_lim[1]
+                    scale_by = np.nanmax(speed) / y_lim[1]
                     if not np.isnan(scale_by):
                         ax[i, col].plot(
-                            np.array(speed.tolist())/scale_by,
+                            np.array(speed.tolist()) / scale_by,
                             color=[1, 0.1, 0.6, 0.2])
                         # , label='speed')
 
@@ -582,19 +742,19 @@ def groupday_longform_factors_annotated(
                 elif i == 5:
                     speed_bool = speed.values > 4
                     color_vals = sns.color_palette("hls", 2)
-                    
+
                     ax[i, col].plot(trial_num[~speed_bool],
                                     U.factors[2][~speed_bool, comp], 'o',
-                                        label='stationary',
-                                        color=color_vals[1],
-                                        alpha=0.3,
-                                        markersize=2)
+                                    label='stationary',
+                                    color=color_vals[1],
+                                    alpha=0.3,
+                                    markersize=2)
                     ax[i, col].plot(trial_num[speed_bool],
                                     U.factors[2][speed_bool, comp], 'o',
-                                        label='running',
-                                        color=color_vals[0],
-                                        alpha=0.3,
-                                        markersize=2)
+                                    label='running',
+                                    color=color_vals[0],
+                                    alpha=0.3,
+                                    markersize=2)
 
                     ax[i, col].legend(
                         bbox_to_anchor=(1.02, 1), loc='upper left',
@@ -611,17 +771,17 @@ def groupday_longform_factors_annotated(
                     h_labels = ['engaged', 'disengaged']
                     color_vals = [[1, 0.6, 0.3, alpha],
                                   [0.7, 0.9, 0.4, alpha]]
-                    
+
                     ax[i, col].plot(trial_num[hmm],
                                     U.factors[2][hmm, comp], 'o',
-                                        label=str(h_labels[0]),
-                                        color=color_vals[0],
-                                        markersize=2)
+                                    label=str(h_labels[0]),
+                                    color=color_vals[0],
+                                    markersize=2)
                     ax[i, col].plot(trial_num[~hmm],
                                     U.factors[2][~hmm, comp], 'o',
-                                        label=str(h_labels[1]),
-                                        color=color_vals[1],
-                                        markersize=2)
+                                    label=str(h_labels[1]),
+                                    color=color_vals[1],
+                                    markersize=2)
                     ax[i, col].legend(
                         bbox_to_anchor=(1.02, 1), loc='upper left',
                         borderaxespad=0, title='HMM engaged', markerscale=2,
@@ -658,7 +818,7 @@ def groupday_longform_factors_annotated(
                             'initial minus [-1]',
                             'blank [-1]']
                         current_col = prev_col_list[prev_col_counter]
-                    
+
                         # skip column if it is not in metadata (will result
                         # in blank axes at end)
                         if current_col not in meta.columns:
@@ -675,7 +835,7 @@ def groupday_longform_factors_annotated(
                         else:
                             matched_ori = [0, 135, 270]
                         same_ori_bool = meta['orientation'].isin(matched_ori).values
-                        
+
                         ax[i, col].plot(
                             trial_num[~prev_same_bool & same_ori_bool],
                             U.factors[2][~prev_same_bool & same_ori_bool, comp],
@@ -703,12 +863,11 @@ def groupday_longform_factors_annotated(
                         ax[i, col].autoscale(enable=True, axis='both', tight=True)
 
                         # if i is less than the last row
-                        if i < rows-1:
+                        if i < rows - 1:
                             ax[i, col].set_xticklabels([])
 
                         # increment counter
                         prev_col_counter += 1
-
 
                 # plot days, reversal, or learning lines if there are any
                 if col >= 1:
@@ -721,7 +880,7 @@ def groupday_longform_factors_annotated(
                         ls_vals = ['naive', 'learning', 'reversal1']
                         ls_colors = ['#66bd63', '#d73027', '#a50026']
                         for k in lstate_x:
-                            ls = learning_state[int(k-0.5)]
+                            ls = learning_state[int(k - 0.5)]
                             ax[i, col].plot(
                                 [k, k], y_lim,
                                 color=ls_colors[ls_vals.index(ls)],
@@ -737,16 +896,16 @@ def groupday_longform_factors_annotated(
 
                 # rescale the y-axis for trial factors if you
                 if i == 0 and scale_y:
-                    ystd3 = np.nanstd(U.factors[2][:, comp])*y_sc_factor
+                    ystd3 = np.nanstd(U.factors[2][:, comp]) * y_sc_factor
                     ymax = np.nanmax(U.factors[2][:, comp])
                 if scale_y:
                     if ystd3 < ymax:
-                        y_ticks = np.round([0, ystd3/2, ystd3], 2)
+                        y_ticks = np.round([0, ystd3 / 2, ystd3], 2)
                         ax[i, 2].set_ylim([0, ystd3])
                         ax[i, 2].set_yticks(y_ticks)
                         ax[i, 2].set_yticklabels(y_ticks)
                     else:
-                        y_ticks = np.round([0, ymax/2, ymax], 2)
+                        y_ticks = np.round([0, ymax / 2, ymax], 2)
                         ax[i, 2].set_ylim([0, ymax])
                         ax[i, 2].set_yticks(y_ticks)
                         ax[i, 2].set_yticklabels(y_ticks)
@@ -783,8 +942,8 @@ def groupday_factors_annotated(
         hunger_or_hmm='hmm',
         add_prev_cols=False,
         cv=False,
+        train_test_split=0.8,
         verbose=False):
-
     """
     Plot TCA factors with trial metadata annotations for all days
     and ranks/componenets for TCA decomposition ensembles.
@@ -833,11 +992,11 @@ def groupday_factors_annotated(
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
+        save_tag = ' score ' + str(score_threshold) + save_tag
 
     # update saving tag are using the cv training set
     if cv:
-        save_tag = save_tag + ' cv'
+        save_tag = save_tag + ' cv' + str(train_test_split)
 
     # save dir
     save_dir = paths.tca_plots(
@@ -862,7 +1021,7 @@ def groupday_factors_annotated(
                    'nan_thresh': nan_thresh,
                    'score_threshold': score_threshold}
     sort_ensemble, _, _ = load.groupday_tca_model(
-                            **load_kwargs, full_output=True, cv=cv)
+        **load_kwargs, full_output=True, cv=cv, train_test_split=train_test_split)
     meta = load.groupday_tca_meta(**load_kwargs)
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))
@@ -900,13 +1059,13 @@ def groupday_factors_annotated(
 
         U = sort_ensemble.results[r][0].factors
 
-        fig, axes = plt.subplots(U.rank, U.ndim + extra_col, figsize=(9 + extra_col*2, U.rank))
+        fig, axes = plt.subplots(U.rank, U.ndim + extra_col, figsize=(9 + extra_col * 2, U.rank))
         figt = tt.plot_factors(U, plots=['scatter', 'line', 'scatter'],
-                        axes=None,
-                        fig=fig,
-                        scatter_kw=plot_options[method]['scatter_kw'],
-                        line_kw=plot_options[method]['line_kw'],
-                        bar_kw=plot_options[method]['bar_kw'])
+                               axes=None,
+                               fig=fig,
+                               scatter_kw=plot_options[method]['scatter_kw'],
+                               line_kw=plot_options[method]['line_kw'],
+                               bar_kw=plot_options[method]['bar_kw'])
         ax = figt[0].axes
         ax[0].set_title('Neuron factors')
         ax[1].set_title('Temporal factors')
@@ -929,7 +1088,7 @@ def groupday_factors_annotated(
         # rescale the y-axis for trials
         if scale_y:
             for i in range(U.rank):
-                y_lim = np.array(ax[i, 2].get_ylim())*0.8
+                y_lim = np.array(ax[i, 2].get_ylim()) * 0.8
                 y_ticks = ax[i, 2].get_yticks()
                 y_ticks[-1] = y_lim[-1]
                 y_ticks = np.round(y_ticks, 2)
@@ -947,8 +1106,8 @@ def groupday_factors_annotated(
         off_time = lookups.stim_length[mouse]
         for i in range(U.rank):
             y_lim = ax[i, 1].get_ylim()
-            ons = one_sec*1
-            offs = ons+one_sec*off_time
+            ons = one_sec * 1
+            offs = ons + one_sec * off_time
             ax[i, 1].plot([ons, ons], y_lim, ':k')
             if '_onset' not in trace_type.lower():
                 ax[i, 1].plot([offs, offs], y_lim, ':k')
@@ -957,7 +1116,7 @@ def groupday_factors_annotated(
         if add_prev_cols:
             prev_col_counter = 0
 
-        for col in range(3, 3+extra_col):
+        for col in range(3, 3 + extra_col):
             for i in range(U.rank):
 
                 # get axis values
@@ -970,9 +1129,9 @@ def groupday_factors_annotated(
 
                 # running
                 if plot_running:
-                    scale_by = np.nanmax(speed)/y_lim[1]
+                    scale_by = np.nanmax(speed) / y_lim[1]
                     if not np.isnan(scale_by):
-                        ax[i, col].plot(np.array(speed.tolist())/scale_by, color=[1, 0.1, 0.6, 0.2])
+                        ax[i, col].plot(np.array(speed.tolist()) / scale_by, color=[1, 0.1, 0.6, 0.2])
                         # , label='speed')
 
                 # Orientation - main variable to plot
@@ -986,7 +1145,7 @@ def groupday_factors_annotated(
                                         label=str(ori_vals[k]), color=color_vals[k], markersize=2)
                     if i == 0:
                         ax[i, col].set_title('Orientation')
-                        ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
+                        ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                           borderaxespad=2.5)
                 # Condition - main variable to plot
                 elif col == 4:
@@ -1001,7 +1160,7 @@ def groupday_factors_annotated(
                                         label=str(cs_labels[k]), color=color_vals[k], markersize=2)
                     if i == 0:
                         ax[i, col].set_title('Condition')
-                        ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
+                        ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                           borderaxespad=2.5)
                 # Trial error - main variable to plot
                 elif col == 5:
@@ -1044,13 +1203,13 @@ def groupday_factors_annotated(
                         h_labels = ['engaged', 'disengaged']
                         color_vals = [[1, 0.6, 0.3, alpha],
                                       [0.7, 0.9, 0.4, alpha]]
-                        
+
                         ax[i, col].plot(trial_num[hmm],
                                         U.factors[2][hmm, i], 'o',
-                                            label=str(h_labels[0]), color=color_vals[0], markersize=2)
+                                        label=str(h_labels[0]), color=color_vals[0], markersize=2)
                         ax[i, col].plot(trial_num[~hmm],
                                         U.factors[2][~hmm, i], 'o',
-                                            label=str(h_labels[1]), color=color_vals[1], markersize=2)
+                                        label=str(h_labels[1]), color=color_vals[1], markersize=2)
                         if i == 0:
                             ax[i, col].set_title('HMM engaged')
                             ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
@@ -1060,20 +1219,20 @@ def groupday_factors_annotated(
                 elif col == 7:
                     speed_bool = speed.values > 4
                     color_vals = sns.color_palette("hls", 2)
-                    
+
                     ax[i, col].plot(trial_num[~speed_bool],
                                     U.factors[2][~speed_bool, i], 'o',
-                                        label='stationary',
-                                        color=color_vals[1],
-                                        alpha=0.3,
-                                        markersize=2)
+                                    label='stationary',
+                                    color=color_vals[1],
+                                    alpha=0.3,
+                                    markersize=2)
 
                     ax[i, col].plot(trial_num[speed_bool],
                                     U.factors[2][speed_bool, i], 'o',
-                                        label='running',
-                                        color=color_vals[0],
-                                        alpha=0.3,
-                                        markersize=2)
+                                    label='running',
+                                    color=color_vals[0],
+                                    alpha=0.3,
+                                    markersize=2)
                     if i == 0:
                         ax[i, col].set_title('Running')
                         ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
@@ -1107,7 +1266,7 @@ def groupday_factors_annotated(
                             'initial minus [-1]',
                             'blank [-1]']
                         current_col = prev_col_list[prev_col_counter]
-                    
+
                         # skip column if it is not in metadata (will result
                         # in blank axes at end)
                         if current_col not in meta.columns:
@@ -1124,7 +1283,7 @@ def groupday_factors_annotated(
                         else:
                             matched_ori = [0, 135, 270]
                         same_ori_bool = meta['orientation'].isin(matched_ori).values
-                        
+
                         ax[i, col].plot(
                             trial_num[~prev_same_bool & same_ori_bool],
                             U.factors[2][~prev_same_bool & same_ori_bool, i],
@@ -1151,9 +1310,8 @@ def groupday_factors_annotated(
                                 borderaxespad=2.5)
 
                         # move onto next column
-                        if i == U.rank-1:
+                        if i == U.rank - 1:
                             prev_col_counter += 1
-
 
                 # plot days, reversal, or learning lines if there are any
                 if col >= 2:
@@ -1166,7 +1324,7 @@ def groupday_factors_annotated(
                         ls_vals = ['naive', 'learning', 'reversal1']
                         ls_colors = ['#66bd63', '#d73027', '#a50026']
                         for k in lstate_x:
-                            ls = learning_state[int(k-0.5)]
+                            ls = learning_state[int(k - 0.5)]
                             ax[i, col].plot(
                                 [k, k], y_lim, color=ls_colors[ls_vals.index(ls)],
                                 linewidth=1.5)
@@ -1191,7 +1349,7 @@ def groupday_factors_annotated(
                     plt.setp(ax[i, col].get_xticklabels(), visible=False)
 
                 if col == 3:
-                    ax[i, 0].set_ylabel('Component #' + str(i+1), rotation=0,
+                    ax[i, 0].set_ylabel('Component #' + str(i + 1), rotation=0,
                                         labelpad=45, verticalalignment='center',
                                         fontstyle='oblique')
 
@@ -1202,7 +1360,7 @@ def groupday_factors_annotated(
         else:
             suffix = '.png'
         plt.savefig(os.path.join(date_dir, '{}_rank_{}{}'.format(mouse, r, suffix)),
-                                 bbox_inches='tight')
+                    bbox_inches='tight')
         if verbose:
             plt.show()
         plt.close()
@@ -1249,8 +1407,8 @@ def groupday_varex_summary(
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
-        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
+        load_tag = '_score' + str(score_threshold) + load_tag
+        save_tag = ' score ' + str(score_threshold) + save_tag
 
     # title tag for rectification
     if rectified:
@@ -1264,13 +1422,13 @@ def groupday_varex_summary(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     tensor_path = os.path.join(
         load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_group_decomp_' + str(trace_type) + '.npy')
+                  + '_group_decomp_' + str(trace_type) + '.npy')
     input_tensor_path = os.path.join(
         load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_group_tensor_' + str(trace_type) + '.npy')
+                  + '_group_tensor_' + str(trace_type) + '.npy')
     meta_path = os.path.join(
         load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_df_group_meta.pkl')
+                  + '_df_group_meta.pkl')
 
     # save dir
     save_dir = paths.tca_plots(
@@ -1332,24 +1490,24 @@ def groupday_varex_summary(
     fig = plt.figure(figsize=(10, 8))
     gs = GridSpec(
         100, 100, figure=fig, left=0.05, right=.95, top=.95, bottom=0.05)
-    ax = fig.add_subplot(gs[10:90-buffer, :90-right_pad])
+    ax = fig.add_subplot(gs[10:90 - buffer, :90 - right_pad])
     c = 0
     cmap = sns.color_palette('Paired', 2)
 
     # plot
     R = np.max([r for r in V.results.keys()])
-    ax.scatter(x_s, var_s, color=cmap[c*2], alpha=0.5)
+    ax.scatter(x_s, var_s, color=cmap[c * 2], alpha=0.5)
     if add_dropout_line:
-        ax.scatter(x_drop, var_drop, color=cmap[c*2+1], alpha=0.5)
-    ax.scatter([R+2], var_mean, color=cmap[c*2], alpha=0.5)
-    ax.scatter([R+4], var_mean_daily, color=cmap[c*2], alpha=0.5)
-    ax.scatter([R+6], var_PCA, color=cmap[c*2], alpha=0.5)
-    ax.plot(x0, var0, label=('mouse ' + mouse), color=cmap[c*2])
+        ax.scatter(x_drop, var_drop, color=cmap[c * 2 + 1], alpha=0.5)
+    ax.scatter([R + 2], var_mean, color=cmap[c * 2], alpha=0.5)
+    ax.scatter([R + 4], var_mean_daily, color=cmap[c * 2], alpha=0.5)
+    ax.scatter([R + 6], var_PCA, color=cmap[c * 2], alpha=0.5)
+    ax.plot(x0, var0, label=('mouse ' + mouse), color=cmap[c * 2])
     if add_dropout_line:
-        ax.plot(x_drop, var_drop, label=('$mouse_-$ ' + mouse), color=cmap[c*2+1])
-    ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c*2])
-    ax.plot([R+3.5, R+4.5], [var_mean_daily, var_mean_daily], color=cmap[c*2]) 
-    ax.plot([R+5.5, R+6.5], [var_PCA, var_PCA], color=cmap[c*2])
+        ax.plot(x_drop, var_drop, label=('$mouse_-$ ' + mouse), color=cmap[c * 2 + 1])
+    ax.plot([R + 1.5, R + 2.5], [var_mean, var_mean], color=cmap[c * 2])
+    ax.plot([R + 3.5, R + 4.5], [var_mean_daily, var_mean_daily], color=cmap[c * 2])
+    ax.plot([R + 5.5, R + 6.5], [var_PCA, var_PCA], color=cmap[c * 2])
 
     # add labels/titles
     x_labels = [str(R) for R in V.results]
@@ -1379,6 +1537,7 @@ def groupday_varex_summary_cv(
         group_by='all',
         nan_thresh=0.85,
         score_threshold=0.8,
+        train_test_split=0.8,
         rectified=True,
         verbose=False):
     """
@@ -1409,12 +1568,12 @@ def groupday_varex_summary_cv(
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        load_tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
-        save_tag = ' score0pt' + str(int(score_threshold*10)) + save_tag
+        load_tag = '_score' + str(score_threshold) + load_tag
+        save_tag = ' score ' + str(score_threshold) + save_tag
 
     # update saving tag if you used a cell score threshold
-    load_tag = load_tag + '_cv'
-    save_tag = save_tag + ' cv'
+    load_tag = load_tag + '_cv' + str(train_test_split)
+    save_tag = save_tag + ' cv ' + str(train_test_split)
 
     # title tag for rectification
     if rectified:
@@ -1428,7 +1587,7 @@ def groupday_varex_summary_cv(
         mouse, 'group', pars=pars, word=word, group_pars=group_pars)
     tensor_path = os.path.join(
         load_dir, str(mouse) + '_' + str(group_by) + load_tag
-        + '_group_decomp_' + str(trace_type) + '.npy')
+                  + '_group_decomp_' + str(trace_type) + '.npy')
 
     # save dir
     save_dir = paths.tca_plots(
@@ -1454,6 +1613,7 @@ def groupday_varex_summary_cv(
         group_by=group_by,
         nan_thresh=nan_thresh,
         score_threshold=score_threshold,
+        train_test_split=train_test_split,
         rectified=rectified,
         verbose=verbose)
     df_var_cv = var.groupday_varex_cv_test_set(
@@ -1466,6 +1626,7 @@ def groupday_varex_summary_cv(
         group_by=group_by,
         nan_thresh=nan_thresh,
         score_threshold=score_threshold,
+        train_test_split=train_test_split,
         rectified=rectified,
         verbose=verbose)
 
@@ -1492,14 +1653,15 @@ def groupday_varex_summary_cv(
 
         # plot
         R = np.max([r for r in V.results.keys()])
-        ax[axc].scatter(x_s, var_s, color=cmap[c*2], alpha=0.5)
-        ax[axc].scatter([R+2], var_mean, color=cmap[c*2], alpha=0.5)
-        ax[axc].scatter([R+4], var_mean_daily, color=cmap[c*2], alpha=0.5)
-        ax[axc].scatter([R+6], var_PCA, color=cmap[c*2], alpha=0.5)
-        ax[axc].plot(x0, var0, label=('mouse ' + mouse), color=cmap[c*2])
-        ax[axc].plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c*2])
-        ax[axc].plot([R+3.5, R+4.5], [var_mean_daily, var_mean_daily], color=cmap[c*2])
-        ax[axc].plot([R+5.5, R+6.5], [var_PCA, var_PCA], color=cmap[c*2])
+        ax[axc].scatter(x_s, var_s, color=cmap[c * 2], alpha=0.5)
+        ax[axc].scatter([R + 2], var_mean, color=cmap[c * 2], alpha=0.5)
+        ax[axc].scatter([R + 4], var_mean_daily, color=cmap[c * 2], alpha=0.5)
+        ax[axc].plot(x0, var0, label=('mouse ' + mouse), color=cmap[c * 2])
+        ax[axc].plot([R + 1.5, R + 2.5], [var_mean, var_mean], color=cmap[c * 2])
+        ax[axc].plot([R + 3.5, R + 4.5], [var_mean_daily, var_mean_daily], color=cmap[c * 2])
+        if axc == 0:
+            ax[axc].scatter([R + 6], var_PCA, color=cmap[c * 2], alpha=0.5)
+            ax[axc].plot([R + 5.5, R + 6.5], [var_PCA, var_PCA], color=cmap[c * 2])
 
     # add labels/titles
     x_labels = [str(R) for R in V.results]
@@ -1604,24 +1766,24 @@ def groupday_varex_percell(  # TODO MAKE THIS WORK FOR GROUPDAY
             ve_max.extend([max_ve for s in rank_ve_vec])
             ve_frac.extend(rank_ve_vec / max_ve)
             rank_num.extend(rank_vec)
-            day_num.extend([c+1 for s in rank_ve_vec])
+            day_num.extend([c + 1 for s in rank_ve_vec])
             cell_num.extend([cell for s in rank_ve_vec])
 
     # build pd dataframe of all variance measures
     index = pd.MultiIndex.from_arrays([
-    day_num,
-    rank_num,
-    ve,
-    ve_max,
-    ve_frac,
-    cell_num,
+        day_num,
+        rank_num,
+        ve,
+        ve_max,
+        ve_frac,
+        cell_num,
     ],
-    names=['day', 'rank', 'variance_explained', 'max_ve', 'frac_ve', 'cell'])
+        names=['day', 'rank', 'variance_explained', 'max_ve', 'frac_ve', 'cell'])
     df = pd.DataFrame(index=index)
     df = df.reset_index()
 
     # make a rainbow colormap, HUSL space but does not circle back on itself
-    cmap = sns.color_palette('hls', int(np.ceil(1.5*np.unique(df['rank'])[-1])))
+    cmap = sns.color_palette('hls', int(np.ceil(1.5 * np.unique(df['rank'])[-1])))
     cmap = cmap[0:np.unique(df['rank'])[-1]]
 
     # Part 1
@@ -1629,23 +1791,24 @@ def groupday_varex_percell(  # TODO MAKE THIS WORK FOR GROUPDAY
     sliced_df2 = df.loc[(df['day']) & (df['max_ve'] >= ve_min), :]
 
     # CDF plot
-    fig1 = plt.figure(figsize=(15,9))
+    fig1 = plt.figure(figsize=(15, 9))
     for i in np.unique(sliced_df2['rank']):
-        input_ve = sliced_df2.loc[(sliced_df2['rank'] == i),'frac_ve']
-        ax = sns.distplot(input_ve, kde_kws={'cumulative': True, 'lw': 2, 'color': cmap[i-1], 'label': str(i)}, hist=False)
+        input_ve = sliced_df2.loc[(sliced_df2['rank'] == i), 'frac_ve']
+        ax = sns.distplot(input_ve, kde_kws={'cumulative': True, 'lw': 2, 'color': cmap[i - 1], 'label': str(i)},
+                          hist=False)
         lg = ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
         lg.set_title('rank')
         ax.set_title(mouse + ', Fraction of maximum variance explained per cell, CDF')
         ax.set_xlabel('Fraction of maximum variance explained')
 
     # swarm plot
-    fig2 =plt.figure(figsize=(18,6))
+    fig2 = plt.figure(figsize=(18, 6))
     ax2 = sns.violinplot(x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=3, alpha=1, inner=None, palette=cmap)
     ax2.set_title(mouse + ', Fraction of maximum variance explained per cell, violin')
     ax2.set_ylabel('Fraction of maximum variance explained')
 
     # swarm plot
-    fig3 = plt.figure(figsize=(18,6))
+    fig3 = plt.figure(figsize=(18, 6))
     ax3 = sns.swarmplot(x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=2, alpha=1, palette=cmap)
     ax3.set_title(mouse + ', Fraction of maximum variance explained per cell, swarm')
     ax3.set_ylabel('Fraction of maximum variance explained')
@@ -1675,11 +1838,10 @@ def groupday_varex_percell(  # TODO MAKE THIS WORK FOR GROUPDAY
     save_file_base = mouse + '_singleday_var_expl_' + trace_type
 
     for d in np.unique(df['day']):
-
-        sliced_df = df.loc[(df['day'] == d),:]
+        sliced_df = df.loc[(df['day'] == d), :]
 
         # make a rainbow colormap, HUSL space but does not circle back on itself
-        cmap = sns.color_palette('hls', int(np.ceil(1.5*np.unique(df['rank'])[-1])))
+        cmap = sns.color_palette('hls', int(np.ceil(1.5 * np.unique(df['rank'])[-1])))
         cmap = cmap[0:np.unique(df['rank'])[-1]]
 
         fig0 = plt.figure(figsize=(20, 6))
@@ -1696,7 +1858,7 @@ def groupday_varex_percell(  # TODO MAKE THIS WORK FOR GROUPDAY
         ax0.set_title(mouse + ', Variance explained per cell, day ' + str(d))
 
         fig0.savefig(os.path.join(save_dir, save_file_base + '_day_' + str(d)
-                     + suffix), bbox_inches='tight')
+                                  + suffix), bbox_inches='tight')
         plt.close()
 
 
@@ -1729,38 +1891,38 @@ def pairday_qc(
 
     # plotting options for the unconstrained and nonnegative models.
     plot_options = {
-      'cp_als': {
-        'line_kw': {
-          'color': 'green',
-          'label': 'cp_als',
+        'cp_als': {
+            'line_kw': {
+                'color': 'green',
+                'label': 'cp_als',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
         },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
+        'ncp_hals': {
+            'line_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+                'label': 'ncp_hals',
+            },
+            'scatter_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-      },
-      'ncp_hals': {
-        'line_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-          'label': 'ncp_hals',
+        'ncp_bcd': {
+            'line_kw': {
+                'color': 'red',
+                'alpha': 0.5,
+                'label': 'ncp_bcd',
+            },
+            'scatter_kw': {
+                'color': 'red',
+                'alpha': 0.5,
+            },
         },
-        'scatter_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
-      'ncp_bcd': {
-        'line_kw': {
-          'color': 'red',
-          'alpha': 0.5,
-          'label': 'ncp_bcd',
-        },
-        'scatter_kw': {
-          'color': 'red',
-          'alpha': 0.5,
-        },
-      },
     }
 
     days = flow.DateSorter.frommeta(
@@ -1768,7 +1930,7 @@ def pairday_qc(
 
     for c, day1 in enumerate(days, 0):
         try:
-            day2 = days[c+1]
+            day2 = days[c + 1]
         except IndexError:
             print('done.')
             break
@@ -1776,7 +1938,7 @@ def pairday_qc(
         # load
         load_dir = paths.tca_path(mouse, 'pair', pars=pars, word=word)
         tensor_path = os.path.join(load_dir, str(day1.mouse) + '_' + str(day1.date)
-                         + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
+                                   + '_' + str(day2.date) + '_pair_decomp_' + str(trace_type) + '.npy')
         if not os.path.isfile(tensor_path): continue
 
         # save
@@ -1784,9 +1946,9 @@ def pairday_qc(
         save_dir = os.path.join(save_dir, 'qc')
         if not os.path.isdir(save_dir): os.mkdir(save_dir)
         error_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
-                         + '_' + str(day2.date) + '_objective.pdf')
+                                  + '_' + str(day2.date) + '_objective.pdf')
         sim_path = os.path.join(save_dir, str(day1.mouse) + '_' + str(day1.date)
-                         + '_' + str(day2.date) + '_similarity.pdf')
+                                + '_' + str(day2.date) + '_similarity.pdf')
 
         # load your data
         ensemble = np.load(tensor_path)
@@ -1839,48 +2001,48 @@ def pairday_factors(
 
     # plotting options for the unconstrained and nonnegative models.
     plot_options = {
-      'cp_als': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'cp_als',
+        'cp_als': {
+            'line_kw': {
+                'color': 'red',
+                'label': 'cp_als',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
+            'bar_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
+        'ncp_hals': {
+            'line_kw': {
+                'color': 'red',
+                'label': 'ncp_hals',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
+            'bar_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
+        'ncp_bcd': {
+            'line_kw': {
+                'color': 'red',
+                'label': 'ncp_bcd',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
+            'bar_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-      },
-      'ncp_hals': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'ncp_hals',
-        },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
-        },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
-      'ncp_bcd': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'ncp_bcd',
-        },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
-        },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
     }
 
     days = flow.DateSorter.frommeta(
@@ -1888,7 +2050,7 @@ def pairday_factors(
 
     for c, day1 in enumerate(days, 0):
         try:
-            day2 = days[c+1]
+            day2 = days[c + 1]
         except IndexError:
             print('done.')
             break
@@ -1910,7 +2072,6 @@ def pairday_factors(
         ensemble = np.load(tensor_path)
         ensemble = ensemble.item()
 
-
         # make necessary dirs
         date_dir = os.path.join(
             save_dir, str(day1.date) + '_' + str(day2.date) + ' ' + method)
@@ -1923,11 +2084,11 @@ def pairday_factors(
         for r in sort_ensemble.results:
 
             fig = tt.plot_factors(sort_ensemble.results[r][0].factors,
-                            plots=['bar', 'line', 'scatter'],
-                            axes=None,
-                            scatter_kw=plot_options[method]['scatter_kw'],
-                            line_kw=plot_options[method]['line_kw'],
-                            bar_kw=plot_options[method]['bar_kw'])
+                                  plots=['bar', 'line', 'scatter'],
+                                  axes=None,
+                                  scatter_kw=plot_options[method]['scatter_kw'],
+                                  line_kw=plot_options[method]['line_kw'],
+                                  bar_kw=plot_options[method]['bar_kw'])
 
             ax = fig[0].axes
             ax[0].set_title('Neuron factors')
@@ -1936,7 +2097,7 @@ def pairday_factors(
 
             count = 1
             for k in range(0, len(ax)):
-                if np.mod(k+1, 3) == 1:
+                if np.mod(k + 1, 3) == 1:
                     ax[k].set_ylabel('Component #' + str(count), rotation=0,
                                      labelpad=45, verticalalignment='center',
                                      fontstyle='oblique')
@@ -1964,7 +2125,6 @@ def pairday_factors_annotated(
         scale_y=False,
         filetype='pdf',
         verbose=False):
-
     """
     Plot TCA factors with trial metadata annotations for all days
     and ranks/components for TCA decomposition ensembles.
@@ -2003,48 +2163,48 @@ def pairday_factors_annotated(
 
     # plotting options for the unconstrained and nonnegative models.
     plot_options = {
-      'cp_als': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'cp_als',
+        'cp_als': {
+            'line_kw': {
+                'color': 'red',
+                'label': 'cp_als',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
+            'bar_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
+        'ncp_hals': {
+            'line_kw': {
+                'color': 'red',
+                'label': 'ncp_hals',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
+            'bar_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
+        'ncp_bcd': {
+            'line_kw': {
+                'color': 'red',
+                'label': 'ncp_bcd',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
+            'bar_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-      },
-      'ncp_hals': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'ncp_hals',
-        },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
-        },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
-      'ncp_bcd': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'ncp_bcd',
-        },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
-        },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
     }
 
     days = flow.DateSorter.frommeta(
@@ -2052,7 +2212,7 @@ def pairday_factors_annotated(
 
     for c, day1 in enumerate(days, 0):
         try:
-            day2 = days[c+1]
+            day2 = days[c + 1]
         except IndexError:
             print('done.')
             break
@@ -2136,7 +2296,7 @@ def pairday_factors_annotated(
             # rescale the y-axis for trials
             if scale_y:
                 for i in range(U.rank):
-                    y_lim = np.array(ax[i, 2].get_ylim())*0.8
+                    y_lim = np.array(ax[i, 2].get_ylim()) * 0.8
                     y_ticks = ax[i, 2].get_yticks()
                     y_ticks[-1] = y_lim[-1]
                     y_ticks = np.round(y_ticks, 2)
@@ -2149,12 +2309,12 @@ def pairday_factors_annotated(
             # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
             for i in range(U.rank):
                 y_lim = ax[i, 1].get_ylim()
-                ons = 15.5*1
-                offs = ons+15.5*3
+                ons = 15.5 * 1
+                offs = ons + 15.5 * 3
                 ax[i, 1].plot([ons, ons], y_lim, ':k')
                 ax[i, 1].plot([offs, offs], y_lim, ':k')
 
-            for col in range(3, 3+extra_col):
+            for col in range(3, 3 + extra_col):
                 for i in range(U.rank):
 
                     # get axis values
@@ -2167,10 +2327,10 @@ def pairday_factors_annotated(
 
                     # running
                     if plot_running:
-                        scale_by = np.nanmax(speed)/y_lim[1]
+                        scale_by = np.nanmax(speed) / y_lim[1]
                         if not np.isnan(scale_by):
                             ax[i, col].plot(
-                                np.array(speed.tolist())/scale_by,
+                                np.array(speed.tolist()) / scale_by,
                                 color=[1, 0.1, 0.6, 0.2])
                             # , label='speed')
 
@@ -2182,14 +2342,14 @@ def pairday_factors_annotated(
                                       [0.46, 0.85, 0.47, alpha]]
                         for k in range(0, 3):
                             ax[i, col].plot(
-                                trial_num[orientation==ori_vals[k]],
-                                U.factors[2][orientation==ori_vals[k], i], 'o',
+                                trial_num[orientation == ori_vals[k]],
+                                U.factors[2][orientation == ori_vals[k], i], 'o',
                                 label=str(ori_vals[k]), color=color_vals[k],
                                 markersize=2)
                         if i == 0:
                             ax[i, col].set_title('Orientation')
                             ax[i, col].legend(
-                                bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                 borderaxespad=2.5)
                     elif col == 4:
                         cs_vals = ['plus', 'minus', 'neutral']
@@ -2198,16 +2358,16 @@ def pairday_factors_annotated(
                                       [0.84, 0.12, 0.13, alpha],
                                       [0.28, 0.68, 0.93, alpha]]
                         col = 4
-                        for k in range(0,3):
+                        for k in range(0, 3):
                             ax[i, col].plot(
-                                trial_num[condition==cs_vals[k]],
-                                U.factors[2][condition==cs_vals[k], i], 'o',
+                                trial_num[condition == cs_vals[k]],
+                                U.factors[2][condition == cs_vals[k], i], 'o',
                                 label=str(cs_labels[k]), color=color_vals[k],
                                 markersize=2)
                         if i == 0:
                             ax[i, col].set_title('Condition')
                             ax[i, col].legend(
-                                bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                 borderaxespad=2.5)
                     elif col == 5:
                         trialerror_vals = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -2220,17 +2380,17 @@ def pairday_factors_annotated(
                                              'blank correct reject',
                                              'blank false alarm',
                                              'pav early licking',
-                                             'pav late licking',]
+                                             'pav late licking', ]
                         for k in trialerror_vals:
                             ax[i, col].plot(
-                                trial_num[trialerror==trialerror_vals[k]],
-                                U.factors[2][trialerror==trialerror_vals[k], i],
+                                trial_num[trialerror == trialerror_vals[k]],
+                                U.factors[2][trialerror == trialerror_vals[k], i],
                                 'o', label=str(trialerror_labels[k]), alpha=0.8,
                                 markersize=2)
                         if i == 0:
                             ax[i, col].set_title('Trialerror')
                             ax[i, col].legend(
-                                bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                 borderaxespad=2.5)
 
                     elif col == 6:
@@ -2240,16 +2400,16 @@ def pairday_factors_annotated(
                                       [0.7, 0.9, 0.4, alpha],
                                       [0.6, 0.5, 0.6, alpha],
                                       [0.0, 0.9, 0.4, alpha]]
-                        for k in range(0,3):
+                        for k in range(0, 3):
                             ax[i, col].plot(
-                                trial_num[hunger==h_vals[k]],
-                                U.factors[2][hunger==h_vals[k], i],
+                                trial_num[hunger == h_vals[k]],
+                                U.factors[2][hunger == h_vals[k], i],
                                 'o', label=str(h_labels[k]),
                                 color=color_vals[k], markersize=2)
                         if i == 0:
                             ax[i, col].set_title('State')
                             ax[i, col].legend(
-                                bbox_to_anchor=(0.5,1.02), loc='lower center',
+                                bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                 borderaxespad=2.5)
 
                     # plot days, reversal, or learning lines if there are any
@@ -2264,7 +2424,7 @@ def pairday_factors_annotated(
                             ls_vals = ['naive', 'learning', 'reversal1']
                             ls_colors = ['#66bd63', '#d73027', '#a50026']
                             for k in lstate_x:
-                                ls = learning_state[int(k-0.5)]
+                                ls = learning_state[int(k - 0.5)]
                                 ax[i, col].plot(
                                     [k, k], y_lim,
                                     color=ls_colors[ls_vals.index(ls)],
@@ -2290,8 +2450,8 @@ def pairday_factors_annotated(
                         plt.setp(ax[i, col].get_xticklabels(), visible=False)
 
                     if col == 3:
-                        ax[i, 0].set_ylabel('Component #' + str(i+1), rotation=0,
-                          labelpad=45, verticalalignment='center', fontstyle='oblique')
+                        ax[i, 0].set_ylabel('Component #' + str(i + 1), rotation=0,
+                                            labelpad=45, verticalalignment='center', fontstyle='oblique')
 
             if filetype.lower() == 'pdf':
                 suffix = '.pdf'
@@ -2300,7 +2460,7 @@ def pairday_factors_annotated(
             else:
                 suffix = '.png'
             plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + suffix),
-                                     bbox_inches='tight')
+                        bbox_inches='tight')
             if verbose:
                 plt.show()
             plt.close()
@@ -2342,16 +2502,16 @@ def pairday_qc_summary(
 
     fig0 = plt.figure(figsize=(10, 8))
     gs0 = GridSpec(100, 100, figure=fig0, left=0.05, right=.95, top=.95, bottom=0.05)
-    ax0 = fig0.add_subplot(gs0[10:90-buffer, :90-right_pad])
+    ax0 = fig0.add_subplot(gs0[10:90 - buffer, :90 - right_pad])
 
     fig1 = plt.figure(figsize=(10, 8))
     gs1 = GridSpec(100, 100, figure=fig1, left=0.05, right=.95, top=.95, bottom=0.05)
-    ax1 = fig1.add_subplot(gs1[10:90-buffer, :90-right_pad])
+    ax1 = fig1.add_subplot(gs1[10:90 - buffer, :90 - right_pad])
 
     # plt.figure()
     for c, day1 in enumerate(days, 0):
         try:
-            day2 = days[c+1]
+            day2 = days[c + 1]
         except IndexError:
             print('done.')
             break
@@ -2373,38 +2533,38 @@ def pairday_qc_summary(
 
         # plotting options for the unconstrained and nonnegative models.
         plot_options = {
-          'cp_als': {
-            'line_kw': {
-              'color': cmap[c],
-              'label': 'pair ' + str(c),
+            'cp_als': {
+                'line_kw': {
+                    'color': cmap[c],
+                    'label': 'pair ' + str(c),
+                },
+                'scatter_kw': {
+                    'color': cmap[c],
+                    'alpha': 0.5,
+                },
             },
-            'scatter_kw': {
-              'color': cmap[c],
-              'alpha': 0.5,
+            'ncp_hals': {
+                'line_kw': {
+                    'color': cmap[c],
+                    'alpha': 0.5,
+                    'label': 'pair ' + str(c),
+                },
+                'scatter_kw': {
+                    'color': cmap[c],
+                    'alpha': 0.5,
+                },
             },
-          },
-          'ncp_hals': {
-            'line_kw': {
-              'color': cmap[c],
-              'alpha': 0.5,
-              'label': 'pair ' + str(c),
+            'ncp_bcd': {
+                'line_kw': {
+                    'color': cmap[c],
+                    'alpha': 0.5,
+                    'label': 'pair ' + str(c),
+                },
+                'scatter_kw': {
+                    'color': cmap[c],
+                    'alpha': 0.5,
+                },
             },
-            'scatter_kw': {
-              'color': cmap[c],
-              'alpha': 0.5,
-            },
-          },
-          'ncp_bcd': {
-            'line_kw': {
-              'color': cmap[c],
-              'alpha': 0.5,
-              'label': 'pair ' + str(c),
-            },
-            'scatter_kw': {
-              'color': cmap[c],
-              'alpha': 0.5,
-            },
-          },
         }
 
         # load your data
@@ -2464,11 +2624,11 @@ def pairday_varex_summary(
     right_pad = 5
     fig = plt.figure(figsize=(10, 8))
     gs = GridSpec(100, 100, figure=fig, left=0.05, right=.95, top=.95, bottom=0.05)
-    ax = fig.add_subplot(gs[10:90-buffer, :90-right_pad])
+    ax = fig.add_subplot(gs[10:90 - buffer, :90 - right_pad])
 
     for c, day1 in enumerate(days, 0):
         try:
-            day2 = days[c+1]
+            day2 = days[c + 1]
         except IndexError:
             print('done.')
             break
@@ -2515,17 +2675,17 @@ def pairday_varex_summary(
         var_mean = (np.var(X) - np.var(X - mU)) / np.var(X)
 
         # smoothed response of neuron across time
-        smU = np.convolve(X.reshape((X.size)), np.ones(5, dtype=np.float64)/5, 'same').reshape(np.shape(X))
+        smU = np.convolve(X.reshape((X.size)), np.ones(5, dtype=np.float64) / 5, 'same').reshape(np.shape(X))
         var_smooth = (np.var(X) - np.var(X - smU)) / np.var(X)
 
         # plot
         R = np.max([r for r in V.results.keys()])
         ax.scatter(x_s, var_s, color=cmap[c], alpha=0.5)
-        ax.scatter([R+2], var_mean, color=cmap[c], alpha=0.5)
-        ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
+        ax.scatter([R + 2], var_mean, color=cmap[c], alpha=0.5)
+        ax.scatter([R + 4], var_smooth, color=cmap[c], alpha=0.5)
         ax.plot(x, var, label=('pair ' + str(c)), color=cmap[c])
-        ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c])
-        ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
+        ax.plot([R + 1.5, R + 2.5], [var_mean, var_mean], color=cmap[c])
+        ax.plot([R + 3.5, R + 4.5], [var_smooth, var_smooth], color=cmap[c])
 
     # add labels/titles
     x_labels = [str(R) for R in V.results]
@@ -2579,7 +2739,7 @@ def pairday_varex_percell(
     ve, ve_max, ve_frac, rank_num, day_num, cell_num = [], [], [], [], [], []
     for c, day1 in enumerate(days, 0):
         try:
-            day2 = days[c+1]
+            day2 = days[c + 1]
         except IndexError:
             print('done.')
             break
@@ -2618,24 +2778,24 @@ def pairday_varex_percell(
             ve_max.extend([max_ve for s in rank_ve_vec])
             ve_frac.extend(rank_ve_vec / max_ve)
             rank_num.extend(rank_vec)
-            day_num.extend([c+1 for s in rank_ve_vec])
+            day_num.extend([c + 1 for s in rank_ve_vec])
             cell_num.extend([cell for s in rank_ve_vec])
 
     # build pd dataframe of all variance measures
     index = pd.MultiIndex.from_arrays([
-    day_num,
-    rank_num,
-    ve,
-    ve_max,
-    ve_frac,
-    cell_num,
+        day_num,
+        rank_num,
+        ve,
+        ve_max,
+        ve_frac,
+        cell_num,
     ],
-    names=['day', 'rank', 'variance_explained', 'max_ve', 'frac_ve', 'cell'])
+        names=['day', 'rank', 'variance_explained', 'max_ve', 'frac_ve', 'cell'])
     df = pd.DataFrame(index=index)
     df = df.reset_index()
 
     # make a rainbow colormap, HUSL space but does not circle back on itself
-    cmap = sns.color_palette('hls', int(np.ceil(1.5*np.unique(df['rank'])[-1])))
+    cmap = sns.color_palette('hls', int(np.ceil(1.5 * np.unique(df['rank'])[-1])))
     cmap = cmap[0:np.unique(df['rank'])[-1]]
 
     # Part 1
@@ -2643,12 +2803,12 @@ def pairday_varex_percell(
     sliced_df2 = df.loc[(df['day']) & (df['max_ve'] >= ve_min), :]
 
     # CDF plot
-    fig1 = plt.figure(figsize=(15,9))
+    fig1 = plt.figure(figsize=(15, 9))
     for i in np.unique(sliced_df2['rank']):
-        input_ve = sliced_df2.loc[(sliced_df2['rank'] == i),'frac_ve']
+        input_ve = sliced_df2.loc[(sliced_df2['rank'] == i), 'frac_ve']
         ax = sns.distplot(
-            input_ve, kde_kws={'cumulative': True, 'lw': 2, 'color': cmap[i-1],
-            'label': str(i)}, hist=False)
+            input_ve, kde_kws={'cumulative': True, 'lw': 2, 'color': cmap[i - 1],
+                               'label': str(i)}, hist=False)
         lg = ax.legend(
             bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
         lg.set_title('rank')
@@ -2657,7 +2817,7 @@ def pairday_varex_percell(
         ax.set_xlabel('Fraction of maximum variance explained')
 
     # swarm plot
-    fig2 =plt.figure(figsize=(18,6))
+    fig2 = plt.figure(figsize=(18, 6))
     ax2 = sns.violinplot(
         x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=3, alpha=1,
         inner=None, palette=cmap)
@@ -2666,7 +2826,7 @@ def pairday_varex_percell(
     ax2.set_ylabel('Fraction of maximum variance explained')
 
     # swarm plot
-    fig3 = plt.figure(figsize=(18,6))
+    fig3 = plt.figure(figsize=(18, 6))
     ax3 = sns.swarmplot(
         x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=2, alpha=1,
         palette=cmap)
@@ -2700,12 +2860,11 @@ def pairday_varex_percell(
     save_file_base = mouse + '_pairday_var_expl_' + trace_type
 
     for d in np.unique(df['day']):
-
-        sliced_df = df.loc[(df['day'] == d),:]
+        sliced_df = df.loc[(df['day'] == d), :]
 
         # make a rainbow colormap, HUSL space but does not circle back on itself
         cmap = sns.color_palette(
-            'hls', int(np.ceil(1.5*np.unique(df['rank'])[-1])))
+            'hls', int(np.ceil(1.5 * np.unique(df['rank'])[-1])))
         cmap = cmap[0:np.unique(df['rank'])[-1]]
 
         fig0 = plt.figure(figsize=(20, 6))
@@ -2724,13 +2883,14 @@ def pairday_varex_percell(
         ax0.set_title(mouse + ', Variance explained per cell, day ' + str(d))
 
         fig0.savefig(os.path.join(save_dir, save_file_base + '_day_' + str(d)
-                     + '.png'), bbox_inches='tight')
+                                  + '.png'), bbox_inches='tight')
         plt.close()
 
 
 """
 ----------------------------- SINGLE DAY PLOTS -----------------------------
 """
+
 
 def singleday_qc(
         mouse,
@@ -2754,38 +2914,38 @@ def singleday_qc(
 
     # plotting options for the unconstrained and nonnegative models.
     plot_options = {
-      'cp_als': {
-        'line_kw': {
-          'color': 'green',
-          'label': 'cp_als',
+        'cp_als': {
+            'line_kw': {
+                'color': 'green',
+                'label': 'cp_als',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
         },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
+        'ncp_hals': {
+            'line_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+                'label': 'ncp_hals',
+            },
+            'scatter_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-      },
-      'ncp_hals': {
-        'line_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-          'label': 'ncp_hals',
+        'ncp_bcd': {
+            'line_kw': {
+                'color': 'red',
+                'alpha': 0.5,
+                'label': 'ncp_bcd',
+            },
+            'scatter_kw': {
+                'color': 'red',
+                'alpha': 0.5,
+            },
         },
-        'scatter_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
-      'ncp_bcd': {
-        'line_kw': {
-          'color': 'red',
-          'alpha': 0.5,
-          'label': 'ncp_bcd',
-        },
-        'scatter_kw': {
-          'color': 'red',
-          'alpha': 0.5,
-        },
-      },
     }
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
@@ -2860,48 +3020,48 @@ def singleday_factors(
 
     # plotting options for the unconstrained and nonnegative models.
     plot_options = {
-      'cp_als': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'cp_als',
+        'cp_als': {
+            'line_kw': {
+                'color': 'red',
+                'label': 'cp_als',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
+            'bar_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
+        'ncp_hals': {
+            'line_kw': {
+                'color': 'red',
+                'label': 'ncp_hals',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
+            'bar_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
+        'ncp_bcd': {
+            'line_kw': {
+                'color': 'red',
+                'label': 'ncp_bcd',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
+            'bar_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-      },
-      'ncp_hals': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'ncp_hals',
-        },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
-        },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
-      'ncp_bcd': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'ncp_bcd',
-        },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
-        },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
     }
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
@@ -2934,10 +3094,10 @@ def singleday_factors(
         for r in sort_ensemble.results:
 
             fig = tt.plot_factors(sort_ensemble.results[r][0].factors, plots=['bar', 'line', 'scatter'],
-                            axes=None,
-                            scatter_kw=plot_options[method]['scatter_kw'],
-                            line_kw=plot_options[method]['line_kw'],
-                            bar_kw=plot_options[method]['bar_kw'])
+                                  axes=None,
+                                  scatter_kw=plot_options[method]['scatter_kw'],
+                                  line_kw=plot_options[method]['line_kw'],
+                                  bar_kw=plot_options[method]['bar_kw'])
 
             ax = fig[0].axes
             ax[0].set_title('Neuron factors')
@@ -2946,13 +3106,13 @@ def singleday_factors(
 
             count = 1
             for k in range(0, len(ax)):
-                if np.mod(k+1, 3) == 1:
+                if np.mod(k + 1, 3) == 1:
                     ax[k].set_ylabel('Component #' + str(count), rotation=0,
                                      labelpad=45, verticalalignment='center', fontstyle='oblique')
                     count = count + 1
 
             # Show plots.
-            plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + '.png'),bbox_inches='tight')
+            plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + '.png'), bbox_inches='tight')
             if verbose:
                 plt.show()
             plt.close()
@@ -2971,7 +3131,6 @@ def singleday_factors_annotated(
         filetype='pdf',
         scale_y=False,
         verbose=False):
-
     """
     Plot TCA factors with trial metadata annotations for all days
     and ranks/components for TCA decomposition ensembles.
@@ -3005,48 +3164,48 @@ def singleday_factors_annotated(
 
     # plotting options for the unconstrained and nonnegative models.
     plot_options = {
-      'cp_als': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'cp_als',
+        'cp_als': {
+            'line_kw': {
+                'color': 'red',
+                'label': 'cp_als',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
+            'bar_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
+        'ncp_hals': {
+            'line_kw': {
+                'color': 'red',
+                'label': 'ncp_hals',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
+            'bar_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
+        'ncp_bcd': {
+            'line_kw': {
+                'color': 'red',
+                'label': 'ncp_bcd',
+            },
+            'scatter_kw': {
+                'color': 'green',
+                'alpha': 0.5,
+            },
+            'bar_kw': {
+                'color': 'blue',
+                'alpha': 0.5,
+            },
         },
-      },
-      'ncp_hals': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'ncp_hals',
-        },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
-        },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
-      'ncp_bcd': {
-        'line_kw': {
-          'color': 'red',
-          'label': 'ncp_bcd',
-        },
-        'scatter_kw': {
-          'color': 'green',
-          'alpha': 0.5,
-        },
-        'bar_kw': {
-          'color': 'blue',
-          'alpha': 0.5,
-        },
-      },
     }
 
     pars = {'trace_type': trace_type, 'cs': cs, 'warp': warp}
@@ -3110,11 +3269,11 @@ def singleday_factors_annotated(
 
             fig, axes = plt.subplots(U.rank, U.ndim + extra_col, figsize=(9 + extra_col, U.rank))
             figt = tt.plot_factors(U, plots=['bar', 'line', 'scatter'],
-                            axes=None,
-                            fig=fig,
-                            scatter_kw=plot_options[method]['scatter_kw'],
-                            line_kw=plot_options[method]['line_kw'],
-                            bar_kw=plot_options[method]['bar_kw'])
+                                   axes=None,
+                                   fig=fig,
+                                   scatter_kw=plot_options[method]['scatter_kw'],
+                                   line_kw=plot_options[method]['line_kw'],
+                                   bar_kw=plot_options[method]['bar_kw'])
             ax = figt[0].axes
             ax[0].set_title('Neuron factors')
             ax[1].set_title('Temporal factors')
@@ -3133,7 +3292,7 @@ def singleday_factors_annotated(
             # rescale the y-axis for trials
             if scale_y:
                 for i in range(U.rank):
-                    y_lim = np.array(ax[i, 2].get_ylim())*0.8
+                    y_lim = np.array(ax[i, 2].get_ylim()) * 0.8
                     y_ticks = ax[i, 2].get_yticks()
                     y_ticks[-1] = y_lim[-1]
                     y_ticks = np.round(y_ticks, 2)
@@ -3146,12 +3305,12 @@ def singleday_factors_annotated(
             # NOTE: assumes downsample, 1 sec before onset, 3 sec stim
             for i in range(U.rank):
                 y_lim = ax[i, 1].get_ylim()
-                ons = 15.5*1
-                offs = ons+15.5*3
+                ons = 15.5 * 1
+                offs = ons + 15.5 * 3
                 ax[i, 1].plot([ons, ons], y_lim, ':k')
                 ax[i, 1].plot([offs, offs], y_lim, ':k')
 
-            for col in range(3, 3+extra_col):
+            for col in range(3, 3 + extra_col):
                 for i in range(U.rank):
 
                     # get axis values
@@ -3164,9 +3323,9 @@ def singleday_factors_annotated(
 
                     # running
                     if plot_running:
-                        scale_by = np.nanmax(speed)/y_lim[1]
+                        scale_by = np.nanmax(speed) / y_lim[1]
                         if not np.isnan(scale_by):
-                            ax[i, col].plot(np.array(speed.tolist())/scale_by, color=[1, 0.1, 0.6, 0.2])
+                            ax[i, col].plot(np.array(speed.tolist()) / scale_by, color=[1, 0.1, 0.6, 0.2])
                             # , label='speed')
 
                     # Orientation - main variable to plot
@@ -3180,7 +3339,7 @@ def singleday_factors_annotated(
                                             label=str(ori_vals[k]), color=color_vals[k], markersize=2)
                         if i == 0:
                             ax[i, col].set_title('Orientation')
-                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
+                            ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                               borderaxespad=2.5)
                     elif col == 4:
                         cs_vals = ['plus', 'minus', 'neutral']
@@ -3194,7 +3353,7 @@ def singleday_factors_annotated(
                                             label=str(cs_labels[k]), color=color_vals[k], markersize=2)
                         if i == 0:
                             ax[i, col].set_title('Condition')
-                            ax[i, col].legend(bbox_to_anchor=(0.5,1.02), loc='lower center',
+                            ax[i, col].legend(bbox_to_anchor=(0.5, 1.02), loc='lower center',
                                               borderaxespad=2.5)
                     elif col == 5:
                         trialerror_vals = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -3207,7 +3366,7 @@ def singleday_factors_annotated(
                                              'blank correct reject',
                                              'blank false alarm',
                                              'pav early licking',
-                                             'pav late licking',]
+                                             'pav late licking', ]
                         for k in trialerror_vals:
                             ax[i, col].plot(trial_num[trialerror == trialerror_vals[k]],
                                             U.factors[2][trialerror == trialerror_vals[k], i], 'o',
@@ -3242,7 +3401,7 @@ def singleday_factors_annotated(
                             ls_vals = ['naive', 'learning', 'reversal1']
                             ls_colors = ['#66bd63', '#d73027', '#a50026']
                             for k in lstate_x:
-                                ls = learning_state[int(k-0.5)]
+                                ls = learning_state[int(k - 0.5)]
                                 ax[i, col].plot(
                                     [k, k], y_lim, color=ls_colors[ls_vals.index(ls)],
                                     linewidth=1.5)
@@ -3267,7 +3426,7 @@ def singleday_factors_annotated(
                         plt.setp(ax[i, col].get_xticklabels(), visible=False)
 
                     if col == 3:
-                        ax[i, 0].set_ylabel('Component #' + str(i+1), rotation=0,
+                        ax[i, 0].set_ylabel('Component #' + str(i + 1), rotation=0,
                                             labelpad=45, verticalalignment='center',
                                             fontstyle='oblique')
 
@@ -3278,7 +3437,7 @@ def singleday_factors_annotated(
             else:
                 suffix = '.png'
             plt.savefig(os.path.join(date_dir, 'rank_' + str(int(r)) + suffix),
-                                     bbox_inches='tight')
+                        bbox_inches='tight')
             if verbose:
                 plt.show()
             plt.close()
@@ -3319,11 +3478,11 @@ def singleday_qc_summary(
 
     fig0 = plt.figure(figsize=(10, 8))
     gs0 = GridSpec(100, 100, figure=fig0, left=0.05, right=.95, top=.95, bottom=0.05)
-    ax0 = fig0.add_subplot(gs0[10:90-buffer, :90-right_pad])
+    ax0 = fig0.add_subplot(gs0[10:90 - buffer, :90 - right_pad])
 
     fig1 = plt.figure(figsize=(10, 8))
     gs1 = GridSpec(100, 100, figure=fig1, left=0.05, right=.95, top=.95, bottom=0.05)
-    ax1 = fig1.add_subplot(gs1[10:90-buffer, :90-right_pad])
+    ax1 = fig1.add_subplot(gs1[10:90 - buffer, :90 - right_pad])
 
     # plt.figure()
     for c, day1 in enumerate(days, 0):
@@ -3343,38 +3502,38 @@ def singleday_qc_summary(
 
         # plotting options for the unconstrained and nonnegative models.
         plot_options = {
-          'cp_als': {
-            'line_kw': {
-              'color': cmap[c],
-              'label': 'single ' + str(c),
+            'cp_als': {
+                'line_kw': {
+                    'color': cmap[c],
+                    'label': 'single ' + str(c),
+                },
+                'scatter_kw': {
+                    'color': cmap[c],
+                    'alpha': 0.5,
+                },
             },
-            'scatter_kw': {
-              'color': cmap[c],
-              'alpha': 0.5,
+            'ncp_hals': {
+                'line_kw': {
+                    'color': cmap[c],
+                    'alpha': 0.5,
+                    'label': 'single ' + str(c),
+                },
+                'scatter_kw': {
+                    'color': cmap[c],
+                    'alpha': 0.5,
+                },
             },
-          },
-          'ncp_hals': {
-            'line_kw': {
-              'color': cmap[c],
-              'alpha': 0.5,
-              'label': 'single ' + str(c),
+            'ncp_bcd': {
+                'line_kw': {
+                    'color': cmap[c],
+                    'alpha': 0.5,
+                    'label': 'single ' + str(c),
+                },
+                'scatter_kw': {
+                    'color': cmap[c],
+                    'alpha': 0.5,
+                },
             },
-            'scatter_kw': {
-              'color': cmap[c],
-              'alpha': 0.5,
-            },
-          },
-          'ncp_bcd': {
-            'line_kw': {
-              'color': cmap[c],
-              'alpha': 0.5,
-              'label': 'single ' + str(c),
-            },
-            'scatter_kw': {
-              'color': cmap[c],
-              'alpha': 0.5,
-            },
-          },
         }
 
         # load your data
@@ -3435,7 +3594,7 @@ def singleday_varex_summary(
     right_pad = 5
     fig = plt.figure(figsize=(10, 8))
     gs = GridSpec(100, 100, figure=fig, left=0.05, right=.95, top=.95, bottom=0.05)
-    ax = fig.add_subplot(gs[10:90-buffer, :90-right_pad])
+    ax = fig.add_subplot(gs[10:90 - buffer, :90 - right_pad])
 
     for c, day1 in enumerate(days, 0):
 
@@ -3478,17 +3637,17 @@ def singleday_varex_summary(
         var_mean = (np.var(X) - np.var(X - mU)) / np.var(X)
 
         # smoothed response of neuron across time
-        smU = np.convolve(X.reshape((X.size)), np.ones(5, dtype=np.float64)/5, 'same').reshape(np.shape(X))
+        smU = np.convolve(X.reshape((X.size)), np.ones(5, dtype=np.float64) / 5, 'same').reshape(np.shape(X))
         var_smooth = (np.var(X) - np.var(X - smU)) / np.var(X)
 
         # plot
         R = np.max([r for r in V.results.keys()])
         ax.scatter(x_s, var_s, color=cmap[c], alpha=0.5)
-        ax.scatter([R+2], var_mean, color=cmap[c], alpha=0.5)
-        ax.scatter([R+4], var_smooth, color=cmap[c], alpha=0.5)
+        ax.scatter([R + 2], var_mean, color=cmap[c], alpha=0.5)
+        ax.scatter([R + 4], var_smooth, color=cmap[c], alpha=0.5)
         ax.plot(x, var, label=('single ' + str(c)), color=cmap[c])
-        ax.plot([R+1.5, R+2.5], [var_mean, var_mean], color=cmap[c])
-        ax.plot([R+3.5, R+4.5], [var_smooth, var_smooth], color=cmap[c])
+        ax.plot([R + 1.5, R + 2.5], [var_mean, var_mean], color=cmap[c])
+        ax.plot([R + 3.5, R + 4.5], [var_smooth, var_smooth], color=cmap[c])
 
     # add labels/titles
     x_labels = [str(R) for R in V.results]
@@ -3581,24 +3740,24 @@ def singleday_varex_percell(
             ve_max.extend([max_ve for s in rank_ve_vec])
             ve_frac.extend(rank_ve_vec / max_ve)
             rank_num.extend(rank_vec)
-            day_num.extend([c+1 for s in rank_ve_vec])
+            day_num.extend([c + 1 for s in rank_ve_vec])
             cell_num.extend([cell for s in rank_ve_vec])
 
     # build pd dataframe of all variance measures
     index = pd.MultiIndex.from_arrays([
-    day_num,
-    rank_num,
-    ve,
-    ve_max,
-    ve_frac,
-    cell_num,
+        day_num,
+        rank_num,
+        ve,
+        ve_max,
+        ve_frac,
+        cell_num,
     ],
-    names=['day', 'rank', 'variance_explained', 'max_ve', 'frac_ve', 'cell'])
+        names=['day', 'rank', 'variance_explained', 'max_ve', 'frac_ve', 'cell'])
     df = pd.DataFrame(index=index)
     df = df.reset_index()
 
     # make a rainbow colormap, HUSL space but does not circle back on itself
-    cmap = sns.color_palette('hls', int(np.ceil(1.5*np.unique(df['rank'])[-1])))
+    cmap = sns.color_palette('hls', int(np.ceil(1.5 * np.unique(df['rank'])[-1])))
     cmap = cmap[0:np.unique(df['rank'])[-1]]
 
     # Part 1
@@ -3606,23 +3765,24 @@ def singleday_varex_percell(
     sliced_df2 = df.loc[(df['day']) & (df['max_ve'] >= ve_min), :]
 
     # CDF plot
-    fig1 = plt.figure(figsize=(15,9))
+    fig1 = plt.figure(figsize=(15, 9))
     for i in np.unique(sliced_df2['rank']):
-        input_ve = sliced_df2.loc[(sliced_df2['rank'] == i),'frac_ve']
-        ax = sns.distplot(input_ve, kde_kws={'cumulative': True, 'lw': 2, 'color': cmap[i-1], 'label': str(i)}, hist=False)
+        input_ve = sliced_df2.loc[(sliced_df2['rank'] == i), 'frac_ve']
+        ax = sns.distplot(input_ve, kde_kws={'cumulative': True, 'lw': 2, 'color': cmap[i - 1], 'label': str(i)},
+                          hist=False)
         lg = ax.legend(bbox_to_anchor=(1.03, 1), loc='upper left', borderaxespad=0.)
         lg.set_title('rank')
         ax.set_title(mouse + ', Fraction of maximum variance explained per cell, CDF')
         ax.set_xlabel('Fraction of maximum variance explained')
 
     # swarm plot
-    fig2 =plt.figure(figsize=(18,6))
+    fig2 = plt.figure(figsize=(18, 6))
     ax2 = sns.violinplot(x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=3, alpha=1, inner=None, palette=cmap)
     ax2.set_title(mouse + ', Fraction of maximum variance explained per cell, violin')
     ax2.set_ylabel('Fraction of maximum variance explained')
 
     # swarm plot
-    fig3 = plt.figure(figsize=(18,6))
+    fig3 = plt.figure(figsize=(18, 6))
     ax3 = sns.swarmplot(x=sliced_df2['rank'], y=sliced_df2['frac_ve'], size=2, alpha=1, palette=cmap)
     ax3.set_title(mouse + ', Fraction of maximum variance explained per cell, swarm')
     ax3.set_ylabel('Fraction of maximum variance explained')
@@ -3653,11 +3813,10 @@ def singleday_varex_percell(
     save_file_base = mouse + '_singleday_var_expl_' + trace_type
 
     for d in np.unique(df['day']):
-
-        sliced_df = df.loc[(df['day'] == d),:]
+        sliced_df = df.loc[(df['day'] == d), :]
 
         # make a rainbow colormap, HUSL space but does not circle back on itself
-        cmap = sns.color_palette('hls', int(np.ceil(1.5*np.unique(df['rank'])[-1])))
+        cmap = sns.color_palette('hls', int(np.ceil(1.5 * np.unique(df['rank'])[-1])))
         cmap = cmap[0:np.unique(df['rank'])[-1]]
 
         fig0 = plt.figure(figsize=(20, 6))
@@ -3674,5 +3833,5 @@ def singleday_varex_percell(
         ax0.set_title(mouse + ', Variance explained per cell, day ' + str(d))
 
         fig0.savefig(os.path.join(save_dir, save_file_base + '_day_' + str(d)
-                     + suffix), bbox_inches='tight')
+                                  + suffix), bbox_inches='tight')
         plt.close()

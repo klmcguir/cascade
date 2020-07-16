@@ -48,6 +48,7 @@ def plot_transientness_scatter_stages(mice,
                                       score_threshold=0.8,
                                       rank=15,
                                       staging='parsed_11stage',
+                                      bin_range=None,
                                       project=False):
     """
     Plot FacetGrid scatters by stages of learning.
@@ -75,6 +76,7 @@ def plot_transientness_scatter_stages(mice,
     :param score_threshold: float, score threshold for CellReg package alignment score
     :param rank: int, rank of TCA model to use for fitting
     :param staging: str, assign predetermined binning method for associated analysis
+    :param bin_range: same options as group_by, but this defines which ones will be plotted
     :param project: boolean, temporally project you data (matching cells across time) to a larger dataset
     :return
     """
@@ -96,6 +98,10 @@ def plot_transientness_scatter_stages(mice,
     else:
         root_word = 'transient'
 
+    # set bin_range to match group_by if no input is provided
+    if not bin_range:
+        bin_range = group_by
+
     # find analysis directory for your mice named 'behavior'
     save_path = paths.groupmouse_analysis_path(root_word, mice=mice, words=words, **load_kwargs)
 
@@ -108,7 +114,7 @@ def plot_transientness_scatter_stages(mice,
     print(f'Saving scatterplots to: {save_folder}')
 
     # make sure that bins are plotted in order in FacetGrid
-    if group_by in 'learning':
+    if bin_range in 'learning':
         if staging in 'parsed_stage':
             myvars = ['low_dp learning', 'high_dp learning']
         elif staging in 'parsed_10stage':
@@ -117,7 +123,7 @@ def plot_transientness_scatter_stages(mice,
         elif staging in 'parsed_11stage':
             myvars = ['L1 learning', 'L2 learning', 'L3 learning',
                       'L4 learning', 'L5 learning']
-    elif group_by in 'all3':
+    elif bin_range in 'all3':
         if staging in 'parsed_stage':
             myvars = ['naive',
                       'low_dp learning', 'high_dp learning',
@@ -125,8 +131,8 @@ def plot_transientness_scatter_stages(mice,
         elif staging in 'parsed_10stage':
             myvars = ['early naive', 'late naive',
                       'early low_dp learning', 'late low_dp learning',
-                      'early high_dp learning', 'late high_dp learning'
-                                                'early low_dp reversal1', 'late low_dp reversal1',
+                      'early high_dp learning', 'late high_dp learning',
+                      'early low_dp reversal1', 'late low_dp reversal1',
                       'early high_dp reversal1', 'late high_dp reversal1']
         elif staging in 'parsed_11stage':
             myvars = ['L0 naive',
@@ -138,7 +144,7 @@ def plot_transientness_scatter_stages(mice,
         print('Unrecognized group_by parameter')
 
     # plot FacetGrig of daily ramp index per cell
-    group_df = adapt_df.groupby(['mouse', 'cell', 'best component', 'initial cue', 'parsed_11stage']).mean()[
+    group_df = adapt_df.groupby(['mouse', 'cell', 'best component', 'initial cue', staging]).mean()[
         'ramp index']
     g = sns.PairGrid(group_df.unstack(level=-1).reset_index(), hue='initial cue', height=4,
                      palette=lookups.color_dict, vars=myvars)
@@ -150,7 +156,7 @@ def plot_transientness_scatter_stages(mice,
                 bbox_inches='tight')
 
     # plot FacetGrig of daily transientness index per cell
-    group_df = adapt_df.groupby(['mouse', 'cell', 'best component', 'initial cue', 'parsed_11stage']).mean()[
+    group_df = adapt_df.groupby(['mouse', 'cell', 'best component', 'initial cue', staging]).mean()[
         'transientness']
     g = sns.PairGrid(group_df.unstack(level=-1).reset_index(), hue='initial cue', height=4,
                      palette=lookups.color_dict, vars=myvars)
@@ -162,7 +168,7 @@ def plot_transientness_scatter_stages(mice,
                 bbox_inches='tight')
 
     # plot FacetGrig of daily transientness index per cell
-    group_df = adapt_df.groupby(['mouse', 'best component', 'initial cue', 'parsed_11stage']).mean()['transientness']
+    group_df = adapt_df.groupby(['mouse', 'best component', 'initial cue', staging]).mean()['transientness']
     g = sns.PairGrid(group_df.unstack(level=-1).reset_index(), hue='initial cue', height=4,
                      palette=lookups.color_dict, vars=myvars)
     g = g.map_offdiag(sns.scatterplot, alpha=0.8)

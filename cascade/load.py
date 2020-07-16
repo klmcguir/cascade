@@ -801,6 +801,7 @@ def groupday_tca_model(
         group_by='all',
         nan_thresh=0.85,
         score_threshold=None,
+        train_test_split=0.8,
         cv=False,
         full_output=False,
         unsorted=False,
@@ -833,7 +834,7 @@ def groupday_tca_model(
     # if train-test split was made
     load_tag_ids = load_tag
     if cv:
-        load_tag = load_tag + '_cv'
+        load_tag = load_tag + '_cv' + str(train_test_split)
 
     # load dir
     load_dir = paths.tca_path(
@@ -942,9 +943,10 @@ def groupday_tca_input_tensor(
         cs='',
         warp=False,
         word='tray',
-        group_by='all',
-        nan_thresh=0.85,
-        score_threshold=None,
+        group_by='all3',
+        nan_thresh=0.95,
+        score_threshold=0.8,
+        train_test_split=0.8,
         cv=False):
     """
     Load existing input tensor from tensor component analysis (TCA).
@@ -973,7 +975,7 @@ def groupday_tca_input_tensor(
 
     # if train-test split was made
     if cv:
-        load_tag = load_tag + '_cv'
+        load_tag = load_tag + '_cv' + str(train_test_split)
 
     # load dir
     load_dir = paths.tca_path(
@@ -1043,10 +1045,10 @@ def groupday_tca_cv_test_set_tensor(
         cs='',
         warp=False,
         word='tray',
-        group_by='all',
-        nan_thresh=0.85,
-        score_threshold=None,
-        cv=False):
+        group_by='all3',
+        nan_thresh=0.95,
+        train_test_split=0.8,
+        score_threshold=0.8):
     """
     Load existing input tensor from tensor component analysis (TCA).
 
@@ -1072,9 +1074,8 @@ def groupday_tca_cv_test_set_tensor(
     if score_threshold:
         load_tag = '_score0pt' + str(int(score_threshold * 10)) + load_tag
 
-    # if train-test split was made
-    if cv:
-        load_tag = load_tag + '_cv'
+    # add cv tag always
+    load_tag = load_tag + '_cv' + str(train_test_split)
 
     # load dir
     load_dir = paths.tca_path(
