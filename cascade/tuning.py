@@ -18,7 +18,7 @@ import scipy as sp
 
 
 def cell_tuning(meta, tensor, model, rank, by_stage=False, nan_lick=False,
-                staging='parsed_11stage', tuning_type='initial', define_best_component=True):
+                staging='parsed_11stage', tuning_type='initial'):
     """
     Function for calculating tuning for different stages of learning for the components
     from TCA.
@@ -58,15 +58,15 @@ def cell_tuning(meta, tensor, model, rank, by_stage=False, nan_lick=False,
 
         if offset_cells[cell_n]:
             # response window
-            mean_window = int(np.arange(np.floor(15.5 * (1 + lookups.stim_length[mouse])),
-                                    np.floor(15.5 * (3 + lookups.stim_length[mouse]))))
+            mean_window = np.arange(np.floor(15.5 * (1 + lookups.stim_length[mouse])),
+                                    np.floor(15.5 * (3 + lookups.stim_length[mouse])), dtype='int')
         else:
             # stimulus window
-            mean_window = int(np.arange(16, np.floor(15.5 * (1 + lookups.stim_length[mouse]))))
+            mean_window = np.arange(16, np.floor(15.5 * (1 + lookups.stim_length[mouse])), dtype='int')
 
         # take mean of either the stimulus or the response window depending on offset component affiliation
         cell_mat = ablated_tensor[cell_n, mean_window, :]
-        trial_avg_vec = np.neanmean(cell_mat, axis=0)
+        trial_avg_vec = np.nanmean(cell_mat, axis=0)
 
         # calculate tuning either for stages or whole component
         if by_stage:
@@ -76,11 +76,14 @@ def cell_tuning(meta, tensor, model, rank, by_stage=False, nan_lick=False,
 
         # add component to index
         tuning_df['best component'] = best_components[cell_n]
-        tuning_df['offset component'] = offset[best_components[cell_n] - 1]
+        if np.isnan(best_components[cell_n]):
+            tuning_df['offset component'] = np.nan
+        else:
+            tuning_df['offset component'] = offset[int(best_components[cell_n]) - 1]
         tuning_df['offset cell'] = offset_cells[cell_n]
         tuning_df['cell_n'] = cell_n + 1
         tuning_df.reset_index(inplace=True)
-        tuning_df.set_index(['mouse', 'component'], inplace=True)
+        tuning_df.set_index(['mouse', 'cell_n'], inplace=True)
         df_list.append(tuning_df)
 
     # create final df for return

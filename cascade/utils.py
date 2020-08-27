@@ -1227,12 +1227,15 @@ def define_high_weight_cell_factors(model, rank, threshold=1):
     # parse your model
     cell_factors = model.results[rank][0].factors[0][:, :]
 
+    # find threshold for cells that were never high weight
     thresh = np.std(cell_factors, axis=0) * threshold
     weights = deepcopy(cell_factors)
     for i in range(cell_factors.shape[1]):
         weights[weights[:, i] < thresh[i], i] = np.nan
     above_thresh = ~np.isnan(np.nanmax(weights, axis=1))
 
-    best_cluster = np.argmax(cell_factors, axis=1)[above_thresh] + 1  # to make clusters match component number
+    # find highest weight cluster and exclude cells deemed unworthy, above
+    best_cluster = np.argmax(cell_factors, axis=1) + 1.  # to make clusters match component number
+    best_cluster[~above_thresh] = np.nan
 
     return best_cluster
