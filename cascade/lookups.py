@@ -83,6 +83,12 @@ stim_length = {
      'OA38': 2,
      'AS57': 2}
 
+# lookup table for staging types
+staging = {
+    'parsed_11stage': ['L0 naive', 'L1 learning', 'L2 learning', 'L3 learning', 'L4 learning', 'L5 learning',
+                       'L1 reversal1', 'L2 reversal1', 'L3 reversal1', 'L4 reversal1', 'L5 reversal1'],
+}
+
 """Useful lists so I don't have to type out names of mice I commonly use"""
 mice = {
     # all mice with crossday alignment completed

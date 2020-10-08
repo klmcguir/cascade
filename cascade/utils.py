@@ -45,10 +45,11 @@ def tensor_mean_per_day(meta, tensor, initial_cue=True, cue='plus', nan_licking=
     return new_tensor
 
 
-def tensor_mean_per_trial(meta, tensor, nan_licking=False):
+def tensor_mean_per_trial(meta, tensor, nan_licking=False, account_for_offset=False):
     """
     Helper function to calculate mean per trial meta for a single mouse, correctly accounting for stimulus length.
-    Optionally only use
+    Optionally buffer times around licking. Can also choose to automatically parse if a cell's peak activity is
+    during the response window and use response window as the trial mean for that offset cells.
     """
 
     # meta can only be a DataFrame of a single mouse
@@ -59,9 +60,15 @@ def tensor_mean_per_trial(meta, tensor, nan_licking=False):
     assert tensor.shape[1] == 108
     times = np.arange(-1, 6, 1 / 15.5)[:108]
     stim_bool = (times > 0) & (times < lookups.stim_length[mouse])
+    response_bool = (times > lookups.stim_length[mouse] + 0.3) & (times < lookups.stim_length[mouse] + 2)  # 300ms delay
 
     # make sure that the date vec allows for 0.5 days at reversal and learning
     meta = update_meta_date_vec(meta)
+
+    # optionally determine cells with offset responses
+    if account_for_offset:
+        trace_mean = np.nanmean(tensor, axis=2)
+        offset_bool = np.argmax(trace_mean, axis=1) > 15.5 * (1 + lookups.stim_length[mouse])
 
     # optionally nan all times after licking (median cs plus lick latency for non-lick trials)
     if nan_licking:
@@ -72,9 +79,119 @@ def tensor_mean_per_trial(meta, tensor, nan_licking=False):
         ablated_tensor = tensor
 
     # get average response per trial
-    new_mat = np.nanmean(ablated_tensor[:, stim_bool, :], axis=1)
+    if account_for_offset:
+        new_mat = np.zeros((ablated_tensor.shape[0], ablated_tensor.shape[1]))
+        new_mat[offset_bool, :] = np.nanmean(ablated_tensor[offset_bool, response_bool, :], axis=1)
+        new_mat[~offset_bool, :] = np.nanmean(ablated_tensor[~offset_bool, stim_bool, :], axis=1)
+    else:
+        new_mat = np.nanmean(ablated_tensor[:, stim_bool, :], axis=1)
 
     return new_mat
+
+
+def tensor_mean_per_stage(meta, tensor, initial_cue=True, cue='plus', nan_licking=False, staging='parsed_11stage'):
+    """
+    Helper function to calculate mean per stage for axis of same length as meta for a single cue.
+    """
+
+    # meta can only be a DataFrame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+
+    # make sure that the date vec allows for 0.5 days at reversal and learning
+    meta = update_meta_date_vec(meta)
+
+    # make sure parsed stage exists
+    meta = add_stages_to_meta(meta, staging)
+
+    # choose to average over initial_condition (orientation) or condition (switches orientation at reversal)
+    if initial_cue:
+        cue_vec = meta['initial_condition']
+    else:
+        cue_vec = meta['condition']
+    cue_bool = cue_vec.isin([cue])
+
+    # optionally nan all times after licking (median cs plus lick latency for non-lick trials)
+    if nan_licking:
+        mask = bias.get_lick_mask(meta, tensor)
+        ablated_tensor = deepcopy(tensor)
+        ablated_tensor[~mask] = np.nan
+    else:
+        ablated_tensor = tensor
+
+    # get average response per day to a single cue
+    stages = lookups.staging[staging]
+    new_tensor = np.zeros((tensor.shape[0], tensor.shape[1], len(stages)))
+    new_tensor[:] = np.nan
+    for c, di in enumerate(stages):
+        stage_boo = meta[staging].isin([di]).values
+        new_tensor[:, :, c] = np.nanmean(ablated_tensor[:, :, stage_boo & cue_bool], axis=2)
+
+    return new_tensor
+
+
+def tensor_mean_per_stage_single_pt(meta, tensor, account_for_offset=True, **kwargs):
+    """
+    Take the mean of the stimulus window, or preferred window for that cell (i.e., offset cells are averaged following
+    the stimulus offset, during the response window).
+
+    :param meta: pandas.DataFrame
+        Tensor trial metadata.
+    :param tensor: numpy.ndarray
+        Matrix organized like this: tensor[cells, time points, trials].
+    :param account_for_offset : boolean
+        Optionally take mean of activity based on peak activity. Uses stimulus or response window.
+    :param kwargs: takes kwargs for tensor_mean_per_stage, defaults:
+        initial_cue=True, cue='plus', nan_licking=False, staging='parsed_11stage'
+    :return: stage_matrix
+        Matrix of cells x stages of learning. Organized like this: stage_matrix[cells, stages]
+    """
+
+    # meta can only be a DataFrame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+    mouse = meta.reset_index()['mouse'].unique()[0]
+
+    # mean trace per stage
+    mtensor = tensor_mean_per_stage(meta, tensor, **kwargs)
+
+    # assume 15.5 Hz sampling or downsampling for 7 seconds per trial (n = 108 timepoints)
+    assert mtensor.shape[1] == 108
+    times = np.arange(-1, 6, 1 / 15.5)[:108]
+    stim_bool = (times > 0) & (times < lookups.stim_length[mouse])
+    response_bool = (times > lookups.stim_length[mouse] + 0.0) & (times < lookups.stim_length[mouse] + 2)  # 000ms delay
+
+    # optionally determine cells with offset responses
+    if account_for_offset:
+        trace_mean = np.nanmean(mtensor, axis=2)
+        offset_bool = np.argmax(trace_mean, axis=1) > 15.5 * (1 + lookups.stim_length[mouse])
+
+    # get average response per trial
+    if account_for_offset:
+        stage_matrix = np.zeros((mtensor.shape[0], mtensor.shape[2]))
+        stage_matrix[offset_bool, :] = np.nanmean(mtensor[offset_bool, :, :][:, response_bool, :], axis=1)
+        stage_matrix[~offset_bool, :] = np.nanmean(mtensor[~offset_bool, :, :][:, stim_bool, :], axis=1)
+    else:
+        stage_matrix = np.nanmean(mtensor[:, stim_bool, :], axis=1)
+
+    return stage_matrix
+
+
+def offset_cells(meta, tensor):
+    """
+    Determine cells with offset responses.
+
+    :return: offset_bool: boolean
+        Vector, true where offset cells exist
+    """
+
+    # meta can only be a DataFrame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+    mouse = meta.reset_index()['mouse'].unique()[0]
+
+    # optionally determine cells with offset responses
+    trace_mean = np.nanmean(tensor, axis=2)
+    offset_bool = np.argmax(trace_mean, axis=1) > 15.5 * (1 + lookups.stim_length[mouse])
+
+    return offset_bool
 
 
 def correct_nonneg(ensemble):
@@ -1239,3 +1356,86 @@ def define_high_weight_cell_factors(model, rank, threshold=1):
     best_cluster[~above_thresh] = np.nan
 
     return best_cluster
+
+
+def count_high_weight_cell_factors(model, rank, threshold=1):
+    """
+    Return the count of high weight clusters for a cell as a list. Note: this is an approximation. TCA suffers from
+    a scalability issue (e.g., you can divide one factor by a value and multiply another factor by that value and
+    the component remains the same). All models are rebalanced when they load.
+    TODO: add more about what rebalance means intuitively
+
+    def rebalance(self):
+        '''Rescales factors across modes so that all norms match.'''
+
+        # Compute norms along columns for each factor matrix
+        norms = [sci.linalg.norm(f, axis=0) for f in self.factors]
+
+        # Multiply norms across all modes
+        lam = sci.multiply.reduce(norms) ** (1/self.ndim)
+
+        # Update factors
+        self.factors = [f * (lam / fn) for f, fn in zip(self.factors, norms)]
+        return self
+
+    :param model: tensortools.Ensemble, TCA model
+    :param rank: int, TCA model rank
+    :param threshold: int, standard deviation threshold
+    :return: participates_in_n_clusters: numpy.ndarray, vector of counts of above thresh clusters per cell
+    """
+
+    # parse your model
+    cell_factors = model.results[rank][0].factors[0][:, :]
+
+    # find threshold for cells that were never high weight
+    thresh = np.std(cell_factors, axis=0) * threshold
+    weights = deepcopy(cell_factors)
+    for i in range(cell_factors.shape[1]):
+        weights[weights[:, i] < thresh[i], i] = np.nan
+    participates_in_n_clusters = np.nansum(~np.isnan(weights), axis=1)
+
+    return participates_in_n_clusters
+
+
+def does_cell_participate_in_offset_component(model, rank, mouse, threshold=1):
+    """
+    Return the if the cell had an above threshold component weight to any offset component.
+    Note: this is an approximation. TCA suffers from a scalability issue (e.g., you can divide one factor by a value
+    and multiply another factor by that value and the component remains the same). All models are rebalanced when
+    they load.
+    TODO: add more about what rebalance means intuitively
+
+    def rebalance(self):
+        '''Rescales factors across modes so that all norms match.'''
+
+        # Compute norms along columns for each factor matrix
+        norms = [sci.linalg.norm(f, axis=0) for f in self.factors]
+
+        # Multiply norms across all modes
+        lam = sci.multiply.reduce(norms) ** (1/self.ndim)
+
+        # Update factors
+        self.factors = [f * (lam / fn) for f, fn in zip(self.factors, norms)]
+        return self
+
+    :param model: tensortools.Ensemble, TCA model
+    :param rank: int, TCA model rank
+    :param mouse: str, name of mouse
+    :param threshold: int, standard deviation threshold
+    :return: participates_in_offset_component: numpy.ndarray, vector of counts of above thresh clusters per cell
+    """
+
+    # parse your model
+    cell_factors = model.results[rank][0].factors[0][:, :]
+
+    # offset starts at:
+    offset = np.argmax(model.results[rank][0].factors[1][:, :], axis=0) > 15.5 * (1 + lookups.stim_length[mouse])
+
+    # find threshold for cells that were never high weight
+    thresh = np.std(cell_factors, axis=0) * threshold
+    weights = deepcopy(cell_factors)
+    for i in range(cell_factors.shape[1]):
+        weights[weights[:, i] < thresh[i], i] = np.nan
+    participates_in_offset_component = np.sum(~np.isnan(weights[:, offset]), axis=1) > 0
+
+    return participates_in_offset_component

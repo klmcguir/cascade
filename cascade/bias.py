@@ -10,11 +10,13 @@ from copy import deepcopy
 from tensortools.tensors import KTensor
 
 
-def get_lick_mask(meta, tensor):
+def get_lick_mask(meta, tensor, buffer_frames=1):
     """
     Create a boolean mask in the shape of your tensor that is 1 wherever data preceded
     a lick and is 0 following licks. Trials with no licking during the stimulus
-    window are set to the median lick latency on plus trials. 
+    window are set to the median lick latency on plus trials.
+
+    :param buffer_frames: int, number of frames to buffer preceding first lick (single frame is ~64.5 ms)
     """
 
     # make sure that you have a full size 15.5 Hz tensor 
@@ -31,8 +33,8 @@ def get_lick_mask(meta, tensor):
     # loop over trials to create your licking mask, setting values to 1
     frame_number = np.arange(tensor.shape[1])
     for tri in range(tensor.shape[2]):
-        lick_boo = ((frame_number < lick_lat[tri]) # frames less than
-                    & (frame_number > 15.5)) # frames greater than baseline
+        lick_boo = ((frame_number < lick_lat[tri] - buffer_frames)  # keep frames less than firstlick
+                    & (frame_number > 15.5))  # keep frames greater than baseline
         mask[:, lick_boo, tri] = 1
 
     return mask > 0

@@ -18,7 +18,7 @@ import scipy as sp
 
 
 def cell_tuning(meta, tensor, model, rank, by_stage=False, nan_lick=False,
-                staging='parsed_11stage', tuning_type='initial'):
+                staging='parsed_11stage', tuning_type='initial', force_stim_avg=False):
     """
     Function for calculating tuning for different stages of learning for the components
     from TCA.
@@ -29,6 +29,7 @@ def cell_tuning(meta, tensor, model, rank, by_stage=False, nan_lick=False,
     :param model: tensortools.ensemble, TCA results
     :param rank: int, rank of TCA model to use for components
     :param by_stage: boolean, choose to use stages or simply calculate tuning over all time
+    :param nan_lick: boolean, choose to nan periods of licking (and baseline)
     :param staging: str, binning used to define stages of learning
     :param tuning_type: str, way to define stimulus type. 'initial', 'orientation', or defaults to 'condition'
     :return: stage_tuning_df: pandas.DataFrame, columns are stages
@@ -50,6 +51,8 @@ def cell_tuning(meta, tensor, model, rank, by_stage=False, nan_lick=False,
 
     # select rank of model to use
     best_components = utils.define_high_weight_cell_factors(model, rank, threshold=1)
+    num_components = utils.count_high_weight_cell_factors(model, rank, threshold=1)
+    any_offset_activity = utils.does_cell_participate_in_offset_component(model, rank, mouse, threshold=1)
     offset = np.argmax(model.results[rank][0].factors[1][:, :], axis=0) > 15.5 * (1 + lookups.stim_length[mouse])
     offset_cells = np.isin(best_components, np.where(offset)[0] + 1)  # + 1 to match component number
 
@@ -57,9 +60,13 @@ def cell_tuning(meta, tensor, model, rank, by_stage=False, nan_lick=False,
     for cell_n in range(tensor.shape[0]):
 
         if offset_cells[cell_n]:
-            # response window
-            mean_window = np.arange(np.floor(15.5 * (1 + lookups.stim_length[mouse])),
-                                    np.floor(15.5 * (3 + lookups.stim_length[mouse])), dtype='int')
+            if not force_stim_avg:
+                # response window
+                mean_window = np.arange(np.floor(15.5 * (1 + lookups.stim_length[mouse])),
+                                        np.floor(15.5 * (3 + lookups.stim_length[mouse])), dtype='int')
+            else:
+                # stimulus window
+                mean_window = np.arange(16, np.floor(15.5 * (1 + lookups.stim_length[mouse])), dtype='int')
         else:
             # stimulus window
             mean_window = np.arange(16, np.floor(15.5 * (1 + lookups.stim_length[mouse])), dtype='int')
@@ -79,8 +86,10 @@ def cell_tuning(meta, tensor, model, rank, by_stage=False, nan_lick=False,
         if np.isnan(best_components[cell_n]):
             tuning_df['offset component'] = np.nan
         else:
-            tuning_df['offset component'] = offset[int(best_components[cell_n]) - 1]
+            tuning_df['offset component'] = offset[int(best_components[cell_n]) - 1]  # bool, nan above makes it float
         tuning_df['offset cell'] = offset_cells[cell_n]
+        tuning_df['component participation'] = num_components[cell_n]
+        tuning_df['offset participation'] = any_offset_activity[cell_n]
         tuning_df['cell_n'] = cell_n + 1
         tuning_df.reset_index(inplace=True)
         tuning_df.set_index(['mouse', 'cell_n'], inplace=True)
@@ -160,6 +169,7 @@ def tuning_by_stage(meta, trial_avg_vec, staging='parsed_11stage', tuning_type='
     # loop over groupings
     tuning_words = []
     tuning_vecs = []
+    response_vecs = []
     stage_words = []
     groupings = temp_meta.groupby(staging)
     for name, gri in groupings:
@@ -168,10 +178,12 @@ def tuning_by_stage(meta, trial_avg_vec, staging='parsed_11stage', tuning_type='
         # pass split meta and trial averages to tuning calculations
         tuning_words.append(calc_tuning_from_meta_and_vec(gri, stage_vec, tuning_type=tuning_type))
         tuning_vecs.append(cosine_distance_from_meta_and_vec(gri, stage_vec, tuning_type=tuning_type))
+        response_vecs.append(mean_response_from_meta_and_vec(gri, stage_vec, tuning_type=tuning_type))
         stage_words.append(name)
 
     # create a DataFrame for output
-    data = {staging: stage_words, 'preferred tuning': tuning_words, 'cosine tuning': tuning_vecs}
+    data = {staging: stage_words, 'preferred tuning': tuning_words, 'cosine tuning': tuning_vecs,
+            'mean response': response_vecs}
     stage_tuning_df = pd.DataFrame(data=data)
     stage_tuning_df['mouse'] = meta.reset_index()['mouse'].unique()[0]
     stage_tuning_df.set_index(['mouse'], inplace=True)
@@ -195,9 +207,10 @@ def tuning_not_by_stage(meta, trial_avg_vec, tuning_type='initial'):
     # pass split meta and trial averages to tuning calculations
     tuning_words = calc_tuning_from_meta_and_vec(meta, trial_avg_vec, tuning_type=tuning_type)
     tuning_vecs = cosine_distance_from_meta_and_vec(meta, trial_avg_vec, tuning_type=tuning_type)
+    response_vecs = mean_response_from_meta_and_vec(meta, trial_avg_vec, tuning_type=tuning_type)
 
     # create a DataFrame for output
-    data = {'preferred tuning': tuning_words, 'cosine tuning': tuning_vecs}
+    data = {'preferred tuning': tuning_words, 'cosine tuning': tuning_vecs, 'mean response': response_vecs}
     stage_tuning_df = pd.DataFrame(data=data)
     stage_tuning_df['mouse'] = meta.reset_index()['mouse'].unique()[0]
     stage_tuning_df.set_index(['mouse'], inplace=True)
@@ -289,3 +302,43 @@ def cosine_distance_from_meta_and_vec(meta, trial_avg_vec, tuning_type='initial'
     distances = np.array(distances)
 
     return distances
+
+
+def mean_response_from_meta_and_vec(meta, trial_avg_vec, tuning_type='initial', rectify=False):
+    """
+    Helper function for calculating mean response per cue type.
+
+    :param meta: pandas.DataFrame, trial metadata
+    :param trial_avg_vec: vector of responses, one per trial, must be same length as meta
+    :param tuning_type: str, way to define stimulus type. 'initial', 'orientation', or defaults to 'condition'
+    :param rectify: boolean, optionally rectify trace (i.e., negative values set to 0)
+    :return: mean_response_vec: [float float float], mean response
+    """
+
+    # get initial conditions
+    if 'initial' in tuning_type:
+        cond_type = 'initial_condition'
+    elif 'ori' in tuning_type:
+        cond_type = 'orientation'
+    else:
+        cond_type = 'condition'
+    u_conds = sorted(meta[cond_type].unique())
+
+    # assume you are getting 3 cues
+    assert len(u_conds) == 3
+
+    # rectify vector
+    if rectify:
+        rect_trial_avg_vec = deepcopy(trial_avg_vec)
+        rect_trial_avg_vec[rect_trial_avg_vec < 0] = 0
+    else:
+        rect_trial_avg_vec = trial_avg_vec
+
+    # get mean response per cue across all trials provided as a single tuning vector
+    mean_cue = []
+    for cue in u_conds:
+        cue_boo = meta[cond_type].isin([cue])
+        mean_cue.append(np.nanmean(rect_trial_avg_vec[cue_boo]))
+    mean_response_vec = np.array(mean_cue)
+
+    return mean_response_vec
