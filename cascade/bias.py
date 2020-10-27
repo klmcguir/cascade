@@ -520,7 +520,6 @@ def get_stage_average(FC_bias, dprime_list, ls_list, dprime_thresh=2):
     return stage_mean1, stage_mean2
 
 
-
 def _first100_bool(meta):
     """
     Helper function to get a boolean vector of the first 100 trials for each day.

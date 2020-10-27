@@ -1,13 +1,9 @@
 """Functions for running tensor component analysis (TCA)."""
-# try:
-#     import tensortools_old as tt
-# except:
+
 import tensortools as tt
 
-# import tensortools_old as tt
 import numpy as np
 import flow
-from flow.misc import wordhash
 import pool
 import pandas as pd
 import os
@@ -2021,7 +2017,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
 
     # prev trials responses
     prevtrialerror = np.array(trialerror, dtype=float)
-    prevtrialerror = np.insert(prevtrialerror, 0, np.nan)[trial_idx]
+    prevtrialerror = np.insert(prevtrialerror, 0, np.nan)[trial_idx]  # frame shift
 
     # previous reward
     prev_reward = np.isin(prevtrialerror, [0, 8, 9])
@@ -2029,7 +2025,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     # previous punishment
     prev_punishment = np.isin(prevtrialerror, [5])
 
-    # previous punishment
+    # previous blank
     prev_blank = np.isin(prevtrialerror, [6, 7])
 
     # get cs and orientation info for each trial
@@ -2110,6 +2106,23 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
     else:
         pre_speed = np.full(len(trial_idx), np.nan)
 
+    # calculate running speed during response window
+    if t2p.d['running'].size > 0:
+        post_speed_vec = t2p.speed()
+        post_speed_vec = post_speed_vec.astype('float')
+        nframe_fwd = np.round(t2p.d['framerate']*2)  # 2s response window
+        post_speed = []
+        for s in trial_idx:
+            try:
+                post_speed.append(
+                    np.nanmean(
+                        post_speed_vec[all_offsets[s]:int(all_offsets[s] + nframe_fwd)]))
+            except:
+                post_speed.append(np.nan)
+        post_speed = np.array(post_speed)
+    else:
+        post_speed = np.full(len(trial_idx), np.nan)
+
     # calculate running speed during trial
     if t2p.d['neuropil'].size > 0:
         npil_vec = t2p.d['neuropil']
@@ -2180,14 +2193,31 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
         pre_lick = []
         for s in trial_idx:
             try:
-                pre_lick_bool = (lick_vec < all_onsets[s]) & \
-                                (lick_vec > (all_onsets[s] - nframe_back))
+                pre_lick_bool = (pre_lick_vec < all_onsets[s]) & \
+                                (pre_lick_vec > (all_onsets[s] - nframe_back))
                 pre_lick.append(np.sum(pre_lick_bool))
             except:
                 pre_lick.append(np.nan)
         pre_lick = np.array(pre_lick)
     else:
         pre_lick = np.full(len(trial_idx), np.nan)
+
+    # count licks during response window
+    if 'licking' in t2p.d.keys() and (t2p.d['licking'].size > 0):
+        post_lick_vec = t2p.d['licking']
+        post_lick_vec = post_lick_vec.astype('float')
+        nframe_fwd = np.round(t2p.d['framerate']*2)  # 2s response window
+        post_lick = []
+        for s in trial_idx:
+            try:
+                post_lick_bool = (post_lick_vec > all_offsets[s]) & \
+                                (post_lick_vec < (all_offsets[s] + nframe_fwd))
+                post_lick.append(np.sum(post_lick_bool))
+            except:
+                post_lick.append(np.nan)
+        post_lick = np.array(post_lick)
+    else:
+        post_lick = np.full(len(trial_idx), np.nan)
 
     # calculate pupil diameter preceding trial
     if 'pupil' in t2p.d.keys() and (t2p.d['pupil'].size > 0):
@@ -2292,6 +2322,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
             'pre_speed': pre_speed,
             'anticipatory_licks': antic_lick,
             'pre_licks': pre_lick,
+            'post_licks': post_lick,
             'pupil': pupil,
             'pre_pupil': pre_pupil,
             'neuropil': npil,

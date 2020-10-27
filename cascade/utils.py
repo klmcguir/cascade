@@ -16,6 +16,11 @@ def tensor_mean_per_day(meta, tensor, initial_cue=True, cue='plus', nan_licking=
     # meta can only be a DataFrame of a single mouse
     assert len(meta.reset_index()['mouse'].unique()) == 1
 
+    # make sure that cue is a list, this allows string or list input
+    if isinstance(cue, str):
+        cue = [cue]
+    assert isinstance(cue, list)
+
     # make sure that the date vec allows for 0.5 days at reversal and learning
     meta = update_meta_date_vec(meta)
 
@@ -24,7 +29,7 @@ def tensor_mean_per_day(meta, tensor, initial_cue=True, cue='plus', nan_licking=
         cue_vec = meta['initial_condition']
     else:
         cue_vec = meta['condition']
-    cue_bool = cue_vec.isin([cue])
+    cue_bool = cue_vec.isin(cue)
 
     # optionally nan all times after licking (median cs plus lick latency for non-lick trials)
     if nan_licking:
@@ -67,8 +72,7 @@ def tensor_mean_per_trial(meta, tensor, nan_licking=False, account_for_offset=Fa
 
     # optionally determine cells with offset responses
     if account_for_offset:
-        trace_mean = np.nanmean(tensor, axis=2)
-        offset_bool = np.argmax(trace_mean, axis=1) > 15.5 * (1 + lookups.stim_length[mouse])
+        offset_bool = get_offset_cells(meta, tensor)
 
     # optionally nan all times after licking (median cs plus lick latency for non-lick trials)
     if nan_licking:
@@ -97,6 +101,11 @@ def tensor_mean_per_stage(meta, tensor, initial_cue=True, cue='plus', nan_lickin
     # meta can only be a DataFrame of a single mouse
     assert len(meta.reset_index()['mouse'].unique()) == 1
 
+    # make sure that cue is a list, this allows string or list input
+    if isinstance(cue, str):
+        cue = [cue]
+    assert isinstance(cue, list)
+
     # make sure that the date vec allows for 0.5 days at reversal and learning
     meta = update_meta_date_vec(meta)
 
@@ -108,7 +117,59 @@ def tensor_mean_per_stage(meta, tensor, initial_cue=True, cue='plus', nan_lickin
         cue_vec = meta['initial_condition']
     else:
         cue_vec = meta['condition']
-    cue_bool = cue_vec.isin([cue])
+    cue_bool = cue_vec.isin(cue)
+
+    # optionally nan all times after licking (median cs plus lick latency for non-lick trials)
+    if nan_licking:
+        mask = bias.get_lick_mask(meta, tensor)
+        ablated_tensor = deepcopy(tensor)
+        ablated_tensor[~mask] = np.nan
+    else:
+        ablated_tensor = tensor
+
+    # get average response per day to a single cue
+    stages = lookups.staging[staging]
+    new_tensor = np.zeros((tensor.shape[0], tensor.shape[1], len(stages)))
+    new_tensor[:] = np.nan
+    for c, di in enumerate(stages):
+        stage_boo = meta[staging].isin([di]).values
+        new_tensor[:, :, c] = np.nanmean(ablated_tensor[:, :, stage_boo & cue_bool], axis=2)
+
+    return new_tensor
+
+
+def tensor_mean_per_stage_filtered(meta, tensor, initial_cue=True, cue='plus', nan_licking=False,
+                                      staging='parsed_11stage', filter=None):
+    """
+    Helper function to calculate mean per stage for axis of same length as meta for a single cue.
+    Conditional aspect is that you can filter on metadata columns.
+    """
+
+    # meta can only be a DataFrame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+
+    # make sure that cue is a list, this allows string or list input
+    if isinstance(cue, str):
+        cue = [cue]
+    assert isinstance(cue, list)
+
+    # make sure that the date vec allows for 0.5 days at reversal and learning
+    meta = update_meta_date_vec(meta)
+
+    # make sure parsed stage exists
+    meta = add_stages_to_meta(meta, staging)
+
+    # choose to average over initial_condition (orientation) or condition (switches orientation at reversal)
+    if initial_cue:
+        cue_vec = meta['initial_condition']
+    else:
+        cue_vec = meta['condition']
+    cue_bool = cue_vec.isin(cue)
+
+    # additional filtering
+    if filter is not None:
+        if 'high_running' in filter:
+            raise NotImplementedError
 
     # optionally nan all times after licking (median cs plus lick latency for non-lick trials)
     if nan_licking:
@@ -131,8 +192,8 @@ def tensor_mean_per_stage(meta, tensor, initial_cue=True, cue='plus', nan_lickin
 
 def tensor_mean_per_stage_single_pt(meta, tensor, account_for_offset=True, **kwargs):
     """
-    Take the mean of the stimulus window, or preferred window for that cell (i.e., offset cells are averaged following
-    the stimulus offset, during the response window).
+    Single data point for each trial. Take the mean of the stimulus window, or preferred window for that cell
+    (i.e., offset cells are averaged following the stimulus offset, during the response window).
 
     :param meta: pandas.DataFrame
         Tensor trial metadata.
@@ -161,8 +222,9 @@ def tensor_mean_per_stage_single_pt(meta, tensor, account_for_offset=True, **kwa
 
     # optionally determine cells with offset responses
     if account_for_offset:
-        trace_mean = np.nanmean(mtensor, axis=2)
-        offset_bool = np.argmax(trace_mean, axis=1) > 15.5 * (1 + lookups.stim_length[mouse])
+        offset_bool = get_offset_cells(meta, tensor)
+        # trace_mean = np.nanmean(mtensor, axis=2)
+        # offset_bool = np.argmax(trace_mean, axis=1) > 15.5 * (1 + lookups.stim_length[mouse])
 
     # get average response per trial
     if account_for_offset:
@@ -175,9 +237,11 @@ def tensor_mean_per_stage_single_pt(meta, tensor, account_for_offset=True, **kwa
     return stage_matrix
 
 
-def offset_cells(meta, tensor):
+def get_offset_cells(meta, tensor):
     """
     Determine cells with offset responses.
+
+    Note: meta is only used to determine mouse name.
 
     :return: offset_bool: boolean
         Vector, true where offset cells exist
@@ -187,11 +251,37 @@ def offset_cells(meta, tensor):
     assert len(meta.reset_index()['mouse'].unique()) == 1
     mouse = meta.reset_index()['mouse'].unique()[0]
 
-    # optionally determine cells with offset responses
+    # determine cells with offset responses
     trace_mean = np.nanmean(tensor, axis=2)
-    offset_bool = np.argmax(trace_mean, axis=1) > 15.5 * (1 + lookups.stim_length[mouse])
+    stim_offset_buffer_start = int(np.floor(15.5 * (1 + lookups.stim_length[mouse] - 0.300)))
+    stim_offset_buffer_end = int(np.floor(15.5 * (1 + lookups.stim_length[mouse] + 0.300)))
+    trace_mean[:, stim_offset_buffer_start:stim_offset_buffer_end] = np.nan  # buffer around offset to avoid GECI tail
+    trace_mean[:, :18] = np.nan  # buffer baseline with a few extra frames, ~200 ms
+    offset_bool = np.nanargmax(trace_mean, axis=1) > 15.5 * (1 + lookups.stim_length[mouse])
 
     return offset_bool
+
+
+def get_peak_times(tensor):
+    """
+    Determine peak response time
+
+    Note: meta is only used to determine mouse name.
+
+    :return: peak_times: float
+        Peak time in seconds relative to stimulus onset
+    """
+
+    # tensor must be 15.5 Hz use a proxy assertion for now
+    assert tensor.shape[1] == 108  # 108 is the number of frames for 15.5 Hz
+
+    # determine cells with offset responses
+    trace_mean = np.nanmean(tensor, axis=2)
+    trace_mean[:, :16] = np.nan  # buffer baseline
+    peak_frames = np.nanargmax(trace_mean, axis=1)
+    peak_times = (peak_frames - 15.5)/15.5
+
+    return peak_times
 
 
 def correct_nonneg(ensemble):
@@ -1089,9 +1179,15 @@ def getcstraces(
                                           move_outcome_to=5, baseline_to_stimulus=True)
     else:
         if 'deconvolved' in trace_type.lower() or '_nobs' in trace_type.lower():
-            run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
-                                      trace_type=trace_type, cutoff_before_lick_ms=-1,
-                                      errortrials=-1, baseline=None)
+            # double check that your deconvolved traces match your aligned data.
+            if t2p.ncells == t2p.trace('deconvolved').shape[0]:
+                run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
+                                          trace_type=trace_type, cutoff_before_lick_ms=-1,
+                                          errortrials=-1, baseline=None)
+            else:
+                ntimes = 108 if (t2p.d['framerate'] < 30) else 216
+                run_traces = np.zeros((t2p.ncells, ntimes, t2p.ntrials))
+                run_traces[:] = np.nan
         else:
             run_traces = t2p.cstraces(cs, start_s=start_time, end_s=end_time,
                                       trace_type=trace_type, cutoff_before_lick_ms=-1,

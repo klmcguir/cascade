@@ -1407,7 +1407,7 @@ def groupday_varex_summary(
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        load_tag = '_score' + str(score_threshold) + load_tag
+        load_tag = '_score0pt' + str(int(score_threshold * 10)) + load_tag
         save_tag = ' score ' + str(score_threshold) + save_tag
 
     # title tag for rectification
