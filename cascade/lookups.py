@@ -10,6 +10,7 @@ color_dict = {
     'initial_neutral': '#47aded',
     'learning': '#226e36',
     'reversal': '#ad261a',
+    'none': '#f9f9f9',
     'gray': '#a3a3a3',
     'plus1': '#cae85e',
     'plus2': '#61e6a4',
@@ -28,7 +29,16 @@ color_dict = {
     'neutral-minus': '#6B8ABA',
     'minus-plus': '#BE4E37',
     'minus-neutral': '#B24354',
-    'broad': '#ccc2ba'
+    'broad': '#ccc2ba',
+    '0': '#56fff9',
+    '0-135': '#8EF0C3',
+    '135-0': '#C7E18C',
+    '135': '#ffd256',
+    '135-270': '#FFA973',
+    '270-135': '#FF7F90',
+    '270': '#ff56ad',
+    '270-0': '#C78EC6',
+    '0-270': '#8EC7E0'
     }
 
 # lookup table of conditions during initial learning matched to orientations
@@ -85,6 +95,10 @@ stim_length = {
 
 # lookup table for staging types
 staging = {
+    'parsed_stage': ['naive', 'low_dp learning', 'high_dp learning', 'low_dp reversal1', 'high_dp reversal1'],
+    'parsed_10stage': ['early naive', 'late naive', 'early low_dp learning', 'late low_dp learning',
+                       'early high_dp learning', 'late high_dp learning', 'early low_dp reversal1',
+                       'late low_dp reversal1', 'early high_dp reversal1' 'late high_dp reversal1'],
     'parsed_11stage': ['L0 naive', 'L1 learning', 'L2 learning', 'L3 learning', 'L4 learning', 'L5 learning',
                        'L1 reversal1', 'L2 reversal1', 'L3 reversal1', 'L4 reversal1', 'L5 reversal1'],
 }

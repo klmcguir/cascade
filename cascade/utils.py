@@ -8,7 +8,51 @@ from . import lookups, bias, tca
 from copy import deepcopy
 
 
-def tensor_mean_per_day(meta, tensor, initial_cue=True, cue='plus', nan_licking=False):
+def simple_mean_per_day(meta, tensor):
+    """
+    Helper function to take the mean across days for a tensor.
+
+    :param meta: pandas.DataFrame, trial metadata
+    :param tensor: numpy.ndarray, a cells x times X trials
+    :return: new_tensor: numpy.ndarray, a cells x times X days
+    """
+
+    # get average response per day
+    days = meta.reset_index()['date'].unique()
+    new_tensor = np.zeros((tensor.shape[0], tensor.shape[1], len(days)))
+    new_tensor[:] = np.nan
+    for c, di in enumerate(meta.reset_index()['date'].unique()):
+        day_boo = meta.reset_index()['date'].isin([di]).values
+        new_tensor[:, :, c] = np.nanmean(tensor[:, :, day_boo], axis=2)
+
+    return new_tensor
+
+
+def simple_mean_per_stage(meta, tensor, staging='parsed_11stage'):
+    """
+    Helper function to take the mean across a stage for a tensor.
+
+    :param meta: pandas.DataFrame, trial metadata
+    :param tensor: numpy.ndarray, a cells x times X trials
+    :return: new_tensor: numpy.ndarray, a cells x times X stages
+    """
+
+    # staging must exist in your df
+    meta = add_stages_to_meta(meta, staging)
+    assert staging in meta.columns
+
+    # get average response per stage
+    stages = lookups.staging[staging]
+    new_tensor = np.zeros((tensor.shape[0], tensor.shape[1], len(stages)))
+    new_tensor[:] = np.nan
+    for c, di in enumerate(stages):
+        stage_boo = meta[staging].isin([di]).values
+        new_tensor[:, :, c] = np.nanmean(tensor[:, :, stage_boo], axis=2)
+
+    return new_tensor
+
+
+def tensor_mean_per_day(meta, tensor, initial_cue=True, cue='plus', ignore_cue=False, nan_licking=False):
     """
     Helper function to calculate mean per day for axis of same length as meta for a single cue.
     """
@@ -29,7 +73,12 @@ def tensor_mean_per_day(meta, tensor, initial_cue=True, cue='plus', nan_licking=
         cue_vec = meta['initial_condition']
     else:
         cue_vec = meta['condition']
-    cue_bool = cue_vec.isin(cue)
+
+    # optionally ignore cue, this is useful if you are passing a preferred tuning tensor
+    if not ignore_cue:
+        cue_bool = cue_vec.isin(cue)
+    else:
+        cue_bool = cue_vec.notna()
 
     # optionally nan all times after licking (median cs plus lick latency for non-lick trials)
     if nan_licking:
@@ -84,9 +133,11 @@ def tensor_mean_per_trial(meta, tensor, nan_licking=False, account_for_offset=Fa
 
     # get average response per trial
     if account_for_offset:
-        new_mat = np.zeros((ablated_tensor.shape[0], ablated_tensor.shape[1]))
-        new_mat[offset_bool, :] = np.nanmean(ablated_tensor[offset_bool, response_bool, :], axis=1)
-        new_mat[~offset_bool, :] = np.nanmean(ablated_tensor[~offset_bool, stim_bool, :], axis=1)
+        new_mat = np.zeros((ablated_tensor.shape[0], ablated_tensor.shape[2]))
+        if np.sum(offset_bool) > 0:
+            new_mat[offset_bool, :] = np.nanmean(ablated_tensor[offset_bool, :, :][:, response_bool, :], axis=1)
+        if np.sum(~offset_bool) > 0:
+            new_mat[~offset_bool, :] = np.nanmean(ablated_tensor[~offset_bool, :, :][:, stim_bool, :], axis=1)
     else:
         new_mat = np.nanmean(ablated_tensor[:, stim_bool, :], axis=1)
 
@@ -127,7 +178,7 @@ def tensor_mean_per_stage(meta, tensor, initial_cue=True, cue='plus', nan_lickin
     else:
         ablated_tensor = tensor
 
-    # get average response per day to a single cue
+    # get average response per stage to a single cue
     stages = lookups.staging[staging]
     new_tensor = np.zeros((tensor.shape[0], tensor.shape[1], len(stages)))
     new_tensor[:] = np.nan
@@ -257,7 +308,14 @@ def get_offset_cells(meta, tensor):
     stim_offset_buffer_end = int(np.floor(15.5 * (1 + lookups.stim_length[mouse] + 0.300)))
     trace_mean[:, stim_offset_buffer_start:stim_offset_buffer_end] = np.nan  # buffer around offset to avoid GECI tail
     trace_mean[:, :18] = np.nan  # buffer baseline with a few extra frames, ~200 ms
-    offset_bool = np.nanargmax(trace_mean, axis=1) > 15.5 * (1 + lookups.stim_length[mouse])
+
+    # account for nans
+    offset_bool = np.zeros(trace_mean.shape[0])
+    offset_bool[:] = np.nan
+    nan_boo = ~np.isnan(trace_mean[:, 18])
+    offset_bool[nan_boo] = np.nanargmax(trace_mean[nan_boo, :], axis=1)
+    offset_bool = offset_bool > 15.5 * (1 + lookups.stim_length[mouse])
+    # WARNING using inverse will mean nans are counted as stimulus cells
 
     return offset_bool
 
@@ -1535,3 +1593,22 @@ def does_cell_participate_in_offset_component(model, rank, mouse, threshold=1):
     participates_in_offset_component = np.sum(~np.isnan(weights[:, offset]), axis=1) > 0
 
     return participates_in_offset_component
+
+
+def unwrap_tensor(tensor):
+    """
+    Unwrap a tensor so that it is organized [cells x (trials/days/stages x times)]. Concatenates together trials/stages/
+    days.
+
+    :param tensor: numpy.ndarray
+        Matrix organized like this: tensor[cells, time points, trials].
+    :return: unwrapped_tensor: numpy.ndarray
+        Matrix organized like this: tensor[cells, (time points x trials)].
+    """
+
+    epoch_list = []
+    for epoch in range(tensor.shape[2]):
+        epoch_list.append(tensor[:, :, epoch])
+    unwrapped_tensor = np.concatenate(epoch_list, axis=1)
+
+    return unwrapped_tensor

@@ -20,6 +20,7 @@ def cell_tuning(meta, tensor, model, rank, by_stage=False, by_reversal=False, na
     If you want it mean "projected" for a component just group the return by 'best component'
 
     :param meta: pandas.DataFrame, trial metadata
+    :param tensor: numpy.ndarray, a cells x times X trials
     :param model: tensortools.ensemble, TCA results
     :param rank: int, rank of TCA model to use for components
     :param by_stage: boolean, choose to use stages or simply calculate tuning over all time
@@ -669,3 +670,104 @@ def mean_day_response_preferred_tuning(meta, tensor, tuning_df, staging='parsed_
         cosine_matrix.append(np.vstack(stage_cos_vec))
 
     return mouse_stage_responses, flattened_pref_tuning_mat, tuning_matrix, cosine_matrix
+
+
+def preferred_tensor(meta, tensor, model, tune_staging='staging_LR', best_tuning_only=False, drop_broad_tuning=False,
+                     staging='parsed_11stage', tuning_type='initial'):
+    """
+    Create a tensor where you have NaNed all trials that are not of a cells preferred type. Preference can be calcualted
+    either once pre and post reversal or for each behavioral stage of learning.
+
+    :param meta: pandas.DataFrame, DataFrame of trial metadata
+    :param tensor: numpy.ndarray, a cells x times X trials
+    :param model: tensortools.ensemble, TCA results
+    :param tune_staging: str --> 'parsed_11stage' or 'staging_LR'
+        Determine how to pick preferred tuning, as only the preferred responses of cells are returned. By default this
+        will be evaluate for each stage, but you can also pass a tuning_df that had other tuning calculations.
+        For example, 'staging_LR' in tuning_df calculates preferred tuning only for pre and post reversal (not by
+        dprime bin).
+    :param best_tuning_only: boolean
+        Tuning using cosine distances allows for cells to be broadly and joint tuned. best_tuning_only will use the
+        "preferred" tuning of a joint tuned neuron (i.e., minus-plus --> minus). Otherwise both trial types of a joint
+        tuned neuron are kept.
+    :param drop_broad_tuning: boolean
+        Optionally NaN any cells that are broadly tuned.
+    :param staging: str, way to bin stages of learning
+    :param tuning_type: str, way to define stimulus type. 'initial', 'orientation', or defaults to 'condition'
+
+    # TODO right now it is necessary to pass model, but this is only to match cells to their preferred TCA components
+    #  TODO rank is hard coded to 15, this is arbitrary and can be removed after model passing is optional
+
+    :return: pref_tensor, numpy.ndarray
+        A tensor the exact size of the tensor input, now containing nans for un-preferred stimulus presentations.
+    """
+
+    # parse params
+    if 'staging_LR' in tune_staging:
+        by_reversal = True
+        by_stage = False
+    elif staging in tune_staging:
+        raise NotImplementedError
+        # by_reversal = False
+        # by_stage = True
+    else:
+        raise NotImplementedError
+
+    # get tuning df, accounting for offsets (i.e., offset cell's tuning is calculated on offset response itself)
+    tuning_df = cell_tuning(meta, tensor, model, 15,
+                            by_stage=by_stage, by_reversal=by_reversal, nan_lick=False,
+                            staging=staging, tuning_type=tuning_type, force_stim_avg=False)
+
+    # get initial conditions
+    if 'initial' in tuning_type:
+        cond_type = 'initial_condition'
+    elif 'ori' in tuning_type:
+        raise NotImplementedError
+        # cond_type = 'orientation'
+    elif tuning_type.lower() == 'cond' or tuning_type.lower() == 'condition':
+        cond_type = 'condition'
+    else:
+        raise NotImplementedError
+
+    # get reversal boolean
+    rev_bool = meta[staging].apply(lambda x: 'reversal' in x)
+
+    # loop over cells
+    pref_tensor = deepcopy(tensor)
+    for ind, row in tuning_df.iterrows():
+
+        # get cell ind subtracting one to zero-index
+        cell_index = ind[1] - 1
+
+        # get stage for cell
+        if row.staging_LR == 'learning':
+            curr_stage = ~rev_bool.values
+        else:
+            curr_stage = rev_bool.values
+
+        # cell pref tuning
+        cell_pref = row['preferred tuning']
+
+        # define trials to blank
+        if cell_pref == 'broad':
+            if drop_broad_tuning:
+                cues_to_drop = meta[cond_type].isin(['plus', 'minus', 'neutral']).values
+            else:
+                cues_to_drop = ~meta[cond_type].isin(['plus', 'minus', 'neutral']).values
+        elif cell_pref.lower() == 'none':
+            cues_to_drop = meta[cond_type].isin(['plus', 'minus', 'neutral']).values
+        elif '-' in cell_pref:  # meaning the cell is joint tuned
+            hyphind = cell_pref.find('-')
+            if best_tuning_only:
+                cues_to_drop = ~meta[cond_type].isin([cell_pref[:hyphind]]).values
+            else:
+                cues_to_drop = ~meta[cond_type].isin([cell_pref[:hyphind], cell_pref[hyphind + 1:]]).values
+        else:
+            assert cell_pref in ['plus', 'minus', 'neutral']
+            cues_to_drop = ~meta[cond_type].isin([cell_pref]).values
+        trials_to_nan = curr_stage & cues_to_drop
+
+        # clear non-preferred trials
+        pref_tensor[cell_index, :, trials_to_nan] = np.nan
+
+    return pref_tensor
