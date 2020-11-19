@@ -8,7 +8,8 @@ from . import lookups, bias, tca
 from copy import deepcopy
 
 
-def simple_mean_per_day(meta, tensor):
+def simple_mean_per_day(meta, tensor, meta_bool=None,
+                        filter_running='low_speed_only', filter_licking=None, filter_hmm_engaged=True):
     """
     Helper function to take the mean across days for a tensor.
 
@@ -17,18 +18,27 @@ def simple_mean_per_day(meta, tensor):
     :return: new_tensor: numpy.ndarray, a cells x times X days
     """
 
+    # optionally filter
+    if meta_bool is None:
+        meta_bool = np.ones(len(meta)) > 0
+    meta_bool = filter_meta_bool(meta, meta_bool,
+                           filter_running=filter_running,
+                           filter_licking=filter_licking,
+                           filter_hmm_engaged=filter_hmm_engaged)
+
     # get average response per day
     days = meta.reset_index()['date'].unique()
     new_tensor = np.zeros((tensor.shape[0], tensor.shape[1], len(days)))
     new_tensor[:] = np.nan
     for c, di in enumerate(meta.reset_index()['date'].unique()):
         day_boo = meta.reset_index()['date'].isin([di]).values
-        new_tensor[:, :, c] = np.nanmean(tensor[:, :, day_boo], axis=2)
+        new_tensor[:, :, c] = np.nanmean(tensor[:, :, (day_boo & meta_bool)], axis=2)
 
     return new_tensor
 
 
-def simple_mean_per_stage(meta, tensor, staging='parsed_11stage'):
+def simple_mean_per_stage(meta, tensor, staging='parsed_11stage',
+                          filter_running='low_speed_only', filter_licking=None, filter_hmm_engaged=True):
     """
     Helper function to take the mean across a stage for a tensor.
 
@@ -40,6 +50,14 @@ def simple_mean_per_stage(meta, tensor, staging='parsed_11stage'):
     # staging must exist in your df
     meta = add_stages_to_meta(meta, staging)
     assert staging in meta.columns
+
+    # optionally filter
+    if meta_bool is None:
+        meta_bool = np.ones(len(meta)) > 0
+    meta_bool = filter_meta_bool(meta, meta_bool,
+                           filter_running=filter_running,
+                           filter_licking=filter_licking,
+                           filter_hmm_engaged=filter_hmm_engaged)
 
     # get average response per stage
     stages = lookups.staging[staging]
@@ -114,7 +132,7 @@ def tensor_mean_per_trial(meta, tensor, nan_licking=False, account_for_offset=Fa
     assert tensor.shape[1] == 108
     times = np.arange(-1, 6, 1 / 15.5)[:108]
     stim_bool = (times > 0) & (times < lookups.stim_length[mouse])
-    response_bool = (times > lookups.stim_length[mouse] + 0.3) & (times < lookups.stim_length[mouse] + 2)  # 300ms delay
+    response_bool = (times > lookups.stim_length[mouse] + 0.0) & (times < lookups.stim_length[mouse] + 2)  # 0ms delay
 
     # make sure that the date vec allows for 0.5 days at reversal and learning
     meta = update_meta_date_vec(meta)
@@ -578,6 +596,52 @@ def add_prev_ori_cols_to_meta(meta):
         new_meta[f'prev_same_{ori}'][prev_same_boo & curr_ori_bool] = 1
         new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
         meta = pd.concat([meta, new_meta_df], axis=1)
+
+    return meta
+
+
+def add_reversal_mismatch_condition_to_meta(meta):
+    """
+    Helper function to add in useful columns to metadata. Renames orientations based on
+    the type of mismatch that occurs at reversal.
+
+    Possible types: 'becomes_rewarded', 'becomes_unrewarded', 'remains_unrewarded'.
+    """
+
+    # meta can only be a data frame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+
+    # must have a reversal to add a mismatch column
+    if not meta['learning_state'].isin(['reversal1']).any():
+        meta['mismatch_condition'] = ['none'] * len(meta)
+        return meta
+
+    # create column for each ori if it was preceded by the same ori
+    new_mapping = {}
+    for ori in [0, 135, 270]:
+        curr_ori_bool = meta['orientation'].isin([ori]).values
+        list_of_conds = meta['condition'].loc[curr_ori_bool].unique()  # pandas unique is in order of appearance
+        list_of_conds = [s for s in list_of_conds if 'naive' != s]
+
+        # get new naming convention
+        if len(list_of_conds) == 2:
+            if list_of_conds[0] == 'plus':
+                new_mapping[ori] = 'becomes_unrewarded'
+            else:
+                if list_of_conds[1] == 'plus':
+                    new_mapping[ori] = 'becomes_rewarded'
+                else:
+                    new_mapping[ori] = 'remains_unrewarded'
+        elif len(list_of_conds) == 1:
+            # deal with sub-case where Arthur's mice keep same minus cue across reversal
+            assert list_of_conds[0] == 'minus'
+            new_mapping[ori] = 'remains_unrewarded'
+        else:
+            raise NotImplementedError
+
+    # add column to meta
+    new_mismatch_conditions = [new_mapping[s] for s in meta['orientation'].values]
+    meta['mismatch_condition'] = new_mismatch_conditions
 
     return meta
 
@@ -1612,3 +1676,137 @@ def unwrap_tensor(tensor):
     unwrapped_tensor = np.concatenate(epoch_list, axis=1)
 
     return unwrapped_tensor
+
+
+def filter_meta_bool(meta, meta_bool, filter_running=None, filter_licking=None, filter_hmm_engaged=True,
+                     high_speed_thresh_cms=10,
+                     low_speed_thresh_cms=4,
+                     high_lick_thresh_ls=1.7,
+                     low_lick_thresh_ls=1.7
+                     ):
+    """
+        Helper function to take a boolean representing some set of trials from metadata and filtering for additional
+    features.
+
+    :param meta: pandas.DataFrame, trial metadata
+    :param meta_bool: boolean, some set of trials for selection as a boolean
+
+    :param filter_running: str
+    :param filter_licking:
+    :param filter_hmm_engaged:
+    :param high_speed_thresh_cms:
+    :param low_speed_thresh_cms:
+    :param high_lick_thresh_ls:
+    :param low_lick_thresh_ls:
+    :return:
+    """
+
+    # copy boolean
+    meta_bool = deepcopy(meta_bool)
+
+    # filter to include fixed running type: low or high
+    if filter_running is not None:
+        speed_cm_s = meta.speed.values
+        if filter_running == 'low_speed_only':
+            meta_bool = meta_bool & (speed_cm_s <= low_speed_thresh_cms)
+        elif filter_running == 'high_speed_only':
+            meta_bool = meta_bool & (speed_cm_s > high_speed_thresh_cms)
+        else:
+            raise NotImplementedError
+
+    # filter to include fixed licking type: low or high
+    if filter_licking is not None:
+        # TODO this needs accounting for offset licking for offset cells
+        mean_lick_rate = meta.anticipatory_licks.values / lookups.stim_length[mouse]
+        if filter_licking == 'low_lick_only':
+            meta_bool = meta_bool & (mean_lick_rate <= low_lick_thresh_ls)
+        elif filter_licking == 'high_lick_only':
+            meta_bool = meta_bool & (mean_lick_rate > high_lick_thresh_ls)
+        else:
+            raise NotImplementedError
+
+    # animal must be engaged in the task (or naive when it can't "engage")
+    if filter_hmm_engaged:
+        meta_bool = meta_bool & (meta.hmm_engaged.values | meta.learning_state.isin(['naive']).values)
+
+    return meta_bool
+
+
+def bin_running_calc(meta, trial_mean_tensor, set1, speed_type='speed'):
+    """
+    Take in one boolean vector that defines a set of trials. For example, this could be plus trials from a
+    single day, that you want to compare to minus trials on the same day. Alternatively, you could pass plus trials on
+    day one to be compared to plus trials on day two.
+
+    # TODO could also match running calcs
+
+    :param meta: pandas.DataFrame, DataFrame of trial metadata
+    :param trial_mean_tensor: numpy.ndarray, a cells x trials
+    :param set1: boolean ,of trials use for binning activity by running speed
+    :param speed_type: str, 'speed', 'pre_speed', 'post_speed'
+    :return:
+    """
+
+    # 3 cm/s bins evenly spaced from 0 to 1 m/s
+    speed_bins = np.arange(0, 100, 3)
+
+    # get running speed for trials of interest
+    set1_speed = meta.loc[set1, speed_type]
+    set1_bins = np.digitize(set1_speed, np.arange(0, 100, 3), right=True)
+
+    # get tensor for trials of interest
+    set1_tensor = trial_mean_tensor[:, set1]
+
+    # Get mean cell responses per bin
+    binned_set1 = np.zeros((trial_mean_tensor.shape[0], len(speed_bins)-1))
+    binned_set1[:] = np.nan
+
+    for bc, left_bin_edge in enumerate(speed_bins[:-1]):
+
+        # get trials for a running bin
+        bin_trials1 = set1_bins == bc
+
+        # take mean of trials for running bin per cell
+        binned_set1[:, bc] = np.nanmean(set1_tensor[:, bin_trials1], axis=1)
+
+    return binned_set1
+
+
+def bin_running_traces_calc(meta, full_tensor, set1, speed_type='speed'):
+    """
+    Take the mean of a set of trials broken into 3 cm/s bins across running speed.
+
+    Could choose to only use same number of trials in each bin for best matched speeds?
+
+    # TODO could also match running calcs
+
+    :param meta: pandas.DataFrame, DataFrame of trial metadata
+    :param full_tensor: numpy.ndarray, a cells x times x trials
+    :param set1: boolean ,of trials use for binning activity by running speed
+    :param speed_type: str, 'speed', 'pre_speed', 'post_speed'
+    :return:
+    """
+
+    # 3 cm/s bins evenly spaced from 0 to 1 m/s
+    speed_bins = np.arange(0, 100, 3)
+
+    # get running speed for trials of interest
+    set1_speed = meta.loc[set1, speed_type]
+    set1_bins = np.digitize(set1_speed, np.arange(0, 100, 3), right=True)
+
+    # get tensor for trials of interest
+    set1_tensor = full_tensor[:, :, set1]
+
+    # Get mean cell responses per bin
+    binned_set1 = np.zeros((full_tensor.shape[0], full_tensor.shape[1], len(speed_bins)-1))
+    binned_set1[:] = np.nan
+
+    for bc, left_bin_edge in enumerate(speed_bins[:-1]):
+
+        # get trials for a running bin
+        bin_trials1 = set1_bins == bc
+
+        # take mean of trials for running bin per cell
+        binned_set1[:, :, bc] = np.nanmean(set1_tensor[:, :, bin_trials1], axis=2)
+
+    return binned_set1

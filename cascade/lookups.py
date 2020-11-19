@@ -41,6 +41,13 @@ color_dict = {
     '0-270': '#8EC7E0'
     }
 
+# get ordering used for categorical variables in plots
+ax_order = {
+               'cues': ['broad', 'plus-minus', 'plus', 'plus-neutral', 'neutral-plus',
+                       'neutral', 'neutral-minus', 'minus-neutral', 'minus', 'minus-plus'],
+               'oris': ['0', '0-135', '135-0', '135', '135-270', '270-135', '270', '270-0', '0-270'],
+            }
+
 # lookup table of conditions during initial learning matched to orientations
 lookup = {'OA27': {'plus': 270, 'minus': 135, 'neutral': 0, 'blank': -1},
      'VF226': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
@@ -63,7 +70,7 @@ lookup_ori = {'OA27': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank'},
      'VF226': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
      'OA67': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
      'OA32': {135: 'plus', 0: 'minus', 270: 'neutral', -1: 'blank'},
-     'OA34': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank'},
+     'OA34': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank', 67.5: 'disengaged_ambiguous'},
      'OA36': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
      'OA26': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank'},
      'CC175': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},

@@ -11,7 +11,7 @@ from copy import deepcopy
 import scipy as sp
 
 
-def cell_tuning(meta, tensor, model, rank, by_stage=False, by_reversal=False, nan_lick=False,
+def cell_tuning(meta, tensor, model=None, rank=15, by_stage=False, by_reversal=False, nan_lick=False, nan_running=False,
                 staging='parsed_11stage', tuning_type='initial', force_stim_avg=False):
     """
     Function for calculating tuning for different stages of learning for the components
@@ -26,6 +26,7 @@ def cell_tuning(meta, tensor, model, rank, by_stage=False, by_reversal=False, na
     :param by_stage: boolean, choose to use stages or simply calculate tuning over all time
     :param by_reversal: boolean, instead of tuning over all time can also split and get two values pre and post reversal
     :param nan_lick: boolean, choose to nan periods of licking (and baseline)
+    :param nan_running: boolean, choose to nan periods of high speed running (and baseline)
     :param staging: str, binning used to define stages of learning
     :param tuning_type: str, way to define stimulus type. 'initial', 'orientation', or defaults to 'condition'
     :return: stage_tuning_df: pandas.DataFrame, columns are stages
@@ -46,11 +47,18 @@ def cell_tuning(meta, tensor, model, rank, by_stage=False, by_reversal=False, na
         ablated_tensor = tensor
 
     # select rank of model to use
-    best_components = utils.define_high_weight_cell_factors(model, rank, threshold=1)
-    num_components = utils.count_high_weight_cell_factors(model, rank, threshold=1)
-    any_offset_activity = utils.does_cell_participate_in_offset_component(model, rank, mouse, threshold=1)
-    offset = np.argmax(model.results[rank][0].factors[1][:, :], axis=0) > 15.5 * (1 + lookups.stim_length[mouse])
-    offset_cells = np.isin(best_components, np.where(offset)[0] + 1)  # + 1 to match component number
+    if model is None:
+        best_components = np.zeros(tensor.shape[0]) + np.nan
+        num_components = np.zeros(tensor.shape[0]) + np.nan
+        any_offset_activity = np.zeros(tensor.shape[0]) + np.nan
+        offset = np.zeros(tensor.shape[0]) + np.nan
+        offset_cells = utils.get_offset_cells(meta, tensor)
+    else:
+        best_components = utils.define_high_weight_cell_factors(model, rank, threshold=1)
+        num_components = utils.count_high_weight_cell_factors(model, rank, threshold=1)
+        any_offset_activity = utils.does_cell_participate_in_offset_component(model, rank, mouse, threshold=1)
+        offset = np.argmax(model.results[rank][0].factors[1][:, :], axis=0) > 15.5 * (1 + lookups.stim_length[mouse])
+        offset_cells = np.isin(best_components, np.where(offset)[0] + 1)  # + 1 to match component number
 
     df_list = []
     for cell_n in range(tensor.shape[0]):
@@ -407,7 +415,7 @@ def mean_response_from_meta_and_vec(meta, trial_avg_vec, tuning_type='initial', 
 
 def mean_stage_response_preferred_tuning(meta, tensor, tuning_df, staging='parsed_11stage',
                                          tune_staging='parsed_11stage', tuning_type='initial',
-                                         filter=False, filter_on=None):
+                                         filter=False, filter_on=None, return_sem=False):
     """
 
     :param meta: pandas.DataFrame, DataFrame of trial metadata
@@ -452,6 +460,8 @@ def mean_stage_response_preferred_tuning(meta, tensor, tuning_df, staging='parse
     # preallocate 4D matrix (cells, times, stages, cues)
     mouse_stage_responses = np.zeros((tensor.shape[0], tensor.shape[1], len(xorder), 4))
     mouse_stage_responses[:] = np.nan
+    mouse_stage_sem = np.zeros((tensor.shape[0], tensor.shape[1], len(xorder), 4))
+    mouse_stage_sem[:] = np.nan
 
     # get mean of pmn trials for each stage
     for cs, s in enumerate(xorder):
@@ -459,7 +469,9 @@ def mean_stage_response_preferred_tuning(meta, tensor, tuning_df, staging='parse
             meta_bool = meta.parsed_11stage.isin([s]) & meta[cond_type].isin([icue])
             cue_stage_tensor = tensor[:, :, meta_bool]
             cue_stage_mean = np.nanmean(cue_stage_tensor, axis=2)
+            cue_stage_sem = np.nanstd(cue_stage_tensor, axis=2) / np.sqrt(np.sum(~np.isnan(cue_stage_tensor), axis=2))
             mouse_stage_responses[:, :, cs, cc] = cue_stage_mean
+            mouse_stage_sem[:, :, cs, cc] = cue_stage_sem
 
     # add in a 4th z slice of preferred tuning responses
     tune_up = tuning_df.reset_index()
@@ -487,6 +499,9 @@ def mean_stage_response_preferred_tuning(meta, tensor, tuning_df, staging='parse
                     tuning_levels = np.where([s in preferred_tuning for s in ['plus', 'minus', 'neutral']])[0]
                     tuned_response = np.nanmean(mouse_stage_responses[cell_n, :, cs, tuning_levels], axis=0)
                     mouse_stage_responses[cell_n, :, cs, 3] = tuned_response
+                    if len(tuning_levels) == 1:
+                        # choose preferred sem for cells that have a singular preferred tuning
+                        mouse_stage_sem[cell_n, :, cs, 3] = mouse_stage_sem[cell_n, :, cs, tuning_levels]
 
     # flatten your preferred stages
     stage_list = []
@@ -531,6 +546,10 @@ def mean_stage_response_preferred_tuning(meta, tensor, tuning_df, staging='parse
 
         tuning_matrix.append(stage_tune_vec)
         cosine_matrix.append(np.vstack(stage_cos_vec))
+
+    # if you want sem too
+    if return_sem:
+        return mouse_stage_responses, mouse_stage_sem, flattened_pref_tuning_mat, tuning_matrix, cosine_matrix
 
     return mouse_stage_responses, flattened_pref_tuning_mat, tuning_matrix, cosine_matrix
 

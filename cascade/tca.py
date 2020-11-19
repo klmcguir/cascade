@@ -1196,6 +1196,10 @@ def groupday_tca(
             exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                         'retinotopy', 'sated', 'reversal2_start', 'reversal2')
 
+    elif group_by.lower() == 'all_inc':
+        tags = None
+        use_dprime = False
+        exclude_tags = ( 'orientation_mapping', 'contrast', 'retinotopy', 'reversal2_start', 'reversal2')
 
     else:
         print('Using input parameters without modification by group_by=...')
@@ -1613,8 +1617,28 @@ def _get_speed_pupil_npil_traces(
         start_time=start_time,
         end_time=end_time,
         downsample=downsample,
-        baseline=(-1,0),
+        baseline=(-1, 0),
         cutoff_before_lick_ms=-1)
+
+    dlick_traces = utils.getcsbehavior(
+        run,
+        cs=cs,
+        trace_type='lick_rate',
+        start_time=start_time,
+        end_time=end_time,
+        downsample=downsample,
+        baseline=(-1, 0),
+        cutoff_before_lick_ms=-1)
+
+    lick_traces = utils.getcsbehavior(
+        run,
+        cs=cs,
+        trace_type='lick_rate',
+        start_time=start_time,
+        end_time=end_time,
+        downsample=downsample,
+        baseline=None,
+        cutoff_before_lick_ms=cutoff_before_lick_ms)
 
     speed_traces = utils.getcsbehavior(
         run,
@@ -1633,7 +1657,7 @@ def _get_speed_pupil_npil_traces(
         start_time=start_time,
         end_time=end_time,
         downsample=downsample,
-        baseline=(-1,0),
+        baseline=(-1, 0),
         cutoff_before_lick_ms=-1)
 
     neuropil_traces = utils.getcsbehavior(
@@ -1653,11 +1677,12 @@ def _get_speed_pupil_npil_traces(
         start_time=start_time,
         end_time=end_time,
         downsample=downsample,
-        baseline=(-1,0),
+        baseline=(-1, 0),
         cutoff_before_lick_ms=-1)
 
     all_behaviors_list = (
         pupil_traces, dpupil_traces,
+        lick_traces, dlick_traces,
         speed_traces, dspeed_traces,
         neuropil_traces, dneuropil_traces)
     bhv_traces = np.concatenate(all_behaviors_list, axis=0)
@@ -2320,6 +2345,7 @@ def _trialmetafromrun(run, trace_type='dff', start_time=-1, end_time=6,
             'hmm_engaged': HMM_engaged,
             'speed': speed,
             'pre_speed': pre_speed,
+            'post_speed': post_speed,
             'anticipatory_licks': antic_lick,
             'pre_licks': pre_lick,
             'post_licks': post_lick,

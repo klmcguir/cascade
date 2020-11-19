@@ -26,7 +26,7 @@ def groupday_tensor(
         tensor_init='rand',
 
         # grouping params
-        group_by='all2',
+        group_by='all3',
         up_or_down='up',
         use_dprime=False,
         dprime_threshold=2,
@@ -185,7 +185,7 @@ def groupday_tensor(
                         'retinotopy', 'sated', 'learning_start',
                         'reversal1_start')
 
-    elif group_by.lower() == 'all':
+    elif group_by.lower() == 'all3':
         tags = None
         use_dprime = False
         if mouse == 'OA27':
@@ -196,7 +196,7 @@ def groupday_tensor(
             exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
                             'retinotopy', 'sated')
 
-    elif group_by.lower() == 'all2':
+    elif group_by.lower() == 'all3':
         tags = None
         use_dprime = False
         if mouse == 'OA27':
@@ -508,7 +508,7 @@ def load_all_groupday(
         warp=False,
         word='prints',
         rank=15,
-        group_by='all2',
+        group_by='all3',
         nan_thresh=0.85,
         score_threshold=0.8,
         full_output=False,
@@ -748,7 +748,7 @@ def groupday_tca_ids(
         cs='',
         warp=False,
         word='tray',
-        group_by='all',
+        group_by='all3',
         nan_thresh=0.85,
         score_threshold=None):
     """
@@ -798,7 +798,7 @@ def groupday_tca_model(
         warp=False,
         rank=18,
         word='tray',
-        group_by='all',
+        group_by='all3',
         nan_thresh=0.85,
         score_threshold=None,
         train_test_split=0.8,
@@ -894,7 +894,7 @@ def groupday_tca_meta(
         cs='',
         warp=False,
         word='tray',
-        group_by='all',
+        group_by='all3',
         nan_thresh=0.85,
         score_threshold=None):
     """
@@ -997,7 +997,7 @@ def groupday_tca_bhv(
         cs='',
         warp=False,
         word='determined',
-        group_by='all',
+        group_by='all3',
         nan_thresh=0.85,
         score_threshold=0.8):
     """
