@@ -37,7 +37,7 @@ def simple_mean_per_day(meta, tensor, meta_bool=None,
     return new_tensor
 
 
-def simple_mean_per_stage(meta, tensor, staging='parsed_11stage',
+def simple_mean_per_stage(meta, tensor, staging='parsed_11stage', meta_bool=None,
                           filter_running='low_speed_only', filter_licking=None, filter_hmm_engaged=True):
     """
     Helper function to take the mean across a stage for a tensor.

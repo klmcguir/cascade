@@ -691,8 +691,8 @@ def mean_day_response_preferred_tuning(meta, tensor, tuning_df, staging='parsed_
     return mouse_stage_responses, flattened_pref_tuning_mat, tuning_matrix, cosine_matrix
 
 
-def preferred_tensor(meta, tensor, model, tune_staging='staging_LR', best_tuning_only=False, drop_broad_tuning=False,
-                     staging='parsed_11stage', tuning_type='initial'):
+def preferred_tensor(meta, tensor, model, tune_staging='staging_LR', best_tuning_only=True, drop_broad_tuning=False,
+                     staging='parsed_11stage', tuning_type='initial', return_tuning=False):
     """
     Create a tensor where you have NaNed all trials that are not of a cells preferred type. Preference can be calcualted
     either once pre and post reversal or for each behavioral stage of learning.
@@ -753,6 +753,8 @@ def preferred_tensor(meta, tensor, model, tune_staging='staging_LR', best_tuning
 
     # loop over cells
     pref_tensor = deepcopy(tensor)
+    pref_vec_L = ['none'] * tensor.shape[0]
+    pref_vec_R = ['none'] * tensor.shape[0]
     for ind, row in tuning_df.iterrows():
 
         # get cell ind subtracting one to zero-index
@@ -766,6 +768,12 @@ def preferred_tensor(meta, tensor, model, tune_staging='staging_LR', best_tuning
 
         # cell pref tuning
         cell_pref = row['preferred tuning']
+
+        # get a vector that is cells long for pre and post learning with that cell's preferred tuning
+        if row.staging_LR == 'learning':
+            pref_vec_L[int(cell_index)] = cell_pref
+        else:
+            pref_vec_R[int(cell_index)] = cell_pref
 
         # define trials to blank
         if cell_pref == 'broad':
@@ -788,5 +796,16 @@ def preferred_tensor(meta, tensor, model, tune_staging='staging_LR', best_tuning
 
         # clear non-preferred trials
         pref_tensor[cell_index, :, trials_to_nan] = np.nan
+
+    cell_tuning_df = pd.DataFrame(
+        {'mouse': [meta.reset_index().mouse.unique()[0]] * tensor.shape[0],
+         'cell_n': np.arange(tensor.shape[0]) + 1,
+         'learning_tuning': pref_vec_L,
+         'reversal1_tuning': pref_vec_R
+         }
+    )
+
+    if return_tuning:
+        return pref_tensor, cell_tuning_df
 
     return pref_tensor

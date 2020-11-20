@@ -426,7 +426,8 @@ def run_controlled_naive_mismatch(meta, pref_tensor, filter_licking=None, filter
 
 def calculate_reversal_mismatch(meta, pref_tensor, filter_running=None, filter_licking=None,
                                 filter_hmm_engaged=False, force_same_day_reversal=False,
-                                use_stages_for_reversal=False):
+                                use_stages_for_reversal=False, skew_stages_for_reversal=False,
+                                account_for_offset=True):
     """
     Calculate a mismatch score (difference in zscore) for cells that we have across reversal.
 
@@ -443,7 +444,8 @@ def calculate_reversal_mismatch(meta, pref_tensor, filter_running=None, filter_l
     # get mouse from metadata
     mouse = meta.reset_index()['mouse'].unique()[0]
 
-    mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
+    mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False,
+                                                account_for_offset=account_for_offset)
 
     # get day of reversal
     if force_same_day_reversal:
@@ -452,13 +454,34 @@ def calculate_reversal_mismatch(meta, pref_tensor, filter_running=None, filter_l
             out = np.zeros(pref_tensor.shape[0])
             out[:] = np.nan
             print(f'Mouse {mouse} did not have single-day reversal.')
-            return out
+            # return out
+            return pd.DataFrame({'mouse': [mouse] * len(out),
+                             'cell_n': np.arange(len(out)) + 1,
+                             'rMM_response': out,
+                             }
+                            )
         rev_date = meta.reset_index().loc[post_rev, 'date'].unique()[0] - 0.5
         pre_rev = meta.reset_index()['date'].isin([rev_date]).values
     elif use_stages_for_reversal:
         assert 'parsed_11stage' in meta.columns
         pre_rev = meta.parsed_11stage.isin(['L5 learning']).values
         post_rev = meta.parsed_11stage.isin(['L1 reversal1']).values
+    elif skew_stages_for_reversal:
+        pre_rev = meta.parsed_11stage.isin(['L5 learning']).values
+        rev_vec = meta.reset_index()['learning_state'].isin(['reversal1']).values
+        if all(~rev_vec):
+            out = np.zeros(pref_tensor.shape[0])
+            out[:] = np.nan
+            print(f'Mouse {mouse} did not have any reversal.')
+            # return out
+            return pd.DataFrame({'mouse': [mouse] * len(out),
+                                 'cell_n': np.arange(len(out)) + 1,
+                                 'rMM_response': out,
+                                 }
+                                )
+        post_rev_date = meta.reset_index().loc[rev_vec, 'date'].iloc[0]
+        post_rev = meta.reset_index()['date'].isin([post_rev_date]).values
+        post_rev[np.where(post_rev)[0][100:]] = False
     else:
         learning_vec = meta.reset_index()['learning_state'].isin(['learning']).values
         rev_date = meta.reset_index().loc[learning_vec, 'date'].iloc[-1]
@@ -468,7 +491,12 @@ def calculate_reversal_mismatch(meta, pref_tensor, filter_running=None, filter_l
             out = np.zeros(pref_tensor.shape[0])
             out[:] = np.nan
             print(f'Mouse {mouse} did not have any reversal.')
-            return out
+            # return out
+            return pd.DataFrame({'mouse': [mouse] * len(out),
+                                 'cell_n': np.arange(len(out)) + 1,
+                                 'rMM_response': out,
+                                 }
+                                )
         post_rev_date = meta.reset_index().loc[rev_vec, 'date'].iloc[0]
         post_rev = meta.reset_index()['date'].isin([post_rev_date]).values
     rev_day = (pre_rev | post_rev)
@@ -476,10 +504,15 @@ def calculate_reversal_mismatch(meta, pref_tensor, filter_running=None, filter_l
     # filter to include fixed running type: low or high
     if filter_running is not None:
         speed_cm_s = meta.speed.values
+        pre_speed_cm_s = meta.pre_speed.values
         if filter_running == 'low_speed_only':
-            rev_day = rev_day & (speed_cm_s <= 4)
+            rev_day = rev_day & (speed_cm_s <= 3)
         elif filter_running == 'high_speed_only':
             rev_day = rev_day & (speed_cm_s > 10)
+        elif filter_running == 'low_pre_speed_only':
+            rev_day = rev_day & (pre_speed_cm_s <= 3)
+        elif filter_running == 'high_pre_speed_only':
+            rev_day = rev_day & (pre_speed_cm_s > 10)
         else:
             raise NotImplementedError
 
@@ -503,7 +536,12 @@ def calculate_reversal_mismatch(meta, pref_tensor, filter_running=None, filter_l
     post_rev_day_mean = np.nanmean(mean_t_tensor[:, rev_day & post_rev], axis=1)
     reversal_mismatch = post_rev_day_mean - pre_rev_day_mean
 
-    return reversal_mismatch
+    # return reversal_mismatch
+    return pd.DataFrame({'mouse': [mouse] * len(reversal_mismatch),
+                         'cell_n': np.arange(len(reversal_mismatch)) + 1,
+                         'rMM_response': reversal_mismatch,
+                         }
+                        )
 
 
 def reversal_mismatch_from_tensor(meta, tensor, model, tune_staging='staging_LR',
