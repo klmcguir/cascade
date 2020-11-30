@@ -1153,6 +1153,99 @@ def correlate_pre_running_per_trial(meta, pref_tensor, epoch='parsed_11stage', a
     return new_mat
 
 
+def correlate_baseline_activity(meta, tensor, epoch='parsed_11stage', corr_w='pre_speed', nan_licking=False):
+    """
+    Function to correlate the baseline activity (hint, probably for a non-baselined tensor) with a variable
+    from the metadata dataframe.
+
+    :param meta: pandas.DataFrame
+        metadata, indices are trials
+    :param tensor: numpy.ndarray
+        cells x times x trials tensor of triggered data
+    :param epoch: str
+        period of time to average over when calculating correlation
+    :param corr_w: str
+        meta dataframe column to use for correlation
+    :param nan_licking: boolean
+        optionally nan licking
+    :return: new_mat, numpy.ndarray
+        cell x epochs/stages/days matrix of Pearson correlation coefficients.
+    """
+
+    # get baseline firing for all trials per cell, cells x trials is returned
+    baseline_mat = utils.tensor_mean_baselines_per_trial(meta, tensor, nan_licking=nan_licking)
+
+    # variable for correlation msut exist in columns of meta dataframe
+    assert corr_w in meta.columns
+
+    if epoch == 'days':
+        days = meta.reset_index()['date'].unique()
+        new_mat = np.zeros((tensor.shape[0], len(days)))
+        new_mat[:] = np.nan
+        for c, di in enumerate(meta.reset_index()['date'].unique()):
+            day_boo = meta.reset_index()['date'].isin([di]).values
+            day_mat = baseline_mat[:, day_boo]
+            day_speed = meta.loc[day_boo, corr_w].values
+
+            # correlate each cell with running speed dropping nans (aka un-preferred cues)
+            for celli in range(day_mat.shape[0]):
+                cell_and_run = np.concatenate([day_mat[celli][:, None], day_speed[:, None]], axis=1)
+                cell_and_run = cell_and_run[~np.isnan(np.mean(cell_and_run, axis=1))]
+                if len(cell_and_run < 10): # arbitrary use of 10, just make sure that the cell is not empty, ~30-120 trials per cue per day
+                    continue
+                # correlate mean trial values and running speed
+                corr = np.corrcoef(cell_and_run)
+                assert corr.shape[0] == 2 and corr.shape[0] == 2
+                new_mat[celli, c] = corr[0, 0]
+
+    elif epoch in ['parsed_stage', 'parsed_10stage', 'parsed_11stage']:
+        # get average response per stage
+        stages = lookups.staging[epoch]
+        new_mat = np.zeros((tensor.shape[0], len(stages)))
+        new_mat[:] = np.nan
+
+        for c, di in enumerate(stages):
+            stage_boo = meta[epoch].isin([di]).values
+            stage_days = meta.loc[stage_boo, :].reset_index()['date'].unique()
+            corr_days = np.zeros((tensor.shape[0], len(stage_days)))
+            corr_days[:] = np.nan
+
+            for c2, di2 in enumerate(stage_days):
+                day_boo = meta.reset_index()['date'].isin([di2]).values
+                day_mat = baseline_mat[:, day_boo]
+                day_speed = meta.loc[day_boo, corr_w].values
+
+                # correlate each cell with running speed dropping nans (aka un-preferred cues)
+                for celli in range(day_mat.shape[0]):
+
+                    # stick cell dff values and running speed together
+                    cell_and_run = np.concatenate([day_mat[celli, :][:, None], day_speed[:, None]], axis=1)
+
+                    # drop nans for any trial missing cell value (aka un-preferred cue) or speed
+                    cell_and_run = cell_and_run[~np.isnan(np.mean(cell_and_run, axis=1))]
+
+                    # check there is still a cell or speed to correlate
+                    # arbitrary use of 10, just make sure that the cell is not empty, ~30-120 trials per cue per day
+                    if len(cell_and_run) < 10:
+                        continue
+
+                    # correlate mean trial values and running speed
+                    corr = np.corrcoef(cell_and_run.T)
+
+                    # double check that you had the inputs about .T-ed correctly
+                    assert corr.shape[0] == 2 and corr.shape[0] == 2
+
+                    # hold onto values for each day of a stage, grabbing off diag value
+                    corr_days[celli, c2] = corr[1, 0]
+
+            # take mean correlation across days for a stage
+            new_mat[:, c] = np.nanmean(corr_days, axis=1)
+    else:
+        raise NotImplementedError
+
+    return new_mat
+
+
 def correlate_wlicking_per_trial(meta, pref_tensor, epoch='parsed_11stage'):
 
     mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
@@ -1309,12 +1402,10 @@ def mean_stim_and_response(meta, pref_tensor, epoch='parsed_11stage', full_trial
         'day' or staging type to take averages overs
     :param full_trial_window: boolean
         Use the stimulus window + response window to calculate transientness.
-    :return: peak_time, half_peak_time, numpy.ndarrays
-        cells x stages/days/epochs matrices of peak latency RELATIVE TO STIMULUS ONSET OR OFFSET depending
-        on type of cell.
+    :return:
     """
 
-    # define windows for checking peak
+    # define windows
     mouse = meta.reset_index()['mouse'].unique()[0]
     if full_trial_window:
         response_window = np.arange(16, np.floor(15.5 * (3 + lookups.stim_length[mouse])), dtype='int')

@@ -162,6 +162,37 @@ def tensor_mean_per_trial(meta, tensor, nan_licking=False, account_for_offset=Fa
     return new_mat
 
 
+def tensor_mean_baselines_per_trial(meta, tensor, nan_licking=False):
+    """
+    Helper function to calculate mean baseline per trial meta for a single mouse.
+    Optionally buffer times around licking.
+    """
+
+    # meta can only be a DataFrame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+
+    # assume 15.5 Hz sampling or downsampling for 7 seconds per trial (n = 108 timepoints)
+    assert tensor.shape[1] == 108
+    times = np.arange(-1, 6, 1 / 15.5)[:108]
+    base_bool = (times < 0)
+
+    # make sure that the date vec allows for 0.5 days at reversal and learning
+    meta = update_meta_date_vec(meta)
+
+    # optionally nan all times after licking (median cs plus lick latency for non-lick trials)
+    if nan_licking:
+        mask = bias.get_lick_mask(meta, tensor)
+        ablated_tensor = deepcopy(tensor)
+        ablated_tensor[~mask] = np.nan
+    else:
+        ablated_tensor = tensor
+
+    # get average response per trial
+    new_mat = np.nanmean(ablated_tensor[:, base_bool, :], axis=1)
+
+    return new_mat
+
+
 def tensor_mean_per_stage(meta, tensor, initial_cue=True, cue='plus', nan_licking=False, staging='parsed_11stage'):
     """
     Helper function to calculate mean per stage for axis of same length as meta for a single cue.
@@ -772,7 +803,58 @@ def update_meta_date_vec(meta):
     return new_meta
 
 
-def add_stages_to_meta(meta, staging, dp_by_run=True, simple=False, bin_scale=0.75):
+def add_sub_stages_to_meta(meta, staging='parsed_11stage', bins_per_stage=10):
+    """
+    Add a column that breaks each stage into 10 bins.
+
+    :param meta: pandas.DataFrame, trial metadata
+    :param staging: str, type of binning to be used to define stages of learning
+    :param bins_per_stage: int, number of bins to break a stage into
+    :return: meta, now with two new columns
+    """
+    if staging not in meta.columns:
+        meta = add_stages_to_meta(meta, staging)
+
+    bin_vec = np.zeros(len(meta))
+    for stage in meta[staging].unique():
+        stage_boo = meta[staging].isin([stage])
+        stage_inds = np.where(stage_boo)[0]
+        bin_size = int(np.floor(len(stage_inds)/bins_per_stage))
+        # bins = np.arange(stage_inds[0], stage_inds[-1] + bin_size, bin_size)
+        for bi in range(bins_per_stage):
+
+            # account for floor rounding above for last bin
+            if bi == bins_per_stage - 1:
+                ind_chunk = stage_inds[bi * bin_size:] 
+            else:
+                ind_chunk = stage_inds[bi * bin_size:(bi+1) * bin_size]
+            bin_vec[ind_chunk] = bi
+
+    meta['stage_bins'] = bin_vec
+    return meta
+
+
+def add_numeric_stages_to_meta(meta, staging='parsed_11stage'):
+    """
+    Take you staging column and make it numeric easy quick visualizations etc.
+
+    :param meta: pandas.DataFrame, trial metadata
+    :param staging: str, type of binning to be used to define stages of learning
+    :return: meta, now with one new column
+    """
+    if staging not in meta.columns:
+        meta = add_stages_to_meta(meta, staging)
+
+    bin_vec = np.zeros(len(meta))
+    for c, stage in enumerate(lookups.staging[staging]):
+        stage_boo = meta[staging].isin([stage])
+        bin_vec[stage_boo] = c
+    meta['numeric_stage'] = bin_vec
+
+    return meta
+
+
+def add_stages_to_meta(meta, staging, dp_by_run=True, simple=False, bin_scale=0.75, force=False):
     """
     Helper function to allow single function to check and create other staging vectors.
 
@@ -786,16 +868,20 @@ def add_stages_to_meta(meta, staging, dp_by_run=True, simple=False, bin_scale=0.
             change dramatically within a day from affecting results if they are highly
             responsive at the beginning of the day but not at the end.
     :param bin_scale: float, for 11stage, width of dprime bins
+    :param force: boolean, force recalculation of staging column
     :return: meta, now with one new column
     """
     # make sure parsed stage exists so you can loop over this.
     # add learning stages to meta
-    if 'parsed_stage' not in meta.columns and 'parsed_stage' in staging:
-        meta = add_5stages_to_meta(meta, dp_by_run=dp_by_run)
-    if 'parsed_10stage' not in meta.columns and 'parsed_10stage' in staging:
-        meta = add_10stages_to_meta(meta, dp_by_run=dp_by_run, simple=simple)
-    if 'parsed_11stage' not in meta.columns and 'parsed_11stage' in staging:
-        meta = add_11stages_to_meta(meta, dp_by_run=dp_by_run, bin_scale=bin_scale)
+    if 'parsed_stage' in staging:
+        if 'parsed_stage' not in meta.columns or force:
+            meta = add_5stages_to_meta(meta, dp_by_run=dp_by_run)
+    if 'parsed_10stage' in staging:
+        if 'parsed_10stage' not in meta.columns or force:
+            meta = add_10stages_to_meta(meta, dp_by_run=dp_by_run, simple=simple)
+    if 'parsed_11stage' in staging:
+        if 'parsed_11stage' not in meta.columns or force:
+            meta = add_11stages_to_meta(meta, dp_by_run=dp_by_run, bin_scale=bin_scale)
 
     return meta
 
@@ -1703,25 +1789,38 @@ def filter_meta_bool(meta, meta_bool, filter_running=None, filter_licking=None, 
 
     # copy boolean
     meta_bool = deepcopy(meta_bool)
+    # TODO could make this start all true so it does not require a meta bool input at all
 
     # filter to include fixed running type: low or high
     if filter_running is not None:
         speed_cm_s = meta.speed.values
+        pre_speed_cm_s = meta.pre_speed.values
         if filter_running == 'low_speed_only':
             meta_bool = meta_bool & (speed_cm_s <= low_speed_thresh_cms)
         elif filter_running == 'high_speed_only':
             meta_bool = meta_bool & (speed_cm_s > high_speed_thresh_cms)
+        elif filter_running == 'low_pre_speed_only':
+            meta_bool = meta_bool & (pre_speed_cm_s <= low_speed_thresh_cms)
+        elif filter_running == 'high_pre_speed_only':
+            meta_bool = meta_bool & (pre_speed_cm_s > high_speed_thresh_cms)
         else:
             raise NotImplementedError
 
     # filter to include fixed licking type: low or high
     if filter_licking is not None:
+        mouse = meta.reset_index().mouse.unique()[0]
         # TODO this needs accounting for offset licking for offset cells
         mean_lick_rate = meta.anticipatory_licks.values / lookups.stim_length[mouse]
+        pre_lick_rate = meta.pre_licks.values / 1  # one second baseline period
+        post_lick_rate = meta.post_licks.values / 2  # two second response period
         if filter_licking == 'low_lick_only':
             meta_bool = meta_bool & (mean_lick_rate <= low_lick_thresh_ls)
         elif filter_licking == 'high_lick_only':
             meta_bool = meta_bool & (mean_lick_rate > high_lick_thresh_ls)
+        elif filter_licking == 'low_pre_lick_only':
+            meta_bool = meta_bool & (pre_lick_rate <= low_lick_thresh_ls)
+        elif filter_licking == 'high_pre_lick_only':
+            meta_bool = meta_bool & (pre_lick_rate > high_lick_thresh_ls)
         else:
             raise NotImplementedError
 
@@ -1810,3 +1909,16 @@ def bin_running_traces_calc(meta, full_tensor, set1, speed_type='speed'):
         binned_set1[:, :, bc] = np.nanmean(set1_tensor[:, :, bin_trials1], axis=2)
 
     return binned_set1
+
+
+def df_split(df, split_on='mouse'):
+    """
+    Helper function to return a list grouping on index or columns using pandas.DataFrame.groupby()
+    :param df: pandas.DataFrame
+        pandas.DataFrame, probably with an index level that includes mouse
+    :param split_on: str or list of str
+        column(s) or index level (or levels) you want to use the unique entries of as list indices
+    :return: a list of dataframe grouped by the split on category (or categories)
+    """
+
+    return [gr for _, gr in df.groupby(split_on)]

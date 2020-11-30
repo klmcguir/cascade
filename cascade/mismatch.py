@@ -264,7 +264,7 @@ def run_controlled_reversal_mismatch(meta, pref_tensor, filter_licking=None, fil
 
 
 def run_controlled_naive_mismatch(meta, pref_tensor, filter_licking=None, filter_running=None,
-                                  filter_hmm_engaged=False, boot=True):
+                                  filter_hmm_engaged=False, boot=True, account_for_offset=True):
     """
     Calculate a mismatch binning running and calculating between matched bins, then averaging across bins. Look at the
     period surround initial learning onset and reversal.
@@ -283,7 +283,7 @@ def run_controlled_naive_mismatch(meta, pref_tensor, filter_licking=None, filter
     mouse = meta.reset_index()['mouse'].unique()[0]
 
     # get mean response per cue
-    mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
+    mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=account_for_offset)
 
     # 1000 trials pre, 100 trials post reversal
     pre_rev = meta.parsed_11stage.isin(['L5 learning']).values

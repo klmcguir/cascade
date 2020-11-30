@@ -429,8 +429,6 @@ def mean_stage_response_preferred_tuning(meta, tensor, tuning_df, staging='parse
         dprime bin).
     :param tuning_type: str, way to define stimulus type. 'initial', 'orientation', or defaults to 'condition'
 
-    # TODO add filtering on running speed, hit miss FA, etc
-
     :return:
         mouse_stage_responses, numpy.ndarray
             4D matrix (cells, times, stages, cues). Last level of cue is the response for the preferred cue.
@@ -467,6 +465,9 @@ def mean_stage_response_preferred_tuning(meta, tensor, tuning_df, staging='parse
     for cs, s in enumerate(xorder):
         for cc, icue in enumerate(['plus', 'minus', 'neutral']):
             meta_bool = meta.parsed_11stage.isin([s]) & meta[cond_type].isin([icue])
+            if filter:
+                assert filter_on is not None  # you must have a dict of kwargs to use if you are going to filter
+                meta_bool = utils.filter_meta_bool(meta, meta_bool, **filter_on)
             cue_stage_tensor = tensor[:, :, meta_bool]
             cue_stage_mean = np.nanmean(cue_stage_tensor, axis=2)
             cue_stage_sem = np.nanstd(cue_stage_tensor, axis=2) / np.sqrt(np.sum(~np.isnan(cue_stage_tensor), axis=2))
@@ -571,8 +572,6 @@ def mean_day_response_preferred_tuning(meta, tensor, tuning_df, staging='parsed_
         dprime bin).
     :param tuning_type: str, way to define stimulus type. 'initial', 'orientation', or defaults to 'condition'
 
-    # TODO add filtering on running speed, hit miss FA, etc
-
     :return:
         mouse_stage_responses, numpy.ndarray
             4D matrix (cells, times, stages, cues). Last level of cue is the response for the preferred cue.
@@ -609,6 +608,9 @@ def mean_day_response_preferred_tuning(meta, tensor, tuning_df, staging='parsed_
         day_boo = meta.reset_index()['date'].isin([s]).values
         for cc, icue in enumerate(['plus', 'minus', 'neutral']):
             meta_bool = day_boo & meta[cond_type].isin([icue]).values
+            if filter:
+                assert filter_on is not None  # you must have a dict of kwargs to use if you are going to filter
+                meta_bool = utils.filter_meta_bool(meta, meta_bool, **filter_on)
             cue_stage_tensor = tensor[:, :, meta_bool]
             cue_stage_mean = np.nanmean(cue_stage_tensor, axis=2)
             mouse_stage_responses[:, :, cs, cc] = cue_stage_mean
@@ -687,6 +689,164 @@ def mean_day_response_preferred_tuning(meta, tensor, tuning_df, staging='parsed_
 
         tuning_matrix.append(stage_tune_vec)
         cosine_matrix.append(np.vstack(stage_cos_vec))
+
+    return mouse_stage_responses, flattened_pref_tuning_mat, tuning_matrix, cosine_matrix
+
+
+def mean_reversal_response_preferred_tuning(meta, tensor, tuning_df, staging='parsed_11stage',
+                                            tune_staging='staging_LR', tuning_type='initial',
+                                            filter=False, filter_on=None, return_sem=False,
+                                            bins_per_stage=10):
+    """
+
+    :param meta: pandas.DataFrame, DataFrame of trial metadata
+    :param tensor: numpy.ndarray, a cells x times X trials
+    :param tuning_df: pandas.DataFrame, tuning.cell_tuning() output df
+    :param staging: str, way to bin stages of learning
+    :param tune_staging: str --> 'parsed_11stage' or 'staging_LR'
+        Determine how to pick preferred tuning, as only the preferred responses of cells are returned. By default this
+        will be evaluate for each stage, but you can also pass a tuning_df that had other tuning calculations.
+        For example, 'staging_LR' in tuning_df calculates preferred tuning only for pre and post reversal (not by
+        dprime bin).
+    :param tuning_type: str, way to define stimulus type. 'initial', 'orientation', or defaults to 'condition'
+
+    # TODO add filtering on running speed, hit miss FA, etc
+
+    :return:
+        mouse_stage_responses, numpy.ndarray
+            4D matrix (cells, times, stages, cues). Last level of cue is the response for the preferred cue.
+        flattened_pref_tuning_mat, numpy.ndarray
+            2D matrix (cells, times-x-stages) for preferred cue tuning
+        tuning_matrix
+            2D matrix of preferred tuning values
+    """
+
+    # make sure that you tuning df has the necessary columns
+    assert tune_staging in tuning_df.columns
+
+    # get conditions
+    if 'initial' in tuning_type:
+        cond_type = 'initial_condition'
+    elif 'ori' in tuning_type:
+        raise NotImplementedError
+        # cond_type = 'orientation'
+    elif tuning_type.lower() == 'cond' or tuning_type.lower() == 'condition':
+        cond_type = 'condition'
+    else:
+        raise NotImplementedError
+
+    # get the stage order (order of the x axis)
+    # xorder = utils.lookups.staging[staging]
+    xorder = ['L4 learning', 'L5 learning', 'L1 reversal1', 'L2 reversal1']
+
+    # add sub stages to meta
+    meta = utils.add_sub_stages_to_meta(meta, bins_per_stage=bins_per_stage)
+
+    # preallocate 4D matrix (cells, times, stages, cues)
+    mouse_stage_responses = np.zeros((tensor.shape[0], tensor.shape[1], len(xorder) * bins_per_stage, 4))
+    mouse_stage_responses[:] = np.nan
+    mouse_stage_sem = np.zeros((tensor.shape[0], tensor.shape[1], len(xorder) * bins_per_stage, 4))
+    mouse_stage_sem[:] = np.nan
+
+    # get mean of pmn trials for each stage
+    for cs, s in enumerate(xorder):
+        for cc, icue in enumerate(['plus', 'minus', 'neutral']):
+            for sub in range(bins_per_stage):  # sub
+                meta_bool = meta.parsed_11stage.isin([s]) & meta[cond_type].isin([icue]) & meta['stage_bins'].isin(
+                    [sub])
+                if filter:
+                    assert filter_on is not None  # you must have a dict of kwargs to use if you are going to filter
+                    meta_bool = utils.filter_meta_bool(meta, meta_bool, **filter_on)
+                cue_stage_tensor = tensor[:, :, meta_bool]
+                cue_stage_mean = np.nanmean(cue_stage_tensor, axis=2)
+                cue_stage_sem = np.nanstd(cue_stage_tensor, axis=2) / np.sqrt(
+                    np.sum(~np.isnan(cue_stage_tensor), axis=2))
+                mouse_stage_responses[:, :, cs * bins_per_stage + sub, cc] = cue_stage_mean
+                mouse_stage_sem[:, :, cs * bins_per_stage + sub, cc] = cue_stage_sem
+
+    # add in a 4th z slice of preferred tuning responses
+    tune_up = tuning_df.reset_index()
+    for cs, s in enumerate(xorder):
+        for sub in range(bins_per_stage):
+            for cell_n in range(tensor.shape[0]):
+
+                if tune_staging == 'staging_LR':
+                    # matching parse_11stage entries to learning reversal
+                    ss = 'reversal1' if 'reversal' in s else 'learning'
+                    pref_bool = tune_up[tune_staging].isin([ss])
+                else:
+                    # or just parse_11stage entries (effectively allows preferred tuning recalc at each stage of learning)
+                    # pref_bool = tune_up[tune_staging].isin([s])
+                    raise NotImplementedError
+
+                pref = tune_up.loc[tune_up.cell_n.isin([cell_n + 1]) & pref_bool, 'preferred tuning']
+
+                if len(pref) == 1:
+                    preferred_tuning = pref.item()
+                    if preferred_tuning == 'broad':
+                        # average across cues for broadly tuned cells
+                        mean_resp = np.nanmean(mouse_stage_responses[cell_n, :, cs * bins_per_stage + sub, :], axis=1)
+                        mouse_stage_responses[cell_n, :, cs * bins_per_stage + sub, 3] = mean_resp
+                    else:
+                        # take single preferred tuning or average across joint tuned cells
+                        tuning_levels = np.where([s in preferred_tuning for s in ['plus', 'minus', 'neutral']])[0]
+                        tuned_response = np.nanmean(
+                            mouse_stage_responses[cell_n, :, cs * bins_per_stage + sub, tuning_levels], axis=0)
+                        mouse_stage_responses[cell_n, :, cs * bins_per_stage + sub, 3] = tuned_response
+                        if len(tuning_levels) == 1:
+                            # choose preferred sem for cells that have a singular preferred tuning
+                            mouse_stage_sem[cell_n, :, cs * bins_per_stage + sub, 3] = mouse_stage_sem[cell_n, :,
+                                                                                       cs * bins_per_stage + sub,
+                                                                                       tuning_levels]
+
+    # flatten your preferred stages
+    stage_list = []
+    for cs in range(mouse_stage_responses.shape[2]):
+        stage_list.append(mouse_stage_responses[:, :, cs, 3])
+    flattened_pref_tuning_mat = np.hstack(stage_list)
+
+    # loop and create vectors of preferred tuning (as test) matiching your flattened preferred tuning matrix
+    tune_up = tuning_df.reset_index()
+    if tune_staging == 'staging_LR':
+        torder = ['learning', 'reversal1']
+    else:
+        # torder = xorder
+        raise NotImplementedError
+
+    tuning_matrix = []
+    cosine_matrix = []
+    for cs, s in enumerate(torder):
+        for sub in range(bins_per_stage):
+            stage_tune_vec = []
+            stage_cos_vec = []
+            for cell_n in range(tensor.shape[0]):
+
+                if tune_staging == 'staging_LR':
+                    # matching parse_11stage entries to learning reversal
+                    ss = 'reversal1' if 'reversal' in s else 'learning'
+                    pref_bool = tune_up[tune_staging].isin([ss])
+                else:
+                    # or just parse_11stage entries (effectively allows preferred tuning recalc at each stage of learning)
+                    pref_bool = tune_up[tune_staging].isin([s])
+
+                pref = tune_up.loc[tune_up.cell_n.isin([cell_n + 1]) & pref_bool, 'preferred tuning']
+                cos = tune_up.loc[tune_up.cell_n.isin([cell_n + 1]) & pref_bool, 'cosine tuning']
+
+                if len(pref) == 1:
+                    stage_tune_vec.append(pref.iloc[0])
+                else:
+                    stage_tune_vec.append('none')
+                if len(pref) == 1:
+                    stage_cos_vec.append(cos.iloc[0])
+                else:
+                    stage_cos_vec.append(np.array([np.nan, np.nan, np.nan]))
+
+            tuning_matrix.append(stage_tune_vec)
+            cosine_matrix.append(np.vstack(stage_cos_vec))
+
+    # if you want sem too
+    if return_sem:
+        return mouse_stage_responses, mouse_stage_sem, flattened_pref_tuning_mat, tuning_matrix, cosine_matrix
 
     return mouse_stage_responses, flattened_pref_tuning_mat, tuning_matrix, cosine_matrix
 
@@ -809,3 +969,32 @@ def preferred_tensor(meta, tensor, model, tune_staging='staging_LR', best_tuning
         return pref_tensor, cell_tuning_df
 
     return pref_tensor
+
+
+def mean_filtered_stage_traces(meta, tensor, model, tuning_type='initial', filter_running=None):
+    # get tuning df, accounting for offsets (i.e., offset cell's tuning is calculated on offset response itself)
+    # get a single tuning value for a cell pre and post reversal.
+    tuning_df = cell_tuning(meta, tensor, model, 15,
+                            by_stage=False, by_reversal=True, nan_lick=False,
+                            staging='parsed_11stage', tuning_type=tuning_type, force_stim_avg=False)
+
+    # filter meta and tensor to be for only certain trial types
+    meta_bool = np.ones(len(meta)) > 0  # start with all trails
+    meta_bool = utils.filter_meta_bool(
+        meta, meta_bool, filter_running=filter_running, filter_licking=None, filter_hmm_engaged=True,
+        high_speed_thresh_cms=10,
+        low_speed_thresh_cms=4,
+        high_lick_thresh_ls=1.7,
+        low_lick_thresh_ls=1.7
+    )
+
+    # filter trials to include
+    filt_meta = meta.loc[meta_bool, :]
+    filt_tensor = tensor[:, :, meta_bool]
+
+    # Get your preferred tuning matrices
+    out = mean_stage_response_preferred_tuning(filt_meta, filt_tensor, tuning_df, staging='parsed_11stage',
+                                               tune_staging='staging_LR', tuning_type='initial')
+    mouse_stage_responses, flattened_pref_tuning_mat, tuning_matrix, cosine_matrix = out
+
+    return mouse_stage_responses, flattened_pref_tuning_mat, tuning_matrix, cosine_matrix, filt_meta

@@ -10,7 +10,7 @@ color_dict = {
     'initial_neutral': '#47aded',
     'learning': '#226e36',
     'reversal': '#ad261a',
-    'none': '#f9f9f9',
+    'none': '#e8d4d2',  # '#f9f9f9',
     'gray': '#a3a3a3',
     'plus1': '#cae85e',
     'plus2': '#61e6a4',
@@ -190,6 +190,31 @@ mice = {
     'stim3': sorted(['OA27', 'OA67', 'VF226', 'OA26', 'CC175'])
 }
 
+""" Factors of different classes, ONE INDEXED, {category: {word: {mouse: {rank: [comp]}}}}"""
+factor_categories = {
+    'outcome': {
+            'respondent': {
+                'OA27': {15: [3], 10: [3]}
+            },
+            'computation': {
+                'VF226': {15: [15], 10: [1]},  # weak
+                'OA67': {15: [10], 10: [5]},
+                'OA32': {15: [7], 10: [5]},
+                'OA34': {15: [8], 10: [5]},  # also 15: 14 a little
+                'OA36': {15: [4], 10: [3]},  # also 15: 15, 10: 10
+                'OA26': {15: [4], 10: [3]},  # 10: 1, 3, 10
+                'CC175': {15: [], 10: []},
+                'CB173': {15: [3], 10: [2]},  # 15: 3 or 7
+                'AS23': {15: [15], 10: [10]},  # weak
+                'AS20': {15: [12], 10: [9]},
+                'AS47': {15: [4], 10: [4]},  # 15: also 7
+                'AS41': {15: [4], 10: [4]},  # check, few days
+                'OA38': {15: [9], 10: []},  # check, few days
+                'AS57': {15: [], 10: []},
+            }
+    }
+}
+
 """ Suppressed factors trunc_zscore_day, lion/citation {mouse: {rank: comp}}"""
 supress = {
     'OA27': {15: [14], 12: [11], 10: [9], 9: [8]},
@@ -224,7 +249,7 @@ offset = {
     'AS47': {15: [], 10: []},
     'AS41': {15: [], 10: []},
     'OA38': {15: [], 10: []},
-    'AS57': {15: [4], 15: [3]}
+    'AS57': {15: [4], 10: [3]}
 }
 
 ensure = {
