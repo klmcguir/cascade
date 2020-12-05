@@ -40,7 +40,7 @@ def get_lick_mask(meta, tensor, buffer_frames=1):
     return mask > 0
 
 
-def get_bias_from_tensor(meta, tensor, staging='parsed_10stage'):
+def get_bias_from_tensor(meta, tensor, staging='parsed_10stage', force_first100=True):
     """
     Calculate bias for stages of learning for a tensor and meta.
     """
@@ -78,7 +78,10 @@ def get_bias_from_tensor(meta, tensor, staging='parsed_10stage'):
     # amplitude_nolick[amplitude_nolick < checkup] = 0  # rectify
 
     # boolean of first 100 trials per day
-    first100_bool = _first100_bool(meta)
+    if force_first100:
+        first100_bool = _first100_bool(meta)
+    else:
+        first100_bool = np.ones(len(meta)) > 0
 
     # loop over 5stages
     mean_per_stage = np.zeros((tensor.shape[0], 10, 3))

@@ -1007,7 +1007,8 @@ def correlation_noise(meta, pref_tensor, epoch='parsed_11stage', min_denom=0.01)
     return new_mat
 
 
-def correlate_wrunning_per_trial(meta, pref_tensor, epoch='parsed_11stage', account_for_offset=True):
+def correlate_wrunning_per_trial(meta, pref_tensor, epoch='parsed_11stage', account_for_offset=True,
+                                 running_type='speed'):
 
     mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False,
                                                 account_for_offset=account_for_offset)
@@ -1019,7 +1020,7 @@ def correlate_wrunning_per_trial(meta, pref_tensor, epoch='parsed_11stage', acco
         for c, di in enumerate(meta.reset_index()['date'].unique()):
             day_boo = meta.reset_index()['date'].isin([di]).values
             day_mat = mean_t_tensor[:, day_boo]
-            day_speed = meta.loc[day_boo, 'speed'].values
+            day_speed = meta.loc[day_boo, running_type].values
 
             # correlate each cell with running speed dropping nans (aka un-preferred cues)
             for celli in range(day_mat.shape[0]):
@@ -1047,7 +1048,7 @@ def correlate_wrunning_per_trial(meta, pref_tensor, epoch='parsed_11stage', acco
             for c2, di2 in enumerate(stage_days):
                 day_boo = meta.reset_index()['date'].isin([di2]).values
                 day_mat = mean_t_tensor[:, day_boo]
-                day_speed = meta.loc[day_boo, 'speed'].values
+                day_speed = meta.loc[day_boo, running_type].values
 
                 # correlate each cell with running speed dropping nans (aka un-preferred cues)
                 for celli in range(day_mat.shape[0]):

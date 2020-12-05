@@ -1,7 +1,6 @@
 """Calculations to be saved to mongoDB database"""
 from pool.database import memoize
 from .. import paths, load
-import tensortools as tt
 import numpy as np
 import pandas as pd
 import bottleneck as bn
@@ -72,7 +71,7 @@ def groupday_varex_drop_worst_comp(
     iteration = []
     # only check the best iteration of TCA (usually runs 3)
     it = 0
-    for r in V.results:
+    for c, r in enumerate(V.results):
         UX_clus = V_clusters[r]
         clus_nums = np.unique(UX_clus)
         bad_clus = clus_nums[
@@ -83,7 +82,7 @@ def groupday_varex_drop_worst_comp(
             keep_vec = UX_clus != bad_clus
         U = V.results[r][it].factors.full()
         U_drop = V.results[r][it].factors.full()[keep_vec, :, :]
-        X_drop = X[V_sorts[r - 1], :, :][keep_vec, :, :]
+        X_drop = X[V_sorts[c], :, :][keep_vec, :, :]
         varex_wdrop.append(1 - (bn.nanvar(X_drop - U_drop) / bn.nanvar(X_drop)))
         varex.append(1 - (bn.nanvar(X - U) / bn.nanvar(X)))
         rank.append(r)
@@ -140,7 +139,7 @@ def groupday_varex_drop_worst_comp(
     return dfvar
 
 
-@memoize(across='mouse', updated=200414, returns='other', large_output=True)
+@memoize(across='mouse', updated=201129, returns='other', large_output=True)
 def groupday_varex(
         mouse,
         trace_type='zscore_day',
@@ -194,13 +193,18 @@ def groupday_varex(
     # get reconstruction error as variance explained
     # create vectors for dataframe
     varex = []
+    utilized_varex = []
     rank = []
     iteration = []
     total_X_var = bn.nanvar(X)
     for r in V.results:
         for it in range(0, len(V.results[r])):
+            cells_with_no_weight = np.sum(V.results[r][it].factors[0], axis=1) == 0
             U = V.results[r][it].factors.full()
             varex.append(1 - (bn.nanvar(X - U) / total_X_var))
+            utilized_varex.append(
+                1 - (bn.nanvar(X[~cells_with_no_weight, :, :] - U[~cells_with_no_weight, :, :])
+                     / bn.nanvar(X[~cells_with_no_weight, :, :])))
             rank.append(r)
             iteration.append(it)
 
@@ -239,7 +243,7 @@ def groupday_varex(
     mu = bn.nanmean(iX, axis=0)
     catPCA = PCA()
     catPCA.fit(iX)
-    nComp = len(V.results)
+    nComp = 20
     Xhat = np.dot(catPCA.transform(iX)[:, :nComp],
                   catPCA.components_[:nComp, :])
     Xhat += mu
@@ -255,6 +259,7 @@ def groupday_varex(
     data = {'rank': rank,
             'iteration': iteration,
             'variance_explained_tcamodel': varex,
+            'variance_explained_tcamodel_utilized': utilized_varex,
             'variance_explained_smoothmodel': [varex_smu] * len(rank),
             'variance_explained_meanmodel': [varex_mu] * len(rank),
             'variance_explained_meandailymodel': [varex_mu_daily] * len(rank),

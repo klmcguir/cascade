@@ -796,7 +796,7 @@ def groupday_tca_model(
         method='mncp_hals',
         cs='',
         warp=False,
-        rank=18,
+        rank=15,
         word='tray',
         group_by='all3',
         nan_thresh=0.85,
@@ -869,13 +869,13 @@ def groupday_tca_model(
     cell_ids = {}  # keys are rank
     cell_clusters = {}
     itr_num = 0  # use only best iteration of TCA, index 0
-    for k in sort_ensemble.results.keys():
+    for c, k in enumerate(sort_ensemble.results.keys()):
         # factors are already sorted, so these will define
         # clusters, no need to sort again
         factors = sort_ensemble.results[k][itr_num].factors[0]
         max_fac = np.argmax(factors, axis=1)
         cell_clusters[k] = max_fac
-        cell_ids[k] = ids[my_sorts[k - 1]]
+        cell_ids[k] = ids[my_sorts[c]]
 
     # Return either output for one rank, or everything for all ranks
     if unsorted:

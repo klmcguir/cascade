@@ -30,6 +30,7 @@ color_dict = {
     'minus-plus': '#BE4E37',
     'minus-neutral': '#B24354',
     'broad': '#ccc2ba',
+    'broad3': 'black',
     '0': '#56fff9',
     '0-135': '#8EF0C3',
     '135-0': '#C7E18C',
@@ -85,7 +86,7 @@ lookup_ori = {'OA27': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank'},
               'OA38': {135: 'plus', 0: 'minus', 270: 'neutral', -1: 'blank'},
               'AS57': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'}}
 
-# mapping of what cues defined by their condition during learning do across reversal
+# mapping of what cues, defined by their condition during learning, do across reversal
 lookup_mm = {'AS20': {'plus': 'becomes_unrewarded',
                       'neutral': 'becomes_rewarded',
                       'minus': 'remains_unrewarded'},
@@ -211,6 +212,27 @@ factor_categories = {
                 'AS41': {15: [4], 10: [4]},  # check, few days
                 'OA38': {15: [9], 10: []},  # check, few days
                 'AS57': {15: [], 10: []},
+            }
+    },
+    'offset': {
+            'respondent': {
+                'OA27': {15: [14], 10: []}  # or 15: 6
+            },
+            'computation': {
+                'VF226': {15: [2], 10: [7]},  # has a few
+                'OA67': {15: [3], 10: [1]},
+                'OA32': {15: [12], 10: []},  # 15: 11,12 ; 10: 8, 9
+                'OA34': {15: [11], 10: []},  # 15: 6,11
+                'OA36': {15: [8], 10: []},  # maybe, think about ramp to very sharp cells
+                'OA26': {15: [], 10: []},  #
+                'CC175': {15: [1], 10: []},
+                'CB173': {15: [14], 10: []},  #
+                'AS23': {15: [13], 10: [8]},  #
+                'AS20': {15: [8], 10: []},  # has many
+                'AS47': {15: [14], 10: []},  # has many
+                'AS41': {15: [8], 10: []},  # 15: 8, 15 tossup
+                'OA38': {15: [6], 10: []},  # many
+                'AS57': {15: [13], 10: []},
             }
     }
 }

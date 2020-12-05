@@ -1,25 +1,21 @@
 """Functions for plotting tca decomp."""
 import os
 import flow
-import pool
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-from sklearn.decomposition import PCA
 import tensortools as tt
 import seaborn as sns
 import pandas as pd
-import bottleneck as bn
 from copy import deepcopy
-from .. import df
 from .. import tca
 from .. import paths
-from .. import utils
+from . import plot_utils
 from .. import load
 from .. import lookups
 from cascade.calc import var
-import warnings
+
 
 """
 ----------------------------- SETS OF PLOTS -----------------------------
@@ -429,6 +425,7 @@ def groupday_longform_factors_annotated(
         group_by='all',
         nan_thresh=0.85,
         score_threshold=0.8,
+        negative_modes=[],
         extra_col=1,
         alpha=0.6,
         plot_running=True,
@@ -514,6 +511,7 @@ def groupday_longform_factors_annotated(
                    'score_threshold': score_threshold}
     sort_ensemble, _, _ = load.groupday_tca_model(
         **load_kwargs, full_output=True, cv=cv, train_test_split=train_test_split)
+    sort_ensemble = plot_utils.choose_negative_modes(sort_ensemble, negative_modes=negative_modes)
     meta = load.groupday_tca_meta(**load_kwargs)
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))
@@ -934,6 +932,7 @@ def groupday_factors_annotated(
         group_by='all3',
         nan_thresh=0.85,
         score_threshold=0.8,
+        negative_modes = [],
         extra_col=5,
         alpha=0.6,
         plot_running=True,
@@ -1022,6 +1021,7 @@ def groupday_factors_annotated(
                    'score_threshold': score_threshold}
     sort_ensemble, _, _ = load.groupday_tca_model(
         **load_kwargs, full_output=True, cv=cv, train_test_split=train_test_split)
+    sort_ensemble = plot_utils.choose_negative_modes(sort_ensemble, negative_modes=negative_modes)
     meta = load.groupday_tca_meta(**load_kwargs)
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))
@@ -1483,6 +1483,10 @@ def groupday_varex_summary(
         var_mean_daily = df_var['variance_explained_meandailymodel'].values[0]
     else:
         var_mean_daily = []
+    if 'variance_explained_tcamodel_utilized' in df_var.columns:
+        var_util = df_var['variance_explained_tcamodel_utilized'].values
+    else:
+        var_util = []
 
     # create figure and axes
     buffer = 5
@@ -1492,30 +1496,38 @@ def groupday_varex_summary(
         100, 100, figure=fig, left=0.05, right=.95, top=.95, bottom=0.05)
     ax = fig.add_subplot(gs[10:90 - buffer, :90 - right_pad])
     c = 0
-    cmap = sns.color_palette('Paired', 2)
+    cmap = sns.color_palette('Paired', 6)
 
     # plot
     R = np.max([r for r in V.results.keys()])
     ax.scatter(x_s, var_s, color=cmap[c * 2], alpha=0.5)
     if add_dropout_line:
         ax.scatter(x_drop, var_drop, color=cmap[c * 2 + 1], alpha=0.5)
+        if len(var_util) > 0:
+            ax.scatter(x_s, var_util, color=cmap[c * 2 + 4], alpha=0.5)
     ax.scatter([R + 2], var_mean, color=cmap[c * 2], alpha=0.5)
     ax.scatter([R + 4], var_mean_daily, color=cmap[c * 2], alpha=0.5)
     ax.scatter([R + 6], var_PCA, color=cmap[c * 2], alpha=0.5)
     ax.plot(x0, var0, label=('mouse ' + mouse), color=cmap[c * 2])
     if add_dropout_line:
         ax.plot(x_drop, var_drop, label=('$mouse_-$ ' + mouse), color=cmap[c * 2 + 1])
+        if len(var_util) > 0:
+            ax.plot(x_s, var_util, label=('$mouse_-$ useful ' + mouse), color=cmap[c * 2 + 4])
     ax.plot([R + 1.5, R + 2.5], [var_mean, var_mean], color=cmap[c * 2])
     ax.plot([R + 3.5, R + 4.5], [var_mean_daily, var_mean_daily], color=cmap[c * 2])
     ax.plot([R + 5.5, R + 6.5], [var_PCA, var_PCA], color=cmap[c * 2])
 
     # add labels/titles
-    x_labels = [str(R) for R in V.results]
+    biggest_rank = max(V.results.keys())
+    x_labels = ['' for _ in range(biggest_rank)]
+    for R in V.results:
+        x_labels[R - 1] = str(R)
+    # x_labels = [str(R) for R in V.results]
     x_labels.extend(
         ['', 'mean\ncell\nresp.',
          '', 'daily\nmean\ncell\nresp.',
          '', 'PCA$_{20}$'])
-    ax.set_xticks(range(1, len(V.results) + 7))
+    ax.set_xticks(range(1, biggest_rank + 7))
     ax.set_xticklabels(x_labels, size=12)
     ax.set_yticklabels([round(s, 2) for s in ax.get_yticks()], size=14)
     ax.set_xlabel('model rank', size=18)

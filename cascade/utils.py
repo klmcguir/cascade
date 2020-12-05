@@ -708,6 +708,20 @@ def add_cue_prob_to_meta(meta):
     new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
     new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
 
+    # add a binary column for reward
+    new_meta = {}
+    new_meta['prev_reward'] = np.zeros(len(new_meta_df1))
+    new_meta['prev_reward'][meta['prev_reward'].values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+
+    # add a binary column for punishment
+    new_meta = {}
+    new_meta['prev_punishment'] = np.zeros(len(new_meta_df1))
+    new_meta['prev_punishment'][meta['prev_punishment'].values] = 1
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+
     # rename oris according to their meaning during learning
     for ori in ['plus', 'minus', 'neutral']:
         new_meta = {}
@@ -1831,7 +1845,7 @@ def filter_meta_bool(meta, meta_bool, filter_running=None, filter_licking=None, 
     return meta_bool
 
 
-def bin_running_calc(meta, trial_mean_tensor, set1, speed_type='speed'):
+def bin_running_calc(meta, trial_mean_tensor, set1, speed_type='speed', bin_width=3):
     """
     Take in one boolean vector that defines a set of trials. For example, this could be plus trials from a
     single day, that you want to compare to minus trials on the same day. Alternatively, you could pass plus trials on
@@ -1847,11 +1861,11 @@ def bin_running_calc(meta, trial_mean_tensor, set1, speed_type='speed'):
     """
 
     # 3 cm/s bins evenly spaced from 0 to 1 m/s
-    speed_bins = np.arange(0, 100, 3)
+    speed_bins = np.arange(0, 100, bin_width)
 
     # get running speed for trials of interest
     set1_speed = meta.loc[set1, speed_type]
-    set1_bins = np.digitize(set1_speed, np.arange(0, 100, 3), right=True)
+    set1_bins = np.digitize(set1_speed, np.arange(0, 100, bin_width), right=True)
 
     # get tensor for trials of interest
     set1_tensor = trial_mean_tensor[:, set1]
@@ -1871,7 +1885,7 @@ def bin_running_calc(meta, trial_mean_tensor, set1, speed_type='speed'):
     return binned_set1
 
 
-def bin_running_traces_calc(meta, full_tensor, set1, speed_type='speed'):
+def bin_running_traces_calc(meta, full_tensor, set1, speed_type='speed', bin_width=3):
     """
     Take the mean of a set of trials broken into 3 cm/s bins across running speed.
 
@@ -1887,11 +1901,11 @@ def bin_running_traces_calc(meta, full_tensor, set1, speed_type='speed'):
     """
 
     # 3 cm/s bins evenly spaced from 0 to 1 m/s
-    speed_bins = np.arange(0, 100, 3)
+    speed_bins = np.arange(0, 100, bin_width)
 
     # get running speed for trials of interest
     set1_speed = meta.loc[set1, speed_type]
-    set1_bins = np.digitize(set1_speed, np.arange(0, 100, 3), right=True)
+    set1_bins = np.digitize(set1_speed, np.arange(0, 100, bin_width), right=True)
 
     # get tensor for trials of interest
     set1_tensor = full_tensor[:, :, set1]
