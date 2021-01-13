@@ -31,6 +31,7 @@ color_dict = {
     'minus-neutral': '#B24354',
     'broad': '#ccc2ba',
     'broad3': 'black',
+    'joint': '#dcd0ff',
     '0': '#56fff9',
     '0-135': '#8EF0C3',
     '135-0': '#C7E18C',
@@ -45,6 +46,10 @@ color_dict = {
     'remains_unrewarded': '#ffb327'
 }
 
+# common hardcoded save locations I don't want to type
+saveroot = '/twophoton_analysis/Data/analysis/Group-attractive/'
+coreroot = '/twophoton_analysis/Data/analysis/core_dfs/'
+
 # get ordering used for categorical variables in plots
 ax_order = {
     'cues': ['broad', 'plus-minus', 'plus', 'plus-neutral', 'neutral-plus',
@@ -54,16 +59,23 @@ ax_order = {
 
 # lookup table of conditions during initial learning matched to orientations
 lookup = {'OA27': {'plus': 270, 'minus': 135, 'neutral': 0, 'blank': -1},
+          'PD27': {'plus': 270, 'minus': 135, 'neutral': 0, 'blank': -1},
           'VF226': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
+          'LM226': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
+          'PD226': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
           'OA67': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
+          'LM67': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
+          'PD67': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
           'OA32': {'plus': 135, 'minus': 0, 'neutral': 270, 'blank': -1},
           'OA34': {'plus': 270, 'minus': 135, 'neutral': 0, 'blank': -1},
           'OA36': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
           'OA26': {'plus': 270, 'minus': 135, 'neutral': 0, 'blank': -1},
+          'LM26': {'plus': 270, 'minus': 135, 'neutral': 0, 'blank': -1},
+          'PD26': {'plus': 270, 'minus': 135, 'neutral': 0, 'blank': -1},
           'CC175': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
           'CB173': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
           'AS23': {'plus': 0, 'minus': 270, 'neutral': 135, 'blank': -1},
-          'AS20': {'plus': 135, 'minus': 270, 'neutral': 135, 'blank': -1},
+          'AS20': {'plus': 135, 'minus': 270, 'neutral': 0, 'blank': -1},  # TYPO WAS HERE
           'AS47': {'plus': 135, 'minus': 0, 'neutral': 270, 'blank': -1},
           'AS41': {'plus': 270, 'minus': 0, 'neutral': 135, 'blank': -1},
           'OA38': {'plus': 135, 'minus': 0, 'neutral': 270, 'blank': -1},
@@ -71,12 +83,19 @@ lookup = {'OA27': {'plus': 270, 'minus': 135, 'neutral': 0, 'blank': -1},
 
 # lookup table of orientations during initial learning matched to conditions
 lookup_ori = {'OA27': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank'},
+              'PD27': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank'},
               'VF226': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
+              'LM226': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
+              'PD226': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
               'OA67': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
+              'LM67': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
+              'PD67': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
               'OA32': {135: 'plus', 0: 'minus', 270: 'neutral', -1: 'blank'},
               'OA34': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank', 67.5: 'disengaged_ambiguous'},
               'OA36': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
               'OA26': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank'},
+              'LM26': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank'},
+              'PD26': {270: 'plus', 135: 'minus', 0: 'neutral', -1: 'blank'},
               'CC175': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
               'CB173': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
               'AS23': {0: 'plus', 270: 'minus', 135: 'neutral', -1: 'blank'},
@@ -98,7 +117,16 @@ lookup_mm = {'AS20': {'plus': 'becomes_unrewarded',
              'OA26': {'plus': 'becomes_unrewarded',
                       'neutral': 'remains_unrewarded',
                       'minus': 'becomes_rewarded'},
+             'LM26': {'plus': 'becomes_unrewarded',
+                      'neutral': 'remains_unrewarded',
+                      'minus': 'becomes_rewarded'},
+             'PD26': {'plus': 'becomes_unrewarded',
+                      'neutral': 'remains_unrewarded',
+                      'minus': 'becomes_rewarded'},
              'OA27': {'plus': 'becomes_unrewarded',
+                      'minus': 'becomes_rewarded',
+                      'neutral': 'remains_unrewarded'},
+             'PD27': {'plus': 'becomes_unrewarded',
                       'minus': 'becomes_rewarded',
                       'neutral': 'remains_unrewarded'},
              'OA32': {'plus': 'becomes_unrewarded',
@@ -114,19 +142,48 @@ lookup_mm = {'AS20': {'plus': 'becomes_unrewarded',
              'OA67': {'plus': 'becomes_unrewarded',
                       'neutral': 'remains_unrewarded',
                       'minus': 'becomes_rewarded'},
+             'LM67': {'plus': 'becomes_unrewarded',
+                      'neutral': 'remains_unrewarded',
+                      'minus': 'becomes_rewarded'},
+             'PD67': {'plus': 'becomes_unrewarded',
+                      'neutral': 'remains_unrewarded',
+                      'minus': 'becomes_rewarded'},
              'VF226': {'plus': 'becomes_unrewarded',
                        'neutral': 'remains_unrewarded',
+                       'minus': 'becomes_rewarded'},
+             'LM226': {'plus': 'becomes_unrewarded',
+                       'neutral': 'remains_unrewarded',
+                       'minus': 'becomes_rewarded'},
+             'PD226': {'plus': 'becomes_unrewarded',
+                       'neutral': 'remains_unrewarded',
                        'minus': 'becomes_rewarded'}}
+
+# category names
+category_names = {
+    0: 'Stimulus, transient',
+    2: 'Stimulus, ramping',
+    4: 'Stimulus, flat',
+    1: 'Offset, transient',
+    3: 'Offset, delayed',
+    5: 'Offset, other'
+}
 
 # lookup table of stimulus length
 stim_length = {
     'OA27': 3,
+    'PD27': 3,
     'VF226': 3,
+    'LM226': 3,
+    'PD226': 3,
     'OA67': 3,
+    'LM67': 3,
+    'PD67': 3,
     'OA32': 2,
     'OA34': 2,
     'OA36': 2,
     'OA26': 3,
+    'LM26': 3,
+    'PD26': 3,
     'CC175': 3,
     'CB173': 2,
     'AS23': 2,
@@ -144,6 +201,8 @@ staging = {
                        'late low_dp reversal1', 'early high_dp reversal1' 'late high_dp reversal1'],
     'parsed_11stage': ['L0 naive', 'L1 learning', 'L2 learning', 'L3 learning', 'L4 learning', 'L5 learning',
                        'L1 reversal1', 'L2 reversal1', 'L3 reversal1', 'L4 reversal1', 'L5 reversal1'],
+    'parsed_11stage_T': ['T0 naive', 'T1 learning', 'T2 learning', 'T3 learning', 'T4 learning', 'T5 learning',
+                       'T1 reversal1', 'T2 reversal1', 'T3 reversal1', 'T4 reversal1', 'T5 reversal1'],
 }
 
 """Useful lists so I don't have to type out names of mice I commonly use"""
@@ -170,7 +229,7 @@ mice = {
     # all possible mice with behavioral reversal: CB173 actually shows licking and running deltas to FC
     'rev10': sorted(['AS23', 'AS20', 'CB173',
                      'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26']),
-    # for posterity: AS57 shows poor perforamnce and behavioral understanding, don't use
+    # for posterity: AS57 shows poor performance and behavioral understanding, don't use
     'rev10v2': sorted(['AS23', 'AS20', 'AS57',
                        'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26']),
     # all mice with reversals
@@ -188,7 +247,16 @@ mice = {
     # all mice with 2 second stimulus
     'stim2': sorted(['AS23', 'AS20', 'CB173', 'AS47', 'AS41', 'AS57', 'OA38',
                      'OA32', 'OA34', 'OA36']),
-    'stim3': sorted(['OA27', 'OA67', 'VF226', 'OA26', 'CC175'])
+    'stim3': sorted(['OA27', 'OA67', 'VF226', 'OA26', 'CC175']),
+
+    # Other fields of view
+    # LM mice
+    'lm': sorted(['LM67', 'LM226', 'LM26']),
+    # L5 (deep layer) POR mice
+    # PD175 has some naive imaging but had major registration issues so was dropped
+    'l5': sorted(['PD27', 'PD67', 'PD226', 'PD26']),
+    # Other other FOVs
+    'lml5': sorted(['LM67', 'LM226', 'LM26', 'PD27', 'PD67', 'PD226', 'PD26'])
 }
 
 """ Factors of different classes, ONE INDEXED, {category: {word: {mouse: {rank: [comp]}}}}"""

@@ -1,24 +1,130 @@
-from . import utils, tuning, lookups
-import numpy as np
 from copy import deepcopy
+
+import numpy as np
 import pandas as pd
+
+from . import utils, tuning, lookups, drive
 
 """
 In V1 cells, that respond with a depolarizing mismatch signal when visual flow is halted, also respond with a slight 
 inhibition to visual flow (stimulus) presented alone. These responses also have an offset response. 
 """
 
-# TODO
-#  1. could test for significant mismatch skew: 1000 --> 100 taking those 1100 and randomly splitting 1000 --> 100.
-#  2. perform same calc then pick a new set of 100. Chunks or random 100?
-#  3. bootstap getting a cells x 1000 shuffled mismatch
-#
+
+def match_trials(meta, target_epoch='L1 reversal1', search_epoch='L5 learning', match_on='speed', tolerance=1):
+    """
+    Generate matched sets of trials based on metadata variables. Always matches for different cue presentations
+    independently. i.e., Running speeds are matched for the same cue pre and post reversal, never across cues.
+
+    # TODO could filter target and search trials on other variables before search.
+
+    :param meta: pandas.DataFrame
+        Trial metadata.
+    :param target_epoch: str
+        Set of trials to try and match.
+    :param search_epoch: str
+        Set of trials to search over.
+    :param match_on: str
+        Name of column in trial meta DataFrame to try and match on
+    :param tolerance: float or int
+        Threshold in units of [match_on]. Forces: target trial - tol < best matched trial < target trial + tol.
+    :return: two vectors, one for each epoch, with integers that match trials between vectors
+        s_had_match --> target trials [nan nan 1 5 nan ...] where 1s and 5s are paired trials
+        matched_s --> searched trials [5 nan nan nan 1 ...]
+    """
+
+    # set up trials post reversal as target
+    possible_post = meta.parsed_11stage.isin([target_epoch]).values
+    if np.sum(possible_post) == 0:
+        return [], []  # return empty if no reversal
+    speed_copy_post = deepcopy(meta[match_on].values)
+    speed_copy_post[~possible_post] = np.nan  # nan all values that you can't draw from
+    post_inds_to_check = np.where(possible_post)[0]
+    np.random.shuffle(post_inds_to_check)  # shuffle inds for for loop
+
+    # set up trials pre reversal to search over
+    possible_pre = meta.parsed_11stage.isin([search_epoch]).values
+    speed_copy_pre = deepcopy(meta[match_on].values)
+    speed_copy_pre[~possible_pre] = np.nan  # nan all values that you can't draw from
+
+    # get copies of speed vectors for each cue
+    speed_copy_plus_pre = deepcopy(speed_copy_pre)
+    speed_copy_plus_pre[~meta.initial_condition.isin(['plus'])] = np.nan
+    speed_copy_minus_pre = deepcopy(speed_copy_pre)
+    speed_copy_minus_pre[~meta.initial_condition.isin(['minus'])] = np.nan
+    speed_copy_neut_pre = deepcopy(speed_copy_pre)
+    speed_copy_neut_pre[~meta.initial_condition.isin(['neutral'])] = np.nan
+    speed_dict_pre = {'plus': speed_copy_plus_pre, 'minus': speed_copy_minus_pre, 'neutral': speed_copy_neut_pre, }
+
+    # preallocate
+    matched_s = np.zeros(len(meta))
+    s_had_match = np.zeros(len(meta))
+    match_counter = 1
+    for indi in post_inds_to_check:
+
+        # for each index match speed and cue type
+        c_to_match = meta.initial_condition.values[indi]
+        s_to_match = meta[match_on].values[indi]
+
+        # find closest matched speed
+        difference_to_target = speed_dict_pre[c_to_match] - s_to_match
+        if all(np.isnan(difference_to_target)):
+            continue
+        closest_matched_ind = np.nanargmin(np.abs(difference_to_target))
+        closest_matched_speed = speed_dict_pre[c_to_match][closest_matched_ind]
+
+        # only use closest matched speed within tolerance (i.e., 1 cm/s)
+        if (closest_matched_speed < s_to_match + tolerance) & (closest_matched_speed > s_to_match - tolerance):
+            matched_s[closest_matched_ind] = match_counter
+            s_had_match[indi] = match_counter
+            speed_dict_pre[c_to_match][closest_matched_ind] = np.nan  # no replacement, blank trial
+            match_counter += 1
+
+    return s_had_match, matched_s
+
+
+def trial_match_diff_over_stages(meta, pref_tensor, search_epoch='L5 learning'):
+
+    # get mean trial response matrix, cells x trials
+    mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
+
+    # preallocate
+    diff_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
+    for si, stage in enumerate(lookups.staging['parsed_11stage']):
+
+        # calculate change between two stages, matching distribution of running speeds per cue
+        s_had_match, matched_s = match_trials(meta, target_epoch=stage, search_epoch=search_epoch,
+                                              match_on='speed', tolerance=1)
+
+        # if a mouse is missing a stage skip calculation
+        if len(s_had_match) == 0 or len(matched_s) == 0:
+            continue
+
+        # create booleans of possible trials to use
+        pre_rev = matched_s > 0
+        post_rev = s_had_match > 0
+
+        # for each cell only use matched trials. If a cell is missing data in one period, drop matching trials in other.
+        pre_mean = np.zeros(mean_t_tensor.shape[0]) + np.nan
+        for celli in range(mean_t_tensor.shape[0]):
+            existing_post_trials = s_had_match[~np.isnan(mean_t_tensor[celli, :])]
+            existing_pre_trials = np.isin(matched_s, existing_post_trials)
+            pre_mean[celli] = np.nanmean(mean_t_tensor[celli, pre_rev & existing_pre_trials])
+            if np.sum(existing_pre_trials) < 10:
+                print(f'WARNING: cell_n {celli}, only {np.sum(existing_pre_trials)} trials matched' +
+                      ' pre_reversal after accounting for missing data post_reversal')
+        post_mean = np.nanmean(mean_t_tensor[:, post_rev], axis=1)
+        reversal_mismatch = post_mean - pre_mean
+        diff_mat[:, si] = reversal_mismatch
+
+    return diff_mat
 
 
 def run_controlled_reversal_mismatch_traces(meta, pref_tensor, filter_licking=None, filter_running=None,
-                                    filter_hmm_engaged=True, force_same_day_reversal=False,
-                                    use_stages_for_reversal=False, skew_stages_for_reversal=True,
-                                     boot=False):
+                                            filter_hmm_engaged=True, force_same_day_reversal=False,
+                                            match_trials=True,
+                                            use_stages_for_reversal=False, skew_stages_for_reversal=False,
+                                            boot=False):
     """
     Calculate a mismatch binning running and calculating between matched bins, then averaging across bins
 
@@ -64,6 +170,30 @@ def run_controlled_reversal_mismatch_traces(meta, pref_tensor, filter_licking=No
         post_rev_date = meta.reset_index().loc[rev_vec, 'date'].iloc[0]
         post_rev = meta.reset_index()['date'].isin([post_rev_date]).values
         post_rev[np.where(post_rev)[0][100:]] = False
+    elif match_trials:
+        # match_distribution of running values by matching trials
+        post_rev = meta.parsed_11stage.isin(['L1 reversal']).values
+        possible_pre = meta.parsed_11stage.isin(['L5 learning']).values
+        speed_copy = deepcopy(meta.speed.values)
+        speed_copy[~possible_pre] = np.nan  # nan all values that you can't draw from
+        running_dist_post = sorted(meta.speed.loc[post_rev].values)
+        pool_pre = np.sort(speed_copy)
+        pool_pos_pre = np.argsort(speed_copy)  # actual position in the full vector
+
+        matched_s = np.zeros(len(meta))
+        available = np.zeros(len(meta)) == 0
+        for s_to_match in running_dist_post:
+            best_match_pos = pool_pos_pre[(pool_pre <= s_to_match) & available]
+            best_match_speed = pool_pre[pool_pre <= s_to_match & available]
+
+            # must be within 10% of original speed
+            if (len(best_match_pos) > 0) & (best_match_speed < s_to_match * 1.1) & (
+                    best_match_speed > s_to_match * 0.9):
+                matched_s[best_match_pos] = 1
+                available[pool_pos_pre == best_match_pos] = False  # set used position to unavailable
+            else:
+                print(f'Unmatched trial speed: {s_to_match} cm/s, best match {best_match_speed} cm/s')
+        pre_rev = matched_s == 1
     else:
         learning_vec = meta.reset_index()['learning_state'].isin(['learning']).values
         rev_date = meta.reset_index().loc[learning_vec, 'date'].iloc[-1]
@@ -115,9 +245,9 @@ def run_controlled_reversal_mismatch_traces(meta, pref_tensor, filter_licking=No
     # TODO may want to NOT do this across running always so you can get a trace with SEM error bars
 
     pre_sem = np.nanstd(pref_tensor[:, :, (rev_day & pre_rev)], axis=2) \
-        / np.sqrt(np.sum(~np.isnan(pref_tensor[:, :, (rev_day & pre_rev)]), axis=2))
+              / np.sqrt(np.sum(~np.isnan(pref_tensor[:, :, (rev_day & pre_rev)]), axis=2))
     post_sem = np.nanstd(pref_tensor[:, :, (rev_day & post_rev)], axis=2) \
-        / np.sqrt(np.sum(~np.isnan(pref_tensor[:, :, (rev_day & post_rev)]), axis=2))
+               / np.sqrt(np.sum(~np.isnan(pref_tensor[:, :, (rev_day & post_rev)]), axis=2))
     simple_pre_mean = np.nanmean(pref_tensor[:, :, (rev_day & pre_rev)], axis=2)
     simple_post_mean = np.nanmean(pref_tensor[:, :, (rev_day & post_rev)], axis=2)
     reversal_mismatch = np.nanmean(post_bins - pre_bins, axis=2)
@@ -129,8 +259,9 @@ def run_controlled_reversal_mismatch_traces(meta, pref_tensor, filter_licking=No
 
 
 def run_controlled_reversal_mismatch(meta, pref_tensor, filter_licking=None, filter_running=None,
-                                    filter_hmm_engaged=True, force_same_day_reversal=False,
-                                    use_stages_for_reversal=False, skew_stages_for_reversal=True,
+                                     filter_hmm_engaged=True, force_same_day_reversal=False,
+                                     match_trials=True,
+                                     use_stages_for_reversal=False, skew_stages_for_reversal=False,
                                      boot=False):
     """
     Calculate a mismatch binning running and calculating between matched bins, then averaging across bins
@@ -178,6 +309,59 @@ def run_controlled_reversal_mismatch(meta, pref_tensor, filter_licking=None, fil
         post_rev = meta.reset_index()['date'].isin([post_rev_date]).values
         post_rev[np.where(post_rev)[0][100:]] = False
         # TODO limit pre rev to the first 1000 trials
+    elif match_trials:
+        # set up trials post reversal as target
+        possible_post = meta.parsed_11stage.isin(['L1 reversal1']).values
+        if np.sum(possible_post) == 0:
+            return np.zeros(mean_t_tensor.shape[0]) + np.nan  # return np.nan vec if no reversal
+        speed_copy_post = deepcopy(meta.speed.values)
+        speed_copy_post[~possible_post] = np.nan  # nan all values that you can't draw from
+        post_inds_to_check = np.where(possible_post)[0]
+        np.random.shuffle(post_inds_to_check)  # shuffle inds for for loop
+
+        # set up trials pre reversal to search over
+        possible_pre = meta.parsed_11stage.isin(['L5 learning']).values
+        speed_copy_pre = deepcopy(meta.speed.values)
+        speed_copy_pre[~possible_pre] = np.nan  # nan all values that you can't draw from
+
+        # get copies of speed vectors for each cue
+        speed_copy_plus_pre = deepcopy(speed_copy_pre)
+        speed_copy_plus_pre[~meta.initial_condition.isin(['plus'])] = np.nan
+        speed_copy_minus_pre = deepcopy(speed_copy_pre)
+        speed_copy_minus_pre[~meta.initial_condition.isin(['minus'])] = np.nan
+        speed_copy_neut_pre = deepcopy(speed_copy_pre)
+        speed_copy_neut_pre[~meta.initial_condition.isin(['neutral'])] = np.nan
+        speed_dict_pre = {'plus': speed_copy_plus_pre, 'minus': speed_copy_minus_pre, 'neutral': speed_copy_neut_pre, }
+
+        # preallocate
+        matched_s = np.zeros(len(meta))
+        s_had_match = np.zeros(len(meta))
+        match_counter = 1
+        for indi in post_inds_to_check:
+
+            # for each index match speed and cue type
+            c_to_match = meta.initial_condition.values[indi]
+            s_to_match = meta.speed.values[indi]
+
+            # find closest matched speed
+            difference_to_target = speed_dict_pre[c_to_match] - s_to_match
+            if all(np.isnan(difference_to_target)):
+                continue
+            closest_matched_ind = np.nanargmin(np.abs(difference_to_target))
+            closest_matched_speed = speed_dict_pre[c_to_match][closest_matched_ind]
+
+            # only use closest matched speed within 1 cm/s
+            if (closest_matched_speed < s_to_match + 1) & (closest_matched_speed > s_to_match - 1):
+                # TODO could make this a counter so trials are matched so you could match cell by cell for trial count 
+                matched_s[closest_matched_ind] = match_counter
+                s_had_match[indi] = match_counter
+                speed_dict_pre[c_to_match][closest_matched_ind] = np.nan  # no replacement, blank trial
+                match_counter += 1
+            # else:
+            #     print(f'Unmatched trial speed: {s_to_match} cm/s, best match {closest_matched_speed} cm/s')
+
+        pre_rev = matched_s > 0
+        post_rev = s_had_match > 0
     else:
         learning_vec = meta.reset_index()['learning_state'].isin(['learning']).values
         rev_date = meta.reset_index().loc[learning_vec, 'date'].iloc[-1]
@@ -224,10 +408,25 @@ def run_controlled_reversal_mismatch(meta, pref_tensor, filter_licking=None, fil
     print(f'  -->  {mouse}: pre-rev: {np.sum(pre_rev & rev_day)}, post-rev: {np.sum(post_rev & rev_day)}')
 
     # calculate mean for preferred cue for each cell across reversal
-    pre_bins = utils.bin_running_calc(meta, mean_t_tensor, (rev_day & pre_rev))
-    post_bins = utils.bin_running_calc(meta, mean_t_tensor, (rev_day & post_rev))
+    if match_trials:
 
-    reversal_mismatch = np.nanmean(post_bins - pre_bins, axis=1)
+        # for each cell only use matched trials. If a cell is missing data in one period, drop matching trials in other.
+        pre_mean = np.zeros(mean_t_tensor.shape[0]) + np.nan
+        # post_mean = np.zeros(mean_t_tensor.shape[0]) + np.nan
+        for celli in range(mean_t_tensor.shape[0]):
+            existing_post_trials = s_had_match[~np.isnan(mean_t_tensor[celli, :])]
+            existing_pre_trials = np.isin(matched_s, existing_post_trials)
+            pre_mean[celli] = np.nanmean(mean_t_tensor[celli, pre_rev & existing_pre_trials])
+            if np.sum(existing_pre_trials) < 10:
+                print(f'WARNING: cell_n {celli}, only {np.sum(existing_pre_trials)} trials matched' +
+                      ' pre_reversal after accounting for missing data post_reversal')
+        # pre_mean = np.nanmean(mean_t_tensor[:, pre_rev], axis=1)
+        post_mean = np.nanmean(mean_t_tensor[:, post_rev], axis=1)
+        reversal_mismatch = post_mean - pre_mean
+    else:
+        pre_bins = utils.bin_running_calc(meta, mean_t_tensor, (rev_day & pre_rev))
+        post_bins = utils.bin_running_calc(meta, mean_t_tensor, (rev_day & post_rev))
+        reversal_mismatch = np.nanmean(post_bins - pre_bins, axis=1)
 
     if boot:
         all_trials = (rev_day & (pre_rev | post_rev))
@@ -283,7 +482,8 @@ def run_controlled_naive_mismatch(meta, pref_tensor, filter_licking=None, filter
     mouse = meta.reset_index()['mouse'].unique()[0]
 
     # get mean response per cue
-    mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=account_for_offset)
+    mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False,
+                                                account_for_offset=account_for_offset)
 
     # 1000 trials pre, 100 trials post reversal
     pre_rev = meta.parsed_11stage.isin(['L5 learning']).values
@@ -456,10 +656,10 @@ def calculate_reversal_mismatch(meta, pref_tensor, filter_running=None, filter_l
             print(f'Mouse {mouse} did not have single-day reversal.')
             # return out
             return pd.DataFrame({'mouse': [mouse] * len(out),
-                             'cell_n': np.arange(len(out)) + 1,
-                             'rMM_response': out,
-                             }
-                            )
+                                 'cell_n': np.arange(len(out)) + 1,
+                                 'rMM_response': out,
+                                 }
+                                )
         rev_date = meta.reset_index().loc[post_rev, 'date'].unique()[0] - 0.5
         pre_rev = meta.reset_index()['date'].isin([rev_date]).values
     elif use_stages_for_reversal:
@@ -665,7 +865,8 @@ def reversal_mismatch_from_tensor(meta, tensor, model, tune_staging='staging_LR'
 
                 # additionally get the mismatch type for each cell
                 mtuning = meta.loc[
-                    (meta[cond_type].isin([cell_pref[:hyphind]]).values & meta['learning_state'].isin(['learning']).values),
+                    (meta[cond_type].isin([cell_pref[:hyphind]]).values & meta['learning_state'].isin(
+                        ['learning']).values),
                     'mismatch_condition'
                 ].unique()
                 assert len(mtuning) == 1
@@ -723,7 +924,6 @@ def reversal_mismatch_from_tensor(meta, tensor, model, tune_staging='staging_LR'
 
 
 def _trial_filter_set(meta, bool_to_filter, filter_running=None, filter_licking=None, filter_hmm_engaged=False):
-
     # filter to include fixed running type: low or high
     if filter_running is not None:
         speed_cm_s = meta.speed.values
@@ -753,5 +953,3 @@ def _trial_filter_set(meta, bool_to_filter, filter_running=None, filter_licking=
         bool_to_filter = bool_to_filter & (meta.hmm_engaged.values | meta.learning_state.isin(['naive']).values)
 
     return bool_to_filter
-
-

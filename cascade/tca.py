@@ -1241,6 +1241,9 @@ def groupday_tca(
     # only include days with xday alignment
     days = [s for s in days if 'xday' in s.tags]
 
+    # skip days with only "special" run types (i.e., these tags have been broadcast to DaySorter, rather than Run)
+    days = [s for s in days if 'orientation_mapping' not in s.tags]
+
     # add monitor condition to exclusions
     exclude_conds += ('monitor',)
 
@@ -1806,6 +1809,7 @@ def _group_drive_ids(days, drive_css, drive_threshold, drive_type='visual'):
             except KeyError:
                 print(str(day1) + ' requested ' + dcs + ' ' + drive_type +
                       ': no match to what was shown (probably pav only).')
+
         d1_drive = np.max(d1_drive, axis=0)
         d1_drive_ids = d1_ids[np.array(d1_drive) > drive_threshold]
         good_ids.extend(d1_drive_ids)

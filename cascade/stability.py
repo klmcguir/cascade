@@ -1,8 +1,11 @@
-from . import utils, tuning, lookups
+import os
+
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize
-import matplotlib.pyplot as plt
-import os
+
+from . import utils, lookups
+
 
 # TODO template fitting
 #  1. function to normalize responses for each day/stage and then get their mean shape --> template
@@ -17,7 +20,6 @@ import os
 
 def trial_history_sensory(meta, pref_tensor, epoch='parsed_11stage', filter_running=None, filter_licking=None,
                           filter_hmm_engaged=True):
-
     # get mouse from metadata
     mouse = meta.reset_index()['mouse'].unique()[0]
 
@@ -100,8 +102,8 @@ def trial_history_sensory(meta, pref_tensor, epoch='parsed_11stage', filter_runn
                 # rectify
                 prev_same_mean[prev_same_mean < 0] = 0
                 prev_diff_mean[prev_diff_mean < 0] = 0
-                sensory_history_index = prev_same_mean - prev_diff_mean
-                # sensory_history_index = (prev_diff_mean - prev_same_mean) / (prev_diff_mean + prev_same_mean)
+                # sensory_history_index = prev_same_mean - prev_diff_mean
+                sensory_history_index = (prev_diff_mean - prev_same_mean) / (prev_diff_mean + prev_same_mean)
                 # sensory_history_index[(sensory_history_index < -1) | (sensory_history_index > 1)] = np.nan
                 day_sh_index[:, c2] = sensory_history_index
             new_mat[:, c] = np.nanmean(day_sh_index, axis=1)
@@ -112,8 +114,7 @@ def trial_history_sensory(meta, pref_tensor, epoch='parsed_11stage', filter_runn
 
 
 def lick_modulation(meta, pref_tensor, epoch='parsed_11stage', filter_running=None, filter_licking=None,
-                          filter_hmm_engaged=True):
-
+                    filter_hmm_engaged=True):
     # get mouse from metadata
     mouse = meta.reset_index()['mouse'].unique()[0]
 
@@ -201,7 +202,6 @@ def lick_modulation(meta, pref_tensor, epoch='parsed_11stage', filter_running=No
 
 def run_modulation(meta, pref_tensor, epoch='parsed_11stage', filter_running=None, filter_licking=None,
                    filter_hmm_engaged=True):
-
     # get mouse from metadata
     mouse = meta.reset_index()['mouse'].unique()[0]
 
@@ -287,8 +287,7 @@ def run_modulation(meta, pref_tensor, epoch='parsed_11stage', filter_running=Non
 
 
 def trial_history_sensory_blank(meta, pref_tensor, epoch='parsed_11stage', filter_running=None, filter_licking=None,
-                          filter_hmm_engaged=True):
-
+                                filter_hmm_engaged=True):
     # get mouse from metadata
     mouse = meta.reset_index()['mouse'].unique()[0]
 
@@ -366,8 +365,7 @@ def trial_history_sensory_blank(meta, pref_tensor, epoch='parsed_11stage', filte
 
 
 def trial_history_reward(meta, pref_tensor, epoch='parsed_11stage', filter_running=None, filter_licking=None,
-                          filter_hmm_engaged=True):
-
+                         filter_hmm_engaged=True):
     # get mouse from metadata
     mouse = meta.reset_index()['mouse'].unique()[0]
 
@@ -461,8 +459,7 @@ def trial_history_reward(meta, pref_tensor, epoch='parsed_11stage', filter_runni
 
 
 def trial_history_punishment(meta, pref_tensor, epoch='parsed_11stage', filter_running=None, filter_licking=None,
-                          filter_hmm_engaged=True):
-
+                             filter_hmm_engaged=True):
     # get mouse from metadata
     mouse = meta.reset_index()['mouse'].unique()[0]
 
@@ -629,6 +626,7 @@ def sustainedness95(meta, pref_tensor, epoch='day', full_trial_window=False,
     timing/dynamics of a cell's response.
 
     # TODO Consider passing tensor to get_offset_cells()
+    # TODO add average across runs first
 
     :param meta: pandas.DataFrame
         DataFrame of trial metadata
@@ -659,6 +657,8 @@ def sustainedness95(meta, pref_tensor, epoch='day', full_trial_window=False,
     # get mean across epoch
     if epoch == 'day':
         mean_tensor = utils.simple_mean_per_day(meta, pref_tensor)
+    elif epoch == 'run':
+        mean_tensor = utils.simple_mean_per_run(meta, pref_tensor)
     else:
         assert epoch in ['parsed_stage', 'parsed_10stage', 'parsed_11stage']
         mean_tensor = utils.simple_mean_per_stage(meta, pref_tensor, staging=epoch)
@@ -694,7 +694,7 @@ def sustainedness95(meta, pref_tensor, epoch='day', full_trial_window=False,
 
             # flip non-NaN array values [0, 1, 10, np.nan] --> [10, 1, 0, np.nan]
             sorted_vals = np.sort(cell_vec)  # nans appended to end
-            ind95 = int(np.ceil(len(cell_vec)*.05))
+            ind95 = int(np.ceil(len(cell_vec) * .05))
             sorted_vals[~np.isnan(sorted_vals)] = sorted_vals[~np.isnan(sorted_vals)][::-1]
             percentile95 = sorted_vals[ind95]
 
@@ -750,7 +750,6 @@ def fano_factor_mean_days(meta, pref_tensor, min_denom=0.01):
 
 
 def fano_factor_trials(meta, pref_tensor, epoch='parsed_11stage', min_denom=0.01):
-
     mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
 
     if epoch == 'days':
@@ -931,47 +930,46 @@ def correlate_epochs_wall_mean(meta, pref_tensor, epoch='parsed_11stage'):
 
 
 def correlate_epochs_wall_control(meta, pref_tensor, epoch='parsed_11stage'):
-        """
-        Correlate each cell's pairwise with every other cell for the same stages/epoch. Take mean for
-        each stage, excluding self-self correlation.
+    """
+    Correlate each cell's pairwise with every other cell for the same stages/epoch. Take mean for
+    each stage, excluding self-self correlation.
 
-        :param meta:
-        :param pref_tensor:
-        :param epoch:
-        :return:
-        """
-        # get mean across epoch
-        if epoch == 'day':
-            mean_tensor = utils.simple_mean_per_day(meta, pref_tensor)
-            assert NotImplementedError  # right now use of mean_early_traces is thinking about stages
-        else:
-            assert epoch in ['parsed_stage', 'parsed_10stage', 'parsed_11stage']
-            mean_tensor = utils.simple_mean_per_stage(meta, pref_tensor, staging=epoch)
+    :param meta:
+    :param pref_tensor:
+    :param epoch:
+    :return:
+    """
+    # get mean across epoch
+    if epoch == 'day':
+        mean_tensor = utils.simple_mean_per_day(meta, pref_tensor)
+        assert NotImplementedError  # right now use of mean_early_traces is thinking about stages
+    else:
+        assert epoch in ['parsed_stage', 'parsed_10stage', 'parsed_11stage']
+        mean_tensor = utils.simple_mean_per_stage(meta, pref_tensor, staging=epoch)
 
-        # average pairwise corr across given stage for each cell ("population" correlation)
-        corr2_avgs = np.zeros((mean_tensor.shape[0], mean_tensor.shape[2]))
-        corr2_avgs[:] = np.nan
-        for c in range(mean_tensor.shape[2]):
+    # average pairwise corr across given stage for each cell ("population" correlation)
+    corr2_avgs = np.zeros((mean_tensor.shape[0], mean_tensor.shape[2]))
+    corr2_avgs[:] = np.nan
+    for c in range(mean_tensor.shape[2]):
 
-            # build a cells x timepoints matrix for each stage
-            corr = mean_tensor[:, :, c]
+        # build a cells x timepoints matrix for each stage
+        corr = mean_tensor[:, :, c]
 
-            # account for nan cells
-            cell_inds = np.where(~np.isnan(corr[:, 0]))[0]
-            corrmat = np.corrcoef(corr[cell_inds, :])
-            if corrmat.size <= 1:
-                continue  # avoid only correlations with self
-            np.fill_diagonal(corrmat, np.nan)  # inplace
-            mean_corr_vec_same_stage_other_cells = np.nanmean(corrmat, axis=0)
+        # account for nan cells
+        cell_inds = np.where(~np.isnan(corr[:, 0]))[0]
+        corrmat = np.corrcoef(corr[cell_inds, :])
+        if corrmat.size <= 1:
+            continue  # avoid only correlations with self
+        np.fill_diagonal(corrmat, np.nan)  # inplace
+        mean_corr_vec_same_stage_other_cells = np.nanmean(corrmat, axis=0)
 
-            # add to matrix for all cells
-            corr2_avgs[cell_inds, c] = mean_corr_vec_same_stage_other_cells
+        # add to matrix for all cells
+        corr2_avgs[cell_inds, c] = mean_corr_vec_same_stage_other_cells
 
-        return corr2_avgs
+    return corr2_avgs
 
 
 def correlation_noise(meta, pref_tensor, epoch='parsed_11stage', min_denom=0.01):
-
     mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
 
     if epoch == 'days':
@@ -1009,7 +1007,6 @@ def correlation_noise(meta, pref_tensor, epoch='parsed_11stage', min_denom=0.01)
 
 def correlate_wrunning_per_trial(meta, pref_tensor, epoch='parsed_11stage', account_for_offset=True,
                                  running_type='speed'):
-
     mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False,
                                                 account_for_offset=account_for_offset)
 
@@ -1026,7 +1023,8 @@ def correlate_wrunning_per_trial(meta, pref_tensor, epoch='parsed_11stage', acco
             for celli in range(day_mat.shape[0]):
                 cell_and_run = np.concatenate([day_mat[celli][:, None], day_speed[:, None]], axis=1)
                 cell_and_run = cell_and_run[~np.isnan(np.mean(cell_and_run, axis=1))]
-                if len(cell_and_run < 10): # arbitrary use of 10, just make sure that the cell is not empty, ~30-120 trials per cue per day
+                if len(
+                        cell_and_run < 10):  # arbitrary use of 10, just make sure that the cell is not empty, ~30-120 trials per cue per day
                     continue
                 # correlate mean trial values and running speed
                 corr = np.corrcoef(cell_and_run)
@@ -1082,7 +1080,6 @@ def correlate_wrunning_per_trial(meta, pref_tensor, epoch='parsed_11stage', acco
 
 
 def correlate_pre_running_per_trial(meta, pref_tensor, epoch='parsed_11stage', account_for_offset=True):
-
     mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False,
                                                 account_for_offset=account_for_offset)
 
@@ -1099,7 +1096,8 @@ def correlate_pre_running_per_trial(meta, pref_tensor, epoch='parsed_11stage', a
             for celli in range(day_mat.shape[0]):
                 cell_and_run = np.concatenate([day_mat[celli][:, None], day_speed[:, None]], axis=1)
                 cell_and_run = cell_and_run[~np.isnan(np.mean(cell_and_run, axis=1))]
-                if len(cell_and_run < 10): # arbitrary use of 10, just make sure that the cell is not empty, ~30-120 trials per cue per day
+                if len(
+                        cell_and_run < 10):  # arbitrary use of 10, just make sure that the cell is not empty, ~30-120 trials per cue per day
                     continue
                 # correlate mean trial values and running speed
                 corr = np.corrcoef(cell_and_run)
@@ -1192,7 +1190,8 @@ def correlate_baseline_activity(meta, tensor, epoch='parsed_11stage', corr_w='pr
             for celli in range(day_mat.shape[0]):
                 cell_and_run = np.concatenate([day_mat[celli][:, None], day_speed[:, None]], axis=1)
                 cell_and_run = cell_and_run[~np.isnan(np.mean(cell_and_run, axis=1))]
-                if len(cell_and_run < 10): # arbitrary use of 10, just make sure that the cell is not empty, ~30-120 trials per cue per day
+                if len(
+                        cell_and_run < 10):  # arbitrary use of 10, just make sure that the cell is not empty, ~30-120 trials per cue per day
                     continue
                 # correlate mean trial values and running speed
                 corr = np.corrcoef(cell_and_run)
@@ -1248,7 +1247,6 @@ def correlate_baseline_activity(meta, tensor, epoch='parsed_11stage', corr_w='pr
 
 
 def correlate_wlicking_per_trial(meta, pref_tensor, epoch='parsed_11stage'):
-
     mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
 
     if epoch == 'days':
@@ -1264,7 +1262,8 @@ def correlate_wlicking_per_trial(meta, pref_tensor, epoch='parsed_11stage'):
             for celli in range(day_mat.shape[0]):
                 cell_and_run = np.concatenate([day_mat[celli][:, None], day_speed[:, None]], axis=1)
                 cell_and_run = cell_and_run[~np.isnan(np.mean(cell_and_run, axis=1))]
-                if len(cell_and_run < 10): # arbitrary use of 10, just make sure that the cell is not empty, ~30-120 trials per cue per day
+                if len(
+                        cell_and_run < 10):  # arbitrary use of 10, just make sure that the cell is not empty, ~30-120 trials per cue per day
                     continue
                 # correlate mean trial values and running speed
                 corr = np.corrcoef(cell_and_run)
@@ -1320,7 +1319,6 @@ def correlate_wlicking_per_trial(meta, pref_tensor, epoch='parsed_11stage'):
 
 
 def correlate_wlickingonset_per_trial(meta, pref_tensor, epoch='parsed_11stage'):
-
     mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
 
     if epoch == 'days':
@@ -1336,7 +1334,8 @@ def correlate_wlickingonset_per_trial(meta, pref_tensor, epoch='parsed_11stage')
             for celli in range(day_mat.shape[0]):
                 cell_and_run = np.concatenate([day_mat[celli][:, None], day_speed[:, None]], axis=1)
                 cell_and_run = cell_and_run[~np.isnan(np.mean(cell_and_run, axis=1))]
-                if len(cell_and_run < 10): # arbitrary use of 10, just make sure that the cell is not empty, ~30-120 trials per cue per day
+                if len(
+                        cell_and_run < 10):  # arbitrary use of 10, just make sure that the cell is not empty, ~30-120 trials per cue per day
                     continue
                 # correlate mean trial values and running speed
                 corr = np.corrcoef(cell_and_run)
@@ -1516,14 +1515,14 @@ def sine_fit_stage_response(meta, pref_tensor, epoch='parsed_11stage', plot_plea
                 # have to hit this at least once for a cell to save a plot
                 plt_flag = True
                 plt.plot(x_data, y_fit,
-                     label=f'{s}: {[round(ss, 2) for ss in params]} --> {round(r2, 2)}')
+                         label=f'{s}: {[round(ss, 2) for ss in params]} --> {round(r2, 2)}')
                 full_x = (np.arange(0, 108, 1) - 15.5) / 15.5
                 plt.scatter(full_x, mean_tensor[celli, :, c_s])
 
         if plot_please:
             if plt_flag:
                 plt.legend(title='parameters --> variance explained\n' +
-                         '      a*sin(b*(x + c)) + d*x + e', loc='best', bbox_to_anchor=(1.05, 1))
+                                 '      a*sin(b*(x + c)) + d*x + e', loc='best', bbox_to_anchor=(1.05, 1))
                 mouse = meta.reset_index()['mouse'].unique()[0]
                 plt.title(f'{mouse}: cell index {celli}\nMean response per stage with fits')
                 plt.xlabel('time from stimulus onset (sec)')
@@ -1539,4 +1538,4 @@ def sine_fit_stage_response(meta, pref_tensor, epoch='parsed_11stage', plot_plea
 
 
 def _sin_func(x, a, b, c, d, e):
-    return a * np.sin(b * (x + c)) + d*x + e
+    return a * np.sin(b * (x + c)) + d * x + e

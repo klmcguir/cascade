@@ -131,6 +131,9 @@ for rank_num in [10, 15]:
         X.drop(columns=cs_cols, inplace=True)
         # X.drop(columns=pillow_cols, inplace=True)
 
+        # TODO only your rates (running/licking/etc) are continuous
+        #   Just center data so betas have a real meaning, don't rescale binary columns
+        #   Scale rate columns between 0 1 or -1 1
         # z-score each column
         X = X.transform(lambda x: (x - x.mean()) / x.std())
         col_bool = np.sum(X.isna().values, axis=0) < X.shape[0]

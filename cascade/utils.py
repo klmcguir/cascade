@@ -9,7 +9,7 @@ from copy import deepcopy
 
 
 def simple_mean_per_day(meta, tensor, meta_bool=None,
-                        filter_running='low_speed_only', filter_licking=None, filter_hmm_engaged=True):
+                        filter_running=None, filter_licking=None, filter_hmm_engaged=False):
     """
     Helper function to take the mean across days for a tensor.
 
@@ -37,8 +37,39 @@ def simple_mean_per_day(meta, tensor, meta_bool=None,
     return new_tensor
 
 
+def simple_mean_per_run(meta, tensor, meta_bool=None,
+                        filter_running=None, filter_licking=None, filter_hmm_engaged=False):
+    """
+    Helper function to take the mean across runs for a tensor.
+
+    :param meta: pandas.DataFrame, trial metadata
+    :param tensor: numpy.ndarray, a cells x times X trials
+    :return: new_tensor: numpy.ndarray, a cells x times X days
+    """
+
+    # optionally filter
+    if meta_bool is None:
+        meta_bool = np.ones(len(meta)) > 0
+    meta_bool = filter_meta_bool(meta, meta_bool,
+                           filter_running=filter_running,
+                           filter_licking=filter_licking,
+                           filter_hmm_engaged=filter_hmm_engaged)
+
+    # get average response per day
+    n_run_days = meta.groupby(['mouse', 'date', 'run']).nunique().shape[0]
+    new_tensor = np.zeros((tensor.shape[0], tensor.shape[1], n_run_days))
+    new_tensor[:] = np.nan
+
+    for c, (mdr, _) in enumerate(meta.groupby(['mouse', 'date', 'run'])):
+        day_boo = meta.reset_index()['date'].isin([mdr[1]]).values
+        run_boo = meta.reset_index()['run'].isin([mdr[2]]).values
+        new_tensor[:, :, c] = np.nanmean(tensor[:, :, (run_boo & day_boo & meta_bool)], axis=2)
+
+    return new_tensor
+
+
 def simple_mean_per_stage(meta, tensor, staging='parsed_11stage', meta_bool=None,
-                          filter_running='low_speed_only', filter_licking=None, filter_hmm_engaged=True):
+                          filter_running=None, filter_licking=None, filter_hmm_engaged=False):
     """
     Helper function to take the mean across a stage for a tensor.
 
@@ -65,7 +96,46 @@ def simple_mean_per_stage(meta, tensor, staging='parsed_11stage', meta_bool=None
     new_tensor[:] = np.nan
     for c, di in enumerate(stages):
         stage_boo = meta[staging].isin([di]).values
-        new_tensor[:, :, c] = np.nanmean(tensor[:, :, stage_boo], axis=2)
+        new_tensor[:, :, c] = np.nanmean(tensor[:, :, stage_boo & meta_bool], axis=2)
+
+    return new_tensor
+
+
+def balanced_mean_per_stage(meta, tensor, staging='parsed_11stage', meta_bool=None,
+                          filter_running=None, filter_licking=None, filter_hmm_engaged=False):
+    """
+    Helper function to take the mean across a stage (by day) for a tensor.
+
+    :param meta: pandas.DataFrame, trial metadata
+    :param tensor: numpy.ndarray, a cells x times X trials
+    :return: new_tensor: numpy.ndarray, a cells x times X stages
+    """
+
+    # staging must exist in your df
+    meta = add_stages_to_meta(meta, staging)
+    assert staging in meta.columns
+
+    # optionally filter
+    if meta_bool is None:
+        meta_bool = np.ones(len(meta)) > 0
+    meta_bool = filter_meta_bool(meta, meta_bool,
+                           filter_running=filter_running,
+                           filter_licking=filter_licking,
+                           filter_hmm_engaged=filter_hmm_engaged)
+
+    # get average response per stage
+    stages = lookups.staging[staging]
+    new_tensor = np.zeros((tensor.shape[0], tensor.shape[1], len(stages)))
+    new_tensor[:] = np.nan
+    for c, di in enumerate(stages):
+        stage_boo = meta[staging].isin([di]).values
+        stage_days = meta.loc[stage_boo, :].reset_index()['date'].unique()
+        day_means = np.zeros((tensor.shape[0], tensor.shape[1], len(stage_days)))
+        day_means[:] = np.nan
+        for c2, di2 in enumerate(stage_days):
+            day_boo = meta.reset_index()['date'].isin([di2]).values
+            day_means[:, :, c2] = np.nanmean(tensor[:, :, day_boo & meta_bool], axis=2)
+        new_tensor[:, :, c] = np.nanmean(day_means[:, :, :], axis=2)
 
     return new_tensor
 
@@ -228,12 +298,14 @@ def tensor_mean_per_stage(meta, tensor, initial_cue=True, cue='plus', nan_lickin
         ablated_tensor = tensor
 
     # get average response per stage to a single cue
-    stages = lookups.staging[staging]
-    new_tensor = np.zeros((tensor.shape[0], tensor.shape[1], len(stages)))
-    new_tensor[:] = np.nan
-    for c, di in enumerate(stages):
-        stage_boo = meta[staging].isin([di]).values
-        new_tensor[:, :, c] = np.nanmean(ablated_tensor[:, :, stage_boo & cue_bool], axis=2)
+    # stages = lookups.staging[staging]
+    # new_tensor = np.zeros((tensor.shape[0], tensor.shape[1], len(stages)))
+    # new_tensor[:] = np.nan
+    # for c, di in enumerate(stages):
+    #     stage_boo = meta[staging].isin([di]).values
+    #     new_tensor[:, :, c] = np.nanmean(ablated_tensor[:, :, stage_boo & cue_bool], axis=2)
+
+    new_tensor = balanced_mean_per_stage(meta.loc[cue_bool], tensor[:, :, cue_bool], staging=staging)
 
     return new_tensor
 
@@ -337,7 +409,7 @@ def tensor_mean_per_stage_single_pt(meta, tensor, account_for_offset=True, **kwa
     return stage_matrix
 
 
-def get_offset_cells(meta, tensor):
+def get_offset_cells(meta, tensor, buffer_s=0.300):
     """
     Determine cells with offset responses.
 
@@ -353,8 +425,8 @@ def get_offset_cells(meta, tensor):
 
     # determine cells with offset responses
     trace_mean = np.nanmean(tensor, axis=2)
-    stim_offset_buffer_start = int(np.floor(15.5 * (1 + lookups.stim_length[mouse] - 0.300)))
-    stim_offset_buffer_end = int(np.floor(15.5 * (1 + lookups.stim_length[mouse] + 0.300)))
+    stim_offset_buffer_start = int(np.floor(15.5 * (1 + lookups.stim_length[mouse] - buffer_s)))
+    stim_offset_buffer_end = int(np.floor(15.5 * (1 + lookups.stim_length[mouse] + buffer_s)))
     trace_mean[:, stim_offset_buffer_start:stim_offset_buffer_end] = np.nan  # buffer around offset to avoid GECI tail
     trace_mean[:, :18] = np.nan  # buffer baseline with a few extra frames, ~200 ms
 
@@ -709,18 +781,18 @@ def add_cue_prob_to_meta(meta):
     new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
 
     # add a binary column for reward
-    new_meta = {}
-    new_meta['prev_reward'] = np.zeros(len(new_meta_df1))
-    new_meta['prev_reward'][meta['prev_reward'].values] = 1
-    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
-    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
-
-    # add a binary column for punishment
-    new_meta = {}
-    new_meta['prev_punishment'] = np.zeros(len(new_meta_df1))
-    new_meta['prev_punishment'][meta['prev_punishment'].values] = 1
-    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
-    new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+    # new_meta = {}
+    # new_meta['prev_reward'] = np.zeros(len(new_meta_df1))
+    # new_meta['prev_reward'][meta['prev_reward'].values] = 1
+    # new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    # new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
+    #
+    # # add a binary column for punishment
+    # new_meta = {}
+    # new_meta['prev_punishment'] = np.zeros(len(new_meta_df1))
+    # new_meta['prev_punishment'][meta['prev_punishment'].values] = 1
+    # new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    # new_meta_df1 = pd.concat([new_meta_df1, new_meta_df], axis=1)
 
     # rename oris according to their meaning during learning
     for ori in ['plus', 'minus', 'neutral']:
@@ -1936,3 +2008,44 @@ def df_split(df, split_on='mouse'):
     """
 
     return [gr for _, gr in df.groupby(split_on)]
+
+
+def meta_mouse(meta):
+    """
+    Helper function to get mouse name as str from meta DataFrame.
+
+    :param meta: pandas.DataFrame
+        Trial metadata.
+    :return: mouse name as str
+    """
+
+    # meta can only be a DataFrame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+    return meta.reset_index()['mouse'].unique()[0]
+
+
+def meta_last_learn_day_ind(meta):
+    """
+    Helper function to get the index of the last learning day.
+
+    :param meta: pandas.DataFrame
+        Trial metadata.
+    :return: mouse name as str
+    """
+
+    # meta can only be a DataFrame of a single mouse
+    assert len(meta.reset_index()['mouse'].unique()) == 1
+    last_day = meta.loc[meta.learning_state.isin(['learning'])].reset_index()['date'].values[-1]
+    days = meta.reset_index()['date'].unique()
+    return np.where(days == last_day)[0]
+
+
+def flip_cell_index(meta):
+    """
+    Helper function to flip cell indexing from cell_n indexed to cell_id or back
+    """
+
+    if 'cell_id' in meta.columns:
+        return meta.reset_index().set_index(['mouse', 'cell_id']).sort_index()
+    elif 'cell_n' in meta.columns:
+        return meta.reset_index().set_index(['mouse', 'cell_n']).sort_index()

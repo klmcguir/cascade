@@ -1,6 +1,7 @@
 """Experimental json metadata."""
 import os
 import flow
+import platform
 
 
 def dircreate(mouse, overwrite=False, update=False):
@@ -10,12 +11,16 @@ def dircreate(mouse, overwrite=False, update=False):
 
     # get your mouse data directory, check that it is a correctly formated dir
     if not mouse:
-        mouse = raw_input('Enter mouse name: ')
+        mouse = input('Enter mouse name: ')
 
     # add mouse metadata
     flow.metadata.add_mouse(mouse, tags=['kelly'], overwrite=overwrite, update=update)
 
-    data_dir = '/Users/kelly_mcguire/Documents/Data/data'
+    # if on a Mac, assume it is my Mac, else assume a Windows server
+    if platform.system().lower() == 'darwin':
+        data_dir = '/Users/kelly_mcguire/Documents/Data/data'
+    else:
+        data_dir = 'S:/twophoton_analysis/Data/data'  #just use pool?
     mouse_dir = os.path.join(data_dir, mouse)
     dates = sorted(os.listdir(mouse_dir))
     # check that your dir names are all digits
@@ -24,13 +29,13 @@ def dircreate(mouse, overwrite=False, update=False):
     dates = [s for s in dates if os.path.isdir(os.path.join(mouse_dir, s))]
 
     # ask important dates for mouse
-    rev0 = raw_input('Enter first training/learning date: ')
+    rev0 = input('Enter first training/learning date: ')
     if rev0:
         rev0 = int(rev0)
-    rev1 = raw_input('Enter reversal1 date: ')
+    rev1 = input('Enter reversal1 date: ')
     if rev1:
         rev1 = int(rev1)
-    rev2 = raw_input('Enter reversal2 date: ')
+    rev2 = input('Enter reversal2 date: ')
     if rev2:
         rev2 = int(rev2)
 
@@ -47,17 +52,17 @@ def dircreate(mouse, overwrite=False, update=False):
             date_tags = 'naive'
         elif int(i) == rev0:
             date_tags = 'learning_start'
-            rev0_run = int(raw_input('Enter 1st learning run: '+str(run_nums)))
+            rev0_run = int(input('Enter 1st learning run: '+str(run_nums)))
         elif int(i) > rev0 and int(i) < rev1:
             date_tags = 'learning'
         elif int(i) == rev1:
             date_tags = 'reversal1_start'
-            rev1_run = int(raw_input('Enter 1st reversal1 run: '+str(run_nums)))
+            rev1_run = int(input('Enter 1st reversal1 run: '+str(run_nums)))
         elif int(i) > rev1 and int(i) < rev2:
             date_tags = 'reversal1'
         elif int(i) == rev2:
             date_tags = 'reversal2_start'
-            rev2_run = int(raw_input('Enter 1st reversal2 run: '+str(run_nums)))
+            rev2_run = int(input('Enter 1st reversal2 run: '+str(run_nums)))
         elif int(i) > rev2:
             date_tags = 'reversal2'
 
@@ -87,8 +92,15 @@ def dircreate(mouse, overwrite=False, update=False):
                     run_tag1 = 'reversal1'
                 else:
                     run_tag1 = 'reversal2'
+            else:
+                if date_tags in ['learning_start', 'learning']:
+                    run_tag1 = 'learning'
+                elif date_tags in ['reversal1_start', 'reversal1']:
+                    run_tag1 = 'reversal1'
+                elif date_tags in ['naive']:
+                    run_tag1 = 'naive'
 
-            my_tags = raw_input('Enter tag#: ' + str(i) + ' run ' + str(k) +
+            my_tags = input('Enter tag#: ' + str(i) + ' run ' + str(k) +
                                 ': 0=hungry, 1=sated, 2=disengaged, 3=contrast,' +
                                 ' 4=orientation_mapping, 5=retinotopy: ')
             # if you just hit enter and leave ui input empty, defualt to 0=hungry
@@ -157,7 +169,7 @@ def dircreate_from_AU(mouse, overwrite=False, update=True):
 
     # get your mouse data directory, check that it is a correctly formated dir
     if not mouse:
-        mouse = raw_input('Enter mouse name: ')
+        mouse = input('Enter mouse name: ')
 
     # add mouse metadata
     flow.metadata.add_mouse(mouse, tags=['kelly'], overwrite=overwrite, update=update)
@@ -175,7 +187,7 @@ def dircreate_from_AU(mouse, overwrite=False, update=True):
     if mouse in ['AS47']:
         rev0 = 180214 # training began
     if mouse in ['CB210']:
-        rev0 = raw_input('Enter first training/learning date: ')
+        rev0 = input('Enter first training/learning date: ')
     rev0 = int(rev0)
     try:
         rev1 = flow.metadata.reversal(mouse)
