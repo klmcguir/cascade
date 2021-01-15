@@ -222,7 +222,8 @@ mice = {
 
     # reversal mice. CB173 also has reversal but never looked well trained.
     # AS57 is only had one day that looked well trained before
-    # reversal. AS23 had seizures. AS20 was well trained when AUS got him.
+    # reversal. AS23 had seizures. AS20 was well trained when AUS got him. AS20 is LM!
+    'rev7': sorted(['OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26']),
     # all good mice with reversals: CB173 and AS57 were never well trained, removed
     'rev9': sorted(['AS23', 'AS20',
                     'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26']),

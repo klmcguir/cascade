@@ -93,7 +93,7 @@ def get_drive_vec_for_cue(day, cs, drive_type='trial'):
     return d_vec
 
 
-def isdriven_stage(meta, ids, drive_type='trial', staging='parsed_11stage', initial_cue=None):
+def isdriven_stage(meta, ids, drive_type='trial', staging='parsed_11stage', initial_cue=None, threshold=1.31):
     """
     Build a map that is over stages instead of days.
 
@@ -114,6 +114,8 @@ def isdriven_stage(meta, ids, drive_type='trial', staging='parsed_11stage', init
         Type of binning to do when defining stages of learning.
     :param initial_cue: str
         Optionally get a drive map for a single cue type
+    :param threshold: float
+        -log10(p-value) threshold for calling a cells significantly driven. Default is for p=0.05 --> 1.31
     :return:
     """
 
@@ -149,7 +151,7 @@ def isdriven_stage(meta, ids, drive_type='trial', staging='parsed_11stage', init
         corrected_ps = stage_ps/cell_days[:, None]
 
         # add 1 for driven, nan for all nan and leave 0 if not driven
-        driven_count = np.sum(corrected_ps > 1.31, axis=1)  # 1.31 is the -log10(p-value) for 0.05
+        driven_count = np.sum(corrected_ps > threshold, axis=1)  # 1.31 is the -log10(p-value) for 0.05
         stage_mat[driven_count > 0, stagec] = 1
         all_nan = np.isnan(np.nanmean(corrected_ps, axis=1))
         stage_mat[all_nan, stagec] = np.nan
@@ -240,3 +242,52 @@ def isdriven_trial_mat(meta, ids, drive_type='trial', nan_half_days=True):
                     trial_mat[celli, date_bool & cue_bool] = 0
 
     return trial_mat
+
+
+def cell_driven_one_stage_of_two(meta, ids, drive_type='trial', staging='parsed_11stage',
+                                 initial_cue=None, threshold=1.31):
+    """
+    Build a vector that is 1 (one stage) or 2 (both stages) if a cell if driven. This allows you to calculate
+    a meaningful difference if a cell goes offline or comes online between two stages, but limits the differences
+    being calculated on zeros/low values.
+
+    :param meta: pandas.DataFrame
+        Trial metadata.
+    :param ids: numpy.array
+        Vector of cell IDs.
+    :param drive_type: str
+        Type of drivenness to be calculated ('visual', 'trial', etc.).
+    :param staging: str
+        Type of binning to do when defining stages of learning.
+    :param initial_cue: str
+        Optionally get a drive map for a single cue type
+    :param threshold: float
+        -log10(p-value) threshold for calling a cells significantly driven. Default is for p=0.05 --> 1.31
+    :return:
+    """
+
+    # get boolean drivenness mat
+    drive_mat = isdriven_stage(meta, ids, drive_type=drive_type, staging=staging,
+                               initial_cue=initial_cue, threshold=threshold)
+
+    # get all pairwise stages
+    pairwise_drive = {}
+    stages = lookups.staging[staging]
+    for c1, s1 in enumerate(stages):
+
+        curr_stage_vec = drive_mat[:, c1]
+
+        driven_pairs = np.zeros(drive_mat.shape) + np.nan
+        for c2, s2 in enumerate(stages):
+
+            comparison_vec = drive_mat[:, c2]
+
+            # fill in vectors with 0 for not driven (but calculated), and 1 or 2 for driven stage pairs
+            driven_pairs[(curr_stage_vec == 0) & (comparison_vec == 0), c2] = 0  # both not driven
+            driven_pairs[(curr_stage_vec == 1) | (comparison_vec == 1), c2] = 1  # one of the two is driven
+            driven_pairs[(curr_stage_vec == 1) & (comparison_vec == 1), c2] = 2  # both are driven
+
+        driven_pairs[:, c1] = np.nan  # nan the current period for clarity
+        pairwise_drive[s1] = driven_pairs
+
+    return pairwise_drive

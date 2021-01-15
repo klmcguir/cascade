@@ -83,7 +83,44 @@ def match_trials(meta, target_epoch='L1 reversal1', search_epoch='L5 learning', 
     return s_had_match, matched_s
 
 
-def trial_match_diff_over_stages(meta, pref_tensor, search_epoch='L5 learning'):
+def trial_match_diff_over_stages(meta, pref_tensor, search_epoch='L5 learning', min_trials=10):
+
+    # get mean trial response matrix, cells x trials
+    mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
+
+    # preallocate
+    diff_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
+    for si, stage in enumerate(lookups.staging['parsed_11stage']):
+
+        # calculate change between two stages, matching distribution of running speeds per cue
+        s_had_match, matched_s = match_trials(meta, target_epoch=stage, search_epoch=search_epoch,
+                                              match_on='speed', tolerance=1)
+
+        # if a mouse is missing a stage skip calculation
+        if len(s_had_match) == 0 or len(matched_s) == 0:
+            continue
+
+        # create booleans of possible trials to use
+        pre_rev = matched_s > 0
+        post_rev = s_had_match > 0
+
+        # for each cell only use matched trials. If a cell is missing data in one period, drop matching trials in other.
+        pre_mean = np.zeros(mean_t_tensor.shape[0]) + np.nan
+        for celli in range(mean_t_tensor.shape[0]):
+            existing_post_trials = s_had_match[~np.isnan(mean_t_tensor[celli, :])]
+            existing_pre_trials = np.isin(matched_s, existing_post_trials)
+            pre_mean[celli] = np.nanmean(mean_t_tensor[celli, pre_rev & existing_pre_trials])
+            if np.sum(existing_pre_trials) < min_trials:
+                print(f'WARNING: cell_n {celli}, only {np.sum(existing_pre_trials)} trials matched' +
+                      ' pre_reversal after accounting for missing data post_reversal')
+        post_mean = np.nanmean(mean_t_tensor[:, post_rev], axis=1)
+        reversal_mismatch = post_mean - pre_mean
+        diff_mat[:, si] = reversal_mismatch
+
+    return diff_mat
+
+
+def trial_match_frac_over_stages(meta, pref_tensor, search_epoch='L5 learning'):
 
     # get mean trial response matrix, cells x trials
     mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
@@ -114,7 +151,20 @@ def trial_match_diff_over_stages(meta, pref_tensor, search_epoch='L5 learning'):
                 print(f'WARNING: cell_n {celli}, only {np.sum(existing_pre_trials)} trials matched' +
                       ' pre_reversal after accounting for missing data post_reversal')
         post_mean = np.nanmean(mean_t_tensor[:, post_rev], axis=1)
-        reversal_mismatch = post_mean - pre_mean
+
+        # max of post or pre if both had a value
+        # denom = []
+        # for celli in range(mean_t_tensor.shape[0]):
+        #     if np.isnan(post_mean[celli]) | np.isnan(pre_mean[celli]):
+        #         denom.append(np.nan)
+        #     else:
+        #         denom.append(np.max([post_mean[celli], pre_mean[celli]]))
+
+        post_mean[post_mean < 0] = 0
+        pre_mean[pre_mean < 0] = 0
+        denom = np.nanmax(np.vstack([post_mean, pre_mean]), axis=0)
+
+        reversal_mismatch = (post_mean - pre_mean) / denom
         diff_mat[:, si] = reversal_mismatch
 
     return diff_mat

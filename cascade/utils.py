@@ -465,7 +465,7 @@ def get_peak_times(tensor):
 
 def correct_nonneg(ensemble):
     """
-    Helper function that takes a tensortools ensemble and adds forces cell
+    Helper function that takes a tensortools ensemble and forces cell
     factors to be positive by flipping trial factors when needed. This is
     needed because .rebalance() from tensortools can flip sign when fitting
     has been done with negative modes allowed.
@@ -1168,12 +1168,15 @@ def update_naive_cs(meta, verbose=True):
     learning_state = meta['learning_state']
 
     # get correct cs-ori pairings
-    learning_cs = condition[learning_state == 'learning']
-    learning_ori = orientation[learning_state == 'learning']
-    cs_codes = {}
-    for cs in cs_list:
-        ori = np.unique(learning_ori[learning_cs == cs])[0]
-        cs_codes[ori] = cs
+    try:
+        learning_cs = condition[learning_state == 'learning']
+        learning_ori = orientation[learning_state == 'learning']
+        cs_codes = {}
+        for cs in cs_list:
+            ori = np.unique(learning_ori[learning_cs == cs])[0]
+            cs_codes[ori] = cs
+    except IndexError:
+        cs_codes = lookups.lookup_ori[meta_mouse(meta)]
 
     # make sure not to mix in other run types (i.e., )
     naive_pmn = condition.isin(cs_list) & (learning_state == 'naive')
