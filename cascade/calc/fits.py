@@ -11,7 +11,11 @@ from scipy import linalg
 from tensortools.operations import unfold, khatri_rao
 from tensortools.tensors import KTensor
 from tensortools.optimize import FitResult, optim_utils
-from tensortools._hals_update import _hals_update
+try:
+    # this only works for python 36
+    from tensortools._hals_update import _hals_update
+except ModuleNotFoundError:
+    print('_hals_update for python 3.6 not loaded in cascade.calc.fits')
 
 
 @memoize(across='mouse', updated=190709, returns='other', large_output=False)
