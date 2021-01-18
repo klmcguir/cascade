@@ -2,6 +2,7 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from . import utils, tuning, lookups, drive
 
@@ -168,6 +169,73 @@ def trial_match_frac_over_stages(meta, pref_tensor, search_epoch='L5 learning'):
         diff_mat[:, si] = reversal_mismatch
 
     return diff_mat
+
+
+def trial_match_statistical_frac_or_diff_over_stages(
+        meta, pref_tensor, search_epoch='L5 learning', min_trials=10, fractional_mm=False):
+    """
+    REVAMP
+
+    :param meta:
+    :param pref_tensor:
+    :param search_epoch:
+    :param min_trials:
+    :param fractional_mm:
+    :return:
+    """
+
+    # get mean trial response matrix, cells x trials
+    mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
+
+    # assume data is the usual 15.5 hz 7 sec 108 frame vector
+    assert pref_tensor.shape[1] == 108
+    mean_t_baselines = np.nanmean(pref_tensor[:, 15:, :], axis=1)
+
+    # preallocate
+    diff_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
+    for si, stage in enumerate(lookups.staging['parsed_11stage']):
+
+        # calculate change between two stages, matching distribution of running speeds per cue
+        s_had_match, matched_s = match_trials(meta, target_epoch=stage, search_epoch=search_epoch,
+                                              match_on='speed', tolerance=5)
+        print(f'{utils.meta_mouse(meta)}: Trial matching target: {stage} n={np.sum(s_had_match > 0)} '
+              f'possible trials, search {search_epoch} n={np.sum(matched_s > 0)} possible trials')
+        # TODO use hmm or other binarization for running rather than a cm/s tolerance
+
+        # if a mouse is missing a stage skip calculation
+        if len(s_had_match) == 0 or len(matched_s) == 0:
+            continue
+
+        # create booleans of possible trials to use
+        pre_rev = matched_s > 0
+        post_rev = s_had_match > 0
+
+        # for each cell only use matched trials. If a cell is missing data in one period, drop matching trials in other.
+        pre_mean = np.zeros(mean_t_tensor.shape[0]) + np.nan
+        for celli in range(mean_t_tensor.shape[0]):
+            existing_post_trials = s_had_match[~np.isnan(mean_t_tensor[celli, :])]
+            existing_pre_trials = np.isin(matched_s, existing_post_trials)
+            pre_mean[celli] = np.nanmean(mean_t_tensor[celli, pre_rev & existing_pre_trials])
+            if np.sum(existing_pre_trials) < min_trials:
+                print(f'WARNING: cell_n {celli}, only {np.sum(existing_pre_trials)} trials matched' +
+                      ' pre_reversal after accounting for missing data post_reversal')
+            # breakpoint()
+        post_mean = np.nanmean(mean_t_tensor[:, post_rev], axis=1)
+
+        if fractional_mm:
+            post_mean[post_mean < 0] = 0
+            pre_mean[pre_mean < 0] = 0
+            denom = np.nanmax(np.vstack([post_mean, pre_mean]), axis=0)
+            reversal_mismatch = (post_mean - pre_mean) / denom
+        else:
+            reversal_mismatch = post_mean - pre_mean
+        diff_mat[:, si] = reversal_mismatch
+
+    return diff_mat
+
+
+# def _plot_mm_internal():
+
 
 
 def run_controlled_reversal_mismatch_traces(meta, pref_tensor, filter_licking=None, filter_running=None,
