@@ -294,14 +294,14 @@ def cell_driven_one_stage_of_two(meta, ids, drive_type='trial', staging='parsed_
     return pairwise_drive
 
 
-def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None):
+def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None, neg_log10_pv_thresh=4):
     """
     Calculate drivenness on all trials for each stage for each cell. For ONSET/STIM cells it tests the whole
     stimulus window and a 500 ms window from 200 - 700 ms after stimulus onset with Bonferroni correction for
     multiple comparisons against the 1 sec baseline preceding stimulus onset. For OFFSET cells, the same procedure is
     performed for a 1 sec baseline preceding stimulus onset, and a 1 sec baseline preceding stimulus offset. The
     np.max is taken for these two offset p-values to choose the worst of the two. For a cell to be considered
-    driven, it needs to pass both baseline comparisons. 
+    driven, it needs to pass both baseline comparisons.
 
     :param meta: pandas.DataFrame
         Trial metadata.
@@ -314,6 +314,8 @@ def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None):
     :param offset_bool: boolean
         Boolean vector, the same length and order as ids, and tensor --> [cells, :, :].
         True = Offset cells. False = not Offset cells.
+    :param neg_log10_pv_thresh: float or int
+        Threshold on -np.log10(p-value) >= threshold, for calling a cell driven.
 
     :return: pandas.DataFrame of drivenness p-values and -log10(p-values) for each cell for each stage and cue.
     """
@@ -356,9 +358,11 @@ def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None):
         'parsed_11stage': [],
         'initial_cue': [],
         'cell_id': [],
-        'cell_n':[],
+        'cell_n': [],
+        'offset_cell': [],
         'pv': [],
-        'neg_log10_pv': []
+        'neg_log10_pv': [],
+        'driven': []
     }
     for si, stage in enumerate(lookups.staging['parsed_11stage']):
         stage_boo = meta.parsed_11stage.isin([stage]).values
@@ -425,8 +429,10 @@ def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None):
                 data['initial_cue'].append(icue)
                 data['cell_id'].append(ids[celli])
                 data['cell_n'].append(celli + 1)
+                data['offset_cell'].append(offset_bool[celli])
                 data['pv'].append(pv_epoch)
                 data['neg_log10_pv'].append(-np.log10(pv_epoch))
+                data['driven'].append(-np.log10(pv_epoch) >= neg_log10_pv_thresh)
 
     df = pd.DataFrame(data=data).set_index(['mouse', 'parsed_11stage', 'initial_cue'])
 
