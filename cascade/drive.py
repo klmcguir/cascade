@@ -149,7 +149,7 @@ def isdriven_stage(meta, ids, drive_type='trial', staging='parsed_11stage', init
         # get days for stage and Bonferroni correct for days
         stage_ps = driven_mat[:, days_to_check]
         cell_days = np.nansum(~np.isnan(stage_ps), axis=1)
-        corrected_ps = stage_ps/cell_days[:, None]
+        corrected_ps = stage_ps / cell_days[:, None]
 
         # add 1 for driven, nan for all nan and leave 0 if not driven
         driven_count = np.sum(corrected_ps > threshold, axis=1)  # 1.31 is the -log10(p-value) for 0.05
@@ -280,7 +280,6 @@ def cell_driven_one_stage_of_two(meta, ids, drive_type='trial', staging='parsed_
 
         driven_pairs = np.zeros(drive_mat.shape) + np.nan
         for c2, s2 in enumerate(stages):
-
             comparison_vec = drive_mat[:, c2]
 
             # fill in vectors with 0 for not driven (but calculated), and 1 or 2 for driven stage pairs
@@ -329,7 +328,7 @@ def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None, ne
 
     # mouse
     mouse = utils.meta_mouse(meta)
-    
+
     # assume data is the usual 15.5 hz 7 sec 108 frame vector
     assert tensor.shape[1] == 108
 
@@ -351,7 +350,7 @@ def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None, ne
     # for offset cells it is useful to have averages of 1sec before offset and 1 sec after as well
     mean_t_off_baselines = np.nanmean(tensor[:, stim_off_frame_minus1s:stim_off_frame, :], axis=1)
     mean_t_off_1st_sec = np.nanmean(tensor[:, off_ms200:off_ms700, :], axis=1)
-    
+
     # preallocate
     data = {
         'mouse': [],
@@ -437,3 +436,181 @@ def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None, ne
     df = pd.DataFrame(data=data).set_index(['mouse', 'parsed_11stage', 'initial_cue'])
 
     return df
+
+
+def multi_stat_pvalues(meta, ids, tensor, alternative='less'):
+    """
+    Calculate pvalues on all trials for each stage for each cell. Does all tests for onset and offset cells for
+    each cell.
+
+    For ONSET/STIM cells it tests the whole stimulus window and a 500 ms window from 200 - 700 ms after stimulus onset
+    with Bonferroni correction for multiple comparisons against the 1 sec baseline preceding stimulus onset.
+
+    For OFFSET cells, the same procedure is performed for a 1 sec baseline preceding stimulus onset, and a 1 sec
+    baseline preceding stimulus offset. The np.ma()x is taken for these two offset p-values to choose the worst of the
+    two.
+
+    :param meta: pandas.DataFrame
+        Trial metadata.
+    :param ids: numpy.array
+        Vector of cell IDs.
+    :param tensor: numpy.array
+        Imaging traces, 3D matrix oraganized --> [cells, times, trials]
+    :param alternative: str
+        Kwarg for scipy.stats.wilcoxon, 'less' for one-tailed, 'two-sided' for two,
+    :param neg_log10_pv_thresh: float or int
+        Threshold on -np.log10(p-value) >= threshold, for calling a cell driven.
+
+    :return: pandas.DataFrame of p-values for drivenness relative to different periods of the trial.
+    """
+
+    # You can't use 'greater', it will test an unintended direction
+    assert alternative.lower() in ['less', 'two-sided']
+
+    # mouse
+    mouse = utils.meta_mouse(meta)
+
+    # assume data is the usual 15.5 hz 7 sec 108 frame vector
+    assert tensor.shape[1] == 108
+
+    # get windows for additional comparisons --> 500 ms with a 200 ms delay to account for GECI tau
+    stim_length = lookups.stim_length[mouse]
+    time_vec = np.arange(-1, 6, 1 / 15.5)[:108]
+    ms200 = np.where(time_vec > 0.2)[0][0]
+    ms700 = np.where(time_vec > 0.7)[0][0]
+    off_ms200 = np.where(time_vec > stim_length + 0.2)[0][0]
+    off_ms700 = np.where(time_vec > stim_length + 0.7)[0][0]
+    stim_off_frame = np.where(time_vec > stim_length)[0][0]
+    stim_off_frame_minus1s = np.where(time_vec > stim_length - 1)[0][0]
+    end_off_response_window = np.where(time_vec > stim_length + 2)[0][0]
+
+    # get mean trial response matrices, cells x trials
+    mean_t_stim = np.nanmean(tensor[:, ms200:stim_off_frame, :], axis=1)
+    mean_t_baselines = np.nanmean(tensor[:, :15, :], axis=1)
+    mean_t_stim500 = np.nanmean(tensor[:, ms200:ms700, :], axis=1)
+
+    # for offset cells it is useful to have averages of 1sec before offset and 1 sec after as well
+    mean_t_off = np.nanmean(tensor[:, off_ms200:end_off_response_window, :], axis=1)
+    mean_t_off_baselines = np.nanmean(tensor[:, stim_off_frame_minus1s:stim_off_frame, :], axis=1)
+    mean_t_off500 = np.nanmean(tensor[:, off_ms200:off_ms700, :], axis=1)
+
+    # preallocate
+    data = {
+        'mouse': [],
+        'parsed_11stage': [],
+        'initial_cue': [],
+        'cell_id': [],
+        'cell_n': [],
+        'pv_stim_long': [],
+        'pv_stim_short': [],
+        'pv_off_long': [],
+        'pv_off_short': [],
+        'pv_off_long_stimbase': [],
+        'pv_off_short_stimbase': []
+    }
+    for si, stage in enumerate(lookups.staging['parsed_11stage']):
+        stage_boo = meta.parsed_11stage.isin([stage]).values
+
+        for icue in ['plus', 'minus', 'neutral']:
+            cue_boo = meta.initial_condition.isin([icue]).values
+
+            for celli in range(mean_t_stim.shape[0]):
+                cell_boo = ~np.isnan(mean_t_stim[celli, :])
+
+                # get boolean of stage, cue, and existing trials
+                existing_epoch_trial_bool = stage_boo & cue_boo & cell_boo
+                if np.sum(existing_epoch_trial_bool) == 0:  # no matched trials for cell
+                    continue
+
+                # get baseline vectors
+                # mean_t_tensor accounts for offset, so this is the first test for both cases full-stim or full-offset
+                epoch_bases = mean_t_baselines[celli, existing_epoch_trial_bool]
+                off_epoch_bases = mean_t_off_baselines[celli, existing_epoch_trial_bool]  # last second of stimulus
+
+                # get test windows
+                stim500 = mean_t_stim500[celli, existing_epoch_trial_bool]
+                off500 = mean_t_off500[celli, existing_epoch_trial_bool]  # first second following offset
+                offall = mean_t_off[celli, existing_epoch_trial_bool]
+                stimall = mean_t_stim[celli, existing_epoch_trial_bool]
+
+                # check for drivenness
+                # this compares baseline to the full stim or offset period as well as to the first second of both
+                # tests bases-means delta is negative, H0: symmetric
+                pv_stimall = stats.wilcoxon(epoch_bases, stimall, alternative=alternative).pvalue
+                pv_stim500 = stats.wilcoxon(epoch_bases, stim500, alternative=alternative).pvalue
+
+                # for the baseline of the trial
+                pv_offall = stats.wilcoxon(epoch_bases, offall, alternative=alternative).pvalue
+                pv_off500 = stats.wilcoxon(epoch_bases, off500, alternative=alternative).pvalue
+
+                # for the baseline last second of the stimulus
+                pv_offall_vstim = stats.wilcoxon(off_epoch_bases, offall, alternative=alternative).pvalue
+                pv_off500_vstim = stats.wilcoxon(off_epoch_bases, off500, alternative=alternative).pvalue
+
+                # build your dict for a dataframe
+                data['mouse'].append(mouse)
+                data['parsed_11stage'].append(stage)
+                data['initial_cue'].append(icue)
+                data['cell_id'].append(ids[celli])
+                data['cell_n'].append(celli + 1)
+                data['pv_stim_long'].append(pv_stimall)
+                data['pv_stim_short'].append(pv_stim500)
+                data['pv_off_long'].append(pv_offall)
+                data['pv_off_short'].append(pv_off500)
+                data['pv_off_long_stimbase'].append(pv_offall_vstim)
+                data['pv_off_short_stimbase'].append(pv_off500_vstim)
+
+    df = pd.DataFrame(data=data).set_index(['mouse', 'parsed_11stage', 'initial_cue'])
+
+    return df
+
+
+def add_drive_type_column(pvalue_df, neg_log10_pv_thresh=4):
+    """
+    Add a column that categorizes cells as driven to onset, offset, or both. Also add Bonferroni corrected
+    p-value columns to a stage drive p-value dataframe as part of the calculation.
+
+    :param pvalue_df: pandas.DataFrame
+        cascade.drive.multi_stat_pvalues() output DataFrame
+    :param neg_log10_pv_thresh: float or int
+        Threshold on -np.log10(p-value) >= threshold, for calling a cell driven.
+    :return: pvalue_df with new columns
+    """
+
+    def _nl10(x):
+        """negative log 10"""
+        return -np.log10(x)
+
+    # add Bonferroni corrected columns for your three test comparisons
+    pvalue_df = _add_bonferroni_pvalue_columns(pvalue_df)
+
+    # create a column that classifies drive type as onset-offset-both
+    pvalue_df['driven_to'] = 'not driven'
+    onbool = pvalue_df['bc_pv_stim'].apply(_nl10).ge(neg_log10_pv_thresh)
+    pvalue_df.loc[onbool, 'driven_to'] = 'onset'
+    offbool = pvalue_df['bc_pv_off'].apply(_nl10).ge(neg_log10_pv_thresh) \
+              & pvalue_df['bc_pv_off_stimbase'].apply(_nl10).ge(neg_log10_pv_thresh)
+    pvalue_df.loc[offbool, 'driven_to'] = 'offset'
+    pvalue_df.loc[offbool & onbool, 'driven_to'] = 'both'
+
+    return pvalue_df
+
+
+def _add_bonferroni_pvalue_columns(pvalue_df):
+    """
+    Helper function to add Bonferroni corrected p-value columns to a stage drive p-value dataframe
+    :param pvalue_df: pandas.DataFrame
+        cascade.drive.multi_stat_pvalues() output DataFrame
+    :return: pvalue_df with new columns
+    """
+
+    # Bonferroni correct your 3 calculations for the two full window and 500 ms window tests
+    bc_stim = pvalue_df.loc[:, ['pv_stim_short', 'pv_stim_long']].min(axis=1) * 2
+    bc_off = pvalue_df.loc[:, ['pv_off_short', 'pv_off_long']].min(axis=1) * 2
+    bc_off_stimbase = pvalue_df.loc[:, ['pv_off_short_stimbase', 'pv_off_long_stimbase']].min(axis=1) * 2
+
+    pvalue_df['bc_pv_stim'] = bc_stim
+    pvalue_df['bc_pv_off'] = bc_off
+    pvalue_df['bc_pv_off_stimbase'] = bc_off_stimbase
+
+    return pvalue_df
