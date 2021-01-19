@@ -364,7 +364,7 @@ def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None):
         stage_boo = meta.parsed_11stage.isin([stage]).values
 
         for icue in ['plus', 'minus', 'neutral']:
-            cue_boo = meta.initial_cue.isin([icue]).values
+            cue_boo = meta.initial_condition.isin([icue]).values
 
             for celli in range(mean_t_tensor.shape[0]):
                 cell_boo = ~np.isnan(mean_t_tensor[celli, :])
