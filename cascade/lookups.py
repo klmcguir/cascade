@@ -207,6 +207,10 @@ staging = {
 
 """Useful lists so I don't have to type out names of mice I commonly use"""
 mice = {
+    # all good POR mice and all fields of view LM and L5 data included
+    'allFOV': sorted(['AS23', 'AS20', 'AS47', 'AS41', 'OA38',
+                      'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26', 'LM67',
+                      'LM226', 'LM26', 'PD27', 'PD67', 'PD226', 'PD26']),
     # all mice with crossday alignment completed
     'all15': sorted(['AS23', 'AS20', 'CB173', 'AS47', 'AS41', 'AS57', 'OA38',
                      'OA27', 'OA67', 'VF226', 'OA32', 'OA34', 'OA36', 'OA26', 'CC175']),
