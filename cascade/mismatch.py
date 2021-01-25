@@ -3,8 +3,11 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 from scipy import stats
+import os
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-from . import utils, tuning, lookups, drive
+from . import utils, tuning, lookups
 
 """
 In V1 cells, that respond with a depolarizing mismatch signal when visual flow is halted, also respond with a slight 
@@ -81,11 +84,345 @@ def match_trials(meta, target_epoch='L1 reversal1', search_epoch='L5 learning', 
             speed_dict_pre[c_to_match][closest_matched_ind] = np.nan  # no replacement, blank trial
             match_counter += 1
 
+    #      target:      search:
     return s_had_match, matched_s
 
 
-def trial_match_diff_over_stages(meta, pref_tensor, search_epoch='L5 learning', min_trials=10):
+def mismatch_stat(meta, tensor, ids, search_epoch='L5 learning', offset_bool=None,
+                  stim_calc_start_s=0.2, stim_calc_end_s=0.700, off_calc_start_s=0.200, off_calc_end_s=0.700,
+                  plot_please=False, plot_w='heatmap', neg_log10_pv_thresh=4, alternative='less'):
+    """
+    Calculate mismatch on trials matched for running speed. Also calculated p-values on the drivenness of a cell
+    for those trials. This is in an attempt to post-hoc throw out cells that were not driven
+    during any part of the calculation.
 
+    :param meta: pandas.DataFrame
+        Trial metadata.
+    :param tensor: numpy.ndarray
+        cells x times x trials matrix of neural data.
+    :param ids: numpy.ndarray (1,)
+        Vector of cell IDs.
+    :param search_epoch: str
+        Period of learning to compare all other periods to. i.e. 'L5 learning'
+    :param offset_bool: boolean
+        Optionally pass boolean vector defining offset driven cells. True is an Offset cells. False is other.
+    :param stim_calc_start_s: float
+        When to start the stim period calculation relative to stim onset, units of seconds.
+    :param stim_calc_end_s: float
+        When to end the stim period calculation relative to stim onset, units of seconds. If None, defaults to full
+        stimulus length
+    :param off_calc_start_s: float
+        When to start the offset period calculation relative to stim offset, units of seconds.
+    :param off_calc_end_s: float
+        When to end the offset period calculation relative to stim offset, units of seconds. If None, defaults to full
+        response window (2 seconds after offset).
+    :param plot_please: boolean
+        Optionally plot, mostly for testing and debugging. WARNING: Will generate THOUSANDS of plots.
+    :param plot_w: str
+        'heatmap' or 'traces', plot mean traces or include heatmap. None defaults to 'traces'.
+    :param neg_log10_pv_thresh: float
+        -log10(p-value) threshold for calling a cell driven. This adds an extra column, but does no filtering.
+    :param alternative: str
+        'less' or 'two-sided', not 'greater'. kwarg for scipy.stats.wilcoxon(). 'less' is a one sided test, testing for
+        an increase over baseline.
+
+    :return: pandas.DataFrame with mismatch calculations, and p-values for drivenness of the trials included in each
+    calculation
+    """
+
+    # loop over cues and epochs, match trials, calculate differences between matched trials for each cell
+    cue_dfs = []
+    for cue in ['minus', 'neutral', 'plus']:
+        meta_bool = meta.initial_condition.isin([cue]).values
+        cue_meta = meta.loc[meta_bool]
+        cue_tensor = tensor[:, :, meta_bool]
+
+        # offset_bool = cas.utils.get_offset_cells(meta, pref_tensor)
+        if offset_bool is None:
+            offset_bool = utils.get_offset_cells(meta, tensor)
+
+        # assume data is the usual 15.5 hz 7 sec 108 frame vector
+        assert cue_tensor.shape[1] == 108
+
+        # get windows for additional comparisons --> 500 ms with a 200 ms delay to account for GECI tau
+        stim_length = lookups.stim_length[utils.meta_mouse(meta)]
+        time_vec = np.arange(-1, 6, 1 / 15.5)[:108]
+        ms200 = np.where(time_vec > stim_calc_start_s)[0][0]
+        ms700 = np.where(time_vec > stim_calc_end_s)[0][0]
+        off_ms200 = np.where(time_vec > stim_length + off_calc_start_s)[0][0]
+        off_ms700 = np.where(time_vec > stim_length + off_calc_end_s)[0][0]
+        stim_off_frame = np.where(time_vec > stim_length)[0][0]
+        stim_off_frame_minus1s = np.where(time_vec > stim_length - 1)[0][0]
+        # for sustainedness
+        sus0 = np.where(time_vec > 0)[0][0]
+        sus2 = np.where(time_vec > 2)[0][0]  # use 2 seconds for all mice
+
+        # get mean trial response matriices, cells x trials
+        mean_t_tensor = utils.tensor_mean_per_trial(cue_meta, cue_tensor, nan_licking=False, account_for_offset=True,
+                                                    offset_bool=offset_bool,
+                                                    stim_start_s=stim_calc_start_s, stim_off_s=stim_calc_end_s,
+                                                    off_start_s=off_calc_start_s, off_off_s=off_calc_end_s)
+        mean_t_baselines = np.nanmean(cue_tensor[:, :15, :], axis=1)
+        mean_t_1stsec = np.nanmean(cue_tensor[:, ms200:ms700, :], axis=1)
+
+        # for offset cells it is useful to have averages of 1sec before offset and 1 sec after as well
+        mean_t_off_baselines = np.nanmean(cue_tensor[:, stim_off_frame_minus1s:stim_off_frame, :], axis=1)
+        mean_t_off_1st_sec = np.nanmean(cue_tensor[:, off_ms200:off_ms700, :], axis=1)
+
+        # preallocate
+        diff_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
+        frac_diff_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
+        pv_pre_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
+        pv_post_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
+        driven_to_one_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
+        delta_sus_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
+        frac_delta_sus_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
+        trial_inds_relrev = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
+        for si, stage in enumerate(lookups.staging['parsed_11stage']):
+
+            # don't compare to self. Skip and set to 0 where cells were found.
+            if stage == search_epoch:
+                diff_mat[~np.isnan(mean_t_tensor[:, 0]), si] = 0
+                frac_diff_mat[~np.isnan(mean_t_tensor[:, 0]), si] = 0
+                delta_sus_mat[~np.isnan(mean_t_tensor[:, 0]), si] = 0
+                frac_delta_sus_mat[~np.isnan(mean_t_tensor[:, 0]), si] = 0
+                continue
+
+            # calculate change between two stages, matching distribution of running speeds per cue
+            # s_had_match --> target --> post
+            # matched_s --> search --> pre
+            s_had_match, matched_s = match_trials(cue_meta, target_epoch=stage, search_epoch=search_epoch,
+                                                  match_on='speed', tolerance=5)
+            print(f'{utils.meta_mouse(cue_meta)}: {stage} vs {search_epoch}, '
+                  f'n={np.sum(np.array(s_had_match) > 0)} trials possible')
+
+            # if a mouse is missing a stage skip calculation
+            if len(s_had_match) == 0 or len(matched_s) == 0:
+                continue
+
+            # for each cell only use matched trials. If a cell is missing data in one period,
+            # drop matching trials in other.
+            pre_mean = np.zeros(mean_t_tensor.shape[0]) + np.nan
+            post_mean = np.zeros(mean_t_tensor.shape[0]) + np.nan
+            for celli in range(mean_t_tensor.shape[0]):
+
+                # get possible trials that were matched given cell existence in each epoch
+                existing_post_trial_nums = s_had_match[~np.isnan(mean_t_tensor[celli, :])]
+                existing_pre_trial_nums = matched_s[~np.isnan(mean_t_tensor[celli, :])]
+                still_matched_in_both = existing_pre_trial_nums[
+                    np.isin(existing_pre_trial_nums, existing_post_trial_nums) &
+                    (existing_pre_trial_nums > 0)]  # 0 is an unmatched trial
+
+                # get boolean for both stages for your subset of existing matched trials
+                existing_post_trial_bool = np.isin(s_had_match, still_matched_in_both)
+                existing_pre_trial_bool = np.isin(matched_s, still_matched_in_both)
+                if np.sum(existing_post_trial_bool) == 0 or np.sum(
+                        existing_pre_trial_bool) == 0:  # no matched trials for cell
+                    continue
+
+                # get the median trial number relative to reversal
+                last_learning_ind = np.where(meta.learning_state.isin(['learning']).values)[0][-1]
+                trials = np.arange(len(meta)) - last_learning_ind
+                trial_inds_relrev[celli, si] = np.nanmedian(trials[meta_bool][existing_post_trial_bool])
+
+                # get baseline vectors for both stages
+                # mean_t_tensor accounts for offset, so this is the first test for both cases full-stim or full-offset
+                post_bases = mean_t_baselines[celli, existing_post_trial_bool]
+                pre_bases = mean_t_baselines[celli, existing_pre_trial_bool]
+                post_means = mean_t_tensor[celli, existing_post_trial_bool]
+                pre_means = mean_t_tensor[celli, existing_pre_trial_bool]
+
+                # different calcs if a cell is a stimulus peaking or offset peaking cell
+                if not offset_bool[celli]:
+
+                    # additional test, check 1st second of stim period to not punish tranient responses
+                    post_1s = mean_t_1stsec[celli, existing_post_trial_bool]
+                    pre_1s = mean_t_1stsec[celli, existing_pre_trial_bool]
+
+                elif offset_bool[celli]:
+
+                    # additional baseline values defined from last second of the stimulus
+                    off_post_bases = mean_t_off_baselines[celli, existing_post_trial_bool]  # last second of stimulus
+                    off_pre_bases = mean_t_off_baselines[celli, existing_pre_trial_bool]
+
+                    # additional data for 1st second following offset
+                    post_1s = mean_t_off_1st_sec[celli, existing_post_trial_bool]  # first second following offset
+                    pre_1s = mean_t_off_1st_sec[celli, existing_pre_trial_bool]
+
+                # check for drivenness in both stages
+                # this compares baseline to the full stim or offset period as well as to the first second of both
+                # tests bases-means delta is negative, H0: symmetric
+                # 'two-sided'  # 'less' --> for one_tailed in the right direction
+                pv_post = stats.wilcoxon(post_bases, post_means, alternative=alternative).pvalue
+                pv_pre = stats.wilcoxon(pre_bases, pre_means, alternative=alternative).pvalue
+                pv_post_1s = stats.wilcoxon(post_bases, post_1s, alternative=alternative).pvalue
+                pv_pre_1s = stats.wilcoxon(pre_bases, pre_1s, alternative=alternative).pvalue
+                pv_post = np.nanmin([pv_post, pv_post_1s]) * 2  # reset pv_post to be best with bonferroni
+                pv_pre = np.nanmin([pv_pre, pv_pre_1s]) * 2
+
+                if offset_bool[
+                    celli]:  # additional tests specific to full offset period as well as to the first second of offset
+                    # this compares 1s pre offset to stim or offset period as well as to the first second of both
+                    off_pv_post = stats.wilcoxon(off_post_bases, post_means, alternative=alternative).pvalue
+                    off_pv_pre = stats.wilcoxon(off_pre_bases, pre_means, alternative=alternative).pvalue
+                    off_pv_post_1s = stats.wilcoxon(off_post_bases, post_1s, alternative=alternative).pvalue
+                    off_pv_pre_1s = stats.wilcoxon(off_pre_bases, pre_1s, alternative=alternative).pvalue
+                    off_pv_post = np.nanmin(
+                        [off_pv_post, off_pv_post_1s]) * 2  # reset pv_post to be best with bonferroni
+                    off_pv_pre = np.nanmin([off_pv_pre, off_pv_pre_1s]) * 2
+                    # select your final p-value for offset cells to be the worst of the two comparisons.
+                    # 1. baseline-(full or 1s)
+                    # 2. last_second_of_stim-(full or 1s)
+                    # both must be significant for a cell to pass so select the worst of the two.
+                    pv_post = np.nanmax([pv_post, off_pv_post])  # worst of the two
+                    pv_pre = np.nanmax([pv_pre, off_pv_pre])
+
+                # get mean trace
+                post_trace = np.nanmean(cue_tensor[celli, :, existing_post_trial_bool], axis=0)
+                pre_trace = np.nanmean(cue_tensor[celli, :, existing_pre_trial_bool], axis=0)
+
+                # plot traces (and other optional plots for checking metrics)
+                if plot_please:
+                    if np.sum(existing_pre_trial_bool) > 0:
+                        offtag = 'OFFSET' if offset_bool[celli] else 'STIM'
+                        drivetag = (-np.log10(pv_pre) >= neg_log10_pv_thresh) | (
+                                -np.log10(pv_post) >= neg_log10_pv_thresh)
+                        if plot_w is None or 'traces' in plot_w:
+                            plt.figure()
+                            plt.plot(pre_trace, label=f'target {round(pv_pre, 4)}')
+                            plt.plot(post_trace, label=f'search {round(pv_post, 4)}')
+                            plt.title(f'Driven, ntrials={np.sum(existing_pre_trial_bool)}' if drivetag
+                                      else f'NOT driven , ntrials={np.sum(existing_pre_trial_bool)}')
+                            plt.legend()
+                        else:
+                            fig, ax = plt.subplots(1, 3, figsize=(11, 3))
+                            ax[0].plot(pre_trace, label=f'target {round(pv_pre, 4)}')
+                            ax[0].plot(post_trace, label=f'search {round(pv_post, 4)}')
+                            ax[0].set_title(f'{offtag} Driven, ntrials={np.sum(existing_pre_trial_bool)}' if drivetag
+                                            else f'{offtag} NOT driven , ntrials={np.sum(existing_pre_trial_bool)}')
+                            ax[0].legend()
+                            ax[0].set_ylabel('mean response')
+                            ax[0].set_xlabel('time from stim onset')
+                            ax[0].set_xticks(np.arange(0, 108, 15.5))
+                            ax[0].set_xticklabels(np.arange(-1, 6, 1))
+
+                            if plot_w.lower() == 'heatmap':
+                                sns.heatmap(cue_tensor[celli, :, existing_pre_trial_bool], ax=ax[1])
+                            else:
+                                sns.histplot(pre_means, ax=ax[1], color='blue', label='response')
+                                sns.histplot(pre_bases, ax=ax[1], color='gray', label='baseline', alpha=0.5)
+                                ax[1].legend()
+                            ax[1].set_title('Target set mean responses')
+                            ax[1].set_xlabel('mean response')
+                            ax[1].set_ylabel('trial count')
+
+                            if plot_w.lower() == 'heatmap':
+                                sns.heatmap(cue_tensor[celli, :, existing_post_trial_bool], ax=ax[2])
+                            else:
+                                sns.histplot(post_means, ax=ax[2], color='orange', label='response')
+                                sns.histplot(post_bases, ax=ax[2], color='gray', label='baseline', alpha=0.5)
+                                ax[2].legend()
+                            ax[2].set_title('Search set mean responses')
+                            ax[2].set_xlabel('mean response')
+                            ax[2].set_ylabel('trial count')
+                        dtag = '_DRIVEN' if drivetag else ''
+                        bpv = int(round(
+                            np.max([-np.log10(pv_post), -np.log10(pv_pre)])))  # highest -log10 pvalue for that pair
+                        plt.savefig(os.path.join('/twophoton_analysis/Data/analysis/pilot_mm_plots_v8_stat/',
+                                                 f'{utils.meta_mouse(meta)}{dtag}_bpv{bpv}_n{celli}_{search_epoch}_v_{stage}.png'),
+                                    bbox_inches='tight')
+                    plt.close('all')
+
+                # save if cells passed criteria
+                if (-np.log10(pv_pre) >= neg_log10_pv_thresh) | (-np.log10(pv_post) >= neg_log10_pv_thresh):
+                    driven_to_one_mat[celli, si] = 1
+                else:
+                    driven_to_one_mat[celli, si] = 0
+
+                # means regardless of p-values
+                pre_mean[celli] = np.nanmean(mean_t_tensor[celli, existing_pre_trial_bool])
+                post_mean[celli] = np.nanmean(mean_t_tensor[celli, existing_post_trial_bool])
+
+                # matrix of drivenness p-values for cell --> for each stage
+                pv_pre_mat[celli, si] = -np.log10(pv_pre)
+
+                # matrix of drivenness p-values for cell --> for search epoch, (compared to a given stage)
+                pv_post_mat[celli, si] = -np.log10(pv_post)
+
+                # change in sustainedness, mean and 95th percentile response
+                sus_pair = []
+                for susi in [pre_trace[sus0:sus2], post_trace[sus0:sus2]]:
+                    mean_response = np.nanmean(susi)
+
+                    # flip non-NaN array values [0, 1, 10, np.nan] --> [10, 1, 0, np.nan]
+                    sorted_vals = np.sort(susi)  # nans appended to end
+                    ind95 = int(np.ceil(len(susi) * .05))
+                    sorted_vals[~np.isnan(sorted_vals)] = sorted_vals[~np.isnan(sorted_vals)][::-1]
+                    percentile95 = sorted_vals[ind95]
+                    if percentile95 > 0.001 and mean_response > 0.001 and percentile95 >= mean_response:
+                        sus_pair.append(mean_response / percentile95)
+                    else:
+                        sus_pair.append(np.nan)
+
+                delta_sus_mat[celli, si] = sus_pair[1] - sus_pair[0]
+                frac_delta_sus_mat[celli, si] = (sus_pair[1] - sus_pair[0]) / np.nanmax(sus_pair)
+
+            # diff as zscore
+            diff_mat[:, si] = post_mean - pre_mean
+
+            # diff as fraction
+            post_mean[post_mean < 0] = 0
+            pre_mean[pre_mean < 0] = 0
+            denom = np.nanmax(np.vstack([post_mean, pre_mean]), axis=0)
+            frac_diff_mat[:, si] = (post_mean - pre_mean) / denom
+
+
+        # unwrap and create df
+        stages = lookups.staging['parsed_11stage_T']
+        search_epoch_num = [s for s, sn in enumerate(lookups.staging['parsed_11stage']) if sn == search_epoch][0]
+        updated_search_epoch = stages[search_epoch_num]
+        all_pairs_drive_dfs = []
+        for c, s in enumerate(stages):
+
+            stage_diff = diff_mat[:, c]
+            frac_stage_diff = frac_diff_mat[:, c]
+            post_vec = pv_post_mat[:, c]
+            pre_vec = pv_pre_mat[:, c]
+            dt_col = driven_to_one_mat[:, c]
+            d_sus = delta_sus_mat[:, c]
+            d_frac_sus = frac_delta_sus_mat[:, c]
+            tr_num = trial_inds_relrev[:, c]
+
+            all_pairs_drive_dfs.append(
+                pd.DataFrame(
+                    data={'mouse': [utils.meta_mouse(meta)] * len(stage_diff),
+                          'parsed_11stage': [s] * len(stage_diff),
+                          'search_stage': [updated_search_epoch] * len(stage_diff),
+                          'median_trial': tr_num,
+                          'initial_cue': [cue] * len(stage_diff),
+                          'mm_type': [lookups.lookup_mm[utils.meta_mouse(meta)][cue]] * len(stage_diff),
+                          'mm_frac': frac_stage_diff,
+                          'mm_amp': stage_diff,
+                          'mm_neglogpv_target': post_vec,
+                          'mm_neglogpv_search': pre_vec,  # this is your "fixed" search epoch
+                          'delta_sustainedness': d_sus,
+                          'delta_frac_sustainedness': d_frac_sus,
+                          'cell_id': ids,
+                          'cell_n': np.arange(len(stage_diff)) + 1,
+                          f'driven_{neg_log10_pv_thresh}': dt_col,
+                          'offset_cell': offset_bool
+                          }
+                ).set_index(['mouse', 'cell_id']).sort_index()
+            )
+
+        learning_mm_wtype = pd.concat(all_pairs_drive_dfs, axis=0)
+        cue_dfs.append(learning_mm_wtype)
+    cue_dfs_all_cues = pd.concat(cue_dfs, axis=0)
+
+    return cue_dfs_all_cues
+
+
+def trial_match_diff_over_stages(meta, pref_tensor, search_epoch='L5 learning', min_trials=10):
     # get mean trial response matrix, cells x trials
     mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
 
@@ -122,7 +459,6 @@ def trial_match_diff_over_stages(meta, pref_tensor, search_epoch='L5 learning', 
 
 
 def trial_match_frac_over_stages(meta, pref_tensor, search_epoch='L5 learning'):
-
     # get mean trial response matrix, cells x trials
     mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
 
@@ -169,73 +505,6 @@ def trial_match_frac_over_stages(meta, pref_tensor, search_epoch='L5 learning'):
         diff_mat[:, si] = reversal_mismatch
 
     return diff_mat
-
-
-def trial_match_statistical_frac_or_diff_over_stages(
-        meta, pref_tensor, search_epoch='L5 learning', min_trials=10, fractional_mm=False):
-    """
-    REVAMP
-
-    :param meta:
-    :param pref_tensor:
-    :param search_epoch:
-    :param min_trials:
-    :param fractional_mm:
-    :return:
-    """
-
-    # get mean trial response matrix, cells x trials
-    mean_t_tensor = utils.tensor_mean_per_trial(meta, pref_tensor, nan_licking=False, account_for_offset=True)
-
-    # assume data is the usual 15.5 hz 7 sec 108 frame vector
-    assert pref_tensor.shape[1] == 108
-    mean_t_baselines = np.nanmean(pref_tensor[:, 15:, :], axis=1)
-
-    # preallocate
-    diff_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
-    for si, stage in enumerate(lookups.staging['parsed_11stage']):
-
-        # calculate change between two stages, matching distribution of running speeds per cue
-        s_had_match, matched_s = match_trials(meta, target_epoch=stage, search_epoch=search_epoch,
-                                              match_on='speed', tolerance=5)
-        print(f'{utils.meta_mouse(meta)}: Trial matching target: {stage} n={np.sum(s_had_match > 0)} '
-              f'possible trials, search {search_epoch} n={np.sum(matched_s > 0)} possible trials')
-        # TODO use hmm or other binarization for running rather than a cm/s tolerance
-
-        # if a mouse is missing a stage skip calculation
-        if len(s_had_match) == 0 or len(matched_s) == 0:
-            continue
-
-        # create booleans of possible trials to use
-        pre_rev = matched_s > 0
-        post_rev = s_had_match > 0
-
-        # for each cell only use matched trials. If a cell is missing data in one period, drop matching trials in other.
-        pre_mean = np.zeros(mean_t_tensor.shape[0]) + np.nan
-        for celli in range(mean_t_tensor.shape[0]):
-            existing_post_trials = s_had_match[~np.isnan(mean_t_tensor[celli, :])]
-            existing_pre_trials = np.isin(matched_s, existing_post_trials)
-            pre_mean[celli] = np.nanmean(mean_t_tensor[celli, pre_rev & existing_pre_trials])
-            if np.sum(existing_pre_trials) < min_trials:
-                print(f'WARNING: cell_n {celli}, only {np.sum(existing_pre_trials)} trials matched' +
-                      ' pre_reversal after accounting for missing data post_reversal')
-            # breakpoint()
-        post_mean = np.nanmean(mean_t_tensor[:, post_rev], axis=1)
-
-        if fractional_mm:
-            post_mean[post_mean < 0] = 0
-            pre_mean[pre_mean < 0] = 0
-            denom = np.nanmax(np.vstack([post_mean, pre_mean]), axis=0)
-            reversal_mismatch = (post_mean - pre_mean) / denom
-        else:
-            reversal_mismatch = post_mean - pre_mean
-        diff_mat[:, si] = reversal_mismatch
-
-    return diff_mat
-
-
-# def _plot_mm_internal():
-
 
 
 def run_controlled_reversal_mismatch_traces(meta, pref_tensor, filter_licking=None, filter_running=None,

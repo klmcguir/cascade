@@ -905,6 +905,7 @@ def trialmeta(mouse, downsample=True, verbose=True):
         tags = [str(run_tags[s]) for s in range(len(run_tags)) if run_tags[s] != hunger[0]
                 and run_tags[s] != learning_state[0]
                 and run_tags[s] != 'kelly'
+                and run_tags[s] != 'xday'
                 and run_tags[s] != 'learning_start'
                 and run_tags[s] != 'reversal1_start'
                 and run_tags[s] != 'reversal2_start']

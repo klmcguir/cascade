@@ -1,6 +1,9 @@
 """ Functions for fitting cross-validated glm in tensorflow """
 import numpy as np
-import tensorflow as tf
+try:
+    import tensorflow as tf
+except ImportError:
+    print('tensorflow failed to load for GLM in cascade.cvglm')
 from time import time
 import matplotlib
 import matplotlib.pyplot as plt

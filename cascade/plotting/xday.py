@@ -298,11 +298,12 @@ def heatmap(
         trial_indexer = (
             ((dfm.orientation == 0) | (dfm.orientation == 135)
              | (dfm.orientation == 270)) &
-            ((dfm.tag == 'standard') | (dfm.tag == 'learning_start')
+            ((dfm.tag == 'standard') | (dfm.tag == 'learning_start') | (dfm.tag == 'xday')
              | (dfm.tag == 'reversal1_start') | (dfm.tag == 'reversal2_start')) &
             ((dfm.condition == 'plus') | (dfm.condition == 'minus')
              | (dfm.condition == 'neutral')) &
             (dfm.hunger == 'hungry'))
+        # breakpoint()
         dfm = dfm.loc[trial_indexer, :]
 
         # merge on filtered trials

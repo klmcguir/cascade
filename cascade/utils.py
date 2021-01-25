@@ -187,11 +187,33 @@ def tensor_mean_per_day(meta, tensor, initial_cue=True, cue='plus', ignore_cue=F
     return new_tensor
 
 
-def tensor_mean_per_trial(meta, tensor, nan_licking=False, account_for_offset=False):
+def tensor_mean_per_trial(meta, tensor, nan_licking=False, account_for_offset=False, offset_bool=None,
+                          stim_start_s=0, stim_off_s=None, off_start_s=0, off_off_s=None):
     """
-    Helper function to calculate mean per trial meta for a single mouse, correctly accounting for stimulus length.
+    Helper function to calculate mean per trial for a single mouse, correctly accounting for stimulus length.
     Optionally buffer times around licking. Can also choose to automatically parse if a cell's peak activity is
     during the response window and use response window as the trial mean for that offset cells.
+
+    :param meta: pandas.DataFrame
+        Trial metadata.
+    :param tensor: numpy.ndarray
+        A cells x times X trials matrix of neural data.
+    :param nan_licking: boolean
+        Optionally remove licking by masking with nans.
+    :param account_for_offset: boolean
+        Take mean for offset or onset window depending on when a cell is driven.
+    :param offset_bool: boolean
+        Optionally pass Boolean vector, the same length and order as ids, and tensor --> [cells, :, :].
+        True = Offset cells. False = not Offset cells.
+    :param stim_start_s: float
+        Time after stimulus onset start stimulus period. Seconds.
+    :param stim_off_s: float
+        Time after stimulus onset to end stimulus period. Seconds.
+    :param off_start_s: float
+        Time after stimulus offset to start response period. Seconds.
+    :param off_off_s: float
+        Time after stimulus offset to end response period. Seconds.
+    :return:
     """
 
     # meta can only be a DataFrame of a single mouse
@@ -201,15 +223,18 @@ def tensor_mean_per_trial(meta, tensor, nan_licking=False, account_for_offset=Fa
     # assume 15.5 Hz sampling or downsampling for 7 seconds per trial (n = 108 timepoints)
     assert tensor.shape[1] == 108
     times = np.arange(-1, 6, 1 / 15.5)[:108]
-    stim_bool = (times > 0) & (times < lookups.stim_length[mouse])
-    response_bool = (times > lookups.stim_length[mouse] + 0.0) & (times < lookups.stim_length[mouse] + 2)  # 0ms delay
+    stim_end = lookups.stim_length[mouse] if stim_off_s is None else stim_off_s
+    stim_bool = (times > 0 + stim_start_s) & (times < stim_end)
+    resp_end = lookups.stim_length[mouse] + 2 if off_off_s is None else lookups.stim_length[mouse] + off_off_s
+    response_bool = (times > lookups.stim_length[mouse] + off_start_s) & (times < resp_end)  # 0ms delay
 
     # make sure that the date vec allows for 0.5 days at reversal and learning
     meta = update_meta_date_vec(meta)
 
     # optionally determine cells with offset responses
     if account_for_offset:
-        offset_bool = get_offset_cells(meta, tensor)
+        if offset_bool is None:
+            offset_bool = get_offset_cells(meta, tensor)
 
     # optionally nan all times after licking (median cs plus lick latency for non-lick trials)
     if nan_licking:
