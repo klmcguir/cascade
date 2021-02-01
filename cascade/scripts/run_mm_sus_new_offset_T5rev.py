@@ -49,22 +49,22 @@ for vi in range(10):
         offset_bool = reordered_df.offset_test.values
 
         # with oren
-        df = cas.mismatch.mismatch_stat(meta, tensor, ids, search_epoch='L5 learning', offset_bool=offset_bool,
+        df = cas.mismatch.mismatch_stat(meta, tensor, ids, search_epoch='L5 reversal1', offset_bool=offset_bool,
                                         stim_calc_start_s=0.2, stim_calc_end_s=0.700, off_calc_start_s=0.200, off_calc_end_s=0.700,
                                         plot_please=False, plot_w='heatmap', neg_log10_pv_thresh=4, alternative='less')
         mm_df_list.append(df)
     mm_dfs = pd.concat(mm_df_list, axis=0)
-    mm_dfs.to_pickle(f'/twophoton_analysis/Data/analysis/core_dfs/mismatch_stat_df_allcues_vT5l_newoff_v{vi}.pkl')
+    mm_dfs.to_pickle(f'/twophoton_analysis/Data/analysis/core_dfs/mismatch_stat_df_allcues_vT5r1_newoff_v{vi}.pkl')
     mm_dfs.head()
 
 thresh = 4
 save_folder = '/twophoton_analysis/Data/analysis/mm_sus_versions_plots/'
 for vi in range(10):
-    mm_dfs = pd.read_pickle(f'/twophoton_analysis/Data/analysis/core_dfs/mismatch_stat_df_allcues_vT5l_newoff_v{vi}.pkl')
+    mm_dfs = pd.read_pickle(f'/twophoton_analysis/Data/analysis/core_dfs/mismatch_stat_df_allcues_vT5r1_newoff_v{vi}.pkl')
 
     plus_df = mm_dfs.loc[~mm_dfs.offset_cell &
                          ((mm_dfs.mm_neglogpv_search.ge(thresh) | mm_dfs.mm_neglogpv_target.ge(thresh))
-                          | mm_dfs.parsed_11stage.isin(['T5 learning']))]
+                          | mm_dfs.parsed_11stage.isin(['T5 reversal1']))]
     plus_df = plus_df.loc[~plus_df.reset_index().mouse.isin(['AS20', 'AS23']).values, :]
     ppp = plus_df
 
@@ -86,18 +86,18 @@ for vi in range(10):
 
     plt.legend(title='Cue type',
                bbox_to_anchor=(1.01, 1), loc=2)
-    plt.title(f'Fractional change in response, relative to T5 learning\n', size=16)
+    plt.title(f'Fractional change in response, relative to T5 reversal1\n', size=16)
     plt.ylabel('Change in response (%)', size=14)
     plt.xlabel('\nstage of learning', size=14)
     plt.xticks(ticks=np.arange(len(cas.lookups.staging['parsed_11stage_T'])),
                labels=cas.lookups.staging['parsed_11stage_T'], rotation=45, ha='right')
     plt.axvline(5.5, linewidth=2, alpha=0.5, color='red')
-    plt.savefig(os.path.join(save_folder, f'v_{vi}_mm_frac_delta_T5l.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(save_folder, f'rev_v_{vi}_mm_frac_delta_T5r1.png'), bbox_inches='tight')
 
 
     plus_df = mm_dfs.loc[~mm_dfs.offset_cell &
                          ((mm_dfs.mm_neglogpv_target.ge(thresh) & mm_dfs.mm_neglogpv_search.ge(thresh))
-                          | mm_dfs.parsed_11stage.isin(['T5 learning']))]
+                          | mm_dfs.parsed_11stage.isin(['T5 reversal1']))]
     plus_df = plus_df.loc[~plus_df.reset_index().mouse.isin(['AS20', 'AS23']).values, :]
     ppp = plus_df
 
@@ -120,18 +120,18 @@ for vi in range(10):
 
     plt.legend(title='Cue type',
                bbox_to_anchor=(1.01, 1), loc=2)
-    plt.title(f'Amplitude change in response, relative to T5 learning\n', size=16)
+    plt.title(f'Amplitude change in response, relative to T5 reversal1\n', size=16)
     plt.ylabel('Change in response (\u0394F/F, z-score)', size=14)
     plt.xlabel('\nstage of learning', size=14)
     plt.xticks(ticks=np.arange(len(cas.lookups.staging['parsed_11stage_T'])),
                labels=cas.lookups.staging['parsed_11stage_T'], rotation=45, ha='right')
     plt.axvline(5.5, linewidth=2, alpha=0.5, color='red')
-    plt.savefig(os.path.join(save_folder, f'v_{vi}_mm_amp_delta_T5l.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(save_folder, f'rev_v_{vi}_mm_amp_delta_T5r1.png'), bbox_inches='tight')
 
 
     plus_df = mm_dfs.loc[~mm_dfs.offset_cell &
                          ((mm_dfs.mm_neglogpv_search.ge(thresh) | mm_dfs.mm_neglogpv_target.ge(thresh))
-                          | mm_dfs.parsed_11stage.isin(['T5 learning']))]
+                          | mm_dfs.parsed_11stage.isin(['T5 reversal1']))]
     plus_df = plus_df.loc[~plus_df.reset_index().mouse.isin(['AS20', 'AS23']).values, :]
     ppp = plus_df
 
@@ -154,18 +154,18 @@ for vi in range(10):
 
     plt.legend(title='Cue type',
                bbox_to_anchor=(1.01, 1), loc=2)
-    plt.title(f'Fractional change in sustainedness, relative to T5 learning\n', size=16)
+    plt.title(f'Fractional change in sustainedness, relative to T5 reversal1\n', size=16)
     plt.ylabel('Change SI (% delta SI)', size=14)
     plt.xlabel('\nstage of learning', size=14)
     plt.xticks(ticks=np.arange(len(cas.lookups.staging['parsed_11stage_T'])),
                labels=cas.lookups.staging['parsed_11stage_T'], rotation=45, ha='right')
     plt.axvline(5.5, linewidth=2, alpha=0.5, color='red')
-    plt.savefig(os.path.join(save_folder, f'v_{vi}_sus_frac_delta_T5l.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(save_folder, f'rev_v_{vi}_sus_frac_delta_T5r1.png'), bbox_inches='tight')
 
 
     plus_df = mm_dfs.loc[~mm_dfs.offset_cell &
                          ((mm_dfs.mm_neglogpv_search.ge(thresh) | mm_dfs.mm_neglogpv_target.ge(thresh))
-                          | mm_dfs.parsed_11stage.isin(['T5 learning']))]
+                          | mm_dfs.parsed_11stage.isin(['T5 reversal1']))]
     plus_df = plus_df.loc[~plus_df.reset_index().mouse.isin(['AS20', 'AS23']).values, :]
     ppp = plus_df
 
@@ -187,10 +187,10 @@ for vi in range(10):
 
     plt.legend(title='Cue type',
                bbox_to_anchor=(1.01, 1), loc=2)
-    plt.title(f'Change in sustainedness, relative to T5 learning\n', size=16)
+    plt.title(f'Change in sustainedness, relative to T5 reversal1\n', size=16)
     plt.ylabel('Change in SI (SI units)', size=14)
     plt.xlabel('\nstage of learning', size=14)
     plt.xticks(ticks=np.arange(len(cas.lookups.staging['parsed_11stage_T'])),
                labels=cas.lookups.staging['parsed_11stage_T'], rotation=45, ha='right')
     plt.axvline(5.5, linewidth=2, alpha=0.5, color='red')
-    plt.savefig(os.path.join(save_folder, f'v_{vi}_sus_amp_delta_T5l.png'), bbox_inches='tight')
+    plt.savefig(os.path.join(save_folder, f'rev_v_{vi}_sus_amp_delta_T5r1.png'), bbox_inches='tight')

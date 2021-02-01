@@ -15,7 +15,8 @@ inhibition to visual flow (stimulus) presented alone. These responses also have 
 """
 
 
-def match_trials(meta, target_epoch='L1 reversal1', search_epoch='L5 learning', match_on='speed', tolerance=1):
+def match_trials(meta, target_epoch='L1 reversal1', search_epoch='L5 learning', match_on='speed', tolerance=1,
+                 staging='parsed_11stage'):
     """
     Generate matched sets of trials based on metadata variables. Always matches for different cue presentations
     independently. i.e., Running speeds are matched for the same cue pre and post reversal, never across cues.
@@ -38,7 +39,7 @@ def match_trials(meta, target_epoch='L1 reversal1', search_epoch='L5 learning', 
     """
 
     # set up trials post reversal as target
-    possible_post = meta.parsed_11stage.isin([target_epoch]).values
+    possible_post = meta[staging].isin([target_epoch]).values
     if np.sum(possible_post) == 0:
         return [], []  # return empty if no reversal
     speed_copy_post = deepcopy(meta[match_on].values)
@@ -47,7 +48,7 @@ def match_trials(meta, target_epoch='L1 reversal1', search_epoch='L5 learning', 
     np.random.shuffle(post_inds_to_check)  # shuffle inds for for loop
 
     # set up trials pre reversal to search over
-    possible_pre = meta.parsed_11stage.isin([search_epoch]).values
+    possible_pre = meta[staging].isin([search_epoch]).values
     speed_copy_pre = deepcopy(meta[match_on].values)
     speed_copy_pre[~possible_pre] = np.nan  # nan all values that you can't draw from
 
@@ -90,7 +91,8 @@ def match_trials(meta, target_epoch='L1 reversal1', search_epoch='L5 learning', 
 
 def mismatch_stat(meta, tensor, ids, search_epoch='L5 learning', offset_bool=None,
                   stim_calc_start_s=0.2, stim_calc_end_s=0.700, off_calc_start_s=0.200, off_calc_end_s=0.700,
-                  plot_please=False, plot_w='heatmap', neg_log10_pv_thresh=4, alternative='less'):
+                  plot_please=False, plot_w='heatmap', neg_log10_pv_thresh=4, alternative='less',
+                  staging='parsed_11stage'):
     """
     Calculate mismatch on trials matched for running speed. Also calculated p-values on the drivenness of a cell
     for those trials. This is in an attempt to post-hoc throw out cells that were not driven
@@ -125,6 +127,8 @@ def mismatch_stat(meta, tensor, ids, search_epoch='L5 learning', offset_bool=Non
     :param alternative: str
         'less' or 'two-sided', not 'greater'. kwarg for scipy.stats.wilcoxon(). 'less' is a one sided test, testing for
         an increase over baseline.
+    :param staging: str
+        Option of binning method used to group trials. Will change acceptable input for 'search_epoch=...'
 
     :return: pandas.DataFrame with mismatch calculations, and p-values for drivenness of the trials included in each
     calculation
@@ -170,15 +174,20 @@ def mismatch_stat(meta, tensor, ids, search_epoch='L5 learning', offset_bool=Non
         mean_t_off_1st_sec = np.nanmean(cue_tensor[:, off_ms200:off_ms700, :], axis=1)
 
         # preallocate
-        diff_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
-        frac_diff_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
-        pv_pre_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
-        pv_post_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
-        driven_to_one_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
-        delta_sus_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
-        frac_delta_sus_mat = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
-        trial_inds_relrev = np.zeros((mean_t_tensor.shape[0], len(lookups.staging['parsed_11stage']))) + np.nan
-        for si, stage in enumerate(lookups.staging['parsed_11stage']):
+        try:
+            stage_bins = lookups.staging[staging]
+        except KeyError:
+            stage_bins = meta[staging].unique()
+        stage_bins_sz = len(stage_bins)
+        diff_mat = np.zeros((mean_t_tensor.shape[0], stage_bins_sz)) + np.nan
+        frac_diff_mat = np.zeros((mean_t_tensor.shape[0], stage_bins_sz)) + np.nan
+        pv_pre_mat = np.zeros((mean_t_tensor.shape[0], stage_bins_sz)) + np.nan
+        pv_post_mat = np.zeros((mean_t_tensor.shape[0], stage_bins_sz)) + np.nan
+        driven_to_one_mat = np.zeros((mean_t_tensor.shape[0], stage_bins_sz)) + np.nan
+        delta_sus_mat = np.zeros((mean_t_tensor.shape[0], stage_bins_sz)) + np.nan
+        frac_delta_sus_mat = np.zeros((mean_t_tensor.shape[0], stage_bins_sz)) + np.nan
+        trial_inds_relrev = np.zeros((mean_t_tensor.shape[0], stage_bins_sz)) + np.nan
+        for si, stage in enumerate(stage_bins):
 
             # don't compare to self. Skip and set to 0 where cells were found.
             if stage == search_epoch:
@@ -192,7 +201,7 @@ def mismatch_stat(meta, tensor, ids, search_epoch='L5 learning', offset_bool=Non
             # s_had_match --> target --> post
             # matched_s --> search --> pre
             s_had_match, matched_s = match_trials(cue_meta, target_epoch=stage, search_epoch=search_epoch,
-                                                  match_on='speed', tolerance=5)
+                                                  match_on='speed', tolerance=5, staging=staging)
             print(f'{utils.meta_mouse(cue_meta)}: {stage} vs {search_epoch}, '
                   f'n={np.sum(np.array(s_had_match) > 0)} trials possible')
 
@@ -378,9 +387,14 @@ def mismatch_stat(meta, tensor, ids, search_epoch='L5 learning', offset_bool=Non
 
 
         # unwrap and create df
-        stages = lookups.staging['parsed_11stage_T']
-        search_epoch_num = [s for s, sn in enumerate(lookups.staging['parsed_11stage']) if sn == search_epoch][0]
-        updated_search_epoch = stages[search_epoch_num]
+        if staging == 'parsed_11stage':
+            stages = lookups.staging['parsed_11stage_T']
+            search_epoch_num = [s for s, sn in enumerate(lookups.staging['parsed_11stage']) if sn == search_epoch][0]
+            updated_search_epoch = stages[search_epoch_num]
+        else:
+            stages = stage_bins
+            search_epoch_num = [s for s, sn in enumerate(stages) if sn == search_epoch][0]
+            updated_search_epoch = stages[search_epoch_num]
         all_pairs_drive_dfs = []
         for c, s in enumerate(stages):
 
@@ -396,7 +410,7 @@ def mismatch_stat(meta, tensor, ids, search_epoch='L5 learning', offset_bool=Non
             all_pairs_drive_dfs.append(
                 pd.DataFrame(
                     data={'mouse': [utils.meta_mouse(meta)] * len(stage_diff),
-                          'parsed_11stage': [s] * len(stage_diff),
+                          staging: [s] * len(stage_diff),
                           'search_stage': [updated_search_epoch] * len(stage_diff),
                           'median_trial': tr_num,
                           'initial_cue': [cue] * len(stage_diff),

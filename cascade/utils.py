@@ -945,6 +945,47 @@ def add_sub_stages_to_meta(meta, staging='parsed_11stage', bins_per_stage=10):
     return meta
 
 
+def add_dprime_sub_stages_to_meta(meta, staging='parsed_11stage', bins_per_stage=10, dp_by_run=True):
+    """
+    Add a column that breaks each stage into 10 bins.
+
+    :param meta: pandas.DataFrame, trial metadata
+    :param staging: str, type of binning to be used to define stages of learning
+    :param bins_per_stage: int, number of bins to break a stage into
+    :return: meta, now with two new columns
+    """
+    if staging not in meta.columns:
+        meta = add_stages_to_meta(meta, staging)
+
+    if dp_by_run:
+        if 'dprime_run' not in meta.columns:
+            meta = add_dprime_run_to_meta(meta)
+        dp = meta['dprime_run'].values
+    else:
+        if 'dprime' not in meta.columns:
+            meta = add_dprime_to_meta(meta)
+        dp = meta['dprime'].values
+
+    bin_vec = np.zeros(len(meta))
+    for stage in meta[staging].unique():
+        stage_boo = meta[staging].isin([stage])
+        stage_dp_sort = np.argsort(dp[stage_boo])
+        stage_inds = np.where(stage_boo)[0][stage_dp_sort]
+        bin_size = int(np.floor(len(stage_inds)/bins_per_stage))
+        # bins = np.arange(stage_inds[0], stage_inds[-1] + bin_size, bin_size)
+        for bi in range(bins_per_stage):
+
+            # account for floor rounding above for last bin
+            if bi == bins_per_stage - 1:
+                ind_chunk = stage_inds[bi * bin_size:]
+            else:
+                ind_chunk = stage_inds[bi * bin_size:(bi+1) * bin_size]
+            bin_vec[ind_chunk] = bi
+
+    meta['stage_bins'] = bin_vec
+    return meta
+
+
 def add_numeric_stages_to_meta(meta, staging='parsed_11stage'):
     """
     Take you staging column and make it numeric easy quick visualizations etc.

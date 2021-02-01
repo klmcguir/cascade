@@ -5,6 +5,35 @@ import flow
 import numpy as np
 
 
+def analysis_file(file_name, folder_name):
+    """
+    Make a new file path, will make folder if the folder doesn't exist. Folder name can be nested.
+
+    :param file_name: str
+        Name of file to create.
+    :param folder_name: str
+        Name of folder to create.
+    :return: new_file: str
+    """
+
+    new_file = os.path.join(analysis_dir(folder_name), file_name)
+    return new_file
+
+
+def analysis_dir(folder_name):
+    """
+    Make a new folder for analysis outputs. Folder name can be nested.
+
+    :param folder_name: str
+        Name of folder to create.
+    :return: new_dir: str
+    """
+    base = 'S:\\twophoton_analysis\\Data\\analysis\\Group-attractive'
+    new_dir = os.path.join(base, folder_name)
+    if not os.path.isdir(new_dir):
+        os.makedirs(new_dir)
+    return new_dir
+
 def default_dir(filename='', foldername=''):
     """
 

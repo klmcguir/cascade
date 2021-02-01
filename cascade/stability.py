@@ -618,7 +618,7 @@ def latency_to_half_peak(meta, pref_tensor, epoch='day'):
     return peak_time, half_peak_time
 
 
-def sustainedness95(meta, pref_tensor, epoch='day', full_trial_window=False,
+def sustainedness95(meta, pref_tensor, epoch='day', full_trial_window=False, offset_bool=None,
                     filter_running='low_speed_only', filter_licking=None, filter_hmm_engaged=True):
     """
     Get cell's sustainedness, SI = (mean response / 95th percentile response). Accounts offset or can make calc for
@@ -642,7 +642,8 @@ def sustainedness95(meta, pref_tensor, epoch='day', full_trial_window=False,
     """
 
     # determine cells with offset responses
-    offset_bool = utils.get_offset_cells(meta, pref_tensor)
+    if offset_bool is None:
+        offset_bool = utils.get_offset_cells(meta, pref_tensor)
 
     # define windows for checking peak
     mouse = meta.reset_index()['mouse'].unique()[0]
