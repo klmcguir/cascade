@@ -1341,7 +1341,7 @@ def _trial_filter_set(meta, bool_to_filter, filter_running=None, filter_licking=
     if filter_licking is not None:
         # TODO this needs accounting for offset licking for offset cells
         # TODO could also do a grid of lick and run bins to make comparisons
-        mean_lick_rate = meta.anticipatory_licks.values / lookups.stim_length[mouse]
+        mean_lick_rate = meta.anticipatory_licks.values / lookups.stim_length[utils.meta_mouse(meta)]
         if filter_licking == 'low_lick_only':
             bool_to_filter = bool_to_filter & (mean_lick_rate <= 1.7)
         elif filter_licking == 'high_lick_only':
