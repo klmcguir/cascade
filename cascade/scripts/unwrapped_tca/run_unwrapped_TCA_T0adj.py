@@ -27,7 +27,7 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
     """
 
     # Do not overwrite existing files
-    if os.path.isfile(cas.paths.analysis_file(f'tca_ensemble_v{thresh}_20210205.npy', 'tca_dfs')) and not force:
+    if os.path.isfile(cas.paths.analysis_file(f'tca_ensemble_v{thresh}_Tnot0Ty_20210208.npy', 'tca_dfs')) and not force:
         return
 
     # parameters
@@ -131,6 +131,10 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
         driven_offset = []
         for cc, cue in enumerate(['plus', 'minus', 'neutral']):
             for c, stages in enumerate(cas.lookups.staging['parsed_11stage']):
+                
+                # skip naive when considering which cells are driven
+                if stages in ['T0 naive', 'L0 naive']:
+                    continue
 
                 # Onset cells
                 on_cells = drive_df.loc[~drive_df.offset_cell & drive_df.driven]
@@ -252,14 +256,14 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
 
     # save ensembe and input data
     # --------------------------------------------------------------------------------------------------
-    np.save(cas.paths.analysis_file(f'tca_ensemble_v{thresh}_20210205.npy', 'tca_dfs'), ensemble, allow_pickle=True)
+    np.save(cas.paths.analysis_file(f'tca_ensemble_v{thresh}_Tnot0Ty_20210208.npy', 'tca_dfs'), ensemble, allow_pickle=True)
 
     # add mouse and cell data to dict then save
     data_dict[f'v{thresh}_off_mouse'] = off_mega_mouse_flat
     data_dict[f'v{thresh}_on_mouse'] = on_mega_mouse_flat
     data_dict[f'v{thresh}_off_cell'] = off_mega_cell_flat
     data_dict[f'v{thresh}_on_cell'] = on_mega_cell_flat
-    np.save(cas.paths.analysis_file(f'input_data_v{thresh}_20210205.npy', 'tca_dfs'), data_dict, allow_pickle=True)
+    np.save(cas.paths.analysis_file(f'input_data_v{thresh}_Tnot0Ty_20210208.npy', 'tca_dfs'), data_dict, allow_pickle=True)
 
     # plot and save relevant results
     # --------------------------------------------------------------------------------------------------
@@ -292,7 +296,7 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
         ax[1, 0].set_title(f'Zoom: Objective function')
         ax[1, 1].set_title(f'Zoom: Model similarity')
         
-        plt.savefig(cas.paths.analysis_file(f'{k}_scree.png', 'tca_dfs/TCA_qc'), bbox_inches='tight') 
+        plt.savefig(cas.paths.analysis_file(f'{k}_Tnot0Ty.png', 'tca_dfs/TCA_qc'), bbox_inches='tight') 
 
     # plot factors
     for k, v in ensemble.items():
@@ -307,7 +311,7 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
                 ax[i, 0].set_ylabel(f'                 Component {i+1}', size=16, ha='right', rotation=0)
             ax[0, 1].set_title(f'{k}, rank {rr} (n = {cell_count})\n\n', size=20)
 
-            plt.savefig(cas.paths.analysis_file(f'{k}_rank{rr}_facs.png', f'tca_dfs/TCA_factors/{k}'), bbox_inches='tight')
+            plt.savefig(cas.paths.analysis_file(f'{k}_rank{rr}_facs_Tnot0Ty.png', f'tca_dfs/TCA_factors/{k}_Tnot0Ty'), bbox_inches='tight')
 
     # plot heatmap
     for mod, mmod in zip([f'v{thresh}_norm_on', f'v{thresh}_norm_off'], [f'v{thresh}_on_mouse', f'v{thresh}_off_mouse']):
@@ -364,7 +368,7 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
                 ax[i].set_yticks([])
             
             plt.savefig(
-                cas.paths.analysis_file(f'{mod}_rank{heatmap_rank}_heatmap.png', f'tca_dfs/TCA_heatmaps/v{thresh}'),
+                cas.paths.analysis_file(f'{mod}_rank{heatmap_rank}_heatmap_Tnot0Ty.png', f'tca_dfs/TCA_heatmaps/v{thresh}_Tnot0Ty'),
                 bbox_inches='tight')
 
 
