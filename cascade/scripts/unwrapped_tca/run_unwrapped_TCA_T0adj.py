@@ -10,6 +10,9 @@ import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+"""
+This version excluded naive from consideration when calculating driven-ness.
+"""
 
 def run_unwrapped_tca(thresh=4, force=False, verbose=False):
     """

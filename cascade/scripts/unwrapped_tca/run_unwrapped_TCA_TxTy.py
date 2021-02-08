@@ -10,6 +10,10 @@ import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+"""
+This uses the old way of running restrictive driven-ness.
+
+"""
 
 def run_unwrapped_tca(thresh=4, force=False, verbose=False):
     """
@@ -24,7 +28,7 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
     """
 
     # Do not overwrite existing files
-    if os.path.isfile(cas.paths.analysis_file(f'tca_ensemble_v{thresh}_20210205.npy', 'tca_dfs')) and not force:
+    if os.path.isfile(cas.paths.analysis_file(f'tca_ensemble_v{thresh}_TxTy_20210207.npy', 'tca_dfs')) and not force:
         return
 
     # parameters
@@ -66,16 +70,9 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
         bhv_list.append(out[4])
         meta_list.append(cas.utils.add_stages_to_meta(out[3], 'parsed_11stage'))
 
-    # load Oren's better offset classification
+    # load stat mismatch calcualtions with p-values for each comparison T5Ty
     # --------------------------------------------------------------------------------------------------
-    off_df_all_mice = pd.read_pickle('/twophoton_analysis/Data/analysis/core_dfs/offsets_dfs.pkl')
-    df_list = []
-    for k, v in off_df_all_mice.items():
-        v['mouse'] = k
-        df_list.append(v)
-    updated_off_df = pd.concat(df_list, axis=0)
-    updated_off_df = updated_off_df.set_index(['mouse', 'cell_id'])
-    updated_off_df.head()
+    mm_dfs = pd.read_pickle('/twophoton_analysis/Data/analysis/core_dfs/mismatch_stat_df_allcues_vT5l_newoff_v0.pkl')
 
     # build input for TCA, selecting cells driven any stage with a given negative log10 p-value 'thresh'
     # --------------------------------------------------------------------------------------------------
@@ -94,12 +91,8 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
         if cas.utils.meta_mouse(meta) in cas.lookups.mice['lml5']:
             continue
 
-        # calculate drivenness across stages, using Oren's offset boolean
-        off_df = updated_off_df.loc[updated_off_df.reset_index().mouse.isin([cas.utils.meta_mouse(meta)]).values, ['offset_test']]
-        off_df = off_df.reindex(ids, level=1)
-        assert np.array_equal(off_df.reset_index().cell_id.values, ids)
-        offset_bool = off_df.offset_test.values
-        drive_df = cas.drive.multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=offset_bool, neg_log10_pv_thresh=thresh)
+        # get mismatch df for your mouse, this is where your drive was already calculated
+        mouse_df = mm_dfs.loc[mm_dfs.reset_index().mouse.isin([cas.utils.meta_mouse(meta)]).values, :]
 
         # flatten tensor and unwrap it to look across stages
         flat_tensors = {}
@@ -127,24 +120,26 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
         driven_onset = []
         driven_offset = []
         for cc, cue in enumerate(['plus', 'minus', 'neutral']):
-            for c, stages in enumerate(cas.lookups.staging['parsed_11stage']):
+            for c, stages in enumerate(cas.lookups.staging['parsed_11stage_T']):
 
                 # Onset cells
-                on_cells = drive_df.loc[~drive_df.offset_cell & drive_df.driven]
+                on_cells = mouse_df.loc[~mouse_df.offset_cell &
+                                        (mouse_df.mm_neglogpv_target.ge(thresh) | mouse_df.mm_neglogpv_search.ge(thresh))]
                 on_cells = on_cells.loc[on_cells.reset_index().parsed_11stage.isin([stages]).values, :]
                 on_cells = on_cells.loc[on_cells.reset_index().initial_cue.isin([cue]).values, :]
                 # make sure you can't double count cells
                 assert on_cells.groupby(['mouse', 'cell_id']).nunique().gt(1).sum(axis=0).eq(0).all()
-                id_vec = on_cells.cell_id.unique()
+                id_vec = on_cells.reset_index().cell_id.unique()
                 driven_onset.extend(id_vec)
 
                 # Offset cells
-                off_cells = drive_df.loc[drive_df.offset_cell & drive_df.driven]
+                off_cells = mouse_df.loc[mouse_df.offset_cell &
+                                         (mouse_df.mm_neglogpv_target.ge(thresh) | mouse_df.mm_neglogpv_search.ge(thresh))]
                 off_cells = off_cells.loc[off_cells.reset_index().parsed_11stage.isin([stages]).values, :]
                 off_cells = off_cells.loc[off_cells.reset_index().initial_cue.isin([cue]).values, :]
                 # make sure you can't double count cells
                 assert off_cells.groupby(['mouse', 'cell_id']).nunique().gt(1).sum(axis=0).eq(0).all()
-                id_vec = off_cells.cell_id.unique()
+                id_vec = off_cells.reset_index().cell_id.unique()
                 driven_offset.extend(id_vec)
 
         driven_onset = np.unique(driven_onset)
@@ -249,14 +244,14 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
 
     # save ensembe and input data
     # --------------------------------------------------------------------------------------------------
-    np.save(cas.paths.analysis_file(f'tca_ensemble_v{thresh}_20210205.npy', 'tca_dfs'), ensemble, allow_pickle=True)
+    np.save(cas.paths.analysis_file(f'tca_ensemble_v{thresh}_TxTy_20210207.npy', 'tca_dfs'), ensemble, allow_pickle=True)
 
     # add mouse and cell data to dict then save
     data_dict[f'v{thresh}_off_mouse'] = off_mega_mouse_flat
     data_dict[f'v{thresh}_on_mouse'] = on_mega_mouse_flat
     data_dict[f'v{thresh}_off_cell'] = off_mega_cell_flat
     data_dict[f'v{thresh}_on_cell'] = on_mega_cell_flat
-    np.save(cas.paths.analysis_file(f'input_data_v{thresh}_20210205.npy', 'tca_dfs'), data_dict, allow_pickle=True)
+    np.save(cas.paths.analysis_file(f'input_data_v{thresh}_TxTy_20210207.npy', 'tca_dfs'), data_dict, allow_pickle=True)
 
     # plot and save relevant results
     # --------------------------------------------------------------------------------------------------
@@ -289,7 +284,7 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
         ax[1, 0].set_title(f'Zoom: Objective function')
         ax[1, 1].set_title(f'Zoom: Model similarity')
         
-        plt.savefig(cas.paths.analysis_file(f'{k}_scree.png', 'tca_dfs/TCA_qc'), bbox_inches='tight') 
+        plt.savefig(cas.paths.analysis_file(f'{k}_scree_TxTy.png', 'tca_dfs/TCA_qc'), bbox_inches='tight') 
 
     # plot factors
     for k, v in ensemble.items():
@@ -304,7 +299,7 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
                 ax[i, 0].set_ylabel(f'                 Component {i+1}', size=16, ha='right', rotation=0)
             ax[0, 1].set_title(f'{k}, rank {rr} (n = {cell_count})\n\n', size=20)
 
-            plt.savefig(cas.paths.analysis_file(f'{k}_rank{rr}_facs.png', f'tca_dfs/TCA_factors/{k}'), bbox_inches='tight')
+            plt.savefig(cas.paths.analysis_file(f'{k}_rank{rr}_facs_TxTy.png', f'tca_dfs/TCA_factors/{k}_TxTy'), bbox_inches='tight')
 
     # plot heatmap
     for mod, mmod in zip([f'v{thresh}_norm_on', f'v{thresh}_norm_off'], [f'v{thresh}_on_mouse', f'v{thresh}_off_mouse']):
@@ -361,7 +356,7 @@ def run_unwrapped_tca(thresh=4, force=False, verbose=False):
                 ax[i].set_yticks([])
             
             plt.savefig(
-                cas.paths.analysis_file(f'{mod}_rank{heatmap_rank}_heatmap.png', f'tca_dfs/TCA_heatmaps/v{thresh}'),
+                cas.paths.analysis_file(f'{mod}_rank{heatmap_rank}_heatmap.png', f'tca_dfs/TCA_heatmaps/v{thresh}_TxTy'),
                 bbox_inches='tight')
 
 
