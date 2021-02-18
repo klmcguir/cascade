@@ -21,8 +21,6 @@ def longform_factors_annotated(
         meta,
         ktensor,
         mod,
-        r=12,
-        extra_col=1,
         alpha=0.6,
         plot_running=True,
         filetype='png',
@@ -69,6 +67,9 @@ def longform_factors_annotated(
 
     # sort your cell factors by max
     sort_ktensor, _ = _sortcellfactor(ktensor)
+
+    # get rank of model
+    r = ktensor[0].shape[1]
 
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))

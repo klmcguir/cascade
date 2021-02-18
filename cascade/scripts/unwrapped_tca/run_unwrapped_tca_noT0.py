@@ -95,15 +95,22 @@ def run_unwrapped_tca(thresh=4, iteration=10, force=False, verbose=False, debug=
 
     # build input for TCA, selecting cells driven any stage with a given negative log10 p-value 'thresh'
     # --------------------------------------------------------------------------------------------------
+    # get data that has T0 naive removed
     data_dict = build_data_dict(
         meta_list, id_list, tensor_list, updated_off_df,
         thresh=thresh, iteration=iteration, debug=debug, mod_suffix=mod_suffix, add_suffix=''
     )
+    # get data that has all stages 
     data_dict_allstages = build_data_dict(
         meta_list, id_list, tensor_list, updated_off_df,
         thresh=thresh, iteration=iteration, debug=debug, mod_suffix=mod_suffix, add_suffix='_allstages'
     )
-    data_dict.update(data_dict_allstages)
+    data_dict.update(data_dict_allstages)  # combine dicts
+
+    # loop over keys and apply your T0 normalization to 'allstages' data 
+    data_dict = renormalize_allstages_to_t0(
+        data_dict, thresh=thresh, iteration=iteration, mod_suffix=mod_suffix, add_suffix='_allstages'
+    )
 
     # filter out suppressed cells and cells with only a single stage of data (normed data used as benchmark)
     data_dict = filter_data_dict(
@@ -114,7 +121,7 @@ def run_unwrapped_tca(thresh=4, iteration=10, force=False, verbose=False, debug=
     data_dict = add_scaled_zscore_to_data_dict(
         data_dict, thresh=thresh, iteration=iteration, verbose=verbose, mod_suffix=mod_suffix
     )
-    
+
     # save data
     data_dict_path = cas.paths.analysis_file(f'input_data_v{thresh}i{iteration}{mod_suffix}_{mod_date}.npy', 'tca_dfs')
     np.save(data_dict_path, data_dict, allow_pickle=True)
@@ -151,13 +158,13 @@ def run_unwrapped_tca(thresh=4, iteration=10, force=False, verbose=False, debug=
 
     # plot and save relevant results
     # --------------------------------------------------------------------------------------------------
-    
+
     # plot model performance
     for k, v in ensemble.items():
 
         fig, ax = plt.subplots(2,2, figsize=(10,10), sharex='row', sharey='col')
         ax = ax.reshape([2,2])
-        
+
         # full plot
         tt.visualization.plot_objective(v, ax=ax[0,0], line_kw={'color': 'red'}, scatter_kw={'facecolor': 'black', 'alpha': 0.5})
         tt.visualization.plot_similarity(v, ax=ax[0,1], line_kw={'color': 'blue'}, scatter_kw={'facecolor': 'black', 'alpha': 0.5})
@@ -167,15 +174,15 @@ def run_unwrapped_tca(thresh=4, iteration=10, force=False, verbose=False, debug=
         ax[0, 0].axvline(21, linestyle=':', color='grey')
         ax[0, 1].axvline(-1, linestyle=':', color='grey')
         ax[0, 1].axvline(21, linestyle=':', color='grey')
-        
+
         # zoom in on 1-20
         tt.visualization.plot_objective(v, ax=ax[1,0], line_kw={'color': 'red'}, scatter_kw={'facecolor': 'black', 'alpha': 0.5})
         tt.visualization.plot_similarity(v, ax=ax[1,1], line_kw={'color': 'blue'}, scatter_kw={'facecolor': 'black', 'alpha': 0.5})
         ax[1, 1].set_xlim([-1, 21])
         ax[1, 0].set_title(f'Zoom: Objective function')
         ax[1, 1].set_title(f'Zoom: Model similarity')
-        
-        plt.savefig(cas.paths.analysis_file(f'{k}_obj_sim.png', 'tca_dfs/TCA_qc'), bbox_inches='tight') 
+
+        plt.savefig(cas.paths.analysis_file(f'{k}_obj_sim.png', 'tca_dfs/TCA_qc'), bbox_inches='tight')
 
     # plot factors after sorting
     sort_ensembles, sort_orders = {}, {}
@@ -211,8 +218,8 @@ def run_unwrapped_tca(thresh=4, iteration=10, force=False, verbose=False, debug=
 
         clabel = 'normalized \u0394F/F'
         # clabel = '\u0394F/F (z-score)'
-            
-        #sort 
+
+        #sort
         mat2d_norm = mat2d_norm[ensort, :]
         number_mouse_mat = number_mouse_mat[ensort]
 
@@ -249,10 +256,10 @@ def run_unwrapped_tca(thresh=4, iteration=10, force=False, verbose=False, debug=
             if i == 1:
                 ax[i].set_ylabel('cell number', size=18)
             ax[i].set_xlabel('\ntime from stimulus onset (sec)', size=18)
-            
+
             if i > 1:
                 ax[i].set_yticks([])
-            
+
             plt.savefig(
                 cas.paths.analysis_file(f'{mod}_rank{heatmap_rank}_heatmap.png', f'tca_dfs/TCA_heatmaps/v{thresh}i{iteration}{mod_suffix}'),
                 bbox_inches='tight')
@@ -295,7 +302,7 @@ def build_data_dict(
         assert np.array_equal(off_df.reset_index().cell_id.values, ids)
         offset_bool = off_df.offset_test.values
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=RuntimeWarning) 
+            warnings.simplefilter("ignore", category=RuntimeWarning)
             drive_df = cas.drive.multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=offset_bool, neg_log10_pv_thresh=thresh)
 
         # flatten tensor and unwrap it to look across stages
@@ -372,10 +379,11 @@ def build_data_dict(
     assert len(off_mega_cell_flat) == off_mega_tensor_flat.shape[0]
 
     # Normalize per cell to max
-    off_mega_tensor_flat_norm = _row_norm(off_mega_tensor_flat)
-    on_mega_tensor_flat_norm = _row_norm(on_mega_tensor_flat)
-    off_mega_tensor_flat_run_norm = _row_norm(off_mega_tensor_flat_run)
-    on_mega_tensor_flat_run_norm = _row_norm(on_mega_tensor_flat_run)
+    # TODO move this to a separate function like zscore scaling
+    off_mega_tensor_flat_norm, scale_by_off_flat = _row_norm(off_mega_tensor_flat)
+    on_mega_tensor_flat_norm, scale_by_on_flat = _row_norm(on_mega_tensor_flat)
+    off_mega_tensor_flat_run_norm, scale_by_off_flat_run = _row_norm(off_mega_tensor_flat_run)
+    on_mega_tensor_flat_run_norm, scale_by_on_flat_run = _row_norm(on_mega_tensor_flat_run)
 
     # initial restructure of data and save of input data
     # --------------------------------------------------------------------------------------------------
@@ -393,9 +401,54 @@ def build_data_dict(
         f'v{thresh}i{iteration}_on_mouse{mod_suffix}{add_suffix}': on_mega_mouse_flat,
         f'v{thresh}i{iteration}_off_cell{mod_suffix}{add_suffix}': off_mega_cell_flat,
         f'v{thresh}i{iteration}_on_cell{mod_suffix}{add_suffix}': on_mega_cell_flat,
+
+        f'v{thresh}i{iteration}_norm_on_cell_scale_factors{mod_suffix}{add_suffix}': scale_by_on_flat,
+        f'v{thresh}i{iteration}_norm_off_cell_scale_factors{mod_suffix}{add_suffix}': scale_by_off_flat,
+        f'v{thresh}i{iteration}_speed_norm_on_cell_scale_factors{mod_suffix}{add_suffix}': scale_by_on_flat_run,
+        f'v{thresh}i{iteration}_speed_norm_off_cell_scale_factors{mod_suffix}{add_suffix}': scale_by_off_flat_run,
     }
-    
+
     return data_dict
+
+
+def renormalize_allstages_to_t0(data_dict, thresh=4, iteration=10, mod_suffix='', add_suffix='_allstages'):
+    """Normalize _allstages data to T0 Naive so that data is matched T1: is matched.
+
+    Args:
+        data_dict (dict): datasets
+        thresh (int, optional): Drivenness -log10(p-value) threshold. Defaults to 4.
+        iteration (int, optional): Model iteration. Defaults to 10.
+        mod_suffix (str, optional): Model name. Defaults to ''.
+        add_suffix (str, optional): Additional suffix, defines the group to renormalize.
+            Defaults to '_allstages'.
+
+    Returns:
+        dict: dict of datasets now with 4 newly noramlized key-value pairs. New 
+        suffix name is '_allstagesT0norm'.
+    """
+
+    # loop over keys and apply your T0 normalization to 'allstages' data 
+    for k, v in data_dict.items():
+        if k == f'v{thresh}i{iteration}_on{mod_suffix}{add_suffix}':
+            norm_key = f'v{thresh}i{iteration}_norm_on_cell_scale_factors{mod_suffix}'
+            new_value = data_dict[k] / data_dict[norm_key]
+            data_dict[k + 'T0norm'] = new_value
+        elif k == f'v{thresh}i{iteration}_off{mod_suffix}{add_suffix}':
+            norm_key = f'v{thresh}i{iteration}_norm_off_cell_scale_factors{mod_suffix}'
+            new_value = data_dict[k] / data_dict[norm_key]
+            data_dict[k + 'T0norm'] = new_value
+        elif k == f'v{thresh}i{iteration}_speed_on{mod_suffix}{add_suffix}':
+            norm_key = f'v{thresh}i{iteration}_speed_norm_on_cell_scale_factors{mod_suffix}'
+            new_value = data_dict[k] / data_dict[norm_key]
+            data_dict[k + 'T0norm'] = new_value
+        elif k == f'v{thresh}i{iteration}_speed_off{mod_suffix}{add_suffix}':
+            norm_key = f'v{thresh}i{iteration}_speed_norm_off_cell_scale_factors{mod_suffix}'
+            new_value = data_dict[k] / data_dict[norm_key]
+            data_dict[k + 'T0norm'] = new_value
+        else:
+            continue
+
+    return data_dict       
 
 
 def build_datasets(meta, tensor, debug=False):
@@ -408,7 +461,7 @@ def build_datasets(meta, tensor, debug=False):
     flat_tensors = {}
     off_flat_tensors = {}
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=RuntimeWarning) 
+        warnings.simplefilter("ignore", category=RuntimeWarning)
         for cue in ['plus', 'minus', 'neutral']:
             meta_bool = meta.initial_condition.isin([cue]).values
 
@@ -437,7 +490,7 @@ def build_datasets(meta, tensor, debug=False):
             off_flat_tensors[cue + '_fast'] = cas.utils.unwrap_tensor(stage_mean_tensor_fast[:, (off_int - 16):(off_int + 31), 1:])
             if debug:
                 print('ONSET', flat_tensors[cue].shape,  'OFFSET', off_flat_tensors[cue].shape)
-    
+
     return flat_tensors, off_flat_tensors
 
 
@@ -452,7 +505,7 @@ def get_driven_cells(drive_df):
     driven_offset = []
     for cc, cue in enumerate(['plus', 'minus', 'neutral']):
         for c, stages in enumerate(cas.lookups.staging['parsed_11stage']):
-            
+
             # skip naive when considering which cells are driven
             if stages in ['T0 naive', 'L0 naive']:
                 continue
@@ -506,7 +559,7 @@ def filter_data_dict(data_dict, thresh=4, iteration=10, verbose=False, mod_suffi
         print(f'OFFSET cells dropped for nneg: {np.sum(~nneg_bool_off)}')
     for k, v in data_dict.items():
         if '_on_' in k:
-            data_dict[k] = v[nneg_bool_on]  # index 0 dim and first dimension equivlaently 
+            data_dict[k] = v[nneg_bool_on]  # index 0 dim and first dimension equivlaently
         elif '_off_' in k:
             data_dict[k] = v[nneg_bool_off]
         else:
@@ -526,7 +579,7 @@ def filter_data_dict(data_dict, thresh=4, iteration=10, verbose=False, mod_suffi
         print(f'OFFSET cells dropped for only one stage: {np.sum(~stage_bool_off)}')
     for k, v in data_dict.items():
         if '_on_' in k:
-            data_dict[k] = v[stage_bool_on]  # index 0 dim and first dimension equivlaently 
+            data_dict[k] = v[stage_bool_on]  # index 0 dim and first dimension equivlaently
         elif '_off_' in k:
             data_dict[k] = v[stage_bool_off]
         else:
@@ -539,14 +592,21 @@ def add_scaled_zscore_to_data_dict(data_dict, thresh=4, iteration=10, verbose=Fa
     """
     Function to scale zscore data by the mean of max values per cell per mouse so that mice are more 
     comparable. 
+
+    NOTE: Scaling is only calulated on non-Naive data, then applied to everything for "allstages"
     """
 
     # rescale your z-score data for each mouse to match mouse statistics
     mdict_set = [data_dict[f'v{thresh}i{iteration}_off_mouse{mod_suffix}'], data_dict[f'v{thresh}i{iteration}_on_mouse{mod_suffix}']]
     ddict_set = [data_dict[f'v{thresh}i{iteration}_off{mod_suffix}'], data_dict[f'v{thresh}i{iteration}_on{mod_suffix}']]
+    ddict_set_allstages = [data_dict[f'v{thresh}i{iteration}_off{mod_suffix}_allstages'],
+                           data_dict[f'v{thresh}i{iteration}_on{mod_suffix}_allstages']]
     new_scaled_keys = [f'v{thresh}i{iteration}_scale_off{mod_suffix}', f'v{thresh}i{iteration}_scale_on{mod_suffix}']
-    for mdict, ddict, k in zip(mdict_set, ddict_set, new_scaled_keys):
+    for mdict, ddict, ddictAS, k in zip(mdict_set, ddict_set, ddict_set_allstages, new_scaled_keys):
         new_data = []
+        new_dataAS = []
+        scale_factor = []
+        scale_factor_expanded = []
         for m in np.unique(mdict):
             mouse_bool = mdict == m
             mouse_data = ddict[mouse_bool, :, :]
@@ -556,9 +616,17 @@ def add_scaled_zscore_to_data_dict(data_dict, thresh=4, iteration=10, verbose=Fa
                 print(k)
                 print(f'\tSCALED {m}: mean={np.nanmean(new_data_scaled)}, std={np.nanstd(new_data_scaled)}')
             new_data.append(new_data_scaled)
+            new_dataAS.append(ddictAS[mouse_bool, :, :] / mean_of_maxes)
+            scale_factor.append(mean_of_maxes)
+            scale_factor_expanded.append([mean_of_maxes]*np.sum(mouse_bool))
         new_ten = np.vstack(new_data)
+        new_tenAS = np.vstack(new_dataAS)
         assert new_ten.shape == ddict.shape
+        assert new_tenAS.shape == ddictAS.shape
         data_dict[k] = new_ten
+        data_dict[k + '_allstages'] = new_tenAS
+        data_dict[k + '_mouse_scale_factors'] = np.hstack(scale_factor)
+        data_dict[k + '_mouse_scale_factors_expanded'] = np.hstack(scale_factor_expanded)
 
     return data_dict
 
@@ -570,7 +638,7 @@ def _row_norm(any_mega_tensor_flat):
     cell_max = np.nanmax(np.nanmax(any_mega_tensor_flat, axis=1), axis=1)
     any_mega_tensor_flat_norm = any_mega_tensor_flat / cell_max[:, None, None]
 
-    return any_mega_tensor_flat_norm
+    return any_mega_tensor_flat_norm, cell_max
 
 
 if __name__ == '__main__':
