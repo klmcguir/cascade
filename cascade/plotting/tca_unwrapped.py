@@ -21,6 +21,7 @@ def longform_factors_annotated(
         scale_y=False,
         hmm_engaged=True,
         add_prev_cols=True,
+        folder_tag='',
         verbose=False):
     """Plot trial factors as scatter and pseduocolor with various labels.
 
@@ -73,6 +74,10 @@ def longform_factors_annotated(
         tuning_oris = [[lookups.lookup[mouse][inverted_lookup[tune_order[s]]]]
                        if su <= 1.5 else [0, 135, 270]
                        for s, su in zip(max_tune, sum_tune)]
+        tuning_type = [
+            lookups.lookup_mm[mouse][lookups.lookup_ori[mouse][s[0]]]
+            if len(s) == 1 else 'broad' for s in tuning_oris
+        ]
 
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))
@@ -128,7 +133,8 @@ def longform_factors_annotated(
         ax[0, 0].text(-1.2, 4,
             f'\n{mouse}:\n\n rank: {str(int(r))}' +
             f'\n model: {mod}' +
-            (f'\n component pref. tuning: {tuning_oris[comp]}' if  unwrapped_ktensor is not None else ''),
+            (f'\n component pref. tuning: {tuning_oris[comp]}' if  unwrapped_ktensor is not None else '') +
+            (f'\n component pref. tuning: {tuning_type[comp]}' if  unwrapped_ktensor is not None else ''),
             fontsize=12,
             transform=ax[0, 0].transAxes, color='#969696')
 
@@ -479,7 +485,7 @@ def longform_factors_annotated(
             suffix = '.png'
         save_path = paths.analysis_file(
             f'component_{comp + 1}_rank_{r}_mouse_{mouse}_{mod}{suffix}',
-            f'tca_dfs/TCA_factor_fitting/{mod}/factors_longform/{mouse}')
+            f'tca_dfs/TCA_factor_fitting{folder_tag}/{mod}/factors_longform/{mouse}')
         plt.savefig(save_path, bbox_inches='tight')
         plt.close('all')
 

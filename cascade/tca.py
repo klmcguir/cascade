@@ -106,6 +106,7 @@ def refit_naive_tempfac_tca_unwrapped(ensemble,
             f'{mod}_refittingNAIVE_rank{chosen_rank}_facs.png',
             f'tca_dfs/TCA_factor_fitting/{mod}'),
                     bbox_inches='tight')
+        plt.close('all')
 
     return temp_ensemble
 
