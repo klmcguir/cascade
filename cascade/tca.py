@@ -1,6 +1,7 @@
 """Functions for running tensor component analysis (TCA)."""
 
 import tensortools as tt
+from tensortools.tensors import KTensor
 
 import numpy as np
 import flow
@@ -12,1096 +13,101 @@ from . import paths
 from . import lookups
 from copy import deepcopy
 from functools import reduce
+import warnings
+
+import matplotlib.pyplot as plt
 
 
-def singleday_tca(
-        mouse,
-        tags=None,
-
-        # TCA params
-        rank=20,
-        method=('ncp_bcd', ),
-        replicates=3,
-        fit_options=None,
-
-        # tensor params
-        trace_type='zscore_day',
-        cs='',
-        downsample=True,
-        start_time=-1,
-        end_time=6,
-        clean_artifacts=None,
-        thresh=20,
-        warp=False,
-        smooth=True,
-        smooth_win=6,
-        verbose=True,
-
-        # filtering params
-        exclude_tags=('disengaged', 'orientation_mapping', 'contrast',
-                      'retinotopy', 'sated'),
-        exclude_conds=('blank', 'blank_reward', 'pavlovian'),
-        driven=True,
-        drive_css=('0', '135', '270'),
-        drive_threshold=15):
+def refit_naive_tempfac_tca_unwrapped(ensemble,
+                                      data_dict,
+                                      chosen_rank=9,
+                                      mod='v4i10_norm_on_noT0',
+                                      plot_please=True):
     """
-    Perform tensor component analysis (TCA) on for a single day.
+    Refit your unwrapped TCA results (presumably using no naive data) to now include naive 
+    data in the fitting of the temporal factors. 
 
-    Algorithms from https://github.com/ahwillia/tensortools.
+    Note: relies on tensortools HALS, but is essentially a single round of least squares 
+    fitting as it is implemented here.
 
-    Parameters
-    ----------
-    methods, tuple of str
-        'cp_als', fits CP Decomposition using Alternating
-            Least Squares (ALS).
-        'ncp_bcd', fits nonnegative CP Decomposition using
-            the Block Coordinate Descent (BCD) Method.
-        'ncp_hals', fits nonnegative CP Decomposition using
-            the Hierarchal Alternating Least Squares
-            (HALS) Method.
-        'mcp_als', fits CP Decomposition with missing data using
-            Alternating Least Squares (ALS).
-
-    rank, int
-        number of components you wish to fit
-
-    replicates, int
-        number of initializations/iterations fitting for each rank
-
-    Returns
-    -------
+    :param ensemble: dict of tensortools.Ensemble objects
+        Fitting results from unwrapped TCA.
+    :param data_dict: dict of numpy.ndarrays 
+        Input data from unwrapped TCA fitting (must include "allstage" data if you want to fit naive)
+    :param chosen rank: int
+        Rank of model to refit naive temporal factor.
+    :param mod: str
+        Model name.
+    :param plot_please: boolean
+        Plot your newly fit temporal factor overlaid with the original model fitting. 
 
     """
 
-    # create folder structure and save dir
-    if fit_options is None:
-        fit_options = {'tol': 0.0001, 'max_iter': 500, 'verbose': False}
-    pars = {
-        'tags': tags,
-        'rank': rank,
-        'method': method,
-        'replicates': replicates,
-        'fit_options': fit_options,
-        'trace_type': trace_type,
-        'cs': cs,
-        'downsample': downsample,
-        'start_time': start_time,
-        'end_time': end_time,
-        'clean_artifacts': clean_artifacts,
-        'thresh': thresh,
-        'warp': warp,
-        'smooth': smooth,
-        'smooth_win': smooth_win,
-        'exclude_tags': exclude_tags,
-        'exclude_conds': exclude_conds,
-        'driven': driven,
-        'drive_css': drive_css,
-        'drive_threshold': drive_threshold
-    }
-    save_dir = paths.tca_path(mouse, 'single', pars=pars)
-
-    days = flow.DateSorter.frommeta(mice=[mouse],
-                                    tags=tags,
-                                    exclude_tags=['bad'])
-
-    for c, day1 in enumerate(days, 0):
-
-        # get cell_ids
-        d1_ids = flow.xday._read_crossday_ids(day1.mouse, day1.date)
-        d1_ids = np.array([int(s) for s in d1_ids])
-
-        # filter cells based on visual/trial drive across all cs, prevent
-        # breaking when only pavs are shown
-        if driven:
-            d1_drive = []
-            for dcs in drive_css:
-                try:
-                    d1_drive.append(pool.calc.driven.trial(day1, dcs))
-                except KeyError:
-                    print(
-                        str(day1) + ' requested ' + dcs +
-                        ': no match to what was shown (probably pav only).')
-            d1_drive = np.max(d1_drive, axis=0)
-            # account for rare cases where lost xday ids are final id (making _ids
-            # 1 shorter than _drive). Add a fake id to the end and force drive to
-            # be false for that id
-            if len(d1_drive) > len(d1_ids):
-                print('Warning: ' + str(day1) + ': _ids was ' +
-                      str(len(d1_drive) - len(d1_ids)) +
-                      ' shorter than _drive: added pseudo-id.')
-                d1_drive[-1] = 0
-                d1_ids = np.concatenate((d1_ids, np.array([-1])))
-            d1_ids_bool = np.array(d1_drive) > drive_threshold
-            d1_drive_ids = d1_ids[np.array(d1_drive) > drive_threshold]
-            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
-        else:
-            d1_ids_bool = np.ones(np.shape(d1_ids)) > 0
-            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
-        ids = d1_ids[d1_ids_bool][d1_sorter]
-
-        # TODO add in additional filter for being able to check for quality of xday alignment
-
-        # get all runs for both days
-        d1_runs = day1.runs(exclude_tags=['bad'])
-
-        # filter for only runs without certain tags
-        d1_runs = [
-            run for run in d1_runs if not any(np.isin(run.tags, exclude_tags))
-        ]
-
-        # build tensors for all correct runs and trials after filtering
-        if d1_runs:
-            d1_tensor_list = []
-            d1_meta = []
-            for run in d1_runs:
-                t2p = run.trace2p()
-                # trigger all trials around stimulus onsets
-                run_traces = utils.getcstraces(run,
-                                               cs=cs,
-                                               trace_type=trace_type,
-                                               start_time=start_time,
-                                               end_time=end_time,
-                                               downsample=True,
-                                               clean_artifacts=clean_artifacts,
-                                               thresh=thresh,
-                                               warp=warp,
-                                               smooth=smooth,
-                                               smooth_win=smooth_win)
-                # filter and sort
-                run_traces = run_traces[d1_ids_bool, :, :][d1_sorter, :, :]
-                # get matched trial metadata/variables
-                dfr = _trialmetafromrun(run)
-                # subselect metadata if you are only running certain cs
-                if cs != '':
-                    if cs == 'plus' or cs == 'minus' or cs == 'neutral':
-                        dfr = dfr.loc[(dfr['condition'].isin([cs])), :]
-                    elif cs == '0' or cs == '135' or cs == '270':
-                        dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
-                    else:
-                        print('ERROR: cs called - "' + cs + '" - is not\
-                              a valid option.')
-
-                # subselect metadata to remove certain condtions
-                if len(exclude_conds) > 0:
-                    run_traces = run_traces[:, :, (
-                        ~dfr['condition'].isin(exclude_conds))]
-                    dfr = dfr.loc[(~dfr['condition'].isin(exclude_conds)), :]
-
-                # drop trials with nans and add to lists
-                keep = np.sum(np.sum(np.isnan(run_traces),
-                                     axis=0,
-                                     keepdims=True),
-                              axis=1,
-                              keepdims=True).flatten() == 0
-                dfr = dfr.iloc[keep, :]
-                d1_tensor_list.append(run_traces[:, :, keep])
-                d1_meta.append(dfr)
-
-            # concatenate matched cells across trials 3rd dim (aka, 2)
-            tensor = np.concatenate(d1_tensor_list, axis=2)
-
-            # concatenate all trial metadata in pd dataframe
-            meta = pd.concat(d1_meta, axis=0)
-
-            # concatenate and save df for the day
-            meta_path = os.path.join(
-                save_dir,
-                str(day1.mouse) + '_' + str(day1.date) + '_df_single_meta.pkl')
-            input_tensor_path = os.path.join(
-                save_dir,
-                str(day1.mouse) + '_' + str(day1.date) + '_single_tensor_' +
-                str(trace_type) + '.npy')
-            input_ids_path = os.path.join(
-                save_dir,
-                str(day1.mouse) + '_' + str(day1.date) + '_single_ids_' +
-                str(trace_type) + '.npy')
-            output_tensor_path = os.path.join(
-                save_dir,
-                str(day1.mouse) + '_' + str(day1.date) + '_single_decomp_' +
-                str(trace_type) + '.npy')
-            meta.to_pickle(meta_path)
-            np.save(input_tensor_path, tensor)
-            np.save(input_ids_path, ids)
-
-            # run TCA - iterate over different fitting methods
-            if np.isin('mcp_als', method) | np.isin('mncp_hals', method):
-                mask = ~np.isnan(group_tensor)
-                fit_options['mask'] = mask
-            group_tensor[np.isnan(group_tensor)] = 0
-            ensemble = {}
-            for m in method:
-                ensemble[m] = tt.Ensemble(fit_method=m,
-                                          fit_options=deepcopy(fit_options))
-                ensemble[m].fit(group_tensor,
-                                ranks=range(1, rank + 1),
-                                replicates=replicates,
-                                verbose=False)
-            np.save(output_tensor_path, ensemble)
-
-            # print output so you don't go crazy waiting
-            if verbose:
-                print('Day: ' + str(c + 1) + ': ' + str(day1.mouse) + ': ' +
-                      str(day1.date) + ': done.')
-
-
-def pairday_tca(
-        mouse,
-        tags=None,
-
-        # TCA params
-        rank=20,
-        method=('ncp_bcd', ),
-        replicates=3,
-        fit_options=None,
-
-        # tensor params
-        trace_type='zscore_day',
-        cs='',
-        downsample=True,
-        start_time=-1,
-        end_time=6,
-        clean_artifacts=None,
-        thresh=20,
-        warp=False,
-        smooth=True,
-        smooth_win=6,
-        verbose=True,
-
-        # filtering params
-        exclude_tags=('disengaged', 'orientation_mapping', 'contrast',
-                      'retinotopy', 'sated'),
-        exclude_conds=('blank', 'blank_reward', 'pavlovian'),
-        driven=True,
-        drive_css=('0', '135', '270'),
-        drive_threshold=15):
-    """
-    Perform tensor component analysis (TCA) on data aligned
-    across pairs of days.
-
-    Algorithms from https://github.com/ahwillia/tensortools.
-
-    Parameters
-    -------
-    methods, tuple of str
-        'cp_als', fits CP Decomposition using Alternating
-            Least Squares (ALS).
-        'ncp_bcd', fits nonnegative CP Decomposition using
-            the Block Coordinate Descent (BCD) Method.
-        'ncp_hals', fits nonnegative CP Decomposition using
-            the Hierarchical Alternating Least Squares
-            (HALS) Method.
-        'mcp_als', fits CP Decomposition with missing data using
-            Alternating Least Squares (ALS).
-
-    rank, int
-        number of components you wish to fit
-
-    replicates, int
-        number of initializations/iterations fitting for each rank
-
-    Returns
-    -------
-
-    """
-
-    # create folder structure and save dir
-    if fit_options is None:
-        fit_options = {'tol': 0.0001, 'max_iter': 500, 'verbose': False}
-    pars = {
-        'tags': tags,
-        'rank': rank,
-        'method': method,
-        'replicates': replicates,
-        'fit_options': fit_options,
-        'trace_type': trace_type,
-        'cs': cs,
-        'downsample': downsample,
-        'start_time': start_time,
-        'end_time': end_time,
-        'clean_artifacts': clean_artifacts,
-        'thresh': thresh,
-        'warp': warp,
-        'smooth': smooth,
-        'smooth_win': smooth_win,
-        'exclude_tags': exclude_tags,
-        'exclude_conds': exclude_conds,
-        'driven': driven,
-        'drive_css': drive_css,
-        'drive_threshold': drive_threshold
-    }
-    save_dir = paths.tca_path(mouse, 'pair', pars=pars)
-
-    days = flow.DateSorter.frommeta(mice=[mouse],
-                                    tags=tags,
-                                    exclude_tags=['bad'])
-
-    for c, day1 in enumerate(days, 0):
-
-        try:
-            day2 = days[c + 1]
-        except IndexError:
-            print('done.')
-            break
-
-        # get cell_ids for both days and create boolean vec for cells
-        # to use from each day
-        d1_ids = flow.xday._read_crossday_ids(day1.mouse, day1.date)
-        d1_ids = np.array([int(s) for s in d1_ids])
-        d2_ids = flow.xday._read_crossday_ids(day2.mouse, day2.date)
-        d2_ids = np.array([int(s) for s in d2_ids])
-
-        # filter cells based on visual/trial drive across all cs, prevent
-        # breaking when only pavs are shown
-        if driven:
-            d1_drive = []
-            d2_drive = []
-            for dcs in drive_css:
-                try:
-                    d1_drive.append(pool.calc.driven.trial(day1, dcs))
-                except KeyError:
-                    print(
-                        str(day1) + ' requested ' + dcs +
-                        ': no match to what was shown (probably pav only).')
-                try:
-                    d2_drive.append(pool.calc.driven.trial(day2, dcs))
-                except KeyError:
-                    print(
-                        str(day2) + ' requested ' + dcs +
-                        ': no match to what was shown (probably pav only).')
-            d1_drive = np.max(d1_drive, axis=0)
-            d2_drive = np.max(d2_drive, axis=0)
-
-            # account for rare cases where lost xday ids are final id (making _ids
-            # 1 shorter than _drive). Add a fake id to the end and force drive to
-            # be false for that id
-            if len(d1_drive) > len(d1_ids):
-                print('Warning: ' + str(day1) + ': _ids was ' +
-                      str(len(d1_drive) - len(d1_ids)) +
-                      ' shorter than _drive: added pseudo-id.')
-                d1_drive[-1] = 0
-                d1_ids = np.concatenate((d1_ids, np.array([-1])))
-            if len(d2_drive) > len(d2_ids):
-                print('Warning: ' + str(day2) + ': _ids was ' +
-                      str(len(d2_drive) - len(d2_ids)) +
-                      ' shorter than _drive: added pseudo-id.')
-                d2_drive[-1] = 0
-                d2_ids = np.concatenate((d2_ids, np.array([-2])))
-
-            d1_drive_ids = d1_ids[np.array(d1_drive) > drive_threshold]
-            d2_drive_ids = d2_ids[np.array(d2_drive) > drive_threshold]
-            all_driven_ids = np.concatenate((d1_drive_ids, d2_drive_ids),
-                                            axis=0)
-            d1_d2_drive = np.isin(d2_ids, all_driven_ids)
-            d2_d1_drive = np.isin(d1_ids, all_driven_ids)
-            # get all d1_ids that are present d2 and driven d1 or d2, (same for d2_ids)
-            d1_ids_bool = np.isin(d1_ids, d2_ids[d1_d2_drive])
-            d2_ids_bool = np.isin(d2_ids, d1_ids[d2_d1_drive])
-            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
-            d2_sorter = np.argsort(d2_ids[d2_ids_bool])
-        else:
-            d1_ids_bool = np.isin(d1_ids, d2_ids)
-            d2_ids_bool = np.isin(d2_ids, d1_ids)
-            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
-            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
-        # list of ids for pair of days
-        ids = d1_ids[d1_ids_bool][d1_sorter]
-
-        # check that the sort worked
-        if np.nansum(
-                np.sort(d1_ids[d1_ids_bool]) -
-                np.sort(d2_ids[d2_ids_bool])) != 0:
-            print('Error: cell IDs were not matched between days: ' +
-                  str(day1) + ', ' + str(day2))
-            continue
-
-        # TODO add in additional filter for being able to check for quality of xday alignment
-
-        # get all runs for both days
-        d1_runs = day1.runs(exclude_tags=['bad'])
-        d2_runs = day2.runs(exclude_tags=['bad'])
-        # filter for only runs without certain tags
-        d1_runs = [
-            run for run in d1_runs if not any(np.isin(run.tags, exclude_tags))
-        ]
-        d2_runs = [
-            run for run in d2_runs if not any(np.isin(run.tags, exclude_tags))
-        ]
-
-        # build tensors for all correct runs and trials if you still have trials after filtering
-        # day 1
-        if d1_runs and d2_runs:
-
-            d1_tensor, d1_meta = _getcstraces_filtered(
-                d1_runs,
-                d1_ids_bool,
-                d1_sorter,
-                cs=cs,
-                trace_type=trace_type,
-                start_time=start_time,
-                end_time=end_time,
-                downsample=True,
-                clean_artifacts=clean_artifacts,
-                thresh=thresh,
-                warp=warp,
-                smooth=smooth,
-                smooth_win=smooth_win)
-
-            # day 2
-            d2_tensor, d2_meta = _getcstraces_filtered(
-                d2_runs,
-                d2_ids_bool,
-                d2_sorter,
-                cs=cs,
-                trace_type=trace_type,
-                start_time=start_time,
-                end_time=end_time,
-                downsample=True,
-                clean_artifacts=clean_artifacts,
-                thresh=thresh,
-                warp=warp,
-                smooth=smooth,
-                smooth_win=smooth_win)
-
-            # concatenate matched cells across trials 3rd dim (aka, 2)
-            tensor = np.concatenate((d1_tensor, d2_tensor), axis=2)
-
-            # concatenate all trial metadata in pd dataframe
-            pair_meta = pd.concat([d1_meta, d2_meta], axis=0)
-
-            # concatenate and save df for the day
-            meta_path = os.path.join(
-                save_dir,
-                str(day1.mouse) + '_' + str(day1.date) + '_' + str(day2.date) +
-                '_df_pair_meta.pkl')
-            input_tensor_path = os.path.join(
-                save_dir,
-                str(day1.mouse) + '_' + str(day1.date) + '_' + str(day2.date) +
-                '_pair_tensor_' + str(trace_type) + '.npy')
-            input_ids_path = os.path.join(
-                save_dir,
-                str(day1.mouse) + '_' + str(day1.date) + '_' + str(day2.date) +
-                '_pair_ids_' + str(trace_type) + '.npy')
-            output_tensor_path = os.path.join(
-                save_dir,
-                str(day1.mouse) + '_' + str(day1.date) + '_' + str(day2.date) +
-                '_pair_decomp_' + str(trace_type) + '.npy')
-            pair_meta.to_pickle(meta_path)
-            np.save(input_tensor_path, tensor, ids)
-            np.save(input_ids_path, ids)
-
-            # run TCA - iterate over different fitting methods
-            if np.isin('mcp_als', method) | np.isin('mncp_hals', method):
-                mask = ~np.isnan(group_tensor)
-                fit_options['mask'] = mask
-            group_tensor[np.isnan(group_tensor)] = 0
-            ensemble = {}
-            for m in method:
-                ensemble[m] = tt.Ensemble(fit_method=m,
-                                          fit_options=deepcopy(fit_options))
-                ensemble[m].fit(group_tensor,
-                                ranks=range(1, rank + 1),
-                                replicates=replicates,
-                                verbose=False)
-            np.save(output_tensor_path, ensemble)
-
-            # print output so you don't go crazy waiting
-            if verbose:
-                print('Pair: ' + str(c + 1) + ': ' + str(day1.mouse) + ': ' +
-                      str(day1.date) + ', ' + str(day2.date) + ': done.')
-
-
-def pairday_tca_2(
-        mouse,
-        tags=None,
-
-        # TCA params
-        rank=20,
-        method=('ncp_bcd', ),
-        replicates=3,
-        fit_options=None,
-
-        # tensor params
-        trace_type='zscore_day',
-        cs='',
-        downsample=True,
-        start_time=-1,
-        end_time=6,
-        clean_artifacts=None,
-        thresh=20,
-        warp=False,
-        smooth=True,
-        smooth_win=6,
-        verbose=True,
-
-        # filtering params
-        exclude_tags=('disengaged', 'orientation_mapping', 'contrast',
-                      'retinotopy', 'sated'),
-        driven=True,
-        drive_css=('0', '135', '270'),
-        drive_threshold=15):
-    """
-    Perform tensor component analysis (TCA) on data aligned
-    across pairs of days. Uses PairDaySorter.
-
-    Algorithms from https://github.com/ahwillia/tensortools.
-
-    Parameters
-    -------
-    methods, tuple of str
-        'cp_als', fits CP Decomposition using Alternating
-            Least Squares (ALS).
-        'ncp_bcd', fits nonnegative CP Decomposition using
-            the Block Coordinate Descent (BCD) Method.
-        'ncp_hals', fits nonnegative CP Decomposition using
-            the Hierarchical Alternating Least Squares
-            (HALS) Method.
-        'mcp_als', fits CP Decomposition with missing data using
-            Alternating Least Squares (ALS).
-
-    rank, int
-        number of components you wish to fit
-
-    replicates, int
-        number of initializations/iterations fitting for each rank
-
-    Returns
-    -------
-
-    """
-
-    # create folder structure and save dir
-    if fit_options is None:
-        fit_options = {'tol': 0.0001, 'max_iter': 500, 'verbose': False}
-    pars = {
-        'tags': tags,
-        'rank': rank,
-        'method': method,
-        'replicates': replicates,
-        'fit_options': fit_options,
-        'trace_type': trace_type,
-        'cs': cs,
-        'downsample': downsample,
-        'start_time': start_time,
-        'end_time': end_time,
-        'clean_artifacts': clean_artifacts,
-        'thresh': thresh,
-        'warp': warp,
-        'smooth': smooth,
-        'smooth_win': smooth_win,
-        'exclude_tags': exclude_tags,
-        'driven': driven,
-        'drive_css': drive_css,
-        'drive_threshold': drive_threshold
-    }
-    save_dir = paths.tca_path(mouse, 'pair', pars=pars)
-
-    days = flow.DatePairSorter.frommeta(mice=[mouse],
-                                        day_distance=(0, 7),
-                                        exclude_tags=['bad'])
-
-    for c, (day1, day2) in enumerate(days):
-
-        # filter cells based on visual/trial drive across all cs, prevent
-        # breaking when only pavs are shown
-        if driven:
-            d1_drive = []
-            d2_drive = []
-            for dcs in drive_css:
-                try:
-                    d1_drive.append(pool.calc.driven.trial(day1, dcs))
-                except KeyError:
-                    print(
-                        str(day1) + ' requested ' + dcs +
-                        ': no match to what was shown (probably pav only).')
-                try:
-                    d2_drive.append(pool.calc.driven.trial(day2, dcs))
-                except KeyError:
-                    print(
-                        str(day2) + ' requested ' + dcs +
-                        ': no match to what was shown (probably pav only).')
-            d1_drive = np.max(d1_drive, axis=0)
-            d2_drive = np.max(d2_drive, axis=0)
-
-            drive_bool = ((np.array(d1_drive) > drive_threshold) |
-                          (np.array(d2_drive) > drive_threshold))
-        else:
-            drive_bool = np.ones(np.shape(d))
-        # list of ids for pair of days
-        ids = [day1.cells[drive_bool], day2.cells[drive_bool]]
-
-        # TODO add in additional filter for being able to check for quality of xday alignment
-
-        # get all runs for both days
-        d1_runs = day1.runs(exclude_tags=['bad'])
-        d2_runs = day2.runs(
-            exclude_tags=['bad'])  # TODO add in training run_type as option
-        # filter for only runs without certain tags
-        d1_runs = [
-            run for run in d1_runs if not any(np.isin(run.tags, exclude_tags))
-        ]
-        d2_runs = [
-            run for run in d2_runs if not any(np.isin(run.tags, exclude_tags))
-        ]
-        # filter for training tags only
-        if run_type:
-            d1_runs = [run for run in d1_runs if run.run_type == run_type]
-            d2_runs = [run for run in d2_runs if run.run_type == run_type]
-
-        # build tensors for all correct runs and trials if you still have trials after filtering
-        # day 1
-        if d1_runs and d2_runs:
-            d1_tensor_list = []
-            d1_meta = []
-            d2_tensor_list = []
-            d2_meta = []
-            for run in d1_runs:
-                t2p = run.trace2p()
-                # trigger all trials around stimulus onsets
-                # CONSIDER ADDING OPTION KWARG WHICH IS A LIST OF PAIRDAY SUBSET INDS i.e., day1.cells
-                run_traces = utils.getcstraces(run,
-                                               cs=cs,
-                                               trace_type=trace_type,
-                                               start_time=start_time,
-                                               end_time=end_time,
-                                               downsample=True,
-                                               clean_artifacts=clean_artifacts,
-                                               thresh=thresh,
-                                               warp=warp,
-                                               smooth=smooth,
-                                               smooth_win=smooth_win)
-                # get matched trial metadata/variables
-                dfr = _trialmetafromrun(run)
-                # subselect metadata if you are only running certain cs
-                if cs != '':
-                    if cs == 'plus' or cs == 'minus' or cs == 'neutral':
-                        dfr = dfr.loc[(dfr['condition'].isin([cs])), :]
-                    elif cs == '0' or cs == '135' or cs == '270':
-                        dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
-                    else:
-                        print('ERROR: cs called - "' + cs + '" - is not\
-                              a valid option.')
-                # drop trials with nans and add to list
-                keep = np.sum(np.sum(np.isnan(run_traces),
-                                     axis=0,
-                                     keepdims=True),
-                              axis=1,
-                              keepdims=True).flatten() == 0
-                dfr = dfr.iloc[keep, :]
-                d1_tensor_list.append(run_traces[:, :, keep])
-                d1_meta.append(dfr)
-
-            # day 2
-            for run in d2_runs:
-                t2p = run.trace2p()
-                # trigger all trials around stimulus onsets
-                run_traces = utils.getcstraces(run,
-                                               cs=cs,
-                                               trace_type=trace_type,
-                                               start_time=start_time,
-                                               end_time=end_time,
-                                               downsample=True,
-                                               clean_artifacts=clean_artifacts,
-                                               thresh=thresh,
-                                               warp=warp,
-                                               smooth=smooth,
-                                               smooth_win=smooth_win)
-                # get matched trial metadata/variables
-                dfr = _trialmetafromrun(run)
-                # subselect metadata if you are only running certain cs
-                if cs != '':
-                    if cs == 'plus' or cs == 'minus' or cs == 'neutral':
-                        dfr = dfr.loc[(dfr['condition'].isin([cs])), :]
-                    elif cs == '0' or cs == '135' or cs == '270':
-                        dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
-                    else:
-                        print('ERROR: cs called - "' + cs + '" - is not\
-                              a valid option.')
-                # drop trials with nans and add to list
-                keep = np.sum(np.sum(np.isnan(run_traces),
-                                     axis=0,
-                                     keepdims=True),
-                              axis=1,
-                              keepdims=True).flatten() == 0
-                dfr = dfr.iloc[keep, :]
-                d2_tensor_list.append(run_traces[:, :, keep])
-                d2_meta.append(dfr)
-
-            # concatenate matched cells across trials 3rd dim (aka, 2)
-            d1_tensor = np.concatenate(d1_tensor_list, axis=2)
-            d2_tensor = np.concatenate(d2_tensor_list, axis=2)
-            tensor = np.concatenate((d1_tensor, d2_tensor), axis=2)
-
-            # concatenate all trial metadata in pd dataframe
-            d1_meta.extend(d2_meta)
-            pair_meta = pd.concat(d1_meta, axis=0)
-
-            # concatenate and save df for the day
-            meta_path = os.path.join(
-                save_dir,
-                str(day1.mouse) + '_' + str(day1.date) + '_' + str(day2.date) +
-                '_df_pair_meta.pkl')
-            input_tensor_path = os.path.join(
-                save_dir,
-                str(day1.mouse) + '_' + str(day1.date) + '_' + str(day2.date) +
-                '_pair_tensor_' + str(trace_type) + '.npy')
-            input_ids_path = os.path.join(
-                save_dir,
-                str(day1.mouse) + '_' + str(day1.date) + '_' + str(day2.date) +
-                '_pair_ids_' + str(trace_type) + '.npy')
-            output_tensor_path = os.path.join(
-                save_dir,
-                str(day1.mouse) + '_' + str(day1.date) + '_' + str(day2.date) +
-                '_pair_decomp_' + str(trace_type) + '.npy')
-            pair_meta.to_pickle(meta_path)
-            np.save(input_tensor_path, tensor, ids)
-            np.save(input_ids_path, ids)
-
-            # run TCA - iterate over different fitting methods
-            ensemble = {}
-            for m in method:
-                ensemble[m] = tt.Ensemble(fit_method=m,
-                                          fit_options=fit_options)
-                ensemble[m].fit(tensor,
-                                ranks=range(1, rank + 1),
-                                replicates=replicates,
-                                verbose=False)
-            np.save(output_tensor_path, ensemble)
-
-            # print output so you don't go crazy waiting
-            if verbose:
-                print('Pair: ' + str(c + 1) + ': ' + str(day1.mouse) + ': ' +
-                      str(day1.date) + ', ' + str(day2.date) + ': done.')
-
-
-def triday_tca(
-        mouse,
-        tags=None,
-
-        # TCA params
-        rank=20,
-        method=('mncp_hals', ),
-        replicates=3,
-        fit_options=None,
-
-        # tensor params
-        trace_type='zscore_day',
-        cs='',
-        downsample=True,
-        start_time=-1,
-        end_time=6,
-        clean_artifacts=None,
-        thresh=20,
-        warp=False,
-        smooth=True,
-        smooth_win=6,
-        verbose=True,
-
-        # filtering params
-        exclude_tags=('disengaged', 'orientation_mapping', 'contrast',
-                      'retinotopy', 'sated'),
-        exclude_conds=('blank', 'blank_reward', 'pavlovian'),
-        driven=True,
-        drive_css=('0', '135', '270'),
-        drive_threshold=15,
-        score_threshold=0,
-        nan_trial_threshold=None):
-    """
-    Perform tensor component analysis (TCA) on data aligned
-    across three days.
-
-    Algorithms from https://github.com/ahwillia/tensortools.
-
-    Parameters
-    -------
-    methods, tuple of str
-        'cp_als', fits CP Decomposition using Alternating
-            Least Squares (ALS).
-        'ncp_bcd', fits nonnegative CP Decomposition using
-            the Block Coordinate Descent (BCD) Method.
-        'ncp_hals', fits nonnegative CP Decomposition using
-            the Hierarchical Alternating Least Squares
-            (HALS) Method.
-        'mcp_als', fits CP Decomposition with missing data using
-            Alternating Least Squares (ALS).
-        'mncp_hals', fits nonnegative CP Decomposition with missing data using
-            Alternating Least Squares (ALS).
-
-    rank, int
-        number of components you wish to fit
-
-    replicates, int
-        number of initializations/iterations fitting for each rank
-
-    Returns
-    -------
-
-    """
-
-    # create folder structure and save dir
-    if fit_options is None:
-        fit_options = {'tol': 0.0001, 'max_iter': 500, 'verbose': False}
-    pars = {
-        'tags': tags,
-        'rank': rank,
-        'method': method,
-        'replicates': replicates,
-        'fit_options': fit_options,
-        'trace_type': trace_type,
-        'cs': cs,
-        'downsample': downsample,
-        'start_time': start_time,
-        'end_time': end_time,
-        'clean_artifacts': clean_artifacts,
-        'thresh': thresh,
-        'warp': warp,
-        'smooth': smooth,
-        'smooth_win': smooth_win,
-        'exclude_tags': exclude_tags,
-        'exclude_conds': exclude_conds,
-        'driven': driven,
-        'drive_css': drive_css,
-        'drive_threshold': drive_threshold
-    }
-    save_dir = paths.tca_path(mouse, 'tri', pars=pars)
-
-    days = flow.DateSorter.frommeta(mice=[mouse],
-                                    tags=tags,
-                                    exclude_tags=['bad'])
-
-    for c, day1 in enumerate(days, 0):
-
-        try:
-            day2 = days[c + 1]
-            day3 = days[c + 2]
-        except IndexError:
-            print('done.')
-            break
-
-        # get cell_ids for both days and create boolean vec for cells
-        # to use from each day
-        d1_ids = flow.xday._read_crossday_ids(day1.mouse, day1.date)
-        d1_ids = np.array([int(s) for s in d1_ids])
-        d2_ids = flow.xday._read_crossday_ids(day2.mouse, day2.date)
-        d2_ids = np.array([int(s) for s in d2_ids])
-        d3_ids = flow.xday._read_crossday_ids(day3.mouse, day3.date)
-        d3_ids = np.array([int(s) for s in d3_ids])
-
-        # filter cells based on visual/trial drive across all cs, prevent
-        # breaking when only pavs are shown
-        if driven:
-            good_ids = _group_drive_ids(days, drive_css, drive_threshold)
-            # filter for being able to check for quality of xday alignment
-            if score_threshold > 0:
-                orig_num_ids = len(good_ids)
-                highscore_ids = _group_ids_score(days, score_threshold)
-                good_ids = np.intersect1d(good_ids, highscore_ids)
-                if verbose:
-                    print('Cell score threshold ' + str(score_threshold) +
-                          ':' + ' ' + str(len(highscore_ids)) +
-                          ' above threshold:' + ' good_ids updated to ' +
-                          str(len(good_ids)) + '/' + str(orig_num_ids) +
-                          ' cells.')
-                # update saving tag
-                score_tag = '_score0pt' + str(int(score_threshold * 10))
-            else:
-                score_tag = ''
-            d1_ids_bool = np.isin(d1_ids, good_ids)
-            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
-            d2_ids_bool = np.isin(d2_ids, good_ids)
-            d2_sorter = np.argsort(d2_ids[d2_ids_bool])
-            d3_ids_bool = np.isin(d3_ids, good_ids)
-            d3_sorter = np.argsort(d3_ids[d3_ids_bool])
-        else:
-            good_ids = reduce(np.union1d, (d1_ids, d2_ids, d3_ids))
-            # filter for being able to check for quality of xday alignment
-            if score_threshold > 0:
-                orig_num_ids = len(good_ids)
-                highscore_ids = _group_ids_score(days, score_threshold)
-                good_ids = np.intersect1d(good_ids, highscore_ids)
-                if verbose:
-                    print('Cell score threshold ' + str(score_threshold) +
-                          ':' + ' ' + str(len(highscore_ids)) +
-                          ' above threshold:' + ' good_ids updated to ' +
-                          str(len(good_ids)) + '/' + str(orig_num_ids) +
-                          ' cells.')
-                # update saving tag
-                score_tag = '_score0pt' + str(int(score_threshold * 10))
-            else:
-                score_tag = ''
-            d1_ids_bool = np.isin(d1_ids, good_ids)
-            d1_sorter = np.argsort(d1_ids[d1_ids_bool])
-            d2_ids_bool = np.isin(d2_ids, good_ids)
-            d2_sorter = np.argsort(d2_ids[d2_ids_bool])
-            d3_ids_bool = np.isin(d3_ids, good_ids)
-            d3_sorter = np.argsort(d3_ids[d3_ids_bool])
-        # set final filtered and sorted ids
-        final1_ids = d1_ids[d1_ids_bool][d1_sorter]
-        final2_ids = d2_ids[d2_ids_bool][d2_sorter]
-        final3_ids = d3_ids[d3_ids_bool][d3_sorter]
-
-        # get all runs for both days
-        d1_runs = day1.runs(exclude_tags=['bad'])
-        d2_runs = day2.runs(exclude_tags=['bad'])
-        d3_runs = day3.runs(exclude_tags=['bad'])
-
-        # filter for only runs without certain tags
-        d1_runs = [
-            run for run in d1_runs if not any(np.isin(run.tags, exclude_tags))
-        ]
-        d2_runs = [
-            run for run in d2_runs if not any(np.isin(run.tags, exclude_tags))
-        ]
-        d3_runs = [
-            run for run in d3_runs if not any(np.isin(run.tags, exclude_tags))
-        ]
-
-        # build tensors for all correct runs and trials if you still have
-        # trials after filtering
-        if d1_runs and d2_runs and d3_runs:
-
-            d1_tensor, d1_meta = _getcstraces_filtered(
-                d1_runs,
-                d1_ids_bool,
-                d1_sorter,
-                cs=cs,
-                trace_type=trace_type,
-                start_time=start_time,
-                end_time=end_time,
-                downsample=downsample,
-                clean_artifacts=clean_artifacts,
-                thresh=thresh,
-                warp=warp,
-                smooth=smooth,
-                smooth_win=smooth_win)
-
-            # day 2
-            d2_tensor, d2_meta = _getcstraces_filtered(
-                d2_runs,
-                d2_ids_bool,
-                d2_sorter,
-                cs=cs,
-                trace_type=trace_type,
-                start_time=start_time,
-                end_time=end_time,
-                downsample=downsample,
-                clean_artifacts=clean_artifacts,
-                thresh=thresh,
-                warp=warp,
-                smooth=smooth,
-                smooth_win=smooth_win)
-
-            # day 3
-            d3_tensor, d3_meta = _getcstraces_filtered(
-                d3_runs,
-                d3_ids_bool,
-                d3_sorter,
-                cs=cs,
-                trace_type=trace_type,
-                start_time=start_time,
-                end_time=end_time,
-                downsample=downsample,
-                clean_artifacts=clean_artifacts,
-                thresh=thresh,
-                warp=warp,
-                smooth=smooth,
-                smooth_win=smooth_win)
-
-            # concatenate matched cells across trials 3rd dim (aka, 2)
-            tensor_list = [d1_tensor, d2_tensor, d3_tensor]
-            meta_list = [d1_meta, d2_meta, d3_meta]
-            id_list = [final1_ids, final2_ids, final3_ids]
-
-            # get total trial number across all days/runs
-            meta = pd.concat(meta_list, axis=0)
-            trial_num = len(meta.reset_index()['trial_idx'])
-
-            # get union of ids. Use these for indexing and splicing tensors together
-            id_union = np.unique(np.concatenate(id_list, axis=0))
-            cell_num = len(id_union)
-
-        # build a single large tensor leaving nans where cell is not found
-        trial_start = 0
-        trial_end = 0
-        group_tensor = np.zeros(
-            (cell_num, np.shape(tensor_list[0])[1], trial_num))
-        group_tensor[:] = np.nan
-        for i in range(len(tensor_list)):
-            trial_end += np.shape(tensor_list[i])[2]
-            for c, k in enumerate(id_list[i]):
-                celln_all_trials = tensor_list[i][c, :, :]
-                group_tensor[(id_union == k), :,
-                             trial_start:trial_end] = celln_all_trials
-            trial_start += np.shape(tensor_list[i])[2]
-
-        # allow for cells with low number of trials to be dropped
-        if nan_trial_threshold:
-            # update saving tag
-            nt_tag = '_nantrial' + str(nan_trial_threshold)
-            # remove cells with too many nan trials
-            ntrials = np.shape(group_tensor)[2]
-            nbadtrials = np.sum(np.isnan(group_tensor[:, 0, :]), 1)
-            badtrialratio = nbadtrials / ntrials
-            badcell_indexer = badtrialratio < nan_trial_threshold
-            group_tensor = group_tensor[badcell_indexer, :, :]
-            if verbose:
-                print('Removed ' + str(np.sum(~badcell_indexer)) +
-                      ' cells from tensor:' + ' badtrialratio < ' +
-                      str(nan_trial_threshold))
-                print('Kept ' + str(np.sum(badcell_indexer)) +
-                      ' cells from tensor:' + ' badtrialratio < ' +
-                      str(nan_trial_threshold))
-        else:
-            nt_tag = ''
-
-        # just so you have a clue how big the tensor is
-        if verbose:
-            print('Tensor decomp about to begin: tensor shape = ' +
-                  str(np.shape(group_tensor)))
-
-        # concatenate and save df for the day
-        meta_path = os.path.join(
-            save_dir,
-            str(day1.mouse) + '_' + str(day1.date) + '_' + str(day2.date) +
-            '_' + str(day3.date) + nt_tag + score_tag + '_df_tri_meta.pkl')
-        input_tensor_path = os.path.join(
-            save_dir,
-            str(day1.mouse) + '_' + str(day1.date) + '_' + str(day2.date) +
-            '_' + str(day3.date) + nt_tag + score_tag + '_tri_tensor_' +
-            str(trace_type) + '.npy')
-        input_ids_path = os.path.join(
-            save_dir,
-            str(day1.mouse) + '_' + str(day1.date) + '_' + str(day2.date) +
-            '_' + str(day3.date) + nt_tag + score_tag + '_tri_ids_' +
-            str(trace_type) + '.npy')
-        output_tensor_path = os.path.join(
-            save_dir,
-            str(day1.mouse) + '_' + str(day1.date) + '_' + str(day2.date) +
-            '_' + str(day3.date) + nt_tag + score_tag + '_tri_decomp_' +
-            str(trace_type) + '.npy')
-        meta.to_pickle(meta_path)
-        np.save(input_tensor_path, group_tensor)
-        np.save(input_ids_path, id_union)
-
-        # run TCA - iterate over different fitting methods
-        if np.isin('mcp_als', method) | np.isin('mncp_hals', method):
-            mask = ~np.isnan(group_tensor)
-            fit_options['mask'] = mask
-        group_tensor[np.isnan(group_tensor)] = 0
-        ensemble = {}
-        for m in method:
-            ensemble[m] = tt.Ensemble(fit_method=m,
-                                      fit_options=deepcopy(fit_options))
-            ensemble[m].fit(group_tensor,
-                            ranks=range(1, rank + 1),
-                            replicates=replicates,
-                            verbose=False)
-        np.save(output_tensor_path, ensemble)
-
-        # print output so you don't go crazy waiting
-        if verbose:
-            print(
-                str(day1.mouse) + ': triplet ' + str(day1.date) + ', ' +
-                str(day2.date) + ', ' + str(day3.date) + ': done.')
+    # fixed params
+    method = 'ncp_hals'
+    replicates = 3
+    fit_options = {'tol': 0.0001, 'max_iter': 500, 'verbose': False, 'skip_modes': [0, 2]}
+
+    # parse your data to get new input data with naive and fixed cell/tune factors
+    existing_mod = ensemble[mod]
+    mod_name = (mod + '_allstagesT0norm').replace('_norm', '') if 'norm' in mod else mod + '_allstages'
+    new_init_data = data_dict[mod_name]
+    new_rand_temp_factor = np.random.rand(new_init_data.shape[1], chosen_rank)
+    existing_cell_factor = existing_mod.results[chosen_rank][0].factors[0]
+    existing_tune_factor = existing_mod.results[chosen_rank][0].factors[2]
+
+    # run TCA on this small
+    init_factors = KTensor((existing_cell_factor, new_rand_temp_factor, existing_tune_factor))
+    temp_fit_options = deepcopy(fit_options)
+    mask = ~np.isnan(new_init_data)
+    temp_fit_options['mask'] = mask
+    temp_fit_options['init'] = init_factors
+    temp_ensemble = tt.Ensemble(fit_method=method, fit_options=temp_fit_options)
+    temp_ensemble.fit(new_init_data, ranks=chosen_rank, replicates=replicates, verbose=False)
+
+    # ensure that nothing changed in your cell factors or tuning factors 
+    assert np.array_equal(temp_ensemble.results[chosen_rank][0].factors[0], existing_cell_factor)
+    assert np.array_equal(temp_ensemble.results[chosen_rank][0].factors[2], existing_tune_factor)
+
+    if plot_please:
+        _, ax = plt.subplots(chosen_rank,
+                             1,
+                             figsize=(4, chosen_rank*2+2),
+                             sharex=True,
+                             sharey=True)
+        new = temp_ensemble.results[chosen_rank][0].factors[1]
+        old = existing_mod.results[chosen_rank][0].factors[1]
+        for i in range(chosen_rank):
+
+            # calculate r_squared for your new fit
+            correlation_matrix = np.corrcoef(new[47:, i], old[:, i])
+            correlation_xy = correlation_matrix[0, 1]
+            r_squared = correlation_xy**2
+
+            ax[i].plot(np.arange(new.shape[0]),
+                       new[:, i],
+                       label=f'fit r_squared={round(r_squared, 4)}',
+                       alpha=0.5,
+                       color='red')
+            ax[i].plot(np.arange(old.shape[0]) + 47,
+                       old[:, i],
+                       label='original',
+                       alpha=0.5,
+                       color='blue')
+            ax[i].legend(bbox_to_anchor=(1.05, 1.0), loc=2)
+            ax[i].set_ylabel(f'                 Component {i+1}',
+                             size=16,
+                             ha='right',
+                             rotation=0)
+        ax[0].set_title(f'{mod}, rank {chosen_rank}, refit with T0 Naive\n\n',
+                        size=20)
+
+        plt.savefig(paths.analysis_file(
+            f'{mod}_refittingNAIVE_rank{chosen_rank}_facs.png',
+            f'tca_dfs/TCA_factor_fitting/{mod}'),
+                    bbox_inches='tight')
+
+    return temp_ensemble
 
 
 def groupday_tca(
@@ -1576,7 +582,7 @@ def groupday_tca(
                         dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
                     else:
                         print('ERROR: cs called - "' + cs + '" - is not\
-                              a valid option.')
+                              a valid option.'                                                                                                                                                                                                                                      )
 
                 # subselect metadata to remove certain conditions
                 if len(exclude_conds) > 0:
@@ -2765,7 +1771,7 @@ def _getcstraces_filtered(runs_list,
                 dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
             else:
                 print('ERROR: cs called - "' + cs + '" - is not\
-                      a valid option.')
+                      a valid option.'                                                                                                                                                                                              )
         # drop trials with nans and add to lists
         keep = np.sum(np.sum(np.isnan(run_traces), axis=0, keepdims=True),
                       axis=1,

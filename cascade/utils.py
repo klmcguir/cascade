@@ -880,7 +880,7 @@ def add_cue_prob_to_meta(meta):
     # turn go, reward, punishment into boolean
     grp_df = new_meta_df1.loc[:, ['go', 'reward', 'punishment']].gt(0)
 
-    # get only columns for probability 
+    # get only columns for probability
     p_df = new_meta_df1.loc[:, p_cols]
 
     # add new columns to original df
@@ -936,7 +936,7 @@ def add_sub_stages_to_meta(meta, staging='parsed_11stage', bins_per_stage=10):
 
             # account for floor rounding above for last bin
             if bi == bins_per_stage - 1:
-                ind_chunk = stage_inds[bi * bin_size:] 
+                ind_chunk = stage_inds[bi * bin_size:]
             else:
                 ind_chunk = stage_inds[bi * bin_size:(bi+1) * bin_size]
             bin_vec[ind_chunk] = bi
@@ -1586,7 +1586,7 @@ def getcstraces(
         # make sure divisible by bin factor
         sz = np.shape(run_traces)  # dims: (cells, time, trials)
         if sz[1] % bin_factor > 0:
-            mod = z[1] % bin_factor
+            mod = sz[1] % bin_factor
             run_traces = run_traces[:, :-mod, :]
             sz = np.shape(run_traces)
         # bin
@@ -1625,7 +1625,7 @@ def getcstraces(
     if '_trunc' in trace_type.lower():
         run_traces[run_traces < 0] = 0
 
-    # only look at stimulus period 
+    # only look at stimulus period
     if '_onset' in trace_type.lower():
         time_to_off = lookups.stim_length[run.mouse] + 1
         assert downsample
@@ -1762,16 +1762,130 @@ def sortfactors(my_method):
         no_weight_binary = np.max(sorted_factors, axis=1) == 0
         no_weight_binary = np.max(sorted_factors, axis=1) == 0
         inds_to_end = full_sort[no_weight_binary]
-        full_sort = np.concatenate((full_sort[np.invert(no_weight_binary)], inds_to_end), axis=0)
+        full_sort = np.concatenate(
+            (full_sort[np.invert(no_weight_binary)], inds_to_end), axis=0)
         my_rank_sorts.append(full_sort)
 
         # reorder factors looping through each replicate and applying the same sort
-        for i in range(0,len(my_method.results[k])):
+        for i in range(0, len(my_method.results[k])):
             factors = my_method.results[k][i].factors[0]
             sorted_factors = factors[full_sort, :]
             my_method.results[k][i].factors[0] = sorted_factors
 
     return my_method, my_rank_sorts
+
+
+def rescale_factors(factors):
+    """Rescale factors so that last two modes max at 1.
+
+    Parameters
+    ----------
+    factors : tensortools.KTensor, list, or tuple
+        Factors from TCA, usually with 3 indices for each mode of TCA. 
+    """
+    factors = deepcopy(factors)
+    temp_max = np.nanmax(factors[1], axis=0)
+    tune_max = np.nanmax(factors[2], axis=0)
+    scaled_cells = factors[0] * temp_max * tune_max
+    scaled_traces = factors[1] / temp_max
+    scaled_tune = factors[2] / tune_max
+    scaled_factors = [scaled_cells, scaled_traces, scaled_tune]
+
+    return scaled_factors
+
+
+def sort_and_rescale_factors(mod_ensemble):
+    """
+    Sort a set of neuron factors by which factor they contribute
+    to the most.
+
+    Input
+    -------
+    Tensortools ensemble with method. (set of multiple initializations of TCA)
+        i.e., _sortfactors(ensemble['ncp_bcd'])
+
+    Returns
+    -------
+    my_method, copy of tensortools ensemble method now with neuron factors sorted.
+    my_rank_sorts, sort indexes to keep track of cell identity
+
+    """
+    
+    # copy so as not to change original model
+    mod_ensemble = deepcopy(mod_ensemble)
+    
+    # rescale your factor so that the full weight is carried on the cell_factor
+    for k in mod_ensemble.results.keys():
+        for i in range(len(mod_ensemble.results[k])):
+            
+            # rescale
+            factors = mod_ensemble.results[k][i].factors
+            scaled_factors = rescale_factors(factors)
+
+            # overwrite your copy of your model with rescaled factors
+            for cj, j in enumerate(scaled_factors):
+                mod_ensemble.results[k][i].factors[cj] = j
+        
+    # resort factors so that they are grouped by tuning
+    my_tune_sorts = []
+    for k in mod_ensemble.results.keys():
+        for i in range(len(mod_ensemble.results[k])):
+        
+            factors = mod_ensemble.results[k][i].factors
+            max_tune = np.argmax(factors[2], axis=0)
+            sum_tune = np.nansum(factors[2], axis=0)  # sum == 1 if perfectly tuned, == 3 if broad
+            
+            # move joint and broadly tuned components to end
+            max_tune[sum_tune > 1.5] = max_tune[sum_tune > 1.5] + factors[2].shape[1]
+            tune_sorting = np.argsort(max_tune)
+            if i == 0:
+                my_tune_sorts.append(tune_sorting)  # use only top iterations
+            
+            # apply tune sort
+            for j in range(3):
+                mod_ensemble.results[k][i].factors[j] = mod_ensemble.results[k][i].factors[j][:, tune_sorting]
+    
+    
+    # sort cells according to highest weight component, then order them highest to lowest within group
+    my_rank_sorts = []
+    for k in mod_ensemble.results.keys():
+        
+        # rescale your factor so that the full weight is carried on the cell_factor
+        factors = mod_ensemble.results[k][0].factors
+
+        # sort neuron factors according to which component had highest weight
+        max_fac = np.argmax(factors[0], axis=1)
+        sort_fac = np.argsort(max_fac)
+        sort_max_fac = max_fac[sort_fac]
+        first_sort = factors[0][sort_fac, :]
+
+        # descending sort within each group of sorted neurons
+        second_sort = []
+        for i in np.unique(max_fac):
+            second_inds = (np.where(sort_max_fac == i)[0])
+            second_sub_sort = np.argsort(first_sort[sort_max_fac == i, i])
+            second_sort.extend(second_inds[second_sub_sort][::-1])
+
+        # apply the second sort
+        full_sort = sort_fac[second_sort]
+        sorted_factors = factors[0][full_sort, :]
+
+        # check for zero-weight factors and move them to the end
+        no_weight_binary = np.max(sorted_factors, axis=1) == 0
+        inds_to_end = full_sort[no_weight_binary]
+        full_sort = np.concatenate(
+            (full_sort[np.invert(no_weight_binary)], inds_to_end), axis=0)
+        
+        # save your sort
+        my_rank_sorts.append(full_sort)
+
+        # reorder factors looping through each replicate and applying the same sort
+        # sort is defined by ITERATION 0 
+        for i in range(len(mod_ensemble.results[k])):
+            factors =  mod_ensemble.results[k][i].factors[0]
+            mod_ensemble.results[k][i].factors[0] = factors[full_sort, :]
+
+    return mod_ensemble, my_rank_sorts, my_tune_sorts
 
 
 def define_high_weight_cell_factors(model, rank, threshold=1):

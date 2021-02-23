@@ -63,7 +63,10 @@ def run_unwrapped_tca(thresh=4, iteration=10, force=False, verbose=False, debug=
     heatmap_rank = 12
 
     # Do not overwrite existing files
-    if os.path.isfile(cas.paths.analysis_file(f'tca_ensemble_v{thresh}i{iteration}{mod_suffix}_{mod_date}.npy', 'tca_dfs')) and not force:
+    if os.path.isfile(
+            cas.paths.analysis_file(
+                f'tca_ensemble_v{thresh}i{iteration}{mod_suffix}_{mod_date}.npy',
+                'tca_dfs')) and not force:
         return
 
     # load in a full size data
@@ -100,17 +103,18 @@ def run_unwrapped_tca(thresh=4, iteration=10, force=False, verbose=False, debug=
         meta_list, id_list, tensor_list, updated_off_df,
         thresh=thresh, iteration=iteration, debug=debug, mod_suffix=mod_suffix, add_suffix=''
     )
-    # get data that has all stages 
+    # get data that has all stages
     data_dict_allstages = build_data_dict(
         meta_list, id_list, tensor_list, updated_off_df,
         thresh=thresh, iteration=iteration, debug=debug, mod_suffix=mod_suffix, add_suffix='_allstages'
     )
     data_dict.update(data_dict_allstages)  # combine dicts
 
-    # loop over keys and apply your T0 normalization to 'allstages' data 
-    data_dict = renormalize_allstages_to_t0(
+    # loop over keys and apply your T0 normalization to 'allstages' data
+    pseudonorm_dict = renormalize_allstages_to_t0(
         data_dict, thresh=thresh, iteration=iteration, mod_suffix=mod_suffix, add_suffix='_allstages'
     )
+    data_dict.update(pseudonorm_dict)
 
     # filter out suppressed cells and cells with only a single stage of data (normed data used as benchmark)
     data_dict = filter_data_dict(
@@ -427,28 +431,29 @@ def renormalize_allstages_to_t0(data_dict, thresh=4, iteration=10, mod_suffix=''
         suffix name is '_allstagesT0norm'.
     """
 
-    # loop over keys and apply your T0 normalization to 'allstages' data 
+    # loop over keys and apply your T0 normalization to 'allstages' data
+    new_dict = {}
     for k, v in data_dict.items():
         if k == f'v{thresh}i{iteration}_on{mod_suffix}{add_suffix}':
             norm_key = f'v{thresh}i{iteration}_norm_on_cell_scale_factors{mod_suffix}'
-            new_value = data_dict[k] / data_dict[norm_key]
-            data_dict[k + 'T0norm'] = new_value
+            new_value = v / data_dict[norm_key][:, None, None]
+            new_dict[k + 'T0norm'] = new_value
         elif k == f'v{thresh}i{iteration}_off{mod_suffix}{add_suffix}':
             norm_key = f'v{thresh}i{iteration}_norm_off_cell_scale_factors{mod_suffix}'
-            new_value = data_dict[k] / data_dict[norm_key]
-            data_dict[k + 'T0norm'] = new_value
+            new_value = v / data_dict[norm_key][:, None, None]
+            new_dict[k + 'T0norm'] = new_value
         elif k == f'v{thresh}i{iteration}_speed_on{mod_suffix}{add_suffix}':
             norm_key = f'v{thresh}i{iteration}_speed_norm_on_cell_scale_factors{mod_suffix}'
-            new_value = data_dict[k] / data_dict[norm_key]
-            data_dict[k + 'T0norm'] = new_value
+            new_value = v / data_dict[norm_key][:, None, None]
+            new_dict[k + 'T0norm'] = new_value
         elif k == f'v{thresh}i{iteration}_speed_off{mod_suffix}{add_suffix}':
             norm_key = f'v{thresh}i{iteration}_speed_norm_off_cell_scale_factors{mod_suffix}'
-            new_value = data_dict[k] / data_dict[norm_key]
-            data_dict[k + 'T0norm'] = new_value
+            new_value = v / data_dict[norm_key][:, None, None]
+            new_dict[k + 'T0norm'] = new_value
         else:
             continue
 
-    return data_dict       
+    return new_dict
 
 
 def build_datasets(meta, tensor, debug=False):

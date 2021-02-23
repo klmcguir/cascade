@@ -299,7 +299,7 @@ def save_tag_mouse(nan_thresh=0.85, score_threshold=None, rectified=False):
 
     # update saving tag if you used a cell score threshold
     if score_threshold:
-        tag = '_score0pt' + str(int(score_threshold*10)) + load_tag
+        tag = '_score0pt' + str(int(score_threshold*10))
 
     # save tag for rectification
     if rectified:

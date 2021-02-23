@@ -1,26 +1,20 @@
 """Functions for plotting tca decomp run a new way."""
-import os
-import flow
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
 from tensortools.tensors import KTensor
 import seaborn as sns
-import pandas as pd
 from copy import deepcopy
 from .. import paths
-from . import plot_utils
-from .. import load
 from .. import lookups
 from .. import utils
-from cascade.calc import var
 
 
 def longform_factors_annotated(
         meta,
         ktensor,
         mod,
+        unwrapped_ktensor=None,
         alpha=0.6,
         plot_running=True,
         filetype='png',
@@ -28,35 +22,32 @@ def longform_factors_annotated(
         hmm_engaged=True,
         add_prev_cols=True,
         verbose=False):
-    """
-    Plot TCA factors with trial metadata annotations for all days
-    and ranks/componenets for TCA decomposition ensembles.
+    """Plot trial factors as scatter and pseduocolor with various labels.
 
-    Parameters:
-    -----------
-    mouse : str
-        Mouse name.
-    trace_type : str
-        dff, zscore, zscore_iti, zscore_day, deconvolved
-    method : str
-        TCA fit method from tensortools
-    cs : str
-        Cs stimuli to include, plus/minus/neutral, 0/135/270, etc. '' empty
-        includes all stimuli
-    warp : bool
-        Use traces with time-warped outcome.
-    extra_col : int
-        Number of columns to add to the original three factor columns
-    alpha : float
-        Value between 0 and 1 for transparency of markers
-    plot_running : bool
-        Include trace of scaled (to plot max) average running speed during trial
-    verbose : bool
-        Show plots as they are made.
-
-    Returns:
-    --------
-    Saves figures to .../analysis folder  .../factors annotated
+    Parameters
+    ----------
+    meta : pandas.DataFrame
+        Trial metadata.
+    ktensor : tensortools.KTensor
+        Your factors containing your trial factors[2] for a given rank of "mod".
+    mod : str
+        Model name.
+    unwrapped_ktensor : tensortools.KTensor, optional
+        The factors from a given model (should match "mod"), contains tuning factors, by default None
+    alpha : float, optional
+        alpha for scatter, by default 0.6
+    plot_running : bool, optional
+        Plot running as a pink trace (normalized) behind scatter, by default True
+    filetype : str, optional
+        File extensions for saving, by default 'png'
+    scale_y : bool, optional
+        Rescale your y_axis (i.e., if outliers make it hard to see your scatter), by default False
+    hmm_engaged : bool, optional
+        Add a row for HMM engagement, by default True
+    add_prev_cols : bool, optional
+        Add columns that deal with previous cues or rewards, etc., by default True
+    verbose : bool, optional
+        Print terminal output, by default False
     """
 
     # get your mouse from metadata
@@ -69,7 +60,19 @@ def longform_factors_annotated(
     sort_ktensor, _ = _sortcellfactor(ktensor)
 
     # get rank of model
-    r = ktensor[0].shape[1]
+    r = ktensor.rank
+
+    # if unwrapped ktensor is provided, get "best" tuning
+    if unwrapped_ktensor is not None:
+        assert ktensor.rank == unwrapped_ktensor.rank
+        tune_order = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+        inverted_lookup = {v:k for k, v in lookups.lookup_mm[mouse].items()}
+        tuning_factors = utils.rescale_factors(unwrapped_ktensor)[2]
+        max_tune = np.argmax(tuning_factors, axis=0)
+        sum_tune = np.nansum(tuning_factors, axis=0)
+        tuning_oris = [[lookups.lookup[mouse][inverted_lookup[tune_order[s]]]]
+                       if su <= 1.5 else [0, 135, 270]
+                       for s, su in zip(max_tune, sum_tune)]
 
     orientation = meta['orientation']
     trial_num = np.arange(0, len(orientation))
@@ -123,8 +126,10 @@ def longform_factors_annotated(
 
         # add title to whole figure
         ax[0, 0].text(-1.2, 4,
-            f'\n{mouse}:\n\n rank: {str(int(r))}'
-            f'\n model: {mod}', fontsize=12,
+            f'\n{mouse}:\n\n rank: {str(int(r))}' +
+            f'\n model: {mod}' +
+            (f'\n component pref. tuning: {tuning_oris[comp]}' if  unwrapped_ktensor is not None else ''),
+            fontsize=12,
             transform=ax[0, 0].transAxes, color='#969696')
 
         # plot cell factors
@@ -385,6 +390,8 @@ def longform_factors_annotated(
                         matched_ori = [lookups.lookup[mouse]['minus']]
                     elif 'neutral' in current_col:
                         matched_ori = [lookups.lookup[mouse]['neutral']]
+                    elif unwrapped_ktensor is not None:
+                        matched_ori = tuning_oris[comp]
                     else:
                         matched_ori = [0, 135, 270]
                     same_ori_bool = meta['orientation'].isin(matched_ori).values
@@ -470,8 +477,9 @@ def longform_factors_annotated(
             suffix = '.eps'
         else:
             suffix = '.png'
-        save_path = paths.analysis_file('{}_rank_{}_component_{}_{}{}'.format(mouse, r, comp + 1, mod, suffix),
-                                        f'tca_dfs/TCA_factor_fitting/{mod}/factors_longform/{mouse}')
+        save_path = paths.analysis_file(
+            f'component_{comp + 1}_rank_{r}_mouse_{mouse}_{mod}{suffix}',
+            f'tca_dfs/TCA_factor_fitting/{mod}/factors_longform/{mouse}')
         plt.savefig(save_path, bbox_inches='tight')
         plt.close('all')
 
