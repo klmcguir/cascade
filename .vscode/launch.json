@@ -9,7 +9,8 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            // "args": ["_v9_inv", "gaussian", "exp", "-t"]
         }
     ]
 }
