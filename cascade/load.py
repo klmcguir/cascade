@@ -896,7 +896,7 @@ def groupday_tca_meta(
         word='tray',
         group_by='all3',
         nan_thresh=0.85,
-        score_threshold=None):
+        score_threshold=0.8):
     """
     Load existing tensor component analysis (TCA) metadata.
 

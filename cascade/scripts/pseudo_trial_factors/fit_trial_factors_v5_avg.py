@@ -12,7 +12,6 @@ from tensortools.tensors import KTensor
 
 from tqdm import tqdm
 
-
 # parameters
 # --------------------------------------------------------------------------------------------------
 
@@ -35,8 +34,9 @@ iteration = 0
 hue_order = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
 plot_please = True
 
-# save params
-version = '_v4_sqsm'
+# fitting params
+version = '_v5_avg'
+cell_frac_thresh = 0.2
 
 # load in a full size data
 # --------------------------------------------------------------------------------------------------
@@ -47,8 +47,7 @@ meta_list = []
 for mouse, word in zip(mice, words):
 
     # return   ids, tensor, meta, bhv
-    out = cas.load.load_all_groupday(mouse, word=word, with_model=with_model,
-                                    group_by=group_by, nan_thresh=nan_thresh)
+    out = cas.load.load_all_groupday(mouse, word=word, with_model=with_model, group_by=group_by, nan_thresh=nan_thresh)
     tensor_list.append(out[2])
     id_list.append(out[1])
     bhv_list.append(out[4])
@@ -91,11 +90,19 @@ for mod, rr in zip(models, ranks):
     scaled_tune = factors[2] / tune_max
     scaled_factors = (scaled_cells, scaled_traces, scaled_tune)
 
+    # get cell threshold vector
+    frac_weight = scaled_factors[0].T/np.sum(scaled_factors[0], axis=1)
+    frac_weight[np.isnan(frac_weight)] = 0
+    frac_weight_thresh = frac_weight.T < cell_frac_thresh
+    # set cell weights to zero where they are below 20% of the weight 
+    thresh_cell_factors = deepcopy(scaled_factors[0])
+    thresh_cell_factors[frac_weight_thresh] = 0
+
     # take your scaled traces and break them back appart by stage
     stacker = []
     for i in range(11):
-        dts = int(scaled_traces.shape[0]/11)
-        stacker.append(scaled_traces[(dts*i):(dts*(i+1)), :].T)
+        dts = int(scaled_traces.shape[0] / 11)
+        stacker.append(scaled_traces[(dts * i):(dts * (i + 1)), :].T)
     stage_scale_traces = np.dstack(stacker)
 
     mouse_tfac_list = []
@@ -105,17 +112,17 @@ for mod, rr in zip(models, ranks):
         # parse cells and mouse identifiers
         mouse_bool_mod = mouse_vec == mouse
         good_model_cell_ids = np.array(cell_vec[mouse_bool_mod])
-        data_ind = int(np.where(np.array(mice) == mouse)[0][0]) # from data loading step in previous cell
-        mouse_cell_factor = scaled_cells[mouse_bool_mod]
+        data_ind = int(np.where(np.array(mice) == mouse)[0][0])  # from data loading step in previous cell
+        mouse_cell_factor = thresh_cell_factors[mouse_bool_mod]
 
         # get "raw" zscore data
         ids = np.array(id_list[data_ind])
         data_ids_bool = np.isin(ids, good_model_cell_ids)
         data_ids_to_use = ids[data_ids_bool]
         if '_on' in mod:
-            good_tensor = tensor_list[data_ind][data_ids_bool, :int(np.ceil(15.5*3)), :]
+            good_tensor = tensor_list[data_ind][data_ids_bool, :int(np.ceil(15.5 * 3)), :]
         elif '_off' in mod:
-            off_int = int(np.ceil(cas.lookups.stim_length[mouse] + 1)*15.5)
+            off_int = int(np.ceil(cas.lookups.stim_length[mouse] + 1) * 15.5)
             good_tensor = tensor_list[data_ind][data_ids_bool, (off_int - 16):(off_int + 31), :]
         else:
             raise ValueError
@@ -161,19 +168,20 @@ for mod, rr in zip(models, ranks):
                 assert isinstance(run_stage, str)
 
                 # finish off parsing for cells
-                missing_data = np.isnan(run_tensor[:,0,0])
+                missing_data = np.isnan(run_tensor[:, 0, 0])
                 new_ids = sorted_ids[~missing_data]
                 new_cell_factor = mouse_cell_factor[~missing_data, :]
-                assert np.array_equal(good_model_cell_ids[~missing_data], new_ids) # make sure youre cells are still in order and matched
+                assert np.array_equal(good_model_cell_ids[~missing_data],
+                                      new_ids)  # make sure youre cells are still in order and matched
 
                 # for the current run get your set of new factors, data, and cells
                 new_init_data = run_tensor[~missing_data, :, :]
                 new_rand_trial_factor = np.random.rand(new_init_data.shape[2], rr)
                 stage_ind = np.where(np.isin(stages, run_stage))[0][0]
-                new_temporal_factors = np.nanmean(stage_scale_traces[:, :, :], axis=2).T  # take the men shape then normalize to max
-                new_temporal_factors_normed = new_temporal_factors/np.max(new_temporal_factors, axis=0)
+                new_temporal_factors = np.nanmean(stage_scale_traces[:, :, :],
+                                                  axis=2).T  # take the men shape then normalize to max
+                new_temporal_factors_normed = new_temporal_factors / np.max(new_temporal_factors, axis=0)
                 new_temporal_factors_normed[np.isnan(new_temporal_factors_normed)] = 0  # fix 0/0 = nan
-                new_temporal_factors[new_temporal_factors > 0] = 1 # create a square wave where values are non-zero.
                 assert not np.isnan(new_init_data).any()
                 assert new_temporal_factors.shape[1] == new_rand_trial_factor.shape[1]
                 assert new_temporal_factors.shape[1] == new_cell_factor.shape[1]
@@ -194,57 +202,74 @@ for mod, rr in zip(models, ranks):
         mouse_tfac_list.append(output_trial_factors)
 
         if plot_please:
-            fig, ax, _ = tt.visualization.plot_factors(new_KT, plots=['scatter', 'line', 'scatter'],
-                                    scatter_kw=cas.lookups.tt_plot_options['ncp_hals']['scatter_kw'],
-                                    line_kw=cas.lookups.tt_plot_options['ncp_hals']['line_kw'],
-                                    bar_kw=cas.lookups.tt_plot_options['ncp_hals']['bar_kw']);
+            fig, ax, _ = tt.visualization.plot_factors(new_KT,
+                                                       plots=['scatter', 'line', 'scatter'],
+                                                       scatter_kw=cas.lookups.tt_plot_options['ncp_hals']['scatter_kw'],
+                                                       line_kw=cas.lookups.tt_plot_options['ncp_hals']['line_kw'],
+                                                       bar_kw=cas.lookups.tt_plot_options['ncp_hals']['bar_kw'])
 
             # cell_count = temp_ensemble.results[rr][0].factors[0].shape[0]
             cell_count = new_KT.shape[0]
             for i in range(ax.shape[0]):
                 ax[i, 0].set_ylabel(f'                 Component {i+1}', size=16, ha='right', rotation=0)
-            ax[0, 1].set_title(f'{mouse}: Trial factor fittinig: {mod}, rank {rr} (n = {cell_count})\n\n', size=20)
+            ax[0, 1].set_title(f'{mouse}: Trial factor fitting: {mod}, rank {rr} (n = {cell_count})\n\n', size=20)
 
             plt.savefig(cas.paths.analysis_file(f'{mouse}_{mod}_refittingTRIALs_rank{rr}_facs{version}.png',
-                                                f'tca_dfs/TCA_factor_fitting{version}/{mod}'), bbox_inches='tight')
+                                                f'tca_dfs/TCA_factor_fitting{version}/{mod}'),
+                        bbox_inches='tight')
 
     # save all results
     path = cas.paths.analysis_file(f'{mod}_fit_results_rank{rr}_facs{version}.npy',
-                                                f'tca_dfs/TCA_factor_fitting{version}/{mod}')
-    np.save(path, {'pseudo_ktensors': mouse_kt_list, 'pseudo_trialfactors': mouse_tfac_list, 'mice': np.unique(mouse_vec)}, allow_pickle=True)
+                                   f'tca_dfs/TCA_factor_fitting{version}/{mod}')
+    np.save(path, {
+        'pseudo_ktensors': mouse_kt_list,
+        'pseudo_trialfactors': mouse_tfac_list,
+        'mice': np.unique(mouse_vec)
+    },
+            allow_pickle=True)
 
     if plot_please:
         # This is slow so added it to the end.
 
         # longform factors psuedocolored
         for kten, mouse in zip(mouse_kt_list, np.unique(mouse_vec)):
-            data_ind = int(np.where(np.array(mice) == mouse)[0][0]) # from data loading step
+            data_ind = int(np.where(np.array(mice) == mouse)[0][0])  # from data loading step
             meta = meta_list[data_ind]
 
             # pass you naive fitting model factors so that a preferred tuning is chosen
-            cas.plotting.tca_unwrapped.longform_factors_annotated(meta, kten, mod, unwrapped_ktensor=factors, folder_tag=version)
-
+            cas.plotting.tca_unwrapped.longform_factors_annotated(meta,
+                                                                  kten,
+                                                                  mod,
+                                                                  unwrapped_ktensor=factors,
+                                                                  folder_tag=version)
 
         # correlations of trial factor vectors
         sort_ensemble, _, tune_sort = cas.utils.sort_and_rescale_factors(naive_fit_result)
         assert len(tune_sort) == 1
 
-        fig, ax = plt.subplots(len(mouse_kt_list), 3, figsize=(15, 5*len(mouse_kt_list)))
+        fig, ax = plt.subplots(len(mouse_kt_list), 3, figsize=(15, 5 * len(mouse_kt_list)))
         counter = 0
         for kt, mouse in zip(mouse_kt_list, np.unique(mouse_vec)):
 
             data_ind = int(np.where(np.array(mice) == mouse)[0][0])
             meta = meta_list[data_ind]
-            inverted_lookup = {v:k for k, v in cas.lookups.lookup_mm[mouse].items()}
+            inverted_lookup = {v: k for k, v in cas.lookups.lookup_mm[mouse].items()}
 
-            trial_fac_sorted = kt[2][:,tune_sort[0]]
+            trial_fac_sorted = kt[2][:, tune_sort[0]]
 
             for ci, cue in enumerate(hue_order):
                 cue_boo = meta.initial_condition.isin([inverted_lookup[cue]])
-                sns.heatmap(np.corrcoef(trial_fac_sorted[cue_boo, :].T), cmap='vlag', center=0, ax=ax[counter, ci], square=True, vmin=-0.2, vmax=1)
+                sns.heatmap(np.corrcoef(trial_fac_sorted[cue_boo, :].T),
+                            cmap='vlag',
+                            center=0,
+                            ax=ax[counter, ci],
+                            square=True,
+                            vmin=-0.2,
+                            vmax=1)
                 ax[counter, ci].set_title(f'{mouse}: {cue} trials\nPearson corrcoef\n', size=12)
                 if '_on' in mod:
-                    ax[counter, ci].add_patch(Rectangle((ci*3, ci*3), 3, 3, fill=False, edgecolor=cas.lookups.color_dict[cue], lw=3))
+                    ax[counter, ci].add_patch(
+                        Rectangle((ci * 3, ci * 3), 3, 3, fill=False, edgecolor=cas.lookups.color_dict[cue], lw=3))
                 ax[counter, ci].set_xticks(np.arange(rr) + 0.5)
                 ax[counter, ci].set_xticklabels(labels=np.arange(rr) + 1)
                 ax[counter, ci].set_yticks(np.arange(rr) + 0.5)
@@ -252,13 +277,15 @@ for mod, rr in zip(models, ranks):
             counter += 1
         plt.suptitle(f'{mod}, trialfactor correlations, sorted factors', position=(0.5, 0.9), size=16)
         plt.savefig(cas.paths.analysis_file(f'{mod}_trialfactor_corr_rank{rr}{version}.png',
-                                            f'tca_dfs/TCA_factor_fitting{version}/{mod}/trialfactor_corr'), bbox_inches='tight')
+                                            f'tca_dfs/TCA_factor_fitting{version}/{mod}/trialfactor_corr'),
+                    bbox_inches='tight')
 
         # plot the sorted factors to match the correlation plot
-        fig, ax, _ = tt.visualization.plot_factors(sort_ensemble.results[rr][iteration].factors, plots=['scatter', 'line', 'line'],
-                            scatter_kw=cas.lookups.tt_plot_options['ncp_hals']['scatter_kw'],
-                            line_kw=cas.lookups.tt_plot_options['ncp_hals']['line_kw'],
-                            bar_kw=cas.lookups.tt_plot_options['ncp_hals']['bar_kw']);
+        fig, ax, _ = tt.visualization.plot_factors(sort_ensemble.results[rr][iteration].factors,
+                                                   plots=['scatter', 'line', 'line'],
+                                                   scatter_kw=cas.lookups.tt_plot_options['ncp_hals']['scatter_kw'],
+                                                   line_kw=cas.lookups.tt_plot_options['ncp_hals']['line_kw'],
+                                                   bar_kw=cas.lookups.tt_plot_options['ncp_hals']['bar_kw'])
 
         cell_count = sort_ensemble.results[rr][iteration].factors[0].shape[0]
         for i in range(ax.shape[0]):
@@ -266,5 +293,6 @@ for mod, rr in zip(models, ranks):
         ax[0, 1].set_title(f'Sorted base model: {mod}, rank {rr} (n = {cell_count})\n\n', size=16)
 
         plt.savefig(cas.paths.analysis_file(f'{mod}_sortedT0factors_rank{rr}_facs{version}.png',
-                                        f'tca_dfs/TCA_factor_fitting{version}/{mod}'), bbox_inches='tight')
+                                            f'tca_dfs/TCA_factor_fitting{version}/{mod}'),
+                    bbox_inches='tight')
         plt.close('all')

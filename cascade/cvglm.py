@@ -256,6 +256,9 @@ def fit_glm_cv(response_matrix, pred_matrix, pred_name_list, n_folds, train_ind,
         elif activation == 'softplus':
             Y_act = tf.math.softplus(Y_hat)
 
+        elif activation == 'neginv':
+            Y_act = -(Y_hat)**-1
+
         # elastic net regularization
         if regularization== 'elastic_net':
             reg = lam * ((1. - l1_ratio) * tf.reduce_sum(tf.square(w)/2.0) + 
@@ -283,6 +286,9 @@ def fit_glm_cv(response_matrix, pred_matrix, pred_name_list, n_folds, train_ind,
 
         elif np.logical_and(loss_type == 'gaussian', activation == 'linear'):
             loss = tf.reduce_sum(tf.square(Y - Y_hat)) / n_t / n_roi + reg / n_roi
+
+        elif np.logical_and(loss_type == 'gaussian', activation == 'exp'):
+            loss = tf.reduce_sum(tf.square(Y_act - Y_hat)) / n_t / n_roi + reg / n_roi
 
         # Optimizer:
         non_optimizer_vars = set(tf.global_variables())
