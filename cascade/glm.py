@@ -20,6 +20,204 @@ default_sigmas = {
 
 """ ----------- Design matrix functions that operate on metadata ---------- """
 
+
+def design_matrix_dis_df(meta):
+    """Function for generating design matrix. All values scale from [0, 1]. I am
+    including "redundant" info i.e. go and nogo binary vectors because I plan to
+    use this for nonnegative fitting in which case you cannot simply have a negative
+    beta coefficient to describe the opposite behavior.
+
+    Parameters
+    ----------
+    meta : pandas.DataFrame
+        Trial metadata for a single mouse.
+    """
+
+    mouse = utils.meta_mouse(meta)
+
+    # go
+    new_meta = {}
+    new_meta['go'] = np.zeros(len(meta))
+    new_meta['go'][meta['trialerror'].isin([0, 3, 5, 7]).values] = 1
+    assert np.sum(new_meta['go']) > 0
+    meta_df_out = pd.DataFrame(data=new_meta, index=meta.index)
+
+    # nogo
+    new_meta = {}
+    new_meta['nogo'] = np.zeros(len(meta))
+    new_meta['nogo'][meta['trialerror'].isin([1, 2, 4, 6]).values] = 1
+    assert np.sum(new_meta['nogo']) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # get cues defined by new terms
+    new_meta = {}
+    mm_type = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+    inverted_lookup = {v:k for k, v in lookups.lookup_mm[mouse].items()}
+    for mm in mm_type:
+        new_meta[mm] = np.zeros(len(meta))
+        new_meta[mm][meta.initial_condition.isin([inverted_lookup[mm]]).values] = 1
+        assert np.sum(new_meta[mm]) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # get previous cue same
+    new_meta = {}
+    mm_type = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+    inverted_lookup = {v:k for k, v in lookups.lookup_mm[mouse].items()}
+    for mm in mm_type:
+        new_meta[f'prev_same_{mm}'] = np.zeros(len(meta))
+        new_meta[f'prev_same_{mm}'][meta[f'prev_same_{inverted_lookup[mm]}'].values] = 1
+        assert np.sum(new_meta[f'prev_same_{mm}']) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # get previous cue diff
+    new_meta = {}
+    mm_type = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+    inverted_lookup = {v:k for k, v in lookups.lookup_mm[mouse].items()}
+    for mm in mm_type:
+        new_meta[f'prev_diff_{mm}'] = np.zeros(len(meta))
+        not_same = ~meta[f'prev_same_{inverted_lookup[mm]}'].values & meta.initial_condition.isin([inverted_lookup[mm]]).values
+        new_meta[f'prev_diff_{mm}'][not_same] = 1
+        assert np.sum(new_meta[f'prev_diff_{mm}']) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # get salient events
+    new_meta = {}
+    for col in ['prev_reward', 'prev_punish', 'prev_blank']:
+        new_meta[col] = np.zeros(len(meta))
+        new_meta[col][meta[col].values] = 1
+        assert np.sum(new_meta[col]) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # get salient events
+    new_meta = {}
+    for col in ['hmm_engaged']:
+        new_meta['hmm_disengaged'] = np.zeros(len(meta))
+        new_meta['hmm_disengaged'][~meta[col].values] = 1
+        assert np.sum(new_meta['hmm_disengaged']) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # get normalized running and baseline licking
+    new_meta = {}
+    for col in ['speed', 'pre_speed', 'post_speed', 'pre_licks', 'post_licks', 'anticipatory_licks']:
+        new_meta[col] = meta[col].values / np.nanmax(meta[col].values)
+        new_meta[col][np.isnan(new_meta[col])] = 0
+        assert np.sum(new_meta[col]) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # get normalized dprime
+    new_meta = {}
+    for col in ['dprime_run']:
+        new_meta[col] = meta[col].values - np.nanmin(meta[col].values)
+        new_meta[col] = new_meta[col] / np.nanmax(new_meta[col])
+        new_meta[col][np.isnan(new_meta[col])] = 0
+        assert np.sum(new_meta[col]) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    return meta_df_out
+
+
+def design_matrix_motor_df(meta):
+    """Function for generating design matrix. All values scale from [0, 1]. I am
+    including "redundant" info i.e. go and nogo binary vectors because I plan to
+    use this for nonnegative fitting in which case you cannot simply have a negative
+    beta coefficient to describe the opposite behavior.
+
+    Parameters
+    ----------
+    meta : pandas.DataFrame
+        Trial metadata for a single mouse.
+    """
+
+    mouse = utils.meta_mouse(meta)
+
+    # go
+    new_meta = {}
+    new_meta['go'] = np.zeros(len(meta))
+    new_meta['go'][meta['trialerror'].isin([0, 3, 5, 7]).values] = 1
+    assert np.sum(new_meta['go']) > 0
+    meta_df_out = pd.DataFrame(data=new_meta, index=meta.index)
+
+    # nogo
+    new_meta = {}
+    new_meta['nogo'] = np.zeros(len(meta))
+    new_meta['nogo'][meta['trialerror'].isin([1, 2, 4, 6]).values] = 1
+    assert np.sum(new_meta['nogo']) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # get cues defined by new terms
+    new_meta = {}
+    mm_type = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+    inverted_lookup = {v:k for k, v in lookups.lookup_mm[mouse].items()}
+    for mm in mm_type:
+        new_meta[mm] = np.zeros(len(meta))
+        new_meta[mm][meta.initial_condition.isin([inverted_lookup[mm]]).values] = 1
+        assert np.sum(new_meta[mm]) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # get previous cue same
+    new_meta = {}
+    mm_type = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+    inverted_lookup = {v:k for k, v in lookups.lookup_mm[mouse].items()}
+    for mm in mm_type:
+        new_meta[f'prev_same_{mm}'] = np.zeros(len(meta))
+        new_meta[f'prev_same_{mm}'][meta[f'prev_same_{inverted_lookup[mm]}'].values] = 1
+        assert np.sum(new_meta[f'prev_same_{mm}']) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # get previous cue diff
+    new_meta = {}
+    mm_type = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+    inverted_lookup = {v:k for k, v in lookups.lookup_mm[mouse].items()}
+    for mm in mm_type:
+        new_meta[f'prev_diff_{mm}'] = np.zeros(len(meta))
+        not_same = ~meta[f'prev_same_{inverted_lookup[mm]}'].values & meta.initial_condition.isin([inverted_lookup[mm]]).values
+        new_meta[f'prev_diff_{mm}'][not_same] = 1
+        assert np.sum(new_meta[f'prev_diff_{mm}']) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # get salient events
+    new_meta = {}
+    for col in ['prev_reward', 'prev_punish', 'prev_blank', 'hmm_engaged']:
+        new_meta[col] = np.zeros(len(meta))
+        new_meta[col][meta[col].values] = 1
+        assert np.sum(new_meta[col]) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # get normalized running and baseline licking
+    new_meta = {}
+    for col in ['speed', 'pre_speed', 'post_speed', 'pre_licks', 'post_licks', 'anticipatory_licks']:
+        new_meta[col] = meta[col].values / np.nanmax(meta[col].values)
+        new_meta[col][np.isnan(new_meta[col])] = 0
+        assert np.sum(new_meta[col]) > 0
+    new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    # get normalized dprime
+    # new_meta = {}
+    # for col in ['dprime_run']:
+    #     new_meta[col] = meta[col].values - np.nanmin(meta[col].values)
+    #     new_meta[col] = new_meta[col] / np.nanmax(new_meta[col])
+    #     new_meta[col][np.isnan(new_meta[col])] = 0
+    #     assert np.sum(new_meta[col]) > 0
+    # new_meta_df = pd.DataFrame(data=new_meta, index=meta.index)
+    # meta_df_out = pd.concat([meta_df_out, new_meta_df], axis=1)
+
+    return meta_df_out
+
+
 def design_matrix_df(meta):
     """Function for generating design matrix. All values scale from [0, 1]. I am
     including "redundant" info i.e. go and nogo binary vectors because I plan to
