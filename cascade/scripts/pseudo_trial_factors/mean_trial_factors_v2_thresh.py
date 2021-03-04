@@ -35,8 +35,8 @@ hue_order = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
 plot_please = True
 
 # fitting params
-version = '_v1_mean'
-cell_frac_thresh = 0.0
+version = '_v2_mean_thresh'
+cell_frac_thresh = 0.2
 trace_thresh = 0.2  # fraction of normalized response weight for defining window to mean across
 
 # load in a full size data

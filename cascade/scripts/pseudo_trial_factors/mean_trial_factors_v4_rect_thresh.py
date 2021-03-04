@@ -1,4 +1,4 @@
-"""Script to fit trial factors using factors from unwrapped models, USES AVG temporal factor."""
+"""Script to use mean to make a trial factor. This may double use cells."""
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -35,9 +35,9 @@ hue_order = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
 plot_please = True
 
 # fitting params
-version = '_v1_mean'
-cell_frac_thresh = 0.0
-trace_thresh = 0.2  # fraction of normalized response weight for defining window to mean across
+version = '_v4_rect_thresh'
+cell_frac_thresh = 0.2
+early_trace_def = 0.75
 
 # load in a full size data
 # --------------------------------------------------------------------------------------------------
@@ -92,12 +92,20 @@ for mod, rr in zip(models, ranks):
     scaled_factors = (scaled_cells, scaled_traces, scaled_tune)
 
     # get cell threshold vector
+    # frac_weight = scaled_factors[0].T/np.sum(scaled_factors[0], axis=1)
+    # frac_weight[np.isnan(frac_weight)] = 0
+    # for ci in range(frac_weight.shape[1]):
+    #     max_w = np.max(frac_weight[:, ci])
+    #     frac_weight[frac_weight[:, ci] < max_w, ci] = 0  # only max value has a weight
+    # frac_weight_thresh = frac_weight.T <= cell_frac_thresh  # binarize max weight
+    # thresh_cell_factors = deepcopy(scaled_factors[0])
+    # thresh_cell_factors[frac_weight_thresh] = 0
+
+    # get cell threshold vector
     frac_weight = scaled_factors[0].T/np.sum(scaled_factors[0], axis=1)
     frac_weight[np.isnan(frac_weight)] = 0
-    for ci in range(frac_weight.shape[1]):
-        max_w = np.max(frac_weight[:, ci])
-        frac_weight[frac_weight[:, ci] < max_w, ci] = 0  # only max value has a weight
-    frac_weight_thresh = frac_weight.T <= cell_frac_thresh  # binarize max weight
+    frac_weight_thresh = frac_weight.T < cell_frac_thresh
+    # set cell weights to zero where they are below 20% of the weight 
     thresh_cell_factors = deepcopy(scaled_factors[0])
     thresh_cell_factors[frac_weight_thresh] = 0
 
@@ -179,6 +187,7 @@ for mod, rr in zip(models, ranks):
 
                 # for the current run get your set of new factors, data, and cells
                 new_init_data = run_tensor[~missing_data, :, :]
+                new_init_data[new_init_data < 0] = 0  # RECTIFY
                 new_rand_trial_factor = np.random.rand(new_init_data.shape[2], rr)
                 stage_ind = np.where(np.isin(stages, run_stage))[0][0]
                 new_temporal_factors = np.nanmean(stage_scale_traces[:, :, :],
@@ -192,8 +201,14 @@ for mod, rr in zip(models, ranks):
                 # run TCA on this small
                 for faci in range(new_cell_factor.shape[1]):
                     mean_trace = np.nanmean(new_init_data[new_cell_factor[:, faci] > 0, :, :], axis=0, keepdims=True)
-                    trace_period = new_temporal_factors_normed[:, faci] > trace_thresh
-                    mean_trial_above_thresh = np.nanmean(mean_trace[:, trace_period, :], axis=1).flatten()
+                    peak_trace = np.argmax(new_temporal_factors_normed[:, faci])
+                    early_trace_period_end = int(np.ceil(15.5 + 15.5 * early_trace_def))
+                    if peak_trace < early_trace_period_end:
+                        # transient comps first 750 ms 
+                        mean_trial_above_thresh = np.nanmean(mean_trace[:, 16:early_trace_period_end, :], axis=1).flatten()
+                    else:
+                        # sustained look at 750 ms to 2000 ms
+                        mean_trial_above_thresh = np.nanmean(mean_trace[:, early_trace_period_end:, :], axis=1).flatten()
 
                     # save trial factors into a single vector now concatenated together
                     output_trial_factors[this_run_bool, faci] = mean_trial_above_thresh

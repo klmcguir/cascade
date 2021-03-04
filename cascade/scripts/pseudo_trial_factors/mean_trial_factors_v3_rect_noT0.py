@@ -35,9 +35,10 @@ hue_order = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
 plot_please = True
 
 # fitting params
-version = '_v1_mean'
+version = '_v3_rect'
 cell_frac_thresh = 0.0
 trace_thresh = 0.2  # fraction of normalized response weight for defining window to mean across
+early_trace_def = 0.75
 
 # load in a full size data
 # --------------------------------------------------------------------------------------------------
@@ -45,6 +46,7 @@ tensor_list = []
 id_list = []
 bhv_list = []
 meta_list = []
+mouse_traces_list = []
 for mouse, word in zip(mice, words):
 
     # return   ids, tensor, meta, bhv
@@ -152,6 +154,7 @@ for mod, rr in zip(models, ranks):
 
         # preallocate a new "trial factor" for these cells
         output_trial_factors = np.zeros((sorted_tensor.shape[2], rr)) + np.nan
+        output_tensor_means = np.zeros((sorted_tensor.shape[2], sorted_tensor.shape[1], rr)) + np.nan
 
         # create your tensor per run and for only cells of interest
         stages = cas.lookups.staging['parsed_11stage']
@@ -179,6 +182,7 @@ for mod, rr in zip(models, ranks):
 
                 # for the current run get your set of new factors, data, and cells
                 new_init_data = run_tensor[~missing_data, :, :]
+                new_init_data[new_init_data < 0] = 0  # RECTIFY
                 new_rand_trial_factor = np.random.rand(new_init_data.shape[2], rr)
                 stage_ind = np.where(np.isin(stages, run_stage))[0][0]
                 new_temporal_factors = np.nanmean(stage_scale_traces[:, :, :],
@@ -192,16 +196,24 @@ for mod, rr in zip(models, ranks):
                 # run TCA on this small
                 for faci in range(new_cell_factor.shape[1]):
                     mean_trace = np.nanmean(new_init_data[new_cell_factor[:, faci] > 0, :, :], axis=0, keepdims=True)
-                    trace_period = new_temporal_factors_normed[:, faci] > trace_thresh
-                    mean_trial_above_thresh = np.nanmean(mean_trace[:, trace_period, :], axis=1).flatten()
+                    peak_trace = np.argmax(new_temporal_factors_normed[:, faci])
+                    early_trace_period_end = int(np.ceil(15.5 + 15.5 * early_trace_def))
+                    if peak_trace < early_trace_period_end:
+                        # transient comps first 750 ms 
+                        mean_trial_above_thresh = np.nanmean(mean_trace[:, 16:early_trace_period_end, :], axis=1).flatten()
+                    else:
+                        # sustained look at 750 ms to 2000 ms
+                        mean_trial_above_thresh = np.nanmean(mean_trace[:, early_trace_period_end:, :], axis=1).flatten()
 
                     # save trial factors into a single vector now concatenated together
                     output_trial_factors[this_run_bool, faci] = mean_trial_above_thresh
+                    output_tensor_means[this_run_bool, :, faci] = np.squeeze(mean_trace).T
 
         # hold onto model results
         new_KT = KTensor([mouse_cell_factor, scaled_traces, output_trial_factors])
         mouse_kt_list.append(new_KT)
         mouse_tfac_list.append(output_trial_factors)
+        mouse_traces_list.append(output_tensor_means)
 
         if plot_please:
             fig, ax, _ = tt.visualization.plot_factors(new_KT,
@@ -226,7 +238,8 @@ for mod, rr in zip(models, ranks):
     np.save(path, {
         'pseudo_ktensors': mouse_kt_list,
         'pseudo_trialfactors': mouse_tfac_list,
-        'mice': np.unique(mouse_vec)
+        'mice': np.unique(mouse_vec),
+        'mean_group_traces': mouse_traces_list
     },
             allow_pickle=True)
 

@@ -33,9 +33,9 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
         ranks = [9]
         now = datetime.now()
         dt_string = now.strftime("%Y%m%d_%H%M")
-        glm_tag = f'_test_{loss_type}_{activation}_{dt_string}'
+        glm_tag = f'_test_{loss_type}_{activation}_gng_motor_{dt_string}'
     else:
-        glm_tag = f'_{loss_type}_{activation}'
+        glm_tag = f'_{loss_type}_{activation}_gng_motor'
 
     # GLM params
     n_folds = 5
@@ -82,7 +82,7 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
     design_mat_list = []
     for meta in meta_list:
 
-        design_df = cas.glm.design_matrix_df(meta)
+        design_df = cas.glm.design_matrix_motor_df(meta)
 
         # add in interaction terms for the three cues
         new_meta = {}
@@ -90,6 +90,8 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
         base_cols = [s for s in design_df.columns if s not in interaction_cols]
         base_cols = [s for s in base_cols if 'prev_same' not in s]  # previous same only makes sense with its given cue
         base_cols = [s for s in base_cols if 'prev_diff' not in s]
+        base_cols = [s for s in base_cols if 'dprime' not in s]  # remove dprime from columns
+        base_cols = [s for s in base_cols if 'lick' not in s]
 
         inter_cols = []
         for rep in base_cols:
@@ -99,6 +101,7 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
         new_meta_df = pd.DataFrame(data=new_meta, index=design_df.index)
         X = pd.concat([design_df, new_meta_df], axis=1)
         X.drop(columns=interaction_cols, inplace=True)
+        X.drop(columns=['go', 'nogo'], inplace=True)
         assert not X.isna().any().any()
         design_mat_list.append(X)
 
@@ -207,7 +210,9 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
                     logger.info(f'{mouse}: {stagi}, {meta_bool.sum()} trials')
                 Xdf_sub = Xdf.loc[meta_bool]
                 Ydf_sub = Ydf.loc[meta_bool]
-                logger.warning(f'Trials engaged/total: {Xdf_sub.hmm_engaged.sum()}/{len(Xdf_sub)}')
+                logger.warning(f'{mouse}: {stagi} engaged/total: {Xdf_sub.hmm_engaged.sum()}/{len(Xdf_sub)} trials')
+                if Xdf_sub.hmm_engaged.sum() == len(Xdf_sub):
+                    logger.error('{mouse}: {stagi} no disengaged trials! De facto cue vector!')
 
                 # set data for run
                 kept_cols = Xdf.columns

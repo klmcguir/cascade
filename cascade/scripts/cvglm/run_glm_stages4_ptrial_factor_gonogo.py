@@ -33,9 +33,9 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
         ranks = [9]
         now = datetime.now()
         dt_string = now.strftime("%Y%m%d_%H%M")
-        glm_tag = f'_test_{loss_type}_{activation}_{dt_string}'
+        glm_tag = f'_test_{loss_type}_{activation}_gng_{dt_string}'
     else:
-        glm_tag = f'_{loss_type}_{activation}'
+        glm_tag = f'_{loss_type}_{activation}_gng'
 
     # GLM params
     n_folds = 5
@@ -82,7 +82,8 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
     design_mat_list = []
     for meta in meta_list:
 
-        design_df = cas.glm.design_matrix_df(meta)
+        # design_df = cas.glm.design_matrix_df(meta)
+        design_df = cas.glm.design_matrix_dis_df(meta)
 
         # add in interaction terms for the three cues
         new_meta = {}
@@ -90,6 +91,7 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
         base_cols = [s for s in design_df.columns if s not in interaction_cols]
         base_cols = [s for s in base_cols if 'prev_same' not in s]  # previous same only makes sense with its given cue
         base_cols = [s for s in base_cols if 'prev_diff' not in s]
+        # base_cols = [s for s in base_cols if 'dprime' not in s]  # remove dprime from columns
 
         inter_cols = []
         for rep in base_cols:
@@ -99,6 +101,7 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
         new_meta_df = pd.DataFrame(data=new_meta, index=design_df.index)
         X = pd.concat([design_df, new_meta_df], axis=1)
         X.drop(columns=interaction_cols, inplace=True)
+        X.drop(columns=['go', 'nogo'], inplace=True)
         assert not X.isna().any().any()
         design_mat_list.append(X)
 
@@ -148,6 +151,7 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
             new_stage_vec[meta_bool] = c
             col_sums = desi.loc[meta_bool].sum(axis=0)
             bad_cols = col_sums[col_sums == 0].keys().to_list()
+            bad_cols = [s for s in bad_cols if 'disengaged' not in s]
             # only count a bad column if you have trials for that stage in the first place
             if len(bad_cols) > 0 and meta_bool.sum() > 0:
                 bad_col_agg.extend(bad_cols)
@@ -207,11 +211,19 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
                     logger.info(f'{mouse}: {stagi}, {meta_bool.sum()} trials')
                 Xdf_sub = Xdf.loc[meta_bool]
                 Ydf_sub = Ydf.loc[meta_bool]
-                logger.warning(f'Trials engaged/total: {Xdf_sub.hmm_engaged.sum()}/{len(Xdf_sub)}')
+                if 'hmm_engaged' in Xdf_sub.columns:
+                    logger.warning(f'{mouse}: {stagi} engaged/total: {Xdf_sub.hmm_engaged.sum()}/{len(Xdf_sub)} trials')
+                    if Xdf_sub.hmm_engaged.sum() == len(Xdf_sub):
+                        logger.error(f'{mouse}: {stagi} no disengaged trials! De facto cue vector!')
+                elif 'hmm_disengaged' in Xdf_sub.columns:
+                    logger.warning(f'{mouse}: {stagi} disengaged/total: {Xdf_sub.hmm_disengaged.sum()}/{len(Xdf_sub)} trials')
+                    if Xdf_sub.hmm_disengaged.sum() == 0:
+                        logger.error(f'{mouse}: {stagi} no disengaged trials! Blank vector!')
 
                 # set data for run
                 kept_cols = Xdf.columns
-                assert Xdf_sub.sum().gt(0).all()  # columns shouldn't be empty!
+                non_dis_cols = [s for s in kept_cols if 'disengaged' not in s] # allowing disengaged to be empty
+                assert Xdf_sub.loc[:, non_dis_cols].sum().gt(0).all()  # columns shouldn't be empty!
                 X = Xdf_sub.values
                 Y = Ydf_sub.values
 

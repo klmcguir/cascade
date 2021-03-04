@@ -34,10 +34,8 @@ iteration = 0
 hue_order = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
 plot_please = True
 
-# fitting params
-version = '_v1_mean'
-cell_frac_thresh = 0.0
-trace_thresh = 0.2  # fraction of normalized response weight for defining window to mean across
+# save params
+version = '_v2_avg_noT0'
 
 # load in a full size data
 # --------------------------------------------------------------------------------------------------
@@ -75,9 +73,10 @@ for mod, rr in zip(models, ranks):
     else:
         raise ValueError
 
-    # get data from
+    # Fit naive trace, but don't use it for temporal factor calculation
     naive_fit_result = cas.tca.refit_naive_tempfac_tca_unwrapped(ensemble, data_dict, mod=mod, chosen_rank=rr)
-    factors = naive_fit_result.results[rr][iteration].factors
+    # factors = naive_fit_result.results[rr][iteration].factors
+    factors = ensemble.results[rr][iteration].factors
 
     mouse_vec = data_dict[mod_mice]
     cell_vec = data_dict[mod_cells]
@@ -90,16 +89,6 @@ for mod, rr in zip(models, ranks):
     scaled_traces = factors[1] / temp_max
     scaled_tune = factors[2] / tune_max
     scaled_factors = (scaled_cells, scaled_traces, scaled_tune)
-
-    # get cell threshold vector
-    frac_weight = scaled_factors[0].T/np.sum(scaled_factors[0], axis=1)
-    frac_weight[np.isnan(frac_weight)] = 0
-    for ci in range(frac_weight.shape[1]):
-        max_w = np.max(frac_weight[:, ci])
-        frac_weight[frac_weight[:, ci] < max_w, ci] = 0  # only max value has a weight
-    frac_weight_thresh = frac_weight.T <= cell_frac_thresh  # binarize max weight
-    thresh_cell_factors = deepcopy(scaled_factors[0])
-    thresh_cell_factors[frac_weight_thresh] = 0
 
     # take your scaled traces and break them back appart by stage
     stacker = []
@@ -116,7 +105,7 @@ for mod, rr in zip(models, ranks):
         mouse_bool_mod = mouse_vec == mouse
         good_model_cell_ids = np.array(cell_vec[mouse_bool_mod])
         data_ind = int(np.where(np.array(mice) == mouse)[0][0])  # from data loading step in previous cell
-        mouse_cell_factor = thresh_cell_factors[mouse_bool_mod]
+        mouse_cell_factor = scaled_cells[mouse_bool_mod]
 
         # get "raw" zscore data
         ids = np.array(id_list[data_ind])
@@ -190,13 +179,14 @@ for mod, rr in zip(models, ranks):
                 assert new_temporal_factors.shape[1] == new_cell_factor.shape[1]
 
                 # run TCA on this small
-                for faci in range(new_cell_factor.shape[1]):
-                    mean_trace = np.nanmean(new_init_data[new_cell_factor[:, faci] > 0, :, :], axis=0, keepdims=True)
-                    trace_period = new_temporal_factors_normed[:, faci] > trace_thresh
-                    mean_trial_above_thresh = np.nanmean(mean_trace[:, trace_period, :], axis=1).flatten()
+                init_factors = KTensor((new_cell_factor, new_temporal_factors_normed, new_rand_trial_factor))
+                temp_fit_options = deepcopy(fit_options)
+                temp_fit_options['init'] = init_factors
+                temp_ensemble = tt.Ensemble(fit_method=method, fit_options=temp_fit_options)
+                temp_ensemble.fit(new_init_data, ranks=rr, replicates=replicates, verbose=False)
 
-                    # save trial factors into a single vector now concatenated together
-                    output_trial_factors[this_run_bool, faci] = mean_trial_above_thresh
+                # save trial factors into a single vector now concatenated together
+                output_trial_factors[this_run_bool, :] = temp_ensemble.results[rr][0].factors[2]
 
         # hold onto model results
         new_KT = KTensor([mouse_cell_factor, scaled_traces, output_trial_factors])
@@ -295,6 +285,24 @@ for mod, rr in zip(models, ranks):
         ax[0, 1].set_title(f'Sorted base model: {mod}, rank {rr} (n = {cell_count})\n\n', size=16)
 
         plt.savefig(cas.paths.analysis_file(f'{mod}_sortedT0factors_rank{rr}_facs{version}.png',
+                                            f'tca_dfs/TCA_factor_fitting{version}/{mod}'),
+                    bbox_inches='tight')
+        plt.close('all')
+
+        # plot the sorted factors to match the correlation plot
+        rfactors = cas.utils.rescale_factors(ensemble.results[rr][iteration].factors)
+        fig, ax, _ = tt.visualization.plot_factors(rfactors,
+                                                   plots=['scatter', 'line', 'line'],
+                                                   scatter_kw=cas.lookups.tt_plot_options['ncp_hals']['scatter_kw'],
+                                                   line_kw=cas.lookups.tt_plot_options['ncp_hals']['line_kw'],
+                                                   bar_kw=cas.lookups.tt_plot_options['ncp_hals']['bar_kw'])
+
+        cell_count = rfactors[0].shape[0]
+        for i in range(ax.shape[0]):
+            ax[i, 0].set_ylabel(f'                 Component {i+1}', size=16, ha='right', rotation=0)
+        ax[0, 1].set_title(f'Sorted base model: {mod}, rank {rr} (n = {cell_count})\n\n', size=16)
+
+        plt.savefig(cas.paths.analysis_file(f'{mod}_T0factors_rank{rr}_facs{version}.png',
                                             f'tca_dfs/TCA_factor_fitting{version}/{mod}'),
                     bbox_inches='tight')
         plt.close('all')
