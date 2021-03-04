@@ -35,7 +35,7 @@ hue_order = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
 plot_please = True
 
 # fitting params
-version = '_v3_rect'
+version = '_v3_rect_noT0'
 cell_frac_thresh = 0.0
 trace_thresh = 0.2  # fraction of normalized response weight for defining window to mean across
 early_trace_def = 0.75
@@ -79,7 +79,8 @@ for mod, rr in zip(models, ranks):
 
     # get data from
     naive_fit_result = cas.tca.refit_naive_tempfac_tca_unwrapped(ensemble, data_dict, mod=mod, chosen_rank=rr)
-    factors = naive_fit_result.results[rr][iteration].factors
+    # factors = naive_fit_result.results[rr][iteration].factors
+    factors = ensemble[mod].results[rr][iteration].factors
 
     mouse_vec = data_dict[mod_mice]
     cell_vec = data_dict[mod_cells]
@@ -105,8 +106,9 @@ for mod, rr in zip(models, ranks):
 
     # take your scaled traces and break them back appart by stage
     stacker = []
-    for i in range(11):
-        dts = int(scaled_traces.shape[0] / 11)
+    for i in range(10):
+        dts = int(scaled_traces.shape[0] / 10)
+        assert dts == 47, 'This should be 3 seconds at 15.5 Hz'
         stacker.append(scaled_traces[(dts * i):(dts * (i + 1)), :].T)
     stage_scale_traces = np.dstack(stacker)
 
@@ -308,6 +310,24 @@ for mod, rr in zip(models, ranks):
         ax[0, 1].set_title(f'Sorted base model: {mod}, rank {rr} (n = {cell_count})\n\n', size=16)
 
         plt.savefig(cas.paths.analysis_file(f'{mod}_sortedT0factors_rank{rr}_facs{version}.png',
+                                            f'tca_dfs/TCA_factor_fitting{version}/{mod}'),
+                    bbox_inches='tight')
+        plt.close('all')
+
+        # plot the sorted factors to match the correlation plot
+        rfactors = cas.utils.rescale_factors(ensemble[mod].results[rr][iteration].factors)
+        fig, ax, _ = tt.visualization.plot_factors(rfactors,
+                                                   plots=['scatter', 'line', 'line'],
+                                                   scatter_kw=cas.lookups.tt_plot_options['ncp_hals']['scatter_kw'],
+                                                   line_kw=cas.lookups.tt_plot_options['ncp_hals']['line_kw'],
+                                                   bar_kw=cas.lookups.tt_plot_options['ncp_hals']['bar_kw'])
+
+        cell_count = rfactors[0].shape[0]
+        for i in range(ax.shape[0]):
+            ax[i, 0].set_ylabel(f'                 Component {i+1}', size=16, ha='right', rotation=0)
+        ax[0, 1].set_title(f'Sorted base model: {mod}, rank {rr} (n = {cell_count})\n\n', size=16)
+
+        plt.savefig(cas.paths.analysis_file(f'{mod}_T0factors_rank{rr}_facs{version}.png',
                                             f'tca_dfs/TCA_factor_fitting{version}/{mod}'),
                     bbox_inches='tight')
         plt.close('all')

@@ -76,7 +76,7 @@ for mod, rr in zip(models, ranks):
     # Fit naive trace, but don't use it for temporal factor calculation
     naive_fit_result = cas.tca.refit_naive_tempfac_tca_unwrapped(ensemble, data_dict, mod=mod, chosen_rank=rr)
     # factors = naive_fit_result.results[rr][iteration].factors
-    factors = ensemble.results[rr][iteration].factors
+    factors = ensemble[mod].results[rr][iteration].factors
 
     mouse_vec = data_dict[mod_mice]
     cell_vec = data_dict[mod_cells]
@@ -92,8 +92,9 @@ for mod, rr in zip(models, ranks):
 
     # take your scaled traces and break them back appart by stage
     stacker = []
-    for i in range(11):
-        dts = int(scaled_traces.shape[0] / 11)
+    for i in range(10):
+        dts = int(scaled_traces.shape[0] / 10)
+        assert dts == 47, 'This should be 3 seconds at 15.5 Hz'
         stacker.append(scaled_traces[(dts * i):(dts * (i + 1)), :].T)
     stage_scale_traces = np.dstack(stacker)
 
@@ -290,7 +291,7 @@ for mod, rr in zip(models, ranks):
         plt.close('all')
 
         # plot the sorted factors to match the correlation plot
-        rfactors = cas.utils.rescale_factors(ensemble.results[rr][iteration].factors)
+        rfactors = cas.utils.rescale_factors(ensemble[mod].results[rr][iteration].factors)
         fig, ax, _ = tt.visualization.plot_factors(rfactors,
                                                    plots=['scatter', 'line', 'line'],
                                                    scatter_kw=cas.lookups.tt_plot_options['ncp_hals']['scatter_kw'],
