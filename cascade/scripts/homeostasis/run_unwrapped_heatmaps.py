@@ -26,19 +26,11 @@ def sort_by_cue_mouse(mat, mouse_vec):
     """
 
     best_cue_vec = np.argmax(np.nanmax(mat, axis=1), axis=1)
-    # peaktime = np.nanargmax(np.nanmax(mat, axis=2), axis=1) % 47
     peaktime = np.nanargmax(np.nanmean(np.nanmax(mat2ds, axis=2).reshape([mat2ds.shape[0], -1, 47]), axis=1), axis=1)
-    # peaktime = np.nanargmax(np.nanmax(mat, axis=2), axis=1)
     peaktime[peaktime<17] = 47
 
     sort_vec = []
     for mouse in np.unique(mouse_vec):
-
-        # mouse_inds = np.where(mouse_vec == mouse)[0]
-        # peak_sort = np.argsort(peaktime[mouse_vec == mouse])[::-1]
-        # cue_sort = np.argsort(best_cue_vec[mouse_vec == mouse][peak_sort])
-        # mouse_cue_sort = mouse_inds[peak_sort][cue_sort]
-        # sort_vec.extend(mouse_cue_sort)
 
         # first sort by cue
         mouse_inds = np.where(mouse_vec == mouse)[0]
@@ -54,8 +46,6 @@ def sort_by_cue_mouse(mat, mouse_vec):
             cue_peaks = peak_vec_sort[cue_vec_sort == a]
             new_sort = mouse_cue_sort[cue_vec_sort == a][np.argsort(cue_peaks)]
             sort_vec.extend(new_sort)
-
-        # sort_vec.extend(mouse_cue_sort)
     
     return np.array(sort_vec, dtype=int)
 
