@@ -7,9 +7,82 @@ import pandas as pd
 import os
 from . import utils
 from . import paths
+from . import lookups
 from .tca import _trialmetafromrun, _group_ids_score
 from .tca import _group_drive_ids, _get_speed_pupil_npil_traces
 from .tca import _remove_stimulus_corr, _three_point_temporal_trace
+
+
+def data_filtered(mice=None,
+                  keep_ids=None,
+                  word_pair=('respondent', 'computation'),
+                  trace_type='zscore_day',
+                  group_by='all3',
+                  nan_thresh=0.95,
+                  score_threshold=0.8,
+                  with_model=False):
+    """Load all data lists, optionally filtering out cell_ids.
+
+    Parameters
+    ----------
+    mice : list of str, optional
+        mouse names, by default None
+    keep_ids : list of arrays/lists of int, optional
+        Each entry is a list or array of cell_ids that you want to include per mouse, by default None
+    word_pair : tuple, optional
+        pair of words [OA27, other_mice], by default ['respondent', 'computation']
+    trace_type : str, optional
+        trace type from postprocessing, by default 'zscore_day'
+    group_by : str, optional
+        Way of grouping trials from .tca module, by default 'all3'
+    nan_thresh : float, optional
+        maximum fraction of nans included in original data build, by default 0.95
+    score_threshold : float, optional
+        cell registration score in original data build, by default 0.8
+    with_model : bool, optional
+        include an existing tca model when you load, by default False
+
+    Returns
+    -------
+    dict of lists
+        all of your data organized into lists of different types of data. 
+    """
+
+    # input data params
+    if mice is None:
+        mice = lookups.mice['allFOV']
+    if keep_ids is None:
+        keep_ids = [[] for _ in mice]
+    words = [word_pair[0] if s in 'OA27' else word_pair[1] for s in mice]
+
+    # load in a full size data
+    # --------------------------------------------------------------------------------------------------
+    load_dict = {}
+    load_dict['tensor_list'] = []
+    load_dict['id_list'] = []
+    load_dict['bhv_list'] = []
+    load_dict['meta_list'] = []
+    for mouse, word, ids in zip(mice, words, keep_ids):
+
+        # return   ids, tensor, meta, bhv
+        out = load_all_groupday(mouse,
+                                word=word,
+                                with_model=with_model,
+                                group_by=group_by,
+                                nan_thresh=nan_thresh,
+                                score_threshold=score_threshold,
+                                trace_type=trace_type)
+        if len(ids) == 0:
+            load_dict['tensor_list'].append(out[2])
+            load_dict['id_list'].append(out[1])
+        else:
+            id_bool = np.isin(out[1], ids)
+            load_dict['id_list'].append(out[1][id_bool])
+            load_dict['tensor_list'].append(out[2][id_bool, :, :])
+        load_dict['bhv_list'].append(out[4])
+        load_dict['meta_list'].append(utils.add_stages_to_meta(out[3], 'parsed_11stage'))
+
+    return load_dict
 
 
 def groupday_tensor(
@@ -400,7 +473,7 @@ def groupday_tensor(
                         dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
                     else:
                         print('ERROR: cs called - "' + cs + '" - is not\
-                              a valid option.')
+                              a valid option.'                                              )
 
                 # subselect metadata to remove certain conditions
                 if len(exclude_conds) > 0:
@@ -700,7 +773,7 @@ def singleday_tensor(
                     dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
                 else:
                     print('ERROR: cs called - "' + cs + '" - is not\
-                          a valid option.')
+                          a valid option.'                                          )
 
             # subselect metadata to remove certain condtions
             if len(exclude_conds) > 0:
