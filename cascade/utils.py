@@ -134,10 +134,51 @@ def balanced_mean_per_stage(meta, tensor, staging='parsed_11stage', meta_bool=No
         day_means[:] = np.nan
         for c2, di2 in enumerate(stage_days):
             day_boo = meta.reset_index()['date'].isin([di2]).values
-            day_means[:, :, c2] = np.nanmean(tensor[:, :, day_boo & meta_bool], axis=2)
+            day_means[:, :, c2] = np.nanmean(tensor[:, :, stage_boo & day_boo & meta_bool], axis=2)  ## stage added here
         new_tensor[:, :, c] = np.nanmean(day_means[:, :, :], axis=2)
 
     return new_tensor
+
+
+def balanced_func_per_stageday(meta, tensor, staging='parsed_11stage', meta_bool=None, func=np.nanmean,
+                          filter_running=None, filter_licking=None, filter_hmm_engaged=False):
+    """
+    Helper function to take the (func) across a stage (by day) for a tensor.
+
+    :param meta: pandas.DataFrame, trial metadata
+    :param tensor: numpy.ndarray, a cells x times X trials
+    :return: new_tensor: numpy.ndarray, a cells x times X stages
+    """
+
+    # staging must exist in your df
+    meta = add_stages_to_meta(meta, staging)
+    assert staging in meta.columns
+
+    # optionally filter
+    if meta_bool is None:
+        meta_bool = np.ones(len(meta)) > 0
+    meta_bool = filter_meta_bool(meta, meta_bool,
+                           filter_running=filter_running,
+                           filter_licking=filter_licking,
+                           filter_hmm_engaged=filter_hmm_engaged)
+
+    # get average response per stage
+    stages = lookups.staging[staging]
+    new_tensor = np.zeros((tensor.shape[0], tensor.shape[1], len(stages)))
+    new_tensor[:] = np.nan
+    stage_mats = []
+    for c, di in enumerate(stages):
+        stage_boo = meta[staging].isin([di]).values
+        stage_days = meta.loc[stage_boo, :].reset_index()['date'].unique()
+        day_means = np.zeros((tensor.shape[0], tensor.shape[1], len(stage_days)))
+        day_means[:] = np.nan
+        for c2, di2 in enumerate(stage_days):
+            day_boo = meta.reset_index()['date'].isin([di2]).values
+            day_means[:, :, c2] = func(tensor[:, :, stage_boo & day_boo & meta_bool], axis=2)  # think about this impact.
+        stage_mats.append(day_means)
+        # new_tensor[:, :, c] = np.nanmean(day_means[:, :, :], axis=2)
+
+    return stage_mats
 
 
 def tensor_mean_per_day(meta, tensor, initial_cue=True, cue='plus', ignore_cue=False, nan_licking=False):
