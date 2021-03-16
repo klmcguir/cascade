@@ -1075,6 +1075,9 @@ def add_stages_to_meta(meta, staging, dp_by_run=True, simple=False, bin_scale=0.
     if 'parsed_11stage' in staging:
         if 'parsed_11stage' not in meta.columns or force:
             meta = add_11stages_to_meta(meta, dp_by_run=dp_by_run, bin_scale=bin_scale)
+    if 'parsed_4stage' in staging:
+         if 'parsed_4stage' not in meta.columns or force:
+             meta = add_4stages_to_meta(meta)
 
     return meta
 
@@ -1164,6 +1167,40 @@ def add_11stages_to_meta(meta, dp_by_run=True, bin_scale=0.75):
                 stage_vec.append('L5 reversal1')
 
     meta['parsed_11stage'] = stage_vec
+
+    return meta
+
+
+def add_4stages_to_meta(meta):
+    """Helper function to break stages into 4 bins based on existing parsed_11stage binning.
+
+    Note: with defaults this is dprime <= 2.25 for the "early" bins and > 2.25 for "late" bins.
+
+    Parameters
+    ----------
+    meta : pandas.DataFrame
+        Trial metadata.
+
+    Returns
+    -------
+    meta
+        Return the same DataFrame with a new column.
+    """ 
+    assert 'parsed_11stage' in meta.columns, 'Add parsed_11stage binning to metadata and try again.'
+    
+    new_stage_vec = np.zeros(len(meta)) + np.nan
+    new_names = ['early_learning', 'late_learning', 'early_reversal', 'late_reversal']
+    stage_sets = [
+        ['L1 learning', 'L2 learning', 'L3 learning'],
+        ['L4 learning', 'L5 learning'],
+        ['L1 reversal1', 'L2 reversal1', 'L3 reversal1'],
+        ['L4 reversal1', 'L5 reversal1'],
+    ]
+    for c, sset in enumerate(stage_sets):
+        meta_bool = meta.parsed_11stage.isin(sset)
+        new_stage_vec[meta_bool] = c
+    new_stage_col = [new_names[int(s)] if not np.isnan(s) else 'stageless' for s in new_stage_vec]
+    meta['parsed_4stage'] = new_stage_col
 
     return meta
 
