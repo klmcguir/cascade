@@ -15,6 +15,7 @@ from .tca import _remove_stimulus_corr, _three_point_temporal_trace
 
 def data_filtered(mice=None,
                   keep_ids=None,
+                  limit_to=None,
                   word_pair=('respondent', 'computation'),
                   trace_type='zscore_day',
                   group_by='all3',
@@ -29,6 +30,8 @@ def data_filtered(mice=None,
         mouse names, by default None
     keep_ids : list of arrays/lists of int, optional
         Each entry is a list or array of cell_ids that you want to include per mouse, by default None
+    limit_to : str
+        'onsets' or 'offsets', will crop the timpoints for a 1s baseline and 2s post onset/offset, by default None
     word_pair : tuple, optional
         pair of words [OA27, other_mice], by default ['respondent', 'computation']
     trace_type : str, optional
@@ -72,15 +75,26 @@ def data_filtered(mice=None,
                                 nan_thresh=nan_thresh,
                                 score_threshold=score_threshold,
                                 trace_type=trace_type)
+
+        # get your tensor, possibly cropping around onset or offsets, 1s pre, 2s post
+        if limit_to.lower() == 'onsets':
+            tensor = out[2][:, :int(np.ceil(15.5 * 3)), :]
+        elif limit_to.lower() == 'offsets':
+            off_int = int(np.ceil(lookups.stim_length[mouse] + 1) * 15.5)
+            tensor = out[2][:, (off_int - 16):(off_int + 31), :]
+        else:
+            tensor = out[2]
+
         if len(ids) == 0:
-            load_dict['tensor_list'].append(out[2])
+            load_dict['tensor_list'].append(tensor)
             load_dict['id_list'].append(out[1])
         else:
             id_bool = np.isin(out[1], ids)
             load_dict['id_list'].append(out[1][id_bool])
-            load_dict['tensor_list'].append(out[2][id_bool, :, :])
+            load_dict['tensor_list'].append(tensor[id_bool, :, :])
         load_dict['bhv_list'].append(out[4])
-        load_dict['meta_list'].append(utils.add_stages_to_meta(out[3], 'parsed_11stage'))
+        load_dict['meta_list'].append(
+            utils.add_stages_to_meta(utils.add_stages_to_meta(out[3], 'parsed_11stage'), 'parsed_4stage'))
 
     return load_dict
 
@@ -473,7 +487,7 @@ def groupday_tensor(
                         dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
                     else:
                         print('ERROR: cs called - "' + cs + '" - is not\
-                              a valid option.'                                              )
+                              a valid option.'                                                                                            )
 
                 # subselect metadata to remove certain conditions
                 if len(exclude_conds) > 0:
@@ -773,7 +787,7 @@ def singleday_tensor(
                     dfr = dfr.loc[(dfr['orientation'].isin([cs])), :]
                 else:
                     print('ERROR: cs called - "' + cs + '" - is not\
-                          a valid option.'                                          )
+                          a valid option.'                                                                                    )
 
             # subselect metadata to remove certain condtions
             if len(exclude_conds) > 0:
