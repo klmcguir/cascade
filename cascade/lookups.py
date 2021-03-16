@@ -157,6 +157,7 @@ lookup_mm = {'AS20': {'plus': 'becomes_unrewarded',
              'PD226': {'plus': 'becomes_unrewarded',
                        'neutral': 'remains_unrewarded',
                        'minus': 'becomes_rewarded'}}
+lookup_mm_inv = {k: {b:a for a, b in v.items()} for k, v in lookup_mm.items()}
 
 # category names
 category_names = {
@@ -196,6 +197,7 @@ stim_length = {
 # lookup table for staging types
 staging = {
     'parsed_stage': ['naive', 'low_dp learning', 'high_dp learning', 'low_dp reversal1', 'high_dp reversal1'],
+    'parsed_4stage': ['early_learning', 'late_learning', 'early_reversal', 'late_reversal'],
     'parsed_10stage': ['early naive', 'late naive', 'early low_dp learning', 'late low_dp learning',
                        'early high_dp learning', 'late high_dp learning', 'early low_dp reversal1',
                        'late low_dp reversal1', 'early high_dp reversal1' 'late high_dp reversal1'],
