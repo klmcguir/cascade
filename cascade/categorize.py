@@ -23,6 +23,7 @@ def best_comp_cats(factors, cell_frac_thresh=0):
     frac_weight = scaled_factors[0].T/np.sum(scaled_factors[0], axis=1)
     frac_weight[np.isnan(frac_weight)] = 0
     max_fac_ind = np.argmax(frac_weight, axis=0)
+    max_fac_ind[np.nanmax(frac_weight, axis=0) <= 0] = -1
     assert len(max_fac_ind) == factors[0].shape[0]
 
     return max_fac_ind
