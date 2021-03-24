@@ -49,11 +49,52 @@ def sort_by_cue_mouse(mat, mouse_vec):
     
     return np.array(sort_vec, dtype=int)
 
+
+def sort_by_cue_peak(mat, mouse_vec):
+    """Sort an unwrapped trace matrix by cue and peak.
+
+    Parameters
+    ----------
+    mat : numpy array
+        cells x times-stages x cues
+    mouse_vec : list or array
+        vector of mouse names or unique identifiers
+
+    Returns
+    -------
+    numpy array
+        return the argsort order for this specific type of sort
+    """
+
+    best_cue_vec = np.argmax(np.nanmax(mat, axis=1), axis=1)
+    peaktime = np.nanargmax(np.nanmean(np.nanmax(mat2ds, axis=2).reshape([mat2ds.shape[0], -1, 47]), axis=1), axis=1)
+    peaktime[peaktime<17] = 47
+
+    # first sort by cue
+    mouse_inds = np.arange(len(mouse_vec), dtype=int)
+    cue_sort = np.argsort(best_cue_vec)
+    mouse_cue_sort = mouse_inds[cue_sort]
+    peak_vec_sort = peaktime[cue_sort]
+    cue_vec_sort = best_cue_vec[cue_sort]
+
+    # second sort by average peak time
+    sort_vec = []
+    for a in np.unique(best_cue_vec):
+        cue_peaks = peak_vec_sort[cue_vec_sort == a]
+        new_sort = mouse_cue_sort[cue_vec_sort == a][np.argsort(cue_peaks)]
+        sort_vec.extend(new_sort)
+    
+    return np.array(sort_vec, dtype=int)
+
 # ------------------------------------------------------------------------------------
-# load data
-ensemble = np.load(cas.paths.analysis_file('tca_ensemble_v4i10_noT0_20210215.npy', 'tca_dfs'), allow_pickle=True).item()
+# # load data
+# ensemble = np.load(cas.paths.analysis_file('tca_ensemble_v4i10_noT0_20210215.npy', 'tca_dfs'), allow_pickle=True).item()
+# # print(ensemble)
+# data_dict = np.load(cas.paths.analysis_file('input_data_v4i10_noT0_20210215.npy', 'tca_dfs'), allow_pickle=True).item()
+# # print(data_dict.keys())
+ensemble = np.load(cas.paths.analysis_file('tca_ensemble_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
 # print(ensemble)
-data_dict = np.load(cas.paths.analysis_file('input_data_v4i10_noT0_20210215.npy', 'tca_dfs'), allow_pickle=True).item()
+data_dict = np.load(cas.paths.analysis_file('input_data_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
 # print(data_dict.keys())
 
 # get sort order for data
@@ -74,7 +115,7 @@ cues = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
 # perform calculations
 # ------------------------------------------------------------------------------------
 for mod in tqdm(models, total=len(models), desc='Plotting unwrapped heatmaps'):
-    for sort_by in ['mousecuesort', 'unwrappedTCAsort', 'mousesort']:
+    for sort_by in ['cuesort', 'mousecuesort', 'unwrappedTCAsort', 'mousesort']:
 
         # set up save laocation
         save_folder = cas.paths.analysis_dir(f'tca_dfs/homeostasis/unwrapped_heatmaps')
@@ -82,7 +123,7 @@ for mod in tqdm(models, total=len(models), desc='Plotting unwrapped heatmaps'):
 
         # set rank and TCA model to always be norm models for sorting
         if '_on' in mod:
-            rr = 9
+            rr = 12
             factors = ensemble['v4i10_norm_on_noT0'].results[rr][0].factors
             cell_cats = cas.categorize.best_comp_cats(factors)
             cell_sorter = cell_orders['v4i10_norm_on_noT0'][rr - 1]
@@ -98,10 +139,12 @@ for mod in tqdm(models, total=len(models), desc='Plotting unwrapped heatmaps'):
         else:
             raise ValueError
 
-        if sort_by == 'mousesort':
+        if sort_by == 'mouseunsort':
             cell_sorter = np.arange(len(cell_sorter), dtype=int)  # keep in order
         elif sort_by == 'mousecuesort':
             cell_sorter = sort_by_cue_mouse(mat2ds, mouse_vec)
+        elif sort_by == 'cuesort':
+            cell_sorter = sort_by_cue_peak(mat2ds, mouse_vec)
 
         # remap mouse vector for color axis
         mouse_mapper = {k: c for c, k in enumerate(np.unique(mouse_vec))}
@@ -129,7 +172,7 @@ for mod in tqdm(models, total=len(models), desc='Plotting unwrapped heatmaps'):
         ax = []
         fig = plt.figure(figsize=(30, 15))
         gs = fig.add_gridspec(100, 110)
-        ax.append(fig.add_subplot(gs[:, 3:5]))
+        ax.append(fig.add_subplot(gs[:, 3:6]))
         ax.append(fig.add_subplot(gs[:, 10:38]))
         ax.append(fig.add_subplot(gs[:, 40:68]))
         ax.append(fig.add_subplot(gs[:, 70:98]))

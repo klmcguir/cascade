@@ -1,4 +1,5 @@
 """Script to fit trial factors using factors from unwrapped models, USES AVG temporal factor."""
+import warnings
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -34,8 +35,11 @@ iteration = 0
 hue_order = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
 plot_please = True
 
-# save params
-version = '_v2_avg_noT0'
+# fitting params
+version = '_v3_cr3_noT0'
+cell_frac_thresh = 0.0
+trace_thresh = 0.2  # fraction of normalized response weight for defining window to mean across
+early_trace_def = 0.75
 
 # load in a full size data
 # --------------------------------------------------------------------------------------------------
@@ -43,6 +47,7 @@ tensor_list = []
 id_list = []
 bhv_list = []
 meta_list = []
+mouse_traces_list = []
 for mouse, word in zip(mice, words):
 
     # return   ids, tensor, meta, bhv
@@ -54,10 +59,10 @@ for mouse, word in zip(mice, words):
 
 # load models
 # --------------------------------------------------------------------------------------------------
-ensemble = np.load(cas.paths.analysis_file('tca_ensemble_v4i10_noT0_20210215.npy', 'tca_dfs'), allow_pickle=True).item()
+ensemble = np.load(cas.paths.analysis_file('tca_ensemble_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
 # print(ensemble)
 
-data_dict = np.load(cas.paths.analysis_file('input_data_v4i10_noT0_20210215.npy', 'tca_dfs'), allow_pickle=True).item()
+data_dict = np.load(cas.paths.analysis_file('input_data_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
 # print(data_dict.keys())
 
 # run refitting
@@ -73,7 +78,7 @@ for mod, rr in zip(models, ranks):
     else:
         raise ValueError
 
-    # Fit naive trace, but don't use it for temporal factor calculation
+    # get data from
     naive_fit_result = cas.tca.refit_naive_tempfac_tca_unwrapped(ensemble, data_dict, mod=mod, chosen_rank=rr)
     # factors = naive_fit_result.results[rr][iteration].factors
     factors = ensemble[mod].results[rr][iteration].factors
@@ -89,6 +94,16 @@ for mod, rr in zip(models, ranks):
     scaled_traces = factors[1] / temp_max
     scaled_tune = factors[2] / tune_max
     scaled_factors = (scaled_cells, scaled_traces, scaled_tune)
+
+    # get cell threshold vector
+    frac_weight = scaled_factors[0].T/np.sum(scaled_factors[0], axis=1)
+    frac_weight[np.isnan(frac_weight)] = 0
+    for ci in range(frac_weight.shape[1]):
+        max_w = np.max(frac_weight[:, ci])
+        frac_weight[frac_weight[:, ci] < max_w, ci] = 0  # only max value has a weight
+    frac_weight_thresh = frac_weight.T <= cell_frac_thresh  # binarize max weight
+    thresh_cell_factors = deepcopy(scaled_factors[0])
+    thresh_cell_factors[frac_weight_thresh] = 0
 
     # take your scaled traces and break them back appart by stage
     stacker = []
@@ -106,7 +121,7 @@ for mod, rr in zip(models, ranks):
         mouse_bool_mod = mouse_vec == mouse
         good_model_cell_ids = np.array(cell_vec[mouse_bool_mod])
         data_ind = int(np.where(np.array(mice) == mouse)[0][0])  # from data loading step in previous cell
-        mouse_cell_factor = scaled_cells[mouse_bool_mod]
+        mouse_cell_factor = thresh_cell_factors[mouse_bool_mod]
 
         # get "raw" zscore data
         ids = np.array(id_list[data_ind])
@@ -142,6 +157,7 @@ for mod, rr in zip(models, ranks):
 
         # preallocate a new "trial factor" for these cells
         output_trial_factors = np.zeros((sorted_tensor.shape[2], rr)) + np.nan
+        output_tensor_means = np.zeros((sorted_tensor.shape[2], sorted_tensor.shape[1], rr)) + np.nan
 
         # create your tensor per run and for only cells of interest
         stages = cas.lookups.staging['parsed_11stage']
@@ -169,6 +185,7 @@ for mod, rr in zip(models, ranks):
 
                 # for the current run get your set of new factors, data, and cells
                 new_init_data = run_tensor[~missing_data, :, :]
+                # new_init_data[new_init_data < 0] = 0  # RECTIFY
                 new_rand_trial_factor = np.random.rand(new_init_data.shape[2], rr)
                 stage_ind = np.where(np.isin(stages, run_stage))[0][0]
                 new_temporal_factors = np.nanmean(stage_scale_traces[:, :, :],
@@ -178,21 +195,41 @@ for mod, rr in zip(models, ranks):
                 assert not np.isnan(new_init_data).any()
                 assert new_temporal_factors.shape[1] == new_rand_trial_factor.shape[1]
                 assert new_temporal_factors.shape[1] == new_cell_factor.shape[1]
+                
+                with warnings.catch_warnings():
+                    # scale each cell so that each cell contributes equally to the "trial factor"
+                    warnings.simplefilter('ignore')
+                    max_cf_weights = np.nanmax(new_cell_factor, axis=1)
+                    # new_init_data = new_init_data/max_cf_weights[:, None, None]
+                    new_init_data = new_init_data*(1 - (max_cf_weights/np.nanmax(max_cf_weights)))[:, None, None]
+                    # division will cause the many low cell weights (since you are below 0, to explode)
+                    # trying to multiply by 1 - max weight because this will divide high cell weights but 
+                    # leave explosive low weights alone
 
                 # run TCA on this small
-                init_factors = KTensor((new_cell_factor, new_temporal_factors_normed, new_rand_trial_factor))
-                temp_fit_options = deepcopy(fit_options)
-                temp_fit_options['init'] = init_factors
-                temp_ensemble = tt.Ensemble(fit_method=method, fit_options=temp_fit_options)
-                temp_ensemble.fit(new_init_data, ranks=rr, replicates=replicates, verbose=False)
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore')
+                    for faci in range(new_cell_factor.shape[1]):
+                        mean_trace = np.nanmean(new_init_data[new_cell_factor[:, faci] > 0, :, :], axis=0, keepdims=True)
+                        peak_trace = np.argmax(new_temporal_factors_normed[:, faci])
+                        early_trace_period_end = int(np.ceil(15.5 + 15.5 * early_trace_def))
+                        if peak_trace < early_trace_period_end:
+                            # transient comps first 750 ms 
+                            mean_trial_above_thresh = np.nanmean(mean_trace[:, 16:early_trace_period_end, :], axis=1).flatten()
+                        else:
+                            # sustained look at 750 ms to 2000 ms
+                            mean_trial_above_thresh = np.nanmean(mean_trace[:, early_trace_period_end:, :], axis=1).flatten()
 
-                # save trial factors into a single vector now concatenated together
-                output_trial_factors[this_run_bool, :] = temp_ensemble.results[rr][0].factors[2]
+                        # save trial factors into a single vector now concatenated together
+                        mean_trial_above_thresh[mean_trial_above_thresh < 0] = 0
+                        output_trial_factors[this_run_bool, faci] = mean_trial_above_thresh
+                        output_tensor_means[this_run_bool, :, faci] = np.squeeze(mean_trace).T
 
         # hold onto model results
         new_KT = KTensor([mouse_cell_factor, scaled_traces, output_trial_factors])
         mouse_kt_list.append(new_KT)
         mouse_tfac_list.append(output_trial_factors)
+        mouse_traces_list.append(output_tensor_means)
 
         if plot_please:
             fig, ax, _ = tt.visualization.plot_factors(new_KT,
@@ -217,7 +254,8 @@ for mod, rr in zip(models, ranks):
     np.save(path, {
         'pseudo_ktensors': mouse_kt_list,
         'pseudo_trialfactors': mouse_tfac_list,
-        'mice': np.unique(mouse_vec)
+        'mice': np.unique(mouse_vec),
+        'mean_group_traces': mouse_traces_list
     },
             allow_pickle=True)
 

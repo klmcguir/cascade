@@ -1,4 +1,4 @@
-"""Script to fit trial factors using factors from unwrapped models, USES AVG temporal factor."""
+"""Script to fit trial factors using factors from unwrapped models, USES AVG temporal factor and 20210307 data."""
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -35,7 +35,7 @@ hue_order = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
 plot_please = True
 
 # save params
-version = '_v2_avg_noT0'
+version = '_v3_avg_noT0'
 
 # load in a full size data
 # --------------------------------------------------------------------------------------------------
@@ -54,10 +54,10 @@ for mouse, word in zip(mice, words):
 
 # load models
 # --------------------------------------------------------------------------------------------------
-ensemble = np.load(cas.paths.analysis_file('tca_ensemble_v4i10_noT0_20210215.npy', 'tca_dfs'), allow_pickle=True).item()
+ensemble = np.load(cas.paths.analysis_file('tca_ensemble_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
 # print(ensemble)
 
-data_dict = np.load(cas.paths.analysis_file('input_data_v4i10_noT0_20210215.npy', 'tca_dfs'), allow_pickle=True).item()
+data_dict = np.load(cas.paths.analysis_file('input_data_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
 # print(data_dict.keys())
 
 # run refitting

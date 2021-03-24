@@ -16,7 +16,7 @@ from datetime import datetime
 
 
 # run as a big ol' function
-def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, verbose=False, test=False):
+def main(version='_v3_avg_noT0', loss_type='poisson', activation='exp', force=False, verbose=False, test=False):
     # parameters
     # --------------------------------------------------------------------------------------------------
 
@@ -25,17 +25,17 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
     nan_thresh = 0.95
 
     # TCA params
-    models = ['v4i10_norm_on_noT0', 'v4i10_scale_on_noT0', 'v4i10_norm_off_noT0', 'v4i10_scale_off_noT0']
-    ranks = [9, 9, 8, 8]
+    models = ['v4i10_norm_on_noT0', 'v4i10_norm_off_noT0', 'v4i10_scale_on_noT0', 'v4i10_scale_off_noT0']
+    ranks = [9, 8, 9, 8]
     # if testing only run a single model
     if test:
         models = ['v4i10_norm_on_noT0']
         ranks = [9]
         now = datetime.now()
         dt_string = now.strftime("%Y%m%d_%H%M")
-        glm_tag = f'_test_{loss_type}_{activation}_gng_{dt_string}'
+        glm_tag = f'_test_{loss_type}_{activation}_v3_gng_{dt_string}'
     else:
-        glm_tag = f'_{loss_type}_{activation}_gng'
+        glm_tag = f'_{loss_type}_{activation}_v3_gng'
 
     # GLM params
     n_folds = 5
@@ -93,6 +93,10 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
         base_cols = [s for s in base_cols if 'prev_diff' not in s]
         # base_cols = [s for s in base_cols if 'dprime' not in s]  # remove dprime from columns
 
+        # bad col agg, add cells with during and post motor to remove
+        bad_motor_cols = ['speed', 'post_speed', 'post_licks', 'anticipatory_licks']
+        base_cols = [s for s in base_cols if s not in bad_motor_cols]
+
         inter_cols = []
         for rep in base_cols:
             for inter in interaction_cols:
@@ -102,6 +106,7 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
         X = pd.concat([design_df, new_meta_df], axis=1)
         X.drop(columns=interaction_cols, inplace=True)
         X.drop(columns=['go', 'nogo'], inplace=True)
+        X.drop(columns=bad_motor_cols, inplace=True)
         assert not X.isna().any().any()
         design_mat_list.append(X)
 
@@ -173,8 +178,8 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
         df_list_ddev = []
         total_model_devex = []
         save_folder = cas.paths.analysis_dir(f'tca_dfs/TCA_factor_fitting{version}/{mod}/cvglm_stages{glm_tag}')
-        save_folder_ms = cas.paths.analysis_dir(f'tca_dfs/TCA_factor_fitting{version}/{mod}/cvglm_stages{glm_tag}/model_selection')
-        save_folder_perf = cas.paths.analysis_dir(f'tca_dfs/TCA_factor_fitting{version}/{mod}/cvglm_stages{glm_tag}/model_performance')
+        save_folder_ms = cas.paths.analysis_dir(f'tca_dfs/TCA_factor_fitting{version}/{mod}/cvglm_stages{glm_tag}/mod_select')
+        save_folder_perf = cas.paths.analysis_dir(f'tca_dfs/TCA_factor_fitting{version}/{mod}/cvglm_stages{glm_tag}/mod_perf')
 
         # check if the model has already been run
         check_file = os.path.join(save_folder, f'{mod}_rank{rr}_cvGLM_delta_deviance_df.pkl')
@@ -255,8 +260,11 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
                     plt.suptitle(f'{stagi}\n{mouse} {mod} rank {rr} {version} {loss_type} {activation}',
                                  size=20,
                                  position=(0.5, 1.1))
+                    # plt.savefig(os.path.join(
+                    #     save_folder_perf, f'{mouse}_{mod}_rank{rr}{version}_{loss_type[:3]}_{activation}_dpX_{stagi}.png'),
+                    #             bbox_inches='tight')
                     plt.savefig(os.path.join(
-                        save_folder_perf, f'{mouse}_{mod}_rank{rr}{version}_{loss_type}_{activation}_dpX_{stagi}.png'),
+                        save_folder_perf, f'{mouse}_{mod}_rank{rr}{version}_dpX_{stagi}.png'),
                                 bbox_inches='tight')
 
                 # CV setting on fit data
@@ -334,7 +342,7 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
                 axes.set_xlabel('Fraction deviance explained')
                 axes.set_ylabel('Cumulative density')
                 axes.set_title(f'{mouse}')
-                plt.savefig(os.path.join(save_folder_ms, f'{mod}_rank{rr}_{mouse}_{stagi}_deviance_explained_best_cv_model.png'),
+                plt.savefig(os.path.join(save_folder_ms, f'{mod}_rank{rr}_{mouse}_{stagi}_dev_expl_best_cv_model.png'),
                             bbox_inches='tight')
                 plt.close('all')
 
@@ -382,10 +390,10 @@ def main(version='_v2_avg', loss_type='poisson', activation='exp', force=False, 
                             ax[n_factor].set_xlabel('Trial number (test set)', size=16)
                         ax[n_factor].set_ylabel(f'Component {n_factor + 1}        ', size=16, rotation=0, ha='right')
                         mu_full = cas.cvglm.make_prediction(X_test, w, w0)
-                        ax[n_factor].set_title(f'{stagi}Full model deviance explained: {cas.cvglm.deviance(mu_full, y)[0]}', size=16)
+                        ax[n_factor].set_title(f'{stagi} Full model deviance explained: {cas.cvglm.deviance(mu_full, y)[0]}', size=16)
                         plt.suptitle(f'{stagi}\n{mouse} {mod} rank {rr} {version} {loss_type} {activation}', size=20, position=(0.5, 0.9))
                         plt.savefig(os.path.join(save_folder_perf,
-                                                f'{mouse}_{mod}_rank{rr}{version}_{loss_type}_{activation}_traces_{stagi}.png'),
+                                                f'{mouse}_{mod}_rank{rr}{version}_traces_{stagi}.png'),
                                     bbox_inches='tight')
                     ddev_per_y.append(ddev_per_y_w)
                     fdev_per_y.append(fdev_per_y_w)
@@ -489,7 +497,7 @@ if __name__ == '__main__':
     parser.add_argument('version',
                         action='store',
                         nargs='?',
-                        default="_v2_avg",
+                        default="_v3_avg_noT0",
                         help='TCA model version. i.e., "_v1", "_v2_avg", "_v3_sq", "_v4_sqsm"')
     parser.add_argument('loss_type',
                         action='store',

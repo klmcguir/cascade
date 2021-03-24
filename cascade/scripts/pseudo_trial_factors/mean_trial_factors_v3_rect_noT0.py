@@ -315,7 +315,7 @@ for mod, rr in zip(models, ranks):
         plt.close('all')
 
         # plot the sorted factors to match the correlation plot
-        rfactors = cas.utils.rescale_factors(ensemble[mod].results[rr][iteration].factors)
+        rfactors = KTensor(cas.utils.rescale_factors(ensemble[mod].results[rr][iteration].factors))
         fig, ax, _ = tt.visualization.plot_factors(rfactors,
                                                    plots=['scatter', 'line', 'line'],
                                                    scatter_kw=cas.lookups.tt_plot_options['ncp_hals']['scatter_kw'],

@@ -39,8 +39,9 @@ def run_unwrapped_tca(thresh=4, iteration=10, force=False, verbose=False, debug=
     # --------------------------------------------------------------------------------------------------
 
     # model naming
-    mod_suffix = '_noT0'
-    # mod_date = 20210215 # accepted best
+    # mod_suffix = '_noT0_shuffle'
+    mod_suffix = '_noT0_shuffle2'
+    # mod_date = 20210215
     mod_date = 20210307  # db in balanced mean
 
     # input data params
@@ -143,11 +144,20 @@ def run_unwrapped_tca(thresh=4, iteration=10, force=False, verbose=False, debug=
     else:
         ensemble = {}
 
+        # shuffle your timepoints 
+        unshuffle_dict = {}
         for k, v in data_dict.items():
             if '_mouse_' in k or '_cell_' in k:
                 continue
             if 'allstages' in k:
                 continue
+
+            shuffle_vec = np.arange(v.shape[1], dtype=int)
+            np.random.shuffle(shuffle_vec)
+            unshuffle_vec = np.argsort(shuffle_vec)
+            unshuffle_dict[k] = unshuffle_vec
+            v = v[:, shuffle_vec, :]
+
             mask = ~np.isnan(v)
             fit_options['mask'] = mask
             if verbose:
@@ -157,6 +167,11 @@ def run_unwrapped_tca(thresh=4, iteration=10, force=False, verbose=False, debug=
 
         np.save(
             cas.paths.analysis_file(f'tca_ensemble_v{thresh}i{iteration}{mod_suffix}_{mod_date}.npy', 'tca_dfs'),
+            ensemble,
+            allow_pickle=True
+        )
+        np.save(
+            cas.paths.analysis_file(f'unshuffler_v{thresh}i{iteration}{mod_suffix}_{mod_date}.npy', 'tca_dfs'),
             ensemble,
             allow_pickle=True
         )
@@ -195,11 +210,19 @@ def run_unwrapped_tca(thresh=4, iteration=10, force=False, verbose=False, debug=
         sort_ensembles[k], sort_orders[k] = cas.utils.sortfactors(v)
 
     for k, v in sort_ensembles.items():
+        unshuffle_vec = unshuffle_dict[k]
         for rr in range(5, 20):
-            fig, ax, _ = tt.visualization.plot_factors(v.results[rr][0].factors.rebalance(), plots=['scatter', 'line', 'line'],
+            factors = v.results[rr][0].factors.rebalance()
+            fig, ax, _ = tt.visualization.plot_factors(factors, plots=['scatter', 'line', 'line'],
                                scatter_kw=cas.lookups.tt_plot_options['ncp_hals']['scatter_kw'],
                                line_kw=cas.lookups.tt_plot_options['ncp_hals']['line_kw'],
                                bar_kw=cas.lookups.tt_plot_options['ncp_hals']['bar_kw']);
+
+            unshuffle_facs = deepcopy(factors)
+            unshuffle_facs[1] = unshuffle_facs[1][unshuffle_vec, :]
+
+            for ri in range(rr):
+                ax[ri, 1].plot(unshuffle_facs[1][:, ri], color='blue', alpha=0.7)
 
             cell_count = v.results[rr][0].factors[0].shape[0]
             for i in range(ax.shape[0]):

@@ -42,9 +42,9 @@ def create_logger(save_folder, name='my_logger'):
 
 # ------------------------------------------------------------------------------------
 # load data
-ensemble = np.load(cas.paths.analysis_file('tca_ensemble_v4i10_noT0_20210215.npy', 'tca_dfs'), allow_pickle=True).item()
+ensemble = np.load(cas.paths.analysis_file('tca_ensemble_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
 # print(ensemble)
-data_dict = np.load(cas.paths.analysis_file('input_data_v4i10_noT0_20210215.npy', 'tca_dfs'), allow_pickle=True).item()
+data_dict = np.load(cas.paths.analysis_file('input_data_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
 # print(data_dict.keys())
 
 # get sort order for data
@@ -67,7 +67,7 @@ cues = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
 for mod in tqdm(models, total=len(models), desc='Running population vector calculations'):
 
     # set up save laocation
-    save_folder = cas.paths.analysis_dir(f'tca_dfs/homeostasis/{mod}/population_vector_analysis_by_mouse')
+    save_folder = cas.paths.analysis_dir(f'tca_dfs/homeostasis/v3db_20210307/{mod}/population_vector_analysis_by_mouse')
     logger = create_logger(save_folder, name=mod)
     logger.info(f'Starting model: {mod}')
     mat2ds = data_dict[mod]
