@@ -21,7 +21,8 @@ def data_filtered(mice=None,
                   group_by='all3',
                   nan_thresh=0.95,
                   score_threshold=0.8,
-                  with_model=False):
+                  with_model=False,
+                  no_disengaged=False):
     """Load all data lists, optionally filtering out cell_ids.
 
     Parameters
@@ -44,6 +45,8 @@ def data_filtered(mice=None,
         cell registration score in original data build, by default 0.8
     with_model : bool, optional
         include an existing tca model when you load, by default False
+    no_disengaged : bool, optional
+        remove disengaged trials, sparing naive, by default False
 
     Returns
     -------
@@ -77,14 +80,22 @@ def data_filtered(mice=None,
                                 trace_type=trace_type)
 
         # get your tensor, possibly cropping around onset or offsets, 1s pre, 2s post
-        if limit_to.lower() == 'onsets':
+        if limit_to is not None and limit_to.lower() == 'onsets':
             tensor = out[2][:, :int(np.ceil(15.5 * 3)), :]
-        elif limit_to.lower() == 'offsets':
+        elif limit_to is not None and limit_to.lower() == 'offsets':
             off_int = int(np.ceil(lookups.stim_length[mouse] + 1) * 15.5)
             tensor = out[2][:, (off_int - 16):(off_int + 31), :]
         else:
             tensor = out[2]
 
+        # optionally remove disengaged trials
+        meta = utils.add_stages_to_meta(utils.add_stages_to_meta(out[3], 'parsed_11stage'), 'parsed_4stage')
+        if no_disengaged:
+            meta_bool = meta.hmm_engaged.values | meta.learning_state.isin(['naive']).values
+            meta = meta.loc[meta_bool, :]
+            tensor = tensor[:,:, meta_bool]
+
+        # optionally filter for specific cell_ids
         if len(ids) == 0:
             load_dict['tensor_list'].append(tensor)
             load_dict['id_list'].append(out[1])
@@ -92,9 +103,9 @@ def data_filtered(mice=None,
             id_bool = np.isin(out[1], ids)
             load_dict['id_list'].append(out[1][id_bool])
             load_dict['tensor_list'].append(tensor[id_bool, :, :])
+
         load_dict['bhv_list'].append(out[4])
-        load_dict['meta_list'].append(
-            utils.add_stages_to_meta(utils.add_stages_to_meta(out[3], 'parsed_11stage'), 'parsed_4stage'))
+        load_dict['meta_list'].append(meta)
 
     return load_dict
 
