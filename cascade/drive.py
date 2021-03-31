@@ -1,11 +1,73 @@
 """Functions for dealing with cell drivenness across days"""
 
-from . import utils, lookups
+from . import utils, lookups, load
 import flow
 import pool
 import numpy as np
 import pandas as pd
 from scipy import stats
+
+
+def drive_mat_from_core_reversal_data(match_to='onsets'):
+    """ Wrapper function to run drivenness calc on the reversal data and return as a matrix. 
+    
+    Returns
+    -------
+    numpy.ndarray
+        Boolean matrix cells x stages x cues, of a cell's drivenness for each stage. 
+    """
+
+    # load all of your raw reversal n=7 data
+    load_dict = load.core_reversal_data(limit_to=None, match_to=match_to)
+    
+    # calculate drivenness on each cell looping over mice
+    drive_dfs = []
+    for meta, ids, tensor in zip(load_dict['meta_list'], load_dict['id_list'], load_dict['tensor_list']):
+        offset_spoof = np.ones(len(ids)) == 0 if match_to == 'onsets' else 1
+        df = multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=offset_spoof, neg_log10_pv_thresh=4)
+        drive_dfs.append(df)
+
+    # reshape dataframe into array cells x stages x cues
+    drive_stack = drive_stack_from_dfs(drive_dfs, load_dict)
+
+    return drive_stack
+
+
+def drive_stack_from_dfs(drive_dfs, load_dict):
+    """Reshape a list of drive dfs into a single matrix cells x stages x cues.
+
+    Parameters
+    ----------
+    drive_dfs : list of pandas.DataFrame
+        Drive df from multi_stat_drive().
+    load_dict : list of arrays
+        List of cell ids you wish to use in your final array.
+    """
+
+    # set cue order
+    cues = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+
+    # organize dataframe into matrix cells x stages x cues
+    drive_stack = []
+    for m_df, ids in zip(drive_dfs, load_dict['id_list']):
+        cue_stack = []
+        for cue in cues:
+            cue_lookup = lookups.lookup_mm_inv[utils.meta_mouse(m_df)]
+            cue_df = m_df.loc[m_df.reset_index().initial_cue.isin([cue_lookup[cue]]).values, :]
+            cue_df_unfolded = cue_df.pivot_table(values='driven', index='cell_id', columns='parsed_11stage')
+            # add "missing" stage columns to df
+            add_cols = [s for s in lookups.staging['parsed_11stage'] if s not in cue_df_unfolded.columns.values]
+            if len(add_cols) > 0:
+                for col in add_cols:
+                    cue_df_unfolded[col] = np.nan
+            cue_df_binary = cue_df_unfolded.loc[:, lookups.staging['parsed_11stage']].replace({True: 1, False: 0})
+            assert np.array_equal(cue_df_binary.reset_index().cell_id.values, ids)
+            cue_stack.append(cue_df_binary.values)
+        cue_stack = np.dstack(cue_stack)
+        drive_stack.append(cue_stack)
+    drive_stack = np.vstack(drive_stack)
+
+    return drive_stack
 
 
 def drive_map_from_meta_and_ids(meta, ids, drive_type='trial'):
@@ -712,6 +774,153 @@ def multi_stat_drive_run(meta, ids, tensor, alternative='less', offset_bool=None
                     data['driven'].append(-np.log10(pv_epoch) >= neg_log10_pv_thresh)
 
     df = pd.DataFrame(data=data).set_index(['mouse', 'parsed_11stage', 'initial_cue'])
+
+    return df
+
+
+def multi_stat_drive_day(meta, ids, tensor, alternative='less', offset_bool=None, neg_log10_pv_thresh=4):
+    """
+    Calculate drivenness on all trials for each DAY for each cell. For ONSET/STIM cells it tests the whole
+    stimulus window and a 500 ms window from 200 - 700 ms after stimulus onset with Bonferroni correction for
+    multiple comparisons against the 1 sec baseline preceding stimulus onset. For OFFSET cells, the same procedure is
+    performed for a 1 sec baseline preceding stimulus onset, and a 1 sec baseline preceding stimulus offset. The
+    np.max is taken for these two offset p-values to choose the worst of the two. For a cell to be considered
+    driven, it needs to pass both baseline comparisons.
+
+    :param meta: pandas.DataFrame
+        Trial metadata.
+    :param ids: numpy.array
+        Vector of cell IDs.
+    :param tensor: numpy.array
+        Imaging traces, 3D matrix oraganized --> [cells, times, trials]
+    :param alternative: str
+        Kwarg for scipy.stats.wilcoxon, 'less' for one-tailed, 'two-sided' for two,
+    :param offset_bool: boolean
+        Boolean vector, the same length and order as ids, and tensor --> [cells, :, :].
+        True = Offset cells. False = not Offset cells.
+    :param neg_log10_pv_thresh: float or int
+        Threshold on -np.log10(p-value) >= threshold, for calling a cell driven.
+
+    :return: pandas.DataFrame of drivenness p-values and -log10(p-values) for each cell for each stage and cue.
+    """
+
+    # offset_bool = cas.utils.get_offset_cells(meta, pref_tensor)
+    if offset_bool is None:
+        offset_bool = utils.get_offset_cells(meta, tensor)
+
+    # You can't use 'greater', it will test an unintended direction
+    assert alternative.lower() in ['less', 'two-sided']
+
+    # mouse
+    mouse = utils.meta_mouse(meta)
+
+    # assume data is the usual 15.5 hz 7 sec 108 frame vector
+    assert tensor.shape[1] == 108
+
+    # get windows for additional comparisons --> 500 ms with a 200 ms delay to account for GECI tau
+    stim_length = lookups.stim_length[mouse]
+    time_vec = np.arange(-1, 6, 1 / 15.5)[:108]
+    ms200 = np.where(time_vec > 0.2)[0][0]
+    ms700 = np.where(time_vec > 0.7)[0][0]
+    off_ms200 = np.where(time_vec > stim_length + 0.2)[0][0]
+    off_ms700 = np.where(time_vec > stim_length + 0.7)[0][0]
+    stim_off_frame = np.where(time_vec > stim_length)[0][0]
+    stim_off_frame_minus1s = np.where(time_vec > stim_length - 1)[0][0]
+
+    # get mean trial response matriices, cells x trials
+    mean_t_tensor = utils.tensor_mean_per_trial(meta, tensor, nan_licking=False, account_for_offset=True)
+    mean_t_baselines = np.nanmean(tensor[:, :15, :], axis=1)
+    mean_t_1stsec = np.nanmean(tensor[:, ms200:ms700, :], axis=1)
+
+    # for offset cells it is useful to have averages of 1sec before offset and 1 sec after as well
+    mean_t_off_baselines = np.nanmean(tensor[:, stim_off_frame_minus1s:stim_off_frame, :], axis=1)
+    mean_t_off_1st_sec = np.nanmean(tensor[:, off_ms200:off_ms700, :], axis=1)
+
+    # preallocate
+    data = {
+        'mouse': [],
+        'date': [],
+        'initial_cue': [],
+        'mismatch_condition': [],
+        'cell_id': [],
+        'cell_n': [],
+        'offset_cell': [],
+        'pv': [],
+        'neg_log10_pv': [],
+        'driven': []
+    }
+    for day in meta.reset_index().date.unique():
+        day_boo = meta.reset_index().date.isin([day]).values
+
+        for icue in ['plus', 'minus', 'neutral']:
+            cue_boo = meta.initial_condition.isin([icue]).values
+
+            for celli in range(mean_t_tensor.shape[0]):
+                cell_boo = ~np.isnan(mean_t_tensor[celli, :])
+
+                # get boolean of stage, cue, and existing trials
+                existing_epoch_trial_bool = day_boo & cue_boo & cell_boo
+                if np.sum(existing_epoch_trial_bool) == 0:  # no matched trials for cell
+                    continue
+
+                # get baseline vectors
+                # mean_t_tensor accounts for offset, so this is the first test for both cases full-stim or full-offset
+                epoch_bases = mean_t_baselines[celli, existing_epoch_trial_bool]
+                epoch_means = mean_t_tensor[celli, existing_epoch_trial_bool]
+
+                # different calcs if a cell is a stimulus peaking or offset peaking cell
+                if not offset_bool[celli]:
+
+                    # additional test, check 1st second of stim period to not punish transient responses
+                    epoch_1s = mean_t_1stsec[celli, existing_epoch_trial_bool]
+
+                else:
+
+                    # additional baseline values defined from last second of the stimulus
+                    off_epoch_bases = mean_t_off_baselines[celli, existing_epoch_trial_bool]  # last second of stimulus
+
+                    # additional data for 1st second following offset
+                    epoch_1s = mean_t_off_1st_sec[celli, existing_epoch_trial_bool]  # first second following offset
+
+                # check for drivenness
+                # this compares baseline to the full stim or offset period as well as to the first second of both
+                # tests bases-means delta is negative, H0: symmetric
+                pv_epoch = stats.wilcoxon(epoch_bases, epoch_means, alternative=alternative).pvalue
+                pv_epoch_1s = stats.wilcoxon(epoch_bases, epoch_1s, alternative=alternative).pvalue
+
+                # reset pv_epoch to be best with bonferroni
+                pv_epoch = np.nanmin([pv_epoch, pv_epoch_1s]) * 2
+
+                # additional tests specific offset using the 1s before stim offset as a baseline
+                if offset_bool[celli]:
+                    # this compares 1s pre offset to stim or offset period as well as to the first second of both
+                    off_pv_epoch = stats.wilcoxon(off_epoch_bases, epoch_means, alternative=alternative).pvalue
+                    off_pv_epoch_1s = stats.wilcoxon(off_epoch_bases, epoch_1s, alternative=alternative).pvalue
+
+                    # reset pv_epoch to be best with bonferroni
+                    off_pv_epoch = np.nanmin([off_pv_epoch, off_pv_epoch_1s]) * 2
+
+                    # select your final p-value for offset cells to be the worst of the two comparisons.
+                    # 1. baseline-(full or 1s)
+                    # 2. last_second_of_stim-(full or 1s)
+                    # both must be significant for a cell to pass so select the worst of the two for offset cells.
+
+                    # pick the worst of your 2 p_values.
+                    pv_epoch = np.nanmax([pv_epoch, off_pv_epoch])
+
+                # build your dict for a dataframe
+                data['mouse'].append(mouse)
+                data['date'].append(day)
+                data['initial_cue'].append(icue)
+                data['mismatch_condition'].append(lookups.lookup_mm[mouse][icue])
+                data['cell_id'].append(ids[celli])
+                data['cell_n'].append(celli + 1)
+                data['offset_cell'].append(offset_bool[celli])
+                data['pv'].append(pv_epoch)
+                data['neg_log10_pv'].append(-np.log10(pv_epoch))
+                data['driven'].append(-np.log10(pv_epoch) >= neg_log10_pv_thresh)
+
+    df = pd.DataFrame(data=data).set_index(['mouse', 'date', 'initial_cue'])
 
     return df
 

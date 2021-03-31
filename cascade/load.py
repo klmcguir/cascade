@@ -7,10 +7,168 @@ import pandas as pd
 import os
 from . import utils
 from . import paths
-from . import lookups
+from . import lookups, drive
 from .tca import _trialmetafromrun, _group_ids_score
 from .tca import _group_drive_ids, _get_speed_pupil_npil_traces
 from .tca import _remove_stimulus_corr, _three_point_temporal_trace
+
+
+def core_tca_data(limit_to=None, match_to='onsets'):
+    """Load your core accepted TCA model (hardcoded!).
+
+    Parameters
+    ----------
+    limit_to : str, optional
+        Period of time in trial to limit trace to (1s pre, 2s post), 'onsets' or 'offsets', by default None
+    match_to : str, optional
+        TCA model type to pick cells from, 'onsets' or 'offsets', by default 'onsets'
+
+    Returns
+    -------
+    dict
+        dict of lists of all data in it's "rawest" processed form. Each list entry is a mouse. 
+    """
+
+    # limit in time (limit_to) must be set to match t cell type (match_to)
+    if limit_to is not None:
+        assert limit_to == match_to
+
+    # load input data from "accepted" TCA, use this for matching mice and ids
+    data_dict = np.load(paths.analysis_file('input_data_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
+    ensemble = np.load(paths.analysis_file('tca_ensemble_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
+
+    # pick whether you will match onset or offset data while loading "raw" traces
+    if match_to == 'onsets':
+        rr = 9
+        mouse_vec = data_dict['v4i10_on_mouse_noT0']
+        cell_vec = data_dict['v4i10_on_cell_noT0']
+    elif match_to == 'offsets':
+        rr = 8
+        mouse_vec = data_dict['v4i10_off_mouse_noT0']
+        cell_vec = data_dict['v4i10_off_cell_noT0']
+
+    raise NotImplementedError
+
+
+def core_reversal_data(limit_to=None, match_to='onsets'):
+    """Load your core dataset limiting it to the same cells and data from your accepted TCA model (hardcoded!).
+
+    Parameters
+    ----------
+    limit_to : str, optional
+        Period of time in trial to limit trace to (1s pre, 2s post), 'onsets' or 'offsets', by default None
+    match_to : str, optional
+        TCA model type to pick cells from, 'onsets' or 'offsets', by default 'onsets'
+
+    Returns
+    -------
+    dict
+        dict of lists of all data in it's "rawest" processed form. Each list entry is a mouse. 
+    """
+
+    # limit in time (limit_to) must be set to match t cell type (match_to)
+    if limit_to is not None:
+        assert limit_to == match_to
+
+    # load input data from "accepted" TCA, use this for matching mice and ids
+    data_dict = np.load(paths.analysis_file('input_data_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
+
+    # pick whether you will match onset or offset data while loading "raw" traces
+    if match_to == 'onsets':
+        mouse_vec = data_dict['v4i10_on_mouse_noT0']
+        cell_vec = data_dict['v4i10_on_cell_noT0']
+    elif match_to == 'offsets':
+        mouse_vec = data_dict['v4i10_off_mouse_noT0']
+        cell_vec = data_dict['v4i10_off_cell_noT0']
+
+    # parse cells and mice you will match to
+    mice = np.unique(mouse_vec)
+    cell_id_list = [cell_vec[mouse_vec == mi] for mi in mice]
+
+    # load all of your data
+    load_dict = data_filtered(mice=mice,
+                    keep_ids=cell_id_list,
+                    limit_to=limit_to,
+                    word_pair=('respondent', 'computation'),
+                    trace_type='zscore_day',
+                    group_by='all3',
+                    nan_thresh=0.95,
+                    score_threshold=0.8,
+                    with_model=False)
+
+    return load_dict
+
+
+def core_FOV_data(limit_to=None, match_to='onsets', driven=False):
+    """Load your core dataset limiting it to the same cells and data from your accepted TCA model (hardcoded!).
+
+    Parameters
+    ----------
+    limit_to : str, optional
+        Period of time in trial to limit trace to (1s pre, 2s post), 'onsets' or 'offsets', by default None
+    match_to : str, optional
+        TCA model type to pick cells from, 'onsets' or 'offsets', by default 'onsets'
+
+    Returns
+    -------
+    dict
+        dict of lists of all data in it's "rawest" processed form. Each list entry is a mouse. 
+    """
+
+    # limit in time (limit_to) must be set to match t cell type (match_to)
+    if limit_to is not None:
+        assert limit_to == match_to
+
+    # load input data from offset calculations, use this for matching mice and ids
+    mice = lookups.mice['lml5']
+    off_df_all_mice = pd.read_pickle('/twophoton_analysis/Data/analysis/core_dfs/offsets_dfs.pkl')
+    cell_id_list = []
+    for m in mice:
+        if match_to == 'onsets':
+            cell_ids = off_df_all_mice[m].loc[~off_df_all_mice[m].offset_test, 'cell_id'].values
+        elif match_to == 'offsets':
+            cell_ids = off_df_all_mice[m].loc[off_df_all_mice[m].offset_test, 'cell_id'].values
+        cell_id_list.append(cell_ids)
+
+    if driven:
+        # load all of your data a full size (for driven calc)
+        load_dict = data_filtered(mice=mice,
+                    keep_ids=cell_id_list,
+                    limit_to=None,
+                    word_pair=('respondent', 'computation'),
+                    trace_type='zscore_day',
+                    group_by='all3',
+                    nan_thresh=0.95,
+                    score_threshold=0.8,
+                    with_model=False)
+
+         # update cell id lists to only include cells driven at some stage
+        cell_id_list = []
+        for meta, ids, tensor in zip(load_dict['meta_list'], load_dict['id_list'], load_dict['tensor_list']):
+            # we have already limited this to onset or offset cells
+            if match_to == 'onsets':
+                spoof_offset_bool = np.ones(len(ids)) == 0
+            elif match_to == 'offsets':
+                spoof_offset_bool = np.ones(len(ids)) == 1
+            drive_df = drive.multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=spoof_offset_bool,
+                                                    neg_log10_pv_thresh=4)
+            any_driven = drive_df.groupby(['mouse', 'cell_id']).any()
+            driven_only = any_driven.loc[any_driven.driven]
+            driven_cell_ids = driven_only.reset_index().cell_id.values
+            cell_id_list.append(driven_cell_ids)
+
+    # load all of your data
+    load_dict = data_filtered(mice=mice,
+                    keep_ids=cell_id_list,
+                    limit_to=limit_to,
+                    word_pair=('respondent', 'computation'),
+                    trace_type='zscore_day',
+                    group_by='all3',
+                    nan_thresh=0.95,
+                    score_threshold=0.8,
+                    with_model=False)
+
+    return load_dict
 
 
 def data_filtered(mice=None,
@@ -22,7 +180,8 @@ def data_filtered(mice=None,
                   nan_thresh=0.95,
                   score_threshold=0.8,
                   with_model=False,
-                  no_disengaged=False):
+                  no_disengaged=False,
+                  unbaselined_data=False):
     """Load all data lists, optionally filtering out cell_ids.
 
     Parameters
@@ -59,6 +218,9 @@ def data_filtered(mice=None,
         mice = lookups.mice['allFOV']
     if keep_ids is None:
         keep_ids = [[] for _ in mice]
+    if unbaselined_data:
+        # hash word for unbaselined data matching ['respondent', 'computation'] params
+        word_pair = ['financing', 'suse']
     words = [word_pair[0] if s in 'OA27' else word_pair[1] for s in mice]
 
     # load in a full size data

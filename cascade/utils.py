@@ -2204,6 +2204,24 @@ def unwrap_tensor(tensor):
     return unwrapped_tensor
 
 
+def wrap_tensor(unwrapped_tensor, unwrap_by=47):
+    """
+    Unwrap a tensor so that it is organized [cells x times x stages/days/trials]. 
+
+    :param unwrapped_tensor: numpy.ndarray
+        Matrix organized like this: tensor[cells, time points & trials].
+    :return: unwrapped_tensor: numpy.ndarray
+        Matrix organized like this: tensor[cells, time points, trials].
+    """
+
+    d_stack = []
+    for s in range(int(unwrapped_tensor.shape[1]/unwrap_by)):
+        d_stack.append(unwrapped_tensor[:, (s*unwrap_by):((s+1)*unwrap_by)])
+    tensor = np.dstack(d_stack)
+
+    return tensor
+
+
 def filter_meta_bool(meta, meta_bool, filter_running=None, filter_licking=None, filter_hmm_engaged=True,
                      high_speed_thresh_cms=10,
                      low_speed_thresh_cms=4,

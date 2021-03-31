@@ -258,12 +258,12 @@ mice = {
 
     # Other fields of view
     # LM mice
-    'lm': sorted(['LM67', 'LM226', 'LM26']),
+    'lm': sorted(['LM67', 'LM226', 'LM26', 'AS20']),
     # L5 (deep layer) POR mice
     # PD175 has some naive imaging but had major registration issues so was dropped
     'l5': sorted(['PD27', 'PD67', 'PD226', 'PD26']),
     # Other other FOVs
-    'lml5': sorted(['LM67', 'LM226', 'LM26', 'PD27', 'PD67', 'PD226', 'PD26'])
+    'lml5': sorted(['LM67', 'LM226', 'LM26', 'PD27', 'PD67', 'PD226', 'PD26', 'AS20'])
 }
 
 """ Factors of different classes, ONE INDEXED, {category: {word: {mouse: {rank: [comp]}}}}"""
