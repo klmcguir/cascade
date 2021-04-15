@@ -1171,6 +1171,9 @@ def add_stages_to_meta(meta, staging, dp_by_run=True, simple=False, bin_scale=0.
     if 'parsed_4stage' in staging:
          if 'parsed_4stage' not in meta.columns or force:
              meta = add_4stages_to_meta(meta)
+    if 'parsed_4stagev2' in staging:
+         if 'parsed_4stagev2' not in meta.columns or force:
+             meta = add_4stagesv2_to_meta(meta)
 
     return meta
 
@@ -1294,6 +1297,40 @@ def add_4stages_to_meta(meta):
         new_stage_vec[meta_bool] = c
     new_stage_col = [new_names[int(s)] if not np.isnan(s) else 'stageless' for s in new_stage_vec]
     meta['parsed_4stage'] = new_stage_col
+
+    return meta
+
+
+def add_4stagesv2_to_meta(meta):
+    """Helper function to break stages into 4 bins based on existing parsed_11stage binning.
+
+    Note: with defaults this is dprime <= 1.5 for the "early" bins and > 1.5 for "late" bins.
+
+    Parameters
+    ----------
+    meta : pandas.DataFrame
+        Trial metadata.
+
+    Returns
+    -------
+    meta
+        Return the same DataFrame with a new column.
+    """ 
+    assert 'parsed_11stage' in meta.columns, 'Add parsed_11stage binning to metadata and try again.'
+    
+    new_stage_vec = np.zeros(len(meta)) + np.nan
+    new_names = ['early_learning', 'late_learning', 'early_reversal', 'late_reversal']
+    stage_sets = [
+        ['L1 learning', 'L2 learning'],
+        ['L3 learning', 'L4 learning', 'L5 learning'],
+        ['L1 reversal1', 'L2 reversal1'],
+        ['L3 reversal1', 'L4 reversal1', 'L5 reversal1'],
+    ]
+    for c, sset in enumerate(stage_sets):
+        meta_bool = meta.parsed_11stage.isin(sset)
+        new_stage_vec[meta_bool] = c
+    new_stage_col = [new_names[int(s)] if not np.isnan(s) else 'stageless' for s in new_stage_vec]
+    meta['parsed_4stagev2'] = new_stage_col
 
     return meta
 
@@ -1965,15 +2002,18 @@ def rescale_factors(factors):
     return scaled_factors
 
 
-def sort_and_rescale_factors(mod_ensemble):
+def sort_and_rescale_factors(mod_ensemble, skip_cell_sort=False):
     """
     Sort a set of neuron factors by which factor they contribute
     to the most.
 
-    Input
-    -------
-    Tensortools ensemble with method. (set of multiple initializations of TCA)
+    Parameters
+    ----------
+    mod_ensemble : Tensortools ensemble
+        Tensortools ensemble with method. (set of multiple initializations of TCA)
         i.e., _sortfactors(ensemble['ncp_bcd'])
+    skip_cell_sort : boolean
+        Optionally don't sort cells in the sort_ensemble. 
 
     Returns
     -------
@@ -2051,10 +2091,11 @@ def sort_and_rescale_factors(mod_ensemble):
         my_rank_sorts.append(full_sort)
 
         # reorder factors looping through each replicate and applying the same sort
-        # sort is defined by ITERATION 0 
-        for i in range(len(mod_ensemble.results[k])):
-            factors =  mod_ensemble.results[k][i].factors[0]
-            mod_ensemble.results[k][i].factors[0] = factors[full_sort, :]
+        # sort is defined by ITERATION 0
+        if not skip_cell_sort:
+            for i in range(len(mod_ensemble.results[k])):
+                factors =  mod_ensemble.results[k][i].factors[0]
+                mod_ensemble.results[k][i].factors[0] = factors[full_sort, :]
 
     return mod_ensemble, my_rank_sorts, my_tune_sorts
 
@@ -2206,7 +2247,7 @@ def unwrap_tensor(tensor):
 
 def wrap_tensor(unwrapped_tensor, unwrap_by=47):
     """
-    Unwrap a tensor so that it is organized [cells x times x stages/days/trials]. 
+    Wrap a tensor so that it is organized [cells x times x stages/days/trials]. 
 
     :param unwrapped_tensor: numpy.ndarray
         Matrix organized like this: tensor[cells, time points & trials].

@@ -1,12 +1,90 @@
 """Script to run homeostasis population vector analysis (cosine dist, mean, etc.) and save plots."""
 
 import numpy as np
+from numpy.lib.arraysetops import intersect1d
 import cascade as cas
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 from tqdm import tqdm
 import os
+
+def _row_norm(any_mega_tensor_flat):
+    """
+    Normalize across a row.
+    """
+    cell_max = np.nanmax(np.nanmax(any_mega_tensor_flat, axis=1), axis=1)
+    any_mega_tensor_flat_norm = any_mega_tensor_flat / cell_max[:, None, None]
+
+    return any_mega_tensor_flat_norm
+
+def _average_cats_per_mouse(tensor_stack, cell_cats, mouse_vec, shared_cat=None):
+    """Helper function to generate averages and SEM for categories of cells. SEM over mice.
+
+    Parameters
+    ----------
+    tensor_stack : numpy.ndarray
+        Array of cells x times-&-stages x tuning/conditition/cue.
+    cell_cats : list
+        List of categores as integers that a cell belongs to. 
+    mouse_vec : numpy.ndarray or list
+        Vector as long as cell numbers, that specifies mouse identity. 
+    shared_cat : int or list
+        Category in cell_cats to use in all calculations. Must be negative to prevent it being incuded as
+        a stand alone category as well. i.e., a cell category of -2.
+
+    Returns
+    -------
+    Two numpy arrays. 
+        Numpy array of average traces and SEM.
+    """
+
+    all_mice = np.unique(mouse_vec)
+    all_cats = np.unique(cell_cats)
+    if len(cell_cats) == 1799:
+        all_cats = cas.lookups.fixed_component_sort['rank9_onset']
+    elif len(cell_cats) == 445:
+        all_cats = cas.lookups.fixed_component_sort['rank8_offset']
+    else:
+        all_cats = all_cats[all_cats >= 0]  # negatives are unassigned cells
+
+    # optionally use a subset of cats in all calculations
+    if shared_cat is not None:
+        if not isinstance(shared_cat, list):
+            if isinstance(shared_cat, int):
+                shared_cat = [shared_cat]
+            else:
+                shared_cat = list(shared_cat)
+        assert all([s < 0 for s in shared_cat])
+
+    avg_ten = np.zeros((len(all_cats)*len(all_mice), tensor_stack.shape[1], tensor_stack.shape[2])) + np.nan
+    # sem_ten = np.zeros((len(all_cats)*len(all_mice), tensor_stack.shape[1], tensor_stack.shape[2])) + np.nan
+
+    cat_vec = []
+    n_mouse_vec = []
+    for cc, cat in enumerate(all_cats):
+
+        n_m = len(all_mice)
+        cat_shift = cc*n_m
+        cat_vec.append([cat]*n_m)
+        n_mouse_vec.append(all_mice)
+
+        # cat_vec = cell_cats == cat
+        cat_boo = np.isin(cell_cats, cat) | np.isin(cell_cats, shared_cat)
+        cat_avg = np.zeros((len(all_mice), tensor_stack.shape[1], tensor_stack.shape[2])) + np.nan
+
+        for mi, mouse in enumerate(all_mice):
+
+            mouse_bool = mouse_vec == mouse
+            cat_avg[mi, :, :] = np.nanmean(tensor_stack[cat_boo & mouse_bool, :, :], axis=0)
+
+        avg_ten[(cat_shift):(cat_shift+n_m), :, :] = cat_avg
+        # sem_ten[cc, :, :] = np.nanstd(cat_avg, axis=0) / np.sqrt(np.sum(~np.isnan(cat_avg), axis=0))
+
+    cat_vec = np.hstack(cat_vec)
+    n_mouse_vec = np.hstack(n_mouse_vec)
+
+    return avg_ten, cat_vec, n_mouse_vec
 
 # ------------------------------------------------------------------------------------
 # # load data
@@ -37,10 +115,10 @@ cues = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
 # perform calculations
 # ------------------------------------------------------------------------------------
 for mod in tqdm(models, total=len(models), desc='Plotting unwrapped heatmaps'):
-    for sort_by in ['tcafixed', 'cuepeakwbroad', 'cuesort']:  # 'mousecuesort', 'unwrappedTCAsort', 'mousesort'
+    for sort_by in ['tcafixed']:  # 'mousecuesort', 'unwrappedTCAsort', 'mousesort'
 
         # set up save laocation
-        save_folder = cas.paths.analysis_dir(f'tca_dfs/final_heatmaps/unwrapped_heatmaps')
+        save_folder = cas.paths.analysis_dir(f'tca_dfs/final_heatmaps/unwrapped_heatmaps_mouseAVG')
         mat2ds = data_dict[mod]
 
         # set rank and TCA model to always be norm models for sorting
@@ -61,24 +139,28 @@ for mod in tqdm(models, total=len(models), desc='Plotting unwrapped heatmaps'):
         else:
             raise ValueError
 
-        if sort_by == 'tcafixed':
-            cell_sorter = cas.sorters.pick_comp_order(cell_cats, cell_sorter)
-        elif sort_by == 'cuepeakwbroad':
-            cell_sorter = cas.sorters.sort_by_cue_peak_wbroad(mat2ds, mouse_vec) 
-        elif sort_by == 'mouseunsort':
-            cell_sorter = np.arange(len(cell_sorter), dtype=int)  # keep in order
-        elif sort_by == 'mousecuesort':
-            cell_sorter = cas.sorters.sort_by_cue_mouse(mat2ds, mouse_vec)
-        elif sort_by == 'cuesort':
-            cell_sorter = cas.sorters.sort_by_cue_peak(mat2ds, mouse_vec)
+        # if sort_by == 'tcafixed':
+        #     cell_sorter = cas.sorters.pick_comp_order(cell_cats, cell_sorter)
+        # elif sort_by == 'cuepeakwbroad':
+        #     cell_sorter = cas.sorters.sort_by_cue_peak_wbroad(mat2ds, mouse_vec) 
+        # elif sort_by == 'mouseunsort':
+        #     cell_sorter = np.arange(len(cell_sorter), dtype=int)  # keep in order
+        # elif sort_by == 'mousecuesort':
+        #     cell_sorter = cas.sorters.sort_by_cue_mouse(mat2ds, mouse_vec)
+        # elif sort_by == 'cuesort':
+        #     cell_sorter = cas.sorters.sort_by_cue_peak(mat2ds, mouse_vec)
+
+        # get average catetgory vector (sorted for onsets)
+        mat2ds, cat_vec, n_mouse_vec = _average_cats_per_mouse(mat2ds, cell_cats, mouse_vec)
+        mat2ds = _row_norm(mat2ds)
 
         # remap mouse vector for color axis
-        mouse_mapper = {k: c for c, k in enumerate(np.unique(mouse_vec))}
-        number_mouse_mat = np.array([mouse_mapper[s] for s in mouse_vec])
-        number_comp_mat = np.array([s + len(np.unique(mouse_vec)) for s in cell_cats])
-        cmap1 = sns.color_palette('muted', len(np.unique(mouse_vec)))
+        mouse_mapper = {k: c for c, k in enumerate(np.unique(n_mouse_vec))}
+        number_mouse_mat = np.array([mouse_mapper[s] for s in n_mouse_vec])
+        number_comp_mat = np.array([s + len(np.unique(n_mouse_vec)) for s in cat_vec])
+        cmap1 = sns.color_palette('muted', len(np.unique(n_mouse_vec)))
         cmap2 = sns.color_palette('Set3', rr)
-        cmap = cmap1 + cmap2 
+        cmap = cmap1 + cmap2
         
         # keep track of units for plotting
         if '_norm' in mod:
@@ -106,12 +188,12 @@ for mod in tqdm(models, total=len(models), desc='Plotting unwrapped heatmaps'):
 
         # plot "categorical" heatmap using defined color mappings
         if sort_by == 'unwrappedTCAsort' or sort_by == 'tcafixed':
-            color_vecs = np.concatenate([number_mouse_mat[cell_sorter, None], number_comp_mat[cell_sorter, None]], axis=1)
+            color_vecs = np.concatenate([number_mouse_mat[:, None], number_comp_mat[:, None]], axis=1)
             sns.heatmap(color_vecs, cmap=cmap, ax=ax[0], cbar=False)
             ax[0].set_xticks([0.5, 1.5])
             ax[0].set_xticklabels(['mouse', 'component'], rotation=45, ha='right', size=18)
         else:
-            sns.heatmap(number_mouse_mat[cell_sorter, None], cmap=cmap1, ax=ax[0], cbar=False)
+            sns.heatmap(number_mouse_mat[:, None], cmap=cmap1, ax=ax[0], cbar=False)
             ax[0].set_xticklabels(['mouse'], rotation=45, ha='right', size=18)
         ax[0].set_yticklabels([])
         # ax[0].set_ylabel('cell number', size=14)
@@ -124,12 +206,12 @@ for mod in tqdm(models, total=len(models), desc='Plotting unwrapped heatmaps'):
         for i in range(1,4):
             forced_order = [0, 2, 1]  #switch the order of the cues
             if i == 3:
-                g = sns.heatmap(mat2ds[cell_sorter,:,forced_order[i-1]], ax=ax[i], center=0, vmax=vmax, vmin=-0.5, cmap='vlag',
+                g = sns.heatmap(mat2ds[:,:,forced_order[i-1]], ax=ax[i], center=0, vmax=vmax, vmin=-0.5, cmap='vlag',
                                 cbar_ax=ax[4], cbar_kws={'label': clabel})
                 cbar = g.collections[0].colorbar
                 cbar.set_label(clabel, size=16)
             else:
-                g = sns.heatmap(mat2ds[cell_sorter,:,forced_order[i-1]], ax=ax[i], center=0, vmax=vmax, vmin=-0.5, cmap='vlag', cbar=False)
+                g = sns.heatmap(mat2ds[:,:,forced_order[i-1]], ax=ax[i], center=0, vmax=vmax, vmin=-0.5, cmap='vlag', cbar=False)
             g.set_facecolor('#c5c5c5')
             ax[i].set_title(f'initial cue: {cues[forced_order[i-1]]}\n', size=20)
             stim_starts = [15.5 + 47*s for s in np.arange(len(stages))]
@@ -140,21 +222,18 @@ for mod in tqdm(models, total=len(models), desc='Plotting unwrapped heatmaps'):
             stim_labels = list(sum(zip(stim_labels, stim_1_labels), ()))
             ax[i].set_xticks(stim_starts)
             ax[i].set_xticklabels(stim_labels, rotation=0)
-            cell_counts = np.arange(
-                100 if mat2ds.shape[0] > 1000 else 50,
-                mat2ds.shape[0]+1,
-                100 if mat2ds.shape[0] > 1000 else 50,
-                dtype=int)
+            cell_counts = np.arange(1, mat2ds.shape[0]+1, 1, dtype=int)
             ax[i].set_yticks(cell_counts-0.5)
             ax[i].set_yticklabels(cell_counts, rotation=0)
             if i == 1:
-                ax[i].set_ylabel('cell number', size=18)
+                ax[i].set_ylabel('mouse-component cell average', size=18)
             ax[i].set_xlabel('\ntime from stimulus onset (sec)', size=18)
             if i > 1:
                 ax[i].set_yticks([])
         # plt.savefig(os.path.join(save_folder, f'{mod}_{sort_by}_rank{rr}_heatmap.pdf'), bbox_inches='tight')
-        plt.savefig(os.path.join(save_folder, f'{mod}_{sort_by}_rank{rr}_heatmap_highDPI.png'), bbox_inches='tight', dpi=300)
-        plt.savefig(os.path.join(save_folder, f'{mod}_{sort_by}_rank{rr}_heatmap_lowDPI.png'), bbox_inches='tight')
+        plt.savefig(os.path.join(save_folder, f'{mod}_{sort_by}_rank{rr}_heatmapAVG_highDPI.png'), bbox_inches='tight', dpi=300)
+        plt.savefig(os.path.join(save_folder, f'{mod}_{sort_by}_rank{rr}_heatmapAVG_lowDPI.png'), bbox_inches='tight')
         # plt.savefig(os.path.join(save_folder, f'{mod}_{sort_by}_rank{rr}_heatmap.pdf'), bbox_inches='tight')
 
         # if sort_by == 'tca_fixed':
+

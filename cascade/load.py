@@ -7,7 +7,7 @@ import pandas as pd
 import os
 from . import utils
 from . import paths
-from . import lookups, drive
+from . import lookups, drive, categorize
 from .tca import _trialmetafromrun, _group_ids_score
 from .tca import _group_drive_ids, _get_speed_pupil_npil_traces
 from .tca import _remove_stimulus_corr, _three_point_temporal_trace
@@ -32,22 +32,42 @@ def core_tca_data(limit_to=None, match_to='onsets'):
     # limit in time (limit_to) must be set to match t cell type (match_to)
     if limit_to is not None:
         assert limit_to == match_to
+        raise NotImplementedError
 
     # load input data from "accepted" TCA, use this for matching mice and ids
     data_dict = np.load(paths.analysis_file('input_data_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
     ensemble = np.load(paths.analysis_file('tca_ensemble_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
+
+    # get sort order for data
+    sort_ensembles = {}
+    cell_orders = {}
+    tune_orders = {}
+    for k, v in ensemble.items():
+        sort_ensembles[k], cell_orders[k], tune_orders[k] = utils.sort_and_rescale_factors(v)
 
     # pick whether you will match onset or offset data while loading "raw" traces
     if match_to == 'onsets':
         rr = 9
         mouse_vec = data_dict['v4i10_on_mouse_noT0']
         cell_vec = data_dict['v4i10_on_cell_noT0']
+        cell_sorter = cell_orders['v4i10_norm_on_noT0'][rr - 1]
+        factors = ensemble['v4i10_norm_on_noT0'].results[rr][0].factors
     elif match_to == 'offsets':
         rr = 8
         mouse_vec = data_dict['v4i10_off_mouse_noT0']
         cell_vec = data_dict['v4i10_off_cell_noT0']
+        cell_sorter = cell_orders['v4i10_norm_off_noT0'][rr - 1]
+        factors = ensemble['v4i10_norm_off_noT0'].results[rr][0].factors
+    cell_cats = categorize.best_comp_cats(factors)
 
-    raise NotImplementedError
+    category_dict = {
+        'cell_sorter': cell_sorter,
+        'cell_cats': cell_cats,
+        'mouse_vec': mouse_vec,
+        'cell_vec': cell_vec
+    }
+
+    return category_dict
 
 
 def core_reversal_data(limit_to=None, match_to='onsets'):

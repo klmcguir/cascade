@@ -6,6 +6,7 @@ import pool
 import numpy as np
 import pandas as pd
 from scipy import stats
+import os
 
 
 def drive_mat_from_core_reversal_data(match_to='onsets'):
@@ -68,6 +69,63 @@ def drive_stack_from_dfs(drive_dfs, load_dict):
     drive_stack = np.vstack(drive_stack)
 
     return drive_stack
+
+
+def drive_day_mat_from_core_reversal_data(match_to='onsets'):
+    """ Wrapper function to run drivenness calc on the reversal data and return as a matrix. 
+    
+    Returns
+    -------
+    list of numpy.ndarray
+        Boolean matrix cells x trials x cues, of a cell's drivenness for each stage. 
+    """
+
+    save_path = os.path.join(lookups.coreroot, f'{match_to}_drive_day_mats.npy')
+    if os.path.isfile(save_path):
+        drive_mat_load = np.load(save_path, allow_pickle=True)
+        return drive_mat_load
+    
+    # load all of your raw reversal n=7 data
+    load_dict = load.core_reversal_data(limit_to=None, match_to=match_to)
+
+    drive_mat_list = []
+    for meta, tensor, ids in zip(load_dict['meta_list'], load_dict['tensor_list'], load_dict['id_list']):
+
+        # add reversal condition to be used as your cue
+        meta = utils.add_reversal_mismatch_condition_to_meta(meta)
+        
+        if match_to == 'onsets':
+            offset_spoof = np.ones(tensor.shape[0]) == 0
+        elif match_to == 'offsets': 
+            offset_spoof = np.ones(tensor.shape[0]) == 1
+        
+        df = multi_stat_drive_day(meta, ids, tensor, alternative='less', offset_bool=offset_spoof, neg_log10_pv_thresh=4)
+
+        # Reshape a driven-ness matrix into cells x trials x cues
+        cues = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+        day_drive_map = np.zeros((tensor.shape[0], len(meta), len(cues))) + np.nan
+        trial_date_vec = meta.reset_index().date.values
+
+        for cuei, cue in enumerate(cues):
+            cue_df = pd.pivot_table(df.loc[df.mismatch_condition.isin([cue]), :], 
+                                    values='driven', index='cell_id', columns='date',
+                                    aggfunc='any', fill_value=np.nan, dropna=False)
+            cue_df = cue_df.replace({False: 0, True:1})
+            assert np.array_equal(cue_df.index.values, ids)
+            for di, day in enumerate(pd.unique(trial_date_vec)): # don't sort pd.
+                day_vec = cue_df.loc[:, day]
+                day_boo = np.isin(trial_date_vec, day)
+                day_drive_map[:, day_boo, cuei] = np.tile(day_vec.values[:, None], np.sum(day_boo))
+
+        drive_mat_list.append(day_drive_map)
+
+        # save your drive mat list
+        try:
+            np.save(save_path, drive_mat_list)
+        except:
+            print('File not saved: drive_day_mat_from_core_reversal_data().')
+
+    return drive_mat_list
 
 
 def drive_map_from_meta_and_ids(meta, ids, drive_type='trial'):

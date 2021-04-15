@@ -46,9 +46,26 @@ color_dict = {
     'remains_unrewarded': '#ffb327'
 }
 
+# the cmap for 9 component onset TCA sorted for plotting
+cmap_fixed_sort_rank9_onset = [(0.7019607843137254, 0.8705882352941177, 0.4117647058823529),
+                               (0.9921568627450981, 0.7058823529411765, 0.3843137254901961),
+                               (0.5529411764705883, 0.8274509803921568, 0.7803921568627451),
+                               (0.7450980392156863, 0.7294117647058823, 0.8549019607843137),
+                               (1.0, 1.0, 0.7019607843137254),
+                               (0.984313725490196, 0.5019607843137255, 0.4470588235294118),
+                               (0.5019607843137255, 0.6941176470588235, 0.8274509803921568),
+                               (0.8509803921568627, 0.8509803921568627, 0.8509803921568627),
+                               (0.9882352941176471, 0.803921568627451, 0.8980392156862745)]
+
 # common hardcoded save locations I don't want to type
 saveroot = '/twophoton_analysis/Data/analysis/Group-attractive/'
 coreroot = '/twophoton_analysis/Data/analysis/core_dfs/'
+
+# fixed sorting for visualizations of TCA
+fixed_component_sort = {
+    'rank9_onset': [6, 5, 0, 2, 1, 3, 4, 8, 7],
+    'rank8_offset': [0, 3, 5, 1, 2, 7, 6, 4]
+}
 
 # get ordering used for categorical variables in plots
 ax_order = {
@@ -198,6 +215,7 @@ stim_length = {
 staging = {
     'parsed_stage': ['naive', 'low_dp learning', 'high_dp learning', 'low_dp reversal1', 'high_dp reversal1'],
     'parsed_4stage': ['early_learning', 'late_learning', 'early_reversal', 'late_reversal'],
+    'parsed_4stagev2': ['early_learning', 'late_learning', 'early_reversal', 'late_reversal'],
     'parsed_10stage': ['early naive', 'late naive', 'early low_dp learning', 'late low_dp learning',
                        'early high_dp learning', 'late high_dp learning', 'early low_dp reversal1',
                        'late low_dp reversal1', 'early high_dp reversal1' 'late high_dp reversal1'],
@@ -205,6 +223,8 @@ staging = {
                        'L1 reversal1', 'L2 reversal1', 'L3 reversal1', 'L4 reversal1', 'L5 reversal1'],
     'parsed_11stage_T': ['T0 naive', 'T1 learning', 'T2 learning', 'T3 learning', 'T4 learning', 'T5 learning',
                        'T1 reversal1', 'T2 reversal1', 'T3 reversal1', 'T4 reversal1', 'T5 reversal1'],
+    'parsed_11stage_label': ['T0 naive', 'T1 learning', 'T2 learning', 'T3 learning', 'T4 learning', 'T5 learning',
+                       'T1 reversal', 'T2 reversal', 'T3 reversal', 'T4 reversal', 'T5 reversal'],
 }
 
 """Useful lists so I don't have to type out names of mice I commonly use"""

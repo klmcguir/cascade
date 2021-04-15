@@ -1,4 +1,48 @@
 import numpy as np
+from .. import lookups
+
+
+def heatmap_xticks(staging='parsed_11stage_label',
+                   additional_pt=1,
+                   additional_text=True,
+                   drop_stage_text=False,
+                   drop_naive=True):
+
+    # get the labels for your heatmap stages
+    stages = lookups.staging[staging]
+    if drop_naive:
+        stages = stages[1:]
+
+    # first create 0s pt with a stage label
+    stim_starts = [15.5 + 47 * s for s in np.arange(len(stages))]
+    if drop_stage_text:
+        stim_labels = ['0' for _, _ in enumerate(stages)]
+    else:
+        stim_labels = [f'0\n\n{s}' if c % 2 == 0 else f'0\n{s}' for c, s in enumerate(stages)]
+
+    # create a 1s pt alone
+    if additional_pt is not None:
+        if additional_pt == 1:
+            stim_1s = [31 + 47 * s for s in np.arange(len(stages))]
+            if additional_text:
+                stim_1_labels = ['1' for _ in np.arange(len(stages))]
+            else:
+                stim_1_labels = ['' for _ in np.arange(len(stages))]
+        elif additional_pt == 2:
+            stim_1s = [46.5 + 47 * s for s in np.arange(len(stages))]
+            if additional_text:
+                stim_1_labels = ['2' for _ in np.arange(len(stages))]
+            else:
+                stim_1_labels = ['' for _ in np.arange(len(stages))]
+
+        # zip and flatten into a single set of xticks and xtick labels
+        xticks = list(sum(zip(stim_starts, stim_1s), ()))
+        xticklabels = list(sum(zip(stim_labels, stim_1_labels), ()))
+    else:
+        xticks = stim_starts
+        xticklabels = stim_labels
+
+    return xticks, xticklabels
 
 
 def choose_negative_modes(sort_ensemble, negative_modes=[]):
