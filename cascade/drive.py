@@ -9,6 +9,142 @@ from scipy import stats
 import os
 
 
+def preferred_drive_mat(match_to='onsets'):
+    """Wrapper function to get a driven matrix per stage, but only return drive 
+    for that cells preferred cue defined by TCA.
+
+    Parameters
+    ----------
+    match_to : str, optional
+        Which dataset o use for matching ('onsets' or 'offsets'), by default 'onsets'
+
+    Returns
+    -------
+    numpy.ndarray
+        Numpy array with 0 for not driven, 1 for yes driven, and NaN for non-existent.
+
+    Raises
+    ------
+    NotImplementedError
+        Needs groupings for offset cells rank 8. Will need joint tuning special cases. 
+    """
+
+    if match_to == 'offsets':
+        raise NotImplementedError
+
+    # load tca reversal n=7 data
+    tca_dict = load.core_tca_data(limit_to=None, match_to=match_to)
+    drive_mat = drive_mat_from_core_reversal_data(match_to=match_to)
+
+    # set groupings
+    if match_to == 'onsets':
+        cat_groups_pref_tuning = {
+            'becomes_unrewarded':[6, 5, 0],
+            'becomes_rewarded': [2, 1,  3],
+            'remains_unrewarded': [4,  8],
+            'broad': [7]
+            }
+
+    # preallocate
+    flat_drive_mat = np.zeros((drive_mat.shape[0], drive_mat.shape[1])) + np.nan
+    for c, cue in enumerate(['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']):
+        cue_cells = np.isin(tca_dict['cell_cats'], cat_groups_pref_tuning[cue])
+        flat_drive_mat[cue_cells, :] = drive_mat[cue_cells, :, c]
+
+    # deal with special cases of tuning
+    cue_cells = np.isin(tca_dict['cell_cats'], cat_groups_pref_tuning['broad'])
+    flat_drive_mat[cue_cells, :] = np.nanmax(drive_mat[cue_cells, :, :], axis=2)  # over 0s 1s and nans
+
+    return flat_drive_mat
+
+
+def preferred_drive_day_mat(match_to='onsets', reduce_to='stagedays'):
+    """Wrapper function to get a driven matrix per day, but only return drive 
+    for that cell's preferred cue defined by TCA.
+
+    Parameters
+    ----------
+    match_to : str, optional
+        Which dataset o use for matching ('onsets' or 'offsets'), by default 'onsets'
+    reduce_to : str, optional
+        Full output is trials long (meta), but can be reduced to 'days' or 'stagedays'.
+
+    Returns
+    -------
+    list of numpy.ndarray (one per mouse)
+        Numpy array with 0 for not driven, 1 for yes driven, and NaN for non-existent.
+
+    Raises
+    ------
+    NotImplementedError
+        Needs groupings for offset cells rank 8. Will need joint tuning special cases. 
+    """
+    if match_to == 'offsets':
+        raise NotImplementedError
+    
+    # load tca reversal n=7 data
+    tca_dict = load.core_tca_data(limit_to=None, match_to=match_to)
+    drive_mat = drive_day_mat_from_core_reversal_data(match_to=match_to)
+    if reduce_to is not None:
+        load_dict = load.core_reversal_data(limit_to=None, match_to=match_to)
+
+    # set groupings
+    if match_to == 'onsets':
+        cat_groups_pref_tuning = {
+            'becomes_unrewarded':[6, 5, 0],
+            'becomes_rewarded': [2, 1,  3],
+            'remains_unrewarded': [4,  8],
+            'broad': [7]
+            }
+    
+    flat_mat_list = []
+    mouse_vec = tca_dict['mouse_vec']
+    for mc, m in enumerate(pd.unique(mouse_vec)):
+
+        # get category vectors for each mouse
+        mouse_cats = tca_dict['cell_cats'][mouse_vec == m]
+
+        flat_drive_mat = np.zeros((drive_mat[mc].shape[0], drive_mat[mc].shape[1])) + np.nan
+        for c, cue in enumerate(['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']):
+            cue_cells = np.isin(mouse_cats, cat_groups_pref_tuning[cue])
+            flat_drive_mat[cue_cells, :] = drive_mat[mc][cue_cells, :, c]
+        
+        # deal with special cases of tuning
+        cue_cells = np.isin(mouse_cats, cat_groups_pref_tuning['broad'])
+        flat_drive_mat[cue_cells, :] = np.nanmax(drive_mat[mc][cue_cells, :, :], axis=2) 
+
+        # optionally reduce the expanded drive (trials long at this point)
+        if reduce_to == 'stagedays':
+            meta = load_dict['meta_list'][mc]
+                # get all unique stage ay combos in order 
+            stage_day_df = (
+                meta
+                .groupby(['parsed_11stage', 'date'])
+                .count()
+                .reindex(lookups.staging['parsed_11stage'], level=0)
+            )
+
+            # preallocate
+            flat_drive_mat_reduced = np.zeros((flat_drive_mat.shape[0], stage_day_df.shape[0])) + np.nan
+    
+            # use index from row iterator to get stage-day boolean
+            for c, (ind, _) in enumerate(stage_day_df.iterrows()):
+                
+                # boolean
+                stage_boo = meta.parsed_11stage.isin([ind[0]]).values
+                day_boo = meta.reset_index().date.isin([ind[1]]).values
+                sdb = stage_boo & day_boo
+                flat_drive_mat_reduced[:, c] = np.nanmean(flat_drive_mat[:, sdb], axis=1)
+            assert np.isin(np.unique(flat_drive_mat_reduced[~np.isnan(flat_drive_mat_reduced)]), [0, 1]).all()
+            flat_drive_mat = flat_drive_mat_reduced
+        else:
+            raise NotImplementedError
+
+        flat_mat_list.append(flat_drive_mat)
+    
+    return flat_mat_list
+
+
 def drive_mat_from_core_reversal_data(match_to='onsets'):
     """ Wrapper function to run drivenness calc on the reversal data and return as a matrix. 
     
@@ -17,6 +153,12 @@ def drive_mat_from_core_reversal_data(match_to='onsets'):
     numpy.ndarray
         Boolean matrix cells x stages x cues, of a cell's drivenness for each stage. 
     """
+
+    # load if the file already exists
+    save_path = os.path.join(lookups.coreroot, f'{match_to}_drive_mat_stack.npy')
+    if os.path.isfile(save_path):
+        drive_stack = np.load(save_path, allow_pickle=True)
+        return drive_stack
 
     # load all of your raw reversal n=7 data
     load_dict = load.core_reversal_data(limit_to=None, match_to=match_to)
@@ -30,6 +172,12 @@ def drive_mat_from_core_reversal_data(match_to='onsets'):
 
     # reshape dataframe into array cells x stages x cues
     drive_stack = drive_stack_from_dfs(drive_dfs, load_dict)
+
+    # save your drive mat list
+    try:
+        np.save(save_path, drive_stack)
+    except:
+        print('File not saved: drive_day_mat_from_core_reversal_data().')
 
     return drive_stack
 

@@ -67,6 +67,20 @@ fixed_component_sort = {
     'rank8_offset': [0, 3, 5, 1, 2, 7, 6, 4]
 }
 
+comp_class_names = {
+    'rank9_onset': [
+        r'$Adapt_{InitR}$',
+        r'$Learn_{InitR}$',
+        r'$Rev_{InitR}$',
+        r'$Adapt_{BecR}$',
+        r'$Learn_{BecR}$',
+        r'$Rev_{BecR}$',
+        r'$Adapt_{UnR}$',
+        r'$Rev_{UnR}$',
+        r'$Trans_{Broad}$',
+    ]
+}
+
 # get ordering used for categorical variables in plots
 ax_order = {
     'cues': ['broad', 'plus-minus', 'plus', 'plus-neutral', 'neutral-plus',
@@ -216,6 +230,7 @@ staging = {
     'parsed_stage': ['naive', 'low_dp learning', 'high_dp learning', 'low_dp reversal1', 'high_dp reversal1'],
     'parsed_4stage': ['early_learning', 'late_learning', 'early_reversal', 'late_reversal'],
     'parsed_4stagev2': ['early_learning', 'late_learning', 'early_reversal', 'late_reversal'],
+    'parsed_4stagev3': ['stageless', 'early_learning', 'late_learning', 'early_reversal', 'late_reversal'],
     'parsed_10stage': ['early naive', 'late naive', 'early low_dp learning', 'late low_dp learning',
                        'early high_dp learning', 'late high_dp learning', 'early low_dp reversal1',
                        'late low_dp reversal1', 'early high_dp reversal1' 'late high_dp reversal1'],

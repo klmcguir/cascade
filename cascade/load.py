@@ -264,11 +264,14 @@ def data_filtered(mice=None,
         # get your tensor, possibly cropping around onset or offsets, 1s pre, 2s post
         if limit_to is not None and limit_to.lower() == 'onsets':
             tensor = out[2][:, :int(np.ceil(15.5 * 3)), :]
+            bhv = out[4][:, :int(np.ceil(15.5 * 3)), :]
         elif limit_to is not None and limit_to.lower() == 'offsets':
             off_int = int(np.ceil(lookups.stim_length[mouse] + 1) * 15.5)
             tensor = out[2][:, (off_int - 16):(off_int + 31), :]
+            bhv = out[4][:, (off_int - 16):(off_int + 31), :]
         else:
             tensor = out[2]
+            bhv = out[4]
 
         # optionally remove disengaged trials
         meta = utils.add_stages_to_meta(utils.add_stages_to_meta(out[3], 'parsed_11stage'), 'parsed_4stage')
@@ -286,7 +289,7 @@ def data_filtered(mice=None,
             load_dict['id_list'].append(out[1][id_bool])
             load_dict['tensor_list'].append(tensor[id_bool, :, :])
 
-        load_dict['bhv_list'].append(out[4])
+        load_dict['bhv_list'].append(bhv)
         load_dict['meta_list'].append(meta)
 
     return load_dict
