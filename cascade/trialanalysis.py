@@ -511,7 +511,10 @@ def unwrapped_heatmaps_2cond(folder_name,
                              name2='nogo',
                              meta_col='trialerror',
                              meta_col_vals=[0, 3, 5],
-                             no_disengaged=False):
+                             no_disengaged=False,
+                             all_stages=False,
+                             save_please=False,
+                             forced_order=True):
     """Generate mutliple heatmaps with multiple sorts for cells averaged across stages for subsets of trials.
 
     Parameters
@@ -550,8 +553,9 @@ def unwrapped_heatmaps_2cond(folder_name,
 
     # get all versions of models
     models = ['v4i10_norm_on_noT0', 'v4i10_norm_off_noT0']
-    mod_w_naive = [s + '_allstages' for s in models]
-    models = models + mod_w_naive
+    if all_stages:
+        mod_w_naive = [s + '_allstages' for s in models]
+        models = models + mod_w_naive
 
     # cues to use in order
     cues = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
@@ -559,13 +563,14 @@ def unwrapped_heatmaps_2cond(folder_name,
     # perform calculations
     # ------------------------------------------------------------------------------------
     for mod in tqdm(models, total=len(models), desc='Plotting unwrapped heatmaps'):
-        for sort_by in ['unwrappedTCAsort', 'mouseunsort', 'runcorrsortnobd', 'runcorrsort', 'mousecuesort']:
+        for sort_by in ['runcorrsort']:
+            # for sort_by in ['unwrappedTCAsort', 'mouseunsort', 'runcorrsortnobd', 'runcorrsort', 'mousecuesort']:
 
             # set up save location
             if no_disengaged:
-                save_folder = paths.analysis_dir(f'tca_dfs/modulation_heatmaps/{folder_name}_nodis')
+                save_folder = paths.analysis_dir(f'figures/figure_3/{folder_name}_nodis')
             else:
-                save_folder = paths.analysis_dir(f'tca_dfs/modulation_heatmaps/{folder_name}')
+                save_folder = paths.analysis_dir(f'figures/figure_3/{folder_name}')
 
             # set rank and TCA model to always be norm models for sorting
             if '_on' in mod:
@@ -590,13 +595,26 @@ def unwrapped_heatmaps_2cond(folder_name,
                 raise ValueError
 
             # build your stack of heatmaps
-            mat2ds = build_any_mat(mouse_vec,
-                                   cell_vec,
-                                   limit_tag=limit_tag,
-                                   allstage=True if '_allstages' in mod else False,
-                                   meta_col=meta_col,
-                                   meta_col_vals=meta_col_vals,
-                                   no_disengaged=no_disengaged)
+            if meta_col == 'pre_speed': # Speed in precalculated matrices is based on pre_speed
+                name1 = 'fast'
+                name2 = 'slow'
+                if '_on' in mod:
+                    mat2ds = data_dict['v4i10_speed_norm_on_noT0']
+                elif '_off' in mod:
+                    mat2ds = data_dict['v4i10_speed_norm_off_noT0']
+                else:
+                    raise ValueError
+            else:
+                mat2ds = build_any_mat(mouse_vec,
+                                       cell_vec,
+                                       limit_tag=limit_tag,
+                                       allstage=True if '_allstages' in mod else False,
+                                       meta_col=meta_col,
+                                       meta_col_vals=meta_col_vals,
+                                       no_disengaged=no_disengaged)
+            # force order of columns to be bec_un, bec_rew, remains_un
+            if forced_order:
+                mat2ds = mat2ds[:,:, [0, 2, 1, 3, 5, 4]]
 
             if sort_by == 'mouseunsort':
                 cell_sorter = np.arange(len(cell_sorter), dtype=int)  # keep in order
@@ -607,7 +625,11 @@ def unwrapped_heatmaps_2cond(folder_name,
             elif sort_by == 'runcorrsort':
                 cell_sorter = sorters.run_corr_sort(mouse_vec, cell_vec, data_dict, mod, stim_or_baseline_corr='stim')
             elif sort_by == 'unwrappedTCAsort':
-                pass
+                cell_sorter = sorters.pick_comp_order(cell_cats, cell_sorter)
+            elif sort_by == 'comprun':
+                cell_sorter = sorters.pick_comp_order_plus_bhv_mod(
+                    cell_cats, cell_sorter, bhv_type='speed', bhv_baseline_or_stim='baseline'
+                    )
             elif sort_by == 'runcorrsortnobd':
                 cell_sorter = sorters.run_corr_sort_nobroad(mouse_vec,
                                                             cell_vec,
@@ -646,14 +668,29 @@ def unwrapped_heatmaps_2cond(folder_name,
             ax = []
             fig = plt.figure(figsize=(30, 15))
             gs = fig.add_gridspec(100, 110)
-            ax.append(fig.add_subplot(gs[:, 3:6]))
+            ax.append(fig.add_subplot(gs[:, 2:5]))
             ax.append(fig.add_subplot(gs[:, 10:38]))
             ax.append(fig.add_subplot(gs[:, 40:68]))
             ax.append(fig.add_subplot(gs[:, 70:98]))
             ax.append(fig.add_subplot(gs[:30, 105:108]))
 
             # plot "categorical" heatmap using defined color mappings
-            if sort_by == 'unwrappedTCAsort' or 'runcorr' in sort_by:
+            if sort_by in ['unwrappedTCAsort', 'comprun'] or 'runcorr' in sort_by:
+                color_vecs = np.concatenate([number_mouse_mat[cell_sorter, None], number_comp_mat[cell_sorter, None]], axis=1)
+                if '_on' in mod or '_off' in mod:
+                    fix_cmap = sns.color_palette('Set3', 9) #cas.lookups.cmap_fixed_sort_rank9_onset
+                    # fix_cmap + [(0,0,0,0)]
+                    just_comps = np.array(cell_cats[cell_sorter, None], dtype=float)
+                    just_comps[just_comps == -1] = np.nan
+                    sns.heatmap(just_comps, cmap=fix_cmap, ax=ax[0], cbar=False)
+                    ax[0].set_xticks([0.5])
+                    ax[0].set_xticklabels(['Component'], rotation=45, ha='right', size=18)
+                    ax[0].set_yticks([])
+                else:
+                    sns.heatmap(color_vecs, cmap=cmap, ax=ax[0], cbar=False)
+                    ax[0].set_xticks([0.5, 1.5])
+                    ax[0].set_xticklabels(['Mouse', 'Component'], rotation=45, ha='right', size=18)
+            elif 'mouse' in sort_by:
                 color_vecs = np.concatenate([number_mouse_mat[cell_sorter, None], number_comp_mat[cell_sorter, None]],
                                             axis=1)
                 sns.heatmap(color_vecs, cmap=cmap, ax=ax[0], cbar=False)
@@ -704,7 +741,8 @@ def unwrapped_heatmaps_2cond(folder_name,
                 if i > 1:
                     ax[i].set_yticks([])
             plt.suptitle(f'trialerror: {speed_fast_or_slow} {sort_by} {mod}', position=(0.5, 0.98), size=20)
-            plt.savefig(os.path.join(save_folder, f'{mod}_{sort_by}_{speed_fast_or_slow}_rank{rr}_heatmap.png'),
+            if save_please:
+                plt.savefig(os.path.join(save_folder, f'{mod}_{sort_by}_{speed_fast_or_slow}_rank{rr}_heatmap.png'),
                         bbox_inches='tight')
             #         plt.savefig(os.path.join(save_folder, f'{mod}_{sort_by}_rank{rr}_heatmap.png'), bbox_inches='tight', dpi=300)
 
@@ -713,14 +751,29 @@ def unwrapped_heatmaps_2cond(folder_name,
             ax = []
             fig = plt.figure(figsize=(30, 15))
             gs = fig.add_gridspec(100, 110)
-            ax.append(fig.add_subplot(gs[:, 3:6]))
+            ax.append(fig.add_subplot(gs[:, 2:5]))
             ax.append(fig.add_subplot(gs[:, 10:38]))
             ax.append(fig.add_subplot(gs[:, 40:68]))
             ax.append(fig.add_subplot(gs[:, 70:98]))
             ax.append(fig.add_subplot(gs[:30, 105:108]))
 
             # plot "categorical" heatmap using defined color mappings
-            if sort_by == 'unwrappedTCAsort' or sort_by == 'runcorrsort':
+            if sort_by in ['unwrappedTCAsort', 'comprun'] or 'runcorr' in sort_by:
+                color_vecs = np.concatenate([number_mouse_mat[cell_sorter, None], number_comp_mat[cell_sorter, None]], axis=1)
+                if '_on' in mod or '_off' in mod:
+                    fix_cmap = sns.color_palette('Set3', 9) #cas.lookups.cmap_fixed_sort_rank9_onset
+                    # fix_cmap + [(0,0,0,0)]
+                    just_comps = np.array(cell_cats[cell_sorter, None], dtype=float)
+                    just_comps[just_comps == -1] = np.nan
+                    sns.heatmap(just_comps, cmap=fix_cmap, ax=ax[0], cbar=False)
+                    ax[0].set_xticks([0.5])
+                    ax[0].set_xticklabels(['Component'], rotation=45, ha='right', size=18)
+                    ax[0].set_yticks([])
+                else:
+                    sns.heatmap(color_vecs, cmap=cmap, ax=ax[0], cbar=False)
+                    ax[0].set_xticks([0.5, 1.5])
+                    ax[0].set_xticklabels(['Mouse', 'Component'], rotation=45, ha='right', size=18)
+            elif 'mouse' in sort_by:
                 color_vecs = np.concatenate([number_mouse_mat[cell_sorter, None], number_comp_mat[cell_sorter, None]],
                                             axis=1)
                 sns.heatmap(color_vecs, cmap=cmap, ax=ax[0], cbar=False)
@@ -772,11 +825,12 @@ def unwrapped_heatmaps_2cond(folder_name,
                 if i > 1:
                     ax[i].set_yticks([])
             plt.suptitle(f'trialerror: {speed_fast_or_slow} {sort_by} {mod}', position=(0.5, 0.98), size=20)
-            plt.savefig(os.path.join(save_folder, f'{mod}_{sort_by}_{speed_fast_or_slow}_rank{rr}_heatmap.png'),
+            if save_please:
+                plt.savefig(os.path.join(save_folder, f'{mod}_{sort_by}_{speed_fast_or_slow}_rank{rr}_heatmap.png'),
                         bbox_inches='tight')
 
 
-def unwrapped_heatmaps_1cond(folder_name='cue_unwrapped', name1='all', no_disengaged=False):
+def unwrapped_heatmaps_1cond(folder_name='cue_unwrapped', name1='all', no_disengaged=False, forced_order=True):
     """Generate multiple sort ordered heatmaps of the standard set of cells and reveral (n=7) mice.
 
     Parameters
@@ -822,9 +876,9 @@ def unwrapped_heatmaps_1cond(folder_name='cue_unwrapped', name1='all', no_diseng
 
             # set up save location
             if no_disengaged:
-                save_folder = paths.analysis_dir(f'tca_dfs/modulation_heatmaps/{folder_name}_nodis')
+                save_folder = paths.analysis_dir(f'figures/figure_3/{folder_name}_nodis')
             else:
-                save_folder = paths.analysis_dir(f'tca_dfs/modulation_heatmaps/{folder_name}')
+                save_folder = paths.analysis_dir(f'figures/figure_3/{folder_name}')
 
             # set rank and TCA model to always be norm models for sorting
             if '_on' in mod:
@@ -854,6 +908,9 @@ def unwrapped_heatmaps_1cond(folder_name='cue_unwrapped', name1='all', no_diseng
                                    limit_tag=limit_tag,
                                    allstage=True if '_allstages' in mod else False,
                                    no_disengaged=no_disengaged)
+            # force order of columns to be bec_un, bec_rew, remains_un
+            if forced_order:
+                mat2ds = mat2ds[:,:, [0, 2, 1]]
 
             if sort_by == 'mouseunsort':
                 cell_sorter = np.arange(len(cell_sorter), dtype=int)  # keep in order
@@ -864,7 +921,11 @@ def unwrapped_heatmaps_1cond(folder_name='cue_unwrapped', name1='all', no_diseng
             elif sort_by == 'runcorrsort':
                 cell_sorter = sorters.run_corr_sort(mouse_vec, cell_vec, data_dict, mod, stim_or_baseline_corr='stim')
             elif sort_by == 'unwrappedTCAsort':
-                pass
+                cell_sorter = sorters.pick_comp_order(cell_cats, cell_sorter)
+            elif sort_by == 'comprun':
+                cell_sorter = sorters.pick_comp_order_plus_bhv_mod(
+                    cell_cats, cell_sorter, bhv_type='speed', bhv_baseline_or_stim='baseline'
+                    )
             elif sort_by == 'runcorrsortnobd':
                 cell_sorter = sorters.run_corr_sort_nobroad(mouse_vec,
                                                             cell_vec,
@@ -902,14 +963,29 @@ def unwrapped_heatmaps_1cond(folder_name='cue_unwrapped', name1='all', no_diseng
             ax = []
             fig = plt.figure(figsize=(30, 15))
             gs = fig.add_gridspec(100, 110)
-            ax.append(fig.add_subplot(gs[:, 3:6]))
+            ax.append(fig.add_subplot(gs[:, 2:5]))
             ax.append(fig.add_subplot(gs[:, 10:38]))
             ax.append(fig.add_subplot(gs[:, 40:68]))
             ax.append(fig.add_subplot(gs[:, 70:98]))
             ax.append(fig.add_subplot(gs[:30, 105:108]))
 
             # plot "categorical" heatmap using defined color mappings
-            if sort_by == 'unwrappedTCAsort' or 'runcorr' in sort_by:
+            if sort_by in ['unwrappedTCAsort', 'comprun'] or 'runcorr' in sort_by:
+                color_vecs = np.concatenate([number_mouse_mat[cell_sorter, None], number_comp_mat[cell_sorter, None]], axis=1)
+                if '_on' in mod:
+                    fix_cmap = sns.color_palette('Set3', 9) #cas.lookups.cmap_fixed_sort_rank9_onset
+                    # fix_cmap + [(0,0,0,0)]
+                    just_comps = np.array(cell_cats[cell_sorter, None], dtype=float)
+                    just_comps[just_comps == -1] = np.nan
+                    sns.heatmap(just_comps, cmap=fix_cmap, ax=ax[0], cbar=False)
+                    ax[0].set_xticks([0.5])
+                    ax[0].set_xticklabels(['Component'], rotation=45, ha='right', size=18)
+                    ax[0].set_yticks([])
+                else:
+                    sns.heatmap(color_vecs, cmap=cmap, ax=ax[0], cbar=False)
+                    ax[0].set_xticks([0.5, 1.5])
+                    ax[0].set_xticklabels(['Mouse', 'Component'], rotation=45, ha='right', size=18)
+            elif 'mouse' in sort_by:
                 color_vecs = np.concatenate([number_mouse_mat[cell_sorter, None], number_comp_mat[cell_sorter, None]],
                                             axis=1)
                 sns.heatmap(color_vecs, cmap=cmap, ax=ax[0], cbar=False)

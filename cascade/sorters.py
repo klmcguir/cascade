@@ -1,6 +1,75 @@
 import numpy as np
 import pandas as pd
+import os
 from . import lookups
+
+
+def pick_comp_order_plus_bhv_mod(cell_cats, cell_sorter, bhv_type='speed', bhv_baseline_or_stim='stim'):
+    """Move cells (sorted by componenets) into a user defined order.
+    Sort within components by speed mod.
+
+    NOTE: This uses a hardcoded path for an existing running correlation df. Beware.
+
+    Parameters
+    ----------
+    cell_cats : numpy.ndarray
+        Cell categorization vector, cell categories as integers.
+    cell_sorter : numpy.ndarray
+        Sort order defined from sort based on "best" component.
+        See:  cascade.utils.sort_and_rescale_factors()
+    bhv_type : str, optional
+        Type of behavioral trace, can be int (ind in bhv matrix) or str, by default 'speed'
+    bhv_baseline_or_stim : str, optional
+        Use baseline or stim period for behavioral vectors for correlation, by default 'stim'
+
+    Raises
+    ------
+    ValueError
+        If you specifiy a non-existent bhv_type.
+    NotImplementedError
+        If you pass data that is not from a recognized dataset size (i.e., onsets n = 1799, offsets n = 445).
+    """
+
+    # first sort by component
+    new_sort_order = pick_comp_order(cell_cats, cell_sorter)
+    cats_sorted = cell_cats[new_sort_order]
+
+    # parse bhv input
+    # (pupil_traces, dpupil_traces, lick_traces, dlick_traces, 
+    #  speed_traces, dspeed_traces, neuropil_traces, dneuropil_traces)
+    if bhv_type.lower() == 'speed' or bhv_type == 4:
+        bhv_type = 'speed'
+    elif bhv_type.lower() == 'lick' or bhv_type == 2:
+        bhv_type = 'lick'
+    elif bhv_type.lower() == 'pupil' or bhv_type == 0:
+        bhv_type = 'pupil'
+    elif bhv_type.lower() == 'neuropil' or bhv_type == 6:
+        bhv_type = 'neuropil'
+    else:
+        raise ValueError
+
+    # Load running corr
+    if len(cell_cats) == 1799:
+        corr_df_2s = pd.read_pickle(os.path.join(lookups.coreroot, f'onsets_{bhv_baseline_or_stim}_{bhv_type}_corr_2s_df.pkl'))
+    elif len(cell_cats) == 445:
+        corr_df_2s = pd.read_pickle(os.path.join(lookups.coreroot, f'offsets_{bhv_baseline_or_stim}_{bhv_type}_corr_2s_df.pkl'))
+    else:
+        raise NotImplementedError
+    assert np.array_equal(corr_df_2s.cell_cats.values, cell_cats)
+
+    # get mean correlation across all 4 stage binning (driven days counted only)
+    corr_vec = corr_df_2s[f'mean_{bhv_type}_corr_2s_4stage'].values
+    corr_sorted = corr_vec[new_sort_order]
+
+    # reorder your sort inds by running corr value within a comp category
+    sorted_chunks = []
+    for cat in pd.unique(cats_sorted):
+        cat_boo = cats_sorted == cat
+        cell_order_chunk = new_sort_order[cat_boo]
+        sorted_chunks.append(cell_order_chunk[np.argsort(corr_sorted[cat_boo])])
+    sorted_by_comp_then_run = np.hstack(sorted_chunks)
+
+    return sorted_by_comp_then_run
 
 
 def pick_comp_order(cell_cats, cell_sorter):
@@ -213,6 +282,65 @@ def run_corr_sort(mouse_vec, cell_vec, data_dict, mod, stim_or_baseline_corr='st
     matched_corr_df = pd.concat(corr_dfs, axis=0)
     assert np.array_equal(matched_corr_df.reset_index().cell_id.values, cell_vec)
     corr_vec = matched_corr_df.mean_run_corr.values
+
+    # first sort by cue
+    mouse_inds = np.arange(len(mouse_vec), dtype=int)
+    cue_sort = np.argsort(best_cue_vec)
+    mouse_cue_sort = mouse_inds[cue_sort]
+    peak_vec_sort = corr_vec[cue_sort]
+    cue_vec_sort = best_cue_vec[cue_sort]
+
+    # second sort by average peak time
+    sort_vec = []
+    for a in np.unique(best_cue_vec):
+        cue_peaks = peak_vec_sort[cue_vec_sort == a]
+        new_sort = mouse_cue_sort[cue_vec_sort == a][np.argsort(cue_peaks)]
+        sort_vec.extend(new_sort)
+    
+    return np.array(sort_vec, dtype=int)
+
+def run_corr_sort(mouse_vec, cell_vec, data_dict, mod, stim_or_baseline_corr='stim'):
+    """Sort an unwrapped trace matrix by cue and (stimulus or baseline) running correlation.
+
+    Parameters
+    ----------
+    mat : numpy array
+        cells x times-stages x cues
+    mouse_vec : list or array
+        vector of mouse names or unique identifiers
+
+    Returns
+    -------
+    numpy array
+        return the argsort order for this specific type of sort
+    """
+    
+    # this will force the best cue preference to be done on the mean across all trial data
+    if '_on' in mod:
+        best_mod = 'v4i10_norm_on_noT0'
+    elif '_off' in mod:
+        best_mod = 'v4i10_norm_off_noT0'
+    best_cue_vec = np.argmax(np.nanmax(data_dict[best_mod], axis=1), axis=1)
+    
+    if stim_or_baseline_corr == 'stim':
+        corr_df = pd.read_pickle(f'/twophoton_analysis/Data/analysis/Group-attractive/cell_stim_runcorr.pkl')
+        corr_df_2s = pd.read_pickle(os.path.join(lookups.coreroot, 'onset_stim_run_corr_2s_df.pkl'))
+    else:
+        corr_df = pd.read_pickle(f'/twophoton_analysis/Data/analysis/Group-attractive/cell_baseline_runcorr.pkl')
+    
+    corr_dfs = []
+    for mi in np.unique(mouse_vec):
+        good_cells = cell_vec[mouse_vec == mi]
+        df = corr_df.loc[corr_df.reset_index().mouse.isin([mi]).values & corr_df.reset_index().cell_id.isin(good_cells).values, :]
+        df = df.groupby(['mouse', 'cell_id']).mean().drop(columns=['cell_n', 'L5_run_corr', 'R5_run_corr'])
+        assert len(df.reset_index().cell_id) == len(good_cells)
+        assert np.array_equal(df.reset_index().cell_id.values, good_cells)
+    #     print(np.nansum(df.reset_index().cell_id.values - good_cells))
+        corr_dfs.append(df)
+    matched_corr_df = pd.concat(corr_dfs, axis=0)
+    assert np.array_equal(matched_corr_df.reset_index().cell_id.values, cell_vec)
+    corr_vec = matched_corr_df.mean_run_corr.values
+    corr_vec = corr_df_2s.mean_run_corr_2s_4stage.values #### SKIPPING TO HERE TO TEST
 
     # first sort by cue
     mouse_inds = np.arange(len(mouse_vec), dtype=int)

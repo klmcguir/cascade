@@ -43,7 +43,13 @@ color_dict = {
     '0-270': '#8EC7E0',
     'becomes_unrewarded': '#27ffa9',
     'becomes_rewarded': '#ff27be',
-    'remains_unrewarded': '#ffb327'
+    'remains_unrewarded': '#ffb327',
+    'becomes unrewarded': '#27ffa9',
+    'becomes rewarded': '#ff27be',
+    'remains unrewarded': '#ffb327',
+    'Initially rewarded': '#27ffa9',
+    'Becomes rewarded': '#ff27be',
+    'Unrewarded': '#ffb327'
 }
 
 # the cmap for 9 component onset TCA sorted for plotting
@@ -65,6 +71,21 @@ coreroot = '/twophoton_analysis/Data/analysis/core_dfs/'
 fixed_component_sort = {
     'rank9_onset': [6, 5, 0, 2, 1, 3, 4, 8, 7],
     'rank8_offset': [0, 3, 5, 1, 2, 7, 6, 4]
+}
+
+tuning_groups = {
+    "rank9_onset": {
+        'becomes_unrewarded': [6, 5, 0],
+        'becomes_rewarded': [2, 1, 3],
+        'remains_unrewarded': [4, 8],
+        'broad': [7]
+    },
+    "rank8_offset": {
+        'becomes_unrewarded': [3],
+        'becomes_rewarded': [5],
+        'remains_unrewarded': [],
+        'broad': [0, 1, 2, 7, 6, 4]
+    }
 }
 
 comp_class_names = {
