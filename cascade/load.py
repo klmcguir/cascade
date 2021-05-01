@@ -11,6 +11,7 @@ from . import lookups, drive, categorize
 from .tca import _trialmetafromrun, _group_ids_score
 from .tca import _group_drive_ids, _get_speed_pupil_npil_traces
 from .tca import _remove_stimulus_corr, _three_point_temporal_trace
+from tqdm import tqdm
 
 
 def core_tca_data(limit_to=None, match_to='onsets'):
@@ -250,7 +251,7 @@ def data_filtered(mice=None,
     load_dict['id_list'] = []
     load_dict['bhv_list'] = []
     load_dict['meta_list'] = []
-    for mouse, word, ids in zip(mice, words, keep_ids):
+    for mouse, word, ids in tqdm(zip(mice, words, keep_ids), desc='Loading mice', total=len(mice)):
 
         # return   ids, tensor, meta, bhv
         out = load_all_groupday(mouse,
