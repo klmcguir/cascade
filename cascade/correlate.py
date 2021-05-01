@@ -203,10 +203,9 @@ def bhv_corr(match_to='onsets', bhv_type='speed', bhv_baseline_or_stim='stim', s
         f'mean_{bhv_type}_corr_2s_11stage': np.nanmean(corr_avg11, axis=1),
         f'mean_{bhv_type}_corr_2s_4stage': np.nanmean(corr_avg4, axis=1),
     }
-
     corr_df_2s = pd.DataFrame(data=data).set_index(['mouse', 'cell_id'])
     if save_please:
-        corr_df_2s.to_pickle(os.path.join(lookups.coreroot, f'{match_to}_{bhv_baseline_or_stim}_{run}_corr_2s_df.pkl'))
+        corr_df_2s.to_pickle(os.path.join(lookups.coreroot, f'{match_to}_{bhv_baseline_or_stim}_{bhv_type}_corr_2s_df.pkl'))
     
     return corr_df_2s       
                 
