@@ -25,12 +25,10 @@ def preferred_drive_mat(match_to='onsets'):
 
     Raises
     ------
-    NotImplementedError
-        Needs groupings for offset cells rank 8. Will need joint tuning special cases. 
+    ValueError
+        Needs groupings of components for offset cells rank 8 or onsets rank 9. Value error if you 
+        try and use something other than this. 
     """
-
-    if match_to == 'offsets':
-        raise NotImplementedError
 
     # load tca reversal n=7 data
     tca_dict = load.core_tca_data(limit_to=None, match_to=match_to)
@@ -38,12 +36,11 @@ def preferred_drive_mat(match_to='onsets'):
 
     # set groupings
     if match_to == 'onsets':
-        cat_groups_pref_tuning = {
-            'becomes_unrewarded':[6, 5, 0],
-            'becomes_rewarded': [2, 1,  3],
-            'remains_unrewarded': [4,  8],
-            'broad': [7]
-            }
+        cat_groups_pref_tuning = lookups.tuning_groups['rank9_onset']
+    elif match_to == 'offsets':
+        cat_groups_pref_tuning = lookups.tuning_groups['rank8_offset']
+    else:
+        raise ValueError
 
     # preallocate
     flat_drive_mat = np.zeros((drive_mat.shape[0], drive_mat.shape[1])) + np.nan
@@ -52,10 +49,82 @@ def preferred_drive_mat(match_to='onsets'):
         flat_drive_mat[cue_cells, :] = drive_mat[cue_cells, :, c]
 
     # deal with special cases of tuning
-    cue_cells = np.isin(tca_dict['cell_cats'], cat_groups_pref_tuning['broad'])
-    flat_drive_mat[cue_cells, :] = np.nanmax(drive_mat[cue_cells, :, :], axis=2)  # over 0s 1s and nans
+    # broad tuning
+    if any(['broad' in s for s in cat_groups_pref_tuning.keys()]):
+        cue_cells = np.isin(tca_dict['cell_cats'], cat_groups_pref_tuning['broad'])
+        flat_drive_mat[cue_cells, :] = np.nanmax(drive_mat[cue_cells, :, :], axis=2)  # over 0s 1s and nans
+
+    # joint tuning
+    if any(['joint' in s for s in cat_groups_pref_tuning.keys()]):
+        tensor_cues = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+        jcues = [s for s in cat_groups_pref_tuning.keys() if 'joint' in s]
+        for cue in jcues:
+            cue_cells = np.isin(tca_dict['cell_cats'], cat_groups_pref_tuning[cue])
+            cue_inds = np.array([int(c) for c, s in enumerate(tensor_cues) if s in cue])
+            assert len(cue_inds) == 2  # joint tuning should always be two cues
+            flat_drive_mat[cue_cells, :] = np.nanmax(drive_mat[cue_cells, :, :][:, :, cue_inds], axis=2)
 
     return flat_drive_mat
+
+
+def preferred_cue_ind(match_to='onsets'):
+    """Wrapper function to get the preferred CUE index of a cells x stages (or trials) x CUES matrix.
+
+    NOTE: indices refer to "unforced" cue order in mismatch_condition. The order assumes:
+    ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+
+    Parameters
+    ----------
+    match_to : str, optional
+        Which dataset o use for matching ('onsets' or 'offsets'), by default 'onsets'
+
+    Returns
+    -------
+    list of lists
+       lists of teh index 
+
+    Raises
+    ------
+    ValueError
+        Needs groupings of components for offset cells rank 8 or onsets rank 9. Value error if you 
+        try and use something other than this. 
+    """
+
+    # load tca reversal n=7 data
+    tca_dict = load.core_tca_data(limit_to=None, match_to=match_to)
+
+    # set groupings
+    if match_to == 'onsets':
+        cat_groups_pref_tuning = lookups.tuning_groups['rank9_onset']
+    elif match_to == 'offsets':
+        cat_groups_pref_tuning = lookups.tuning_groups['rank8_offset']
+    else:
+        raise ValueError
+
+    # preallocate
+    preferred_cue_level = np.zeros((len(tca_dict['cell_cats']), 3)) + np.nan
+    for c, cue in enumerate(['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']):
+        cue_cells = np.isin(tca_dict['cell_cats'], cat_groups_pref_tuning[cue])
+        preferred_cue_level[cue_cells, np.isin([0, 1, 2], c)] = 1
+
+    # deal with special cases of tuning
+    # broad tuning
+    if any(['broad' in s for s in cat_groups_pref_tuning.keys()]):
+        cue_cells = np.isin(tca_dict['cell_cats'], cat_groups_pref_tuning['broad'])
+        preferred_cue_level[cue_cells, :] = 1
+
+    # joint tuning
+    if any(['joint' in s for s in cat_groups_pref_tuning.keys()]):
+        tensor_cues = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+        jcues = [s for s in cat_groups_pref_tuning.keys() if 'joint' in s]
+        for cue in jcues:
+            cue_cells = np.isin(tca_dict['cell_cats'], cat_groups_pref_tuning[cue])
+            cue_inds = np.array([int(c) for c, s in enumerate(tensor_cues) if s in cue])
+            assert len(cue_inds) == 2  # joint tuning should always be two cues
+            start_end = np.where(np.isin([0, 1, 2], cue_inds))[0]
+            preferred_cue_level[cue_cells, start_end[0]:(start_end[1] + 1)] = 1
+
+    return preferred_cue_level
 
 
 def preferred_drive_day_mat(match_to='onsets', reduce_to='stagedays'):
@@ -76,11 +145,9 @@ def preferred_drive_day_mat(match_to='onsets', reduce_to='stagedays'):
 
     Raises
     ------
-    NotImplementedError
+    ValueError
         Needs groupings for offset cells rank 8. Will need joint tuning special cases. 
     """
-    if match_to == 'offsets':
-        raise NotImplementedError
     
     # load tca reversal n=7 data
     tca_dict = load.core_tca_data(limit_to=None, match_to=match_to)
@@ -90,12 +157,11 @@ def preferred_drive_day_mat(match_to='onsets', reduce_to='stagedays'):
 
     # set groupings
     if match_to == 'onsets':
-        cat_groups_pref_tuning = {
-            'becomes_unrewarded':[6, 5, 0],
-            'becomes_rewarded': [2, 1,  3],
-            'remains_unrewarded': [4,  8],
-            'broad': [7]
-            }
+        cat_groups_pref_tuning = lookups.tuning_groups['rank9_onset']
+    elif match_to == 'offsets':
+        cat_groups_pref_tuning = lookups.tuning_groups['rank8_offset']
+    else:
+        raise ValueError
     
     flat_mat_list = []
     mouse_vec = tca_dict['mouse_vec']
@@ -112,6 +178,24 @@ def preferred_drive_day_mat(match_to='onsets', reduce_to='stagedays'):
         # deal with special cases of tuning
         cue_cells = np.isin(mouse_cats, cat_groups_pref_tuning['broad'])
         flat_drive_mat[cue_cells, :] = np.nanmax(drive_mat[mc][cue_cells, :, :], axis=2) 
+
+        # deal with special cases of tuning
+        if any(['joint' in s for s in cat_groups_pref_tuning.keys()]):
+
+            cue_cells = np.isin(mouse_cats, cat_groups_pref_tuning['joint-becomes_unrewarded-remains_unrewarded'])
+            # deal with edge case with only one cell per group
+            joint_mat = drive_mat[mc][cue_cells, :, :2]
+            if joint_mat.ndim == 2:  # if you only have one cell that dim will drop
+                flat_drive_mat[cue_cells, :] = np.nanmax(joint_mat, axis=0)
+            else:
+                flat_drive_mat[cue_cells, :] = np.nanmax(joint_mat, axis=2)
+
+            cue_cells = np.isin(mouse_cats, cat_groups_pref_tuning['joint-becomes_rewarded-remains_unrewarded'])
+            joint_mat = drive_mat[mc][cue_cells, :, 1:]
+            if joint_mat.ndim == 2:  # if you only have one cell that dim will drop
+                flat_drive_mat[cue_cells, :] = np.nanmax(joint_mat, axis=0)
+            else:
+                flat_drive_mat[cue_cells, :] = np.nanmax(joint_mat, axis=2) 
 
         # optionally reduce the expanded drive (trials long at this point)
         if reduce_to == 'stagedays':
@@ -138,7 +222,7 @@ def preferred_drive_day_mat(match_to='onsets', reduce_to='stagedays'):
             assert np.isin(np.unique(flat_drive_mat_reduced[~np.isnan(flat_drive_mat_reduced)]), [0, 1]).all()
             flat_drive_mat = flat_drive_mat_reduced
         else:
-            raise NotImplementedError
+            raise ValueError
 
         flat_mat_list.append(flat_drive_mat)
     
@@ -166,7 +250,7 @@ def drive_mat_from_core_reversal_data(match_to='onsets'):
     # calculate drivenness on each cell looping over mice
     drive_dfs = []
     for meta, ids, tensor in zip(load_dict['meta_list'], load_dict['id_list'], load_dict['tensor_list']):
-        offset_spoof = np.ones(len(ids)) == 0 if match_to == 'onsets' else 1
+        offset_spoof = np.ones(len(ids)) == (0 if match_to == 'onsets' else 1)
         df = multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=offset_spoof, neg_log10_pv_thresh=4)
         drive_dfs.append(df)
 

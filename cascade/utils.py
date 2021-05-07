@@ -881,9 +881,9 @@ def add_reversal_mismatch_condition_to_meta(meta):
     # create column for each ori if it was preceded by the same ori
     new_mapping = {}
     for ori in [0, 135, 270]:
-        curr_ori_bool = meta['orientation'].isin([ori]).values
+        curr_ori_bool = meta['orientation'].isin([ori]).values & ~meta['learning_state'].isin(['naive']).values
         list_of_conds = meta['condition'].loc[curr_ori_bool].unique()  # pandas unique is in order of appearance
-        list_of_conds = [s for s in list_of_conds if 'naive' != s]
+        list_of_conds = [s for s in list_of_conds if 'pavlovian' != s]
 
         # get new naming convention
         if len(list_of_conds) == 2:
@@ -1416,7 +1416,7 @@ def add_10stages_to_meta(meta, simple=False, dp_by_run=True):
     return meta
 
 
-def update_naive_meta(meta, verbose=True):
+def update_naive_meta(meta, verbose=False):
     """
     Helper function that takes a pd metadata dataframe and makes sure that cses
     and trial error match between naive and learning.
@@ -1492,20 +1492,23 @@ def update_naive_trialerror(meta, verbose=True):
     new_te = []
     for te, cs in zip(naive_te, naive_cs):
         if cs == 'plus':
-            if te % 2 == 0:
-                new_te.append(0)
-            else:
-                new_te.append(1)
+            # if te % 2 == 0:
+            #     new_te.append(0)
+            # else:
+            #     new_te.append(1)
+            new_te.append(0)
         elif cs == 'neutral':
-            if te % 2 == 0:
-                new_te.append(2)
-            else:
-                new_te.append(3)
+            # if te % 2 == 0:
+            #     new_te.append(2)
+            # else:
+            #     new_te.append(3)
+            new_te.append(2)
         elif cs == 'minus':
-            if te % 2 == 0:
-                new_te.append(4)
-            else:
-                new_te.append(5)
+            # if te % 2 == 0:
+            #     new_te.append(4)   # FORCE "CORRECT" SINCE NAIVE IS MEANINGLESS
+            # else:
+            #     new_te.append(5)
+            new_te.append(4)
         else:
             new_te.append(np.nan)
     meta.at[naive_pmn, 'trialerror'] = new_te

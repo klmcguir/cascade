@@ -81,10 +81,12 @@ tuning_groups = {
         'broad': [7]
     },
     "rank8_offset": {
-        'becomes_unrewarded': [3],
-        'becomes_rewarded': [5],
-        'remains_unrewarded': [],
-        'broad': [0, 1, 2, 7, 6, 4]
+        'becomes_unrewarded': [3, 7],
+        'becomes_rewarded': [5, 6],
+        'remains_unrewarded': [4],
+        'broad': [0],
+        'joint-becomes_unrewarded-remains_unrewarded': [1],
+        'joint-becomes_rewarded-remains_unrewarded': [2]
     }
 }
 
@@ -261,6 +263,8 @@ staging = {
                        'T1 reversal1', 'T2 reversal1', 'T3 reversal1', 'T4 reversal1', 'T5 reversal1'],
     'parsed_11stage_label': ['T0 naive', 'T1 learning', 'T2 learning', 'T3 learning', 'T4 learning', 'T5 learning',
                        'T1 reversal', 'T2 reversal', 'T3 reversal', 'T4 reversal', 'T5 reversal'],
+    'parsed_11stage_label_short': ['T0-N', 'T1-L', 'T2-L', 'T3-L', 'T4-L', 'T5-L',
+                       'T1-R', 'T2-R', 'T3-R', 'T4-R', 'T5-R'],
 }
 
 """Useful lists so I don't have to type out names of mice I commonly use"""

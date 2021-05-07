@@ -120,6 +120,55 @@ def core_reversal_data(limit_to=None, match_to='onsets'):
     return load_dict
 
 
+def core_reversal_data_dff(limit_to=None, match_to='onsets'):
+    """Load your core dataset limiting it to the same cells and data from your accepted TCA model (hardcoded!).
+
+    Parameters
+    ----------
+    limit_to : str, optional
+        Period of time in trial to limit trace to (1s pre, 2s post), 'onsets' or 'offsets', by default None
+    match_to : str, optional
+        TCA model type to pick cells from, 'onsets' or 'offsets', by default 'onsets'
+
+    Returns
+    -------
+    dict
+        dict of lists of all data in it's "rawest" processed form. Each list entry is a mouse. 
+    """
+
+    # limit in time (limit_to) must be set to match t cell type (match_to)
+    if limit_to is not None:
+        assert limit_to == match_to
+
+    # load input data from "accepted" TCA, use this for matching mice and ids
+    data_dict = np.load(paths.analysis_file('input_data_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
+
+    # pick whether you will match onset or offset data while loading "raw" traces
+    if match_to == 'onsets':
+        mouse_vec = data_dict['v4i10_on_mouse_noT0']
+        cell_vec = data_dict['v4i10_on_cell_noT0']
+    elif match_to == 'offsets':
+        mouse_vec = data_dict['v4i10_off_mouse_noT0']
+        cell_vec = data_dict['v4i10_off_cell_noT0']
+
+    # parse cells and mice you will match to
+    mice = np.unique(mouse_vec)
+    cell_id_list = [cell_vec[mouse_vec == mi] for mi in mice]
+
+    # load all of your data
+    load_dict = data_filtered(mice=mice,
+                    keep_ids=cell_id_list,
+                    limit_to=limit_to,
+                    word_pair=('inspector', 'badge'),
+                    trace_type='dff',
+                    group_by='all3',
+                    nan_thresh=0.95,
+                    score_threshold=0.8,
+                    with_model=False)
+
+    return load_dict
+
+
 def core_FOV_data(limit_to=None, match_to='onsets', driven=False):
     """Load your core dataset limiting it to the same cells and data from your accepted TCA model (hardcoded!).
 
@@ -202,7 +251,8 @@ def data_filtered(mice=None,
                   score_threshold=0.8,
                   with_model=False,
                   no_disengaged=False,
-                  unbaselined_data=False):
+                  unbaselined_data=False,
+                  dff_data=False):
     """Load all data lists, optionally filtering out cell_ids.
 
     Parameters
@@ -227,6 +277,8 @@ def data_filtered(mice=None,
         include an existing tca model when you load, by default False
     no_disengaged : bool, optional
         remove disengaged trials, sparing naive, by default False
+    dff_data : bool, optional
+        load dff (baselined) data instead of z-score data, by default False
 
     Returns
     -------
@@ -240,8 +292,14 @@ def data_filtered(mice=None,
     if keep_ids is None:
         keep_ids = [[] for _ in mice]
     if unbaselined_data:
+        assert not dff_data, "Can't be unbaselined and dff!"
         # hash word for unbaselined data matching ['respondent', 'computation'] params
-        word_pair = ['financing', 'suse']
+        word_pair = ('financing', 'suse')
+    elif dff_data:
+        # hash word for dff data mathing ['inspector', 'badge'] params
+        word_pair = ('inspector', 'badge')
+        trace_type = 'dff'
+
     words = [word_pair[0] if s in 'OA27' else word_pair[1] for s in mice]
 
     # load in a full size data
