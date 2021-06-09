@@ -186,7 +186,7 @@ def pick_comp_order_plus_bhv_mod(cell_cats,
     return sorted_by_comp_then_run
 
 
-def pick_comp_order(cell_cats, cell_sorter):
+def pick_comp_order(cell_cats, cell_sorter, assumed_order=None, fixed_order=None):
     """Move cells (sorted by componenets) into a user defined order.
 
     Parameters
@@ -196,6 +196,10 @@ def pick_comp_order(cell_cats, cell_sorter):
     cell_sorter : numpy.ndarray
         Sort order defined from sort based on "best" component.
         See:  cascade.utils.sort_and_rescale_factors()
+    assumed_order : list or numpy.ndarray
+        Order of componenets coming into sorter. i.e., pd.unique(cell_cats[cell_sorter])
+    fixed_order : list or numpy.ndarray
+        Final order of componenets to be returned. Should include -1 at end for unclassified cells. 
 
     Raises
     ------
@@ -212,16 +216,21 @@ def pick_comp_order(cell_cats, cell_sorter):
     if n_comps == 8:
         dataset = 'offsets'
         # order assumed from pd.unique(cell_cats[cell_sorter])
-        assumed_order = [ 3,  7,  4,  5,  6,  1,  2,  0, -1]
-        fixed_order = lookups.fixed_component_sort['rank8_offset'] + [-1]
+        if assumed_order is None:
+            assumed_order = [ 3,  7,  4,  5,  6,  1,  2,  0, -1]
+        if fixed_order is None:
+            fixed_order = lookups.fixed_component_sort['rank8_offset'] + [-1]
     elif n_comps == 9:
         dataset = 'onsets'
         # order assumed from pd.unique(cell_cats[cell_sorter])
-        assumed_order = [ 0,  5,  6,  4,  8,  1,  2,  3,  7, -1]
+        if assumed_order is None:
+            assumed_order = [ 0,  5,  6,  4,  8,  1,  2,  3,  7, -1]
         # fixed_order = [6, 5, 0, 4, 8, 2, 1, 3, 7, -1]
-        fixed_order = lookups.fixed_component_sort['rank9_onset'] + [-1]
+        if fixed_order is None:
+            fixed_order = lookups.fixed_component_sort['rank9_onset'] + [-1]
     else:
-        raise ValueError
+        if fixed_order is None:
+            raise ValueError
 
     # sort your components into order in chunks
     orig_desired_order = cell_cats[cell_sorter]

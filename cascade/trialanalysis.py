@@ -61,6 +61,7 @@ def build_any_mat(mouse_vec,
             no_disengaged=no_disengaged,
             add_broad_joint_tuning=add_broad_joint_tuning,
             n_in_a_row=n_in_a_row,
+            staging=staging,
         )
     elif meta_col == 'pre_speed':
         return build_speed_mat(
@@ -71,6 +72,7 @@ def build_any_mat(mouse_vec,
             norm_please=norm_please,
             no_disengaged=no_disengaged,
             add_broad_joint_tuning=add_broad_joint_tuning,
+            staging=staging,
         )
 
     # specifiy cue order
@@ -239,7 +241,7 @@ def build_th_mat(mouse_vec,
         same_in_a_row[prev_same & possible_double] = 3
         same_in_a_row[prev_same & possible_double & possible_triple] = 4
         same_in_a_row[prev_same & possible_double & possible_triple & possible_quad] = 5
-        
+
         meta = utils.add_reversal_mismatch_condition_to_meta(meta)
         cue_stack = []
         for cue in cues:
@@ -380,6 +382,99 @@ def build_speed_mat(mouse_vec,
         full_tensor_stack, _ = _row_norm(full_tensor_stack)
 
     return full_tensor_stack
+
+
+def build_speed_mat_shuffle(mouse_vec,
+                 cell_vec,
+                 limit_tag=None,
+                 allstage=False,
+                 norm_please=True,
+                 no_disengaged=False,
+                 add_broad_joint_tuning=False,
+                 staging='parsed_11stage',
+                 boot_n=500):
+
+    # specifiy cue order
+    cues = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+    if add_broad_joint_tuning:
+        cues = [
+            'becomes_unrewarded',
+            'remains_unrewarded',
+            'becomes_rewarded',
+            'broad',
+            'joint-becomes_unrewarded-remains_unrewarded',
+            'joint-becomes_rewarded-remains_unrewarded',
+        ]
+        three_cues = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+
+    # load data and filter
+    mice = np.unique(mouse_vec)
+    cell_id_list = [cell_vec[mouse_vec == mi] for mi in mice]
+    load_dict = load.data_filtered(mice=mice, keep_ids=cell_id_list, limit_to=limit_tag, no_disengaged=no_disengaged)
+
+    boot_tensor_stack_list = []
+    rand_rng = np.random.default_rng()
+    for booti in range(boot_n):
+        full_tensor_stack = []
+        full_tensor_stack2 = []
+        for meta, tensor in zip(load_dict['meta_list'], load_dict['tensor_list']):
+            meta = utils.add_reversal_mismatch_condition_to_meta(meta)
+            cue_stack = []
+            cue_stack2 = []
+            for cue in cues:
+                # lookup_cue = lookups.lookup_mm_inv[utils.meta_mouse(meta)]
+                # meta_bool = meta.initial_condition.isin([lookup_cue[cue]]).values
+                if 'broad' in cue:
+                    meta_bool = meta.mismatch_condition.isin(cues).values
+                elif 'joint' in cue:
+                    meta_bool = meta.mismatch_condition.isin([s for s in three_cues if s in cue]).values
+                else:
+                    meta_bool = meta.mismatch_condition.isin([cue]).values
+
+                # additional meta filtering
+                any_qualified_run = meta_bool & (meta.pre_speed.gt(10).values | meta.pre_speed.le(4).values)
+                number_high_speed = np.sum(meta_bool & meta.pre_speed.gt(10))
+                possible_inds = np.where(any_qualified_run)[0]
+                run_inds = rand_rng.choice(possible_inds, size=number_high_speed, replace=False)
+                run_boo = np.isin(np.arange(len(meta_bool)), run_inds)
+                norun_inds = possible_inds[~np.isin(possible_inds, run_inds)]
+                norun_boo = np.isin(np.arange(len(meta_bool)), norun_inds)
+                go_meta_bool = meta_bool & run_boo
+                nogo_meta_bool = meta_bool & norun_boo
+
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore')
+                    stage_mean_tensor = utils.balanced_mean_per_stage(
+                        meta, tensor, meta_bool=go_meta_bool, staging=staging,
+                        # filter_running='high_pre_speed_only'
+                    )
+                    stage_mean_tensor2 = utils.balanced_mean_per_stage(
+                        meta, tensor, meta_bool=nogo_meta_bool, staging=staging,
+                        # filter_running='high_pre_speed_only'
+                    )
+                if allstage:
+                    flat_cue_tensor = utils.unwrap_tensor(stage_mean_tensor[:, :, :])
+                    flat_cue_tensor2 = utils.unwrap_tensor(stage_mean_tensor2[:, :, :])
+                else:
+                    # remove naive
+                    flat_cue_tensor = utils.unwrap_tensor(stage_mean_tensor[:, :, 1:])
+                    flat_cue_tensor2 = utils.unwrap_tensor(stage_mean_tensor2[:, :, 1:])
+                cue_stack.append(flat_cue_tensor)
+                cue_stack2.append(flat_cue_tensor2)
+            cue_stack = np.dstack(cue_stack)
+            cue_stack2 = np.dstack(cue_stack2)
+            full_tensor_stack.append(cue_stack)
+            full_tensor_stack2.append(cue_stack2)
+        full_tensor_stack = np.vstack(full_tensor_stack)
+        full_tensor_stack2 = np.vstack(full_tensor_stack2)
+        full_tensor_stack = np.dstack([full_tensor_stack, full_tensor_stack2])
+
+        # Optionally normalize each cell to its max across conditions
+        if norm_please:
+            full_tensor_stack, _ = _row_norm(full_tensor_stack)
+        boot_tensor_stack_list.append(full_tensor_stack)
+
+    return boot_tensor_stack_list
 
 
 def build_th_mat_flat(mouse_vec,
@@ -570,6 +665,73 @@ def build_cue_mat(mouse_vec, cell_vec, limit_tag=None, allstage=False, norm_plea
         for cue in cues:
             lookup_cue = lookups.lookup_mm_inv[utils.meta_mouse(meta)]
             meta_bool = meta.initial_condition.isin([lookup_cue[cue]]).values
+            stage_mean_tensor = utils.balanced_mean_per_stage(meta, tensor, meta_bool=meta_bool)
+            if allstage:
+                flat_cue_tensor = utils.unwrap_tensor(stage_mean_tensor[:, :, :])
+            else:
+                # remove naive
+                flat_cue_tensor = utils.unwrap_tensor(stage_mean_tensor[:, :, 1:])
+            cue_stack.append(flat_cue_tensor)
+        cue_stack = np.dstack(cue_stack)
+        full_tensor_stack.append(cue_stack)
+    full_tensor_stack = np.vstack(full_tensor_stack)
+
+    if norm_please:
+        full_tensor_stack, _ = _row_norm(full_tensor_stack)
+
+    return full_tensor_stack
+
+
+def build_pav_mat(mouse_vec, cell_vec, limit_tag=None, allstage=False, norm_please=True, no_disengaged=False, load_kws={}):
+    """Build an unwrapped stage matrix by cue.
+
+    Parameters
+    ----------
+    mouse_vec : numpy.ndarray or list
+        Vector as long as cell numbers, that specifies mouse identity. 
+    cell_vec : numpy.ndarray or list
+        Vector as long as cell numbers, that specifies cell_id.
+    limit_tag : str, optional
+        'onsets' or 'offsets', optionally limit to 1s baseline and 2s post-baseline, by default None
+    allstage : bool, optional
+        Include naive data (or limit to learning and reversal if False), by default False
+    no_disengaged : bool, optional
+        remove disengaged trials, sparing naive, by default False
+
+    Returns
+    -------
+    numpy.ndarray 
+        Array that is cells x times-&-stages x cues, taking a balanced average across each
+        cue.
+    """
+
+    # specifiy cue order
+    cues = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded',
+            'pav_becomes_unrewarded', 'pav_becomes_rewarded']
+    main_cues = ['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']
+
+    # load data only for your cells of interest
+    mice = np.unique(mouse_vec)
+    cell_id_list = [cell_vec[mouse_vec == mi] for mi in mice]
+    load_dict = load.data_filtered(mice=mice,
+                                   keep_ids=cell_id_list,
+                                   limit_to=limit_tag,
+                                   no_disengaged=no_disengaged,
+                                   **load_kws)
+
+    # create unwrapped tensor stack by cue
+    full_tensor_stack = []
+    for meta, tensor in zip(load_dict['meta_list'], load_dict['tensor_list']):
+        cue_stack = []
+        for cue in cues:
+            lookup_cue = lookups.lookup_mm_inv[utils.meta_mouse(meta)]
+            if 'pav_' in cue:
+                jcue = [s for s in main_cues if s in cue][0]
+                meta_bool = meta.initial_condition.isin([lookup_cue[jcue]]).values
+                meta_bool = meta_bool & meta.condition.isin(['pavlovian']) & meta.trialerror.isin([9])
+            else:
+                meta_bool = meta.initial_condition.isin([lookup_cue[cue]]).values
+                meta_bool = meta_bool & ~meta.condition.isin(['pavlovian'])
             stage_mean_tensor = utils.balanced_mean_per_stage(meta, tensor, meta_bool=meta_bool)
             if allstage:
                 flat_cue_tensor = utils.unwrap_tensor(stage_mean_tensor[:, :, :])

@@ -79,7 +79,8 @@ coreroot = '/twophoton_analysis/Data/analysis/core_dfs/'
 # fixed sorting for visualizations of TCA
 fixed_component_sort = {
     'rank9_onset': [6, 5, 0, 2, 1, 3, 4, 8, 7],
-    'rank8_offset': [0, 3, 5, 1, 2, 7, 6, 4]
+    'rank8_offset': [0, 3, 5, 1, 2, 7, 6, 4],
+    'rank9_onset_context': [6, 2, 4, 5, 1, 0, 3, 8, 7],
 }
 
 tuning_groups = {
@@ -99,6 +100,10 @@ tuning_groups = {
     }
 }
 
+# the decided upon names for the types of cues
+cue_names = ['Initially rewarded', 'Unrewarded', 'Becomes rewarded']
+cue_names_forced = ['Initially rewarded', 'Becomes rewarded', 'Unrewarded']
+
 comp_class_names = {
     'rank9_onset': [
         r'$Adapt_{InitR}$',
@@ -108,7 +113,7 @@ comp_class_names = {
         r'$Learn_{BecR}$',
         r'$Rev_{BecR}$',
         r'$Adapt_{UnR}$',
-        r'$Rev_{UnR}$',
+        r'$LearnRev_{UnR}$',
         r'$Trans_{Broad}$',
     ],
     'rank8_offset': [

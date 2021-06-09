@@ -71,7 +71,7 @@ def core_tca_data(limit_to=None, match_to='onsets'):
     return category_dict
 
 
-def core_reversal_data(limit_to=None, match_to='onsets'):
+def core_reversal_data(limit_to=None, match_to='onsets', word_pair=None):
     """Load your core dataset limiting it to the same cells and data from your accepted TCA model (hardcoded!).
 
     Parameters
@@ -87,9 +87,9 @@ def core_reversal_data(limit_to=None, match_to='onsets'):
         dict of lists of all data in it's "rawest" processed form. Each list entry is a mouse. 
     """
 
-    # limit in time (limit_to) must be set to match t cell type (match_to)
-    if limit_to is not None:
-        assert limit_to == match_to
+    # limit in time (limit_to) must be set to match the cell type (match_to)
+    # if limit_to is not None:
+    #     assert limit_to == match_to
 
     # load input data from "accepted" TCA, use this for matching mice and ids
     data_dict = np.load(paths.analysis_file('input_data_v4i10_noT0_20210307.npy', 'tca_dfs'), allow_pickle=True).item()
@@ -107,10 +107,12 @@ def core_reversal_data(limit_to=None, match_to='onsets'):
     cell_id_list = [cell_vec[mouse_vec == mi] for mi in mice]
 
     # load all of your data
+    if word_pair is None:
+        word_pair = ('respondent', 'computation')
     load_dict = data_filtered(mice=mice,
                     keep_ids=cell_id_list,
                     limit_to=limit_to,
-                    word_pair=('respondent', 'computation'),
+                    word_pair=word_pair,
                     trace_type='zscore_day',
                     group_by='all3',
                     nan_thresh=0.95,
@@ -328,12 +330,80 @@ def data_filtered(mice=None,
             off_int = int(np.ceil(lookups.stim_length[mouse] + 1) * 15.5)
             tensor = out[2][:, (off_int - 16):(off_int + 31), :]
             bhv = out[4][:, (off_int - 16):(off_int + 31), :]
+        elif limit_to is not None and limit_to.lower() == 'ensure':
+            pre_pts = 31 # usually 16
+            add_pts = pre_pts - 16
+            ensure_delivery_boo = out[3].ensure.notna().values
+            tensor = np.zeros((out[2].shape[0], add_pts+47, np.sum(ensure_delivery_boo))) + np.nan
+            bhv = np.zeros((out[4].shape[0], add_pts+47, np.sum(ensure_delivery_boo))) + np.nan
+            tensor_with_ensure = out[2][:,:,ensure_delivery_boo]
+            bhv_with_ensure = out[4][:,:,ensure_delivery_boo]
+            for trialn, off_int in enumerate(out[3].loc[ensure_delivery_boo, :].ensure.values):
+                off_int = int(off_int)
+                if off_int + 31 > 107: # if you would go off the end pad with nans
+                    vec_too_short = tensor_with_ensure[:, (off_int - pre_pts):, trialn]
+                    tensor[:, :, trialn] = np.pad(vec_too_short, [(0, 0), (0, add_pts+47-vec_too_short.shape[1])], constant_values=np.nan)
+                    bhv_too_short = bhv_with_ensure[:, (off_int - pre_pts):, trialn]
+                    bhv[:, :, trialn] = np.pad(bhv_too_short, [(0, 0), (0, add_pts+47-bhv_too_short.shape[1])], constant_values=np.nan)
+                else:
+                    tensor[:, :, trialn] = tensor_with_ensure[:, (off_int - pre_pts):(off_int + 31), trialn]
+                    bhv[:, :, trialn] = bhv_with_ensure[:, (off_int - pre_pts):(off_int + 31), trialn]
+        elif limit_to is not None and limit_to.lower() == 'lickbout':
+            pre_pts = 31 # usually 16
+            add_pts = pre_pts - 16
+            firstlickbout_boo = out[3].firstlickbout.notna().values
+            tensor = np.zeros((out[2].shape[0], add_pts+47, np.sum(firstlickbout_boo))) + np.nan
+            bhv = np.zeros((out[4].shape[0], add_pts+47, np.sum(firstlickbout_boo))) + np.nan
+            tensor_with_firstlickbout = out[2][:,:,firstlickbout_boo]
+            bhv_with_firstlickbout = out[4][:,:,firstlickbout_boo]
+            for trialn, off_int in enumerate(out[3].loc[firstlickbout_boo, :].firstlickbout.values):
+                off_int = int(off_int)
+                if off_int + 31 > 107: # if you would go off the end pad with nans
+                    vec_too_short = tensor_with_firstlickbout[:, (off_int - pre_pts):, trialn]
+                    tensor[:, :, trialn] = np.pad(vec_too_short, [(0, 0), (0, add_pts+47-vec_too_short.shape[1])], constant_values=np.nan)
+                    bhv_too_short = bhv_with_firstlickbout[:, (off_int - pre_pts):, trialn]
+                    bhv[:, :, trialn] = np.pad(bhv_too_short, [(0, 0), (0, add_pts+47-bhv_too_short.shape[1])], constant_values=np.nan)
+                elif off_int - pre_pts < 0: # if you would run off the end start with nans:
+                    vec_too_short = tensor_with_firstlickbout[:, :(off_int + 31), trialn]
+                    tensor[:, :, trialn] = np.pad(vec_too_short, [(0, 0), (add_pts+47-vec_too_short.shape[1], 0)], constant_values=np.nan)
+                    bhv_too_short = bhv_with_firstlickbout[:, :(off_int + 31), trialn]
+                    bhv[:, :, trialn] = np.pad(bhv_too_short, [(0, 0), (add_pts+47-bhv_too_short.shape[1], 0)], constant_values=np.nan)
+                else:
+                    tensor[:, :, trialn] = tensor_with_firstlickbout[:, (off_int - pre_pts):(off_int + 31), trialn]
+                    bhv[:, :, trialn] = bhv_with_firstlickbout[:, (off_int - pre_pts):(off_int + 31), trialn]
+        elif limit_to is not None and limit_to.lower() == 'firstlick':
+            pre_pts = 31 # usually 16
+            add_pts = pre_pts - 16
+            firstlickbout_boo = out[3].firstlick.notna().values
+            tensor = np.zeros((out[2].shape[0], add_pts+47, np.sum(firstlickbout_boo))) + np.nan
+            bhv = np.zeros((out[4].shape[0], add_pts+47, np.sum(firstlickbout_boo))) + np.nan
+            tensor_with_firstlickbout = out[2][:,:,firstlickbout_boo]
+            bhv_with_firstlickbout = out[4][:,:,firstlickbout_boo]
+            for trialn, off_int in enumerate(out[3].loc[firstlickbout_boo, :].firstlick.values):
+                off_int = int(off_int)
+                if off_int + 31 > 107: # if you would go off the end pad with nans
+                    vec_too_short = tensor_with_firstlickbout[:, (off_int - pre_pts):, trialn]
+                    tensor[:, :, trialn] = np.pad(vec_too_short, [(0, 0), (0, add_pts+47-vec_too_short.shape[1])], constant_values=np.nan)
+                    bhv_too_short = bhv_with_firstlickbout[:, (off_int - pre_pts):, trialn]
+                    bhv[:, :, trialn] = np.pad(bhv_too_short, [(0, 0), (0, add_pts+47-bhv_too_short.shape[1])], constant_values=np.nan)
+                elif off_int - pre_pts < 0: # if you would run off the end start with nans:
+                    vec_too_short = tensor_with_firstlickbout[:, :(off_int + 31), trialn]
+                    tensor[:, :, trialn] = np.pad(vec_too_short, [(0, 0), (add_pts+47-vec_too_short.shape[1], 0)], constant_values=np.nan)
+                    bhv_too_short = bhv_with_firstlickbout[:, :(off_int + 31), trialn]
+                    bhv[:, :, trialn] = np.pad(bhv_too_short, [(0, 0), (add_pts+47-bhv_too_short.shape[1], 0)], constant_values=np.nan)
+                else:
+                    tensor[:, :, trialn] = tensor_with_firstlickbout[:, (off_int - pre_pts):(off_int + 31), trialn]
+                    bhv[:, :, trialn] = bhv_with_firstlickbout[:, (off_int - pre_pts):(off_int + 31), trialn]
         else:
             tensor = out[2]
             bhv = out[4]
 
         # optionally remove disengaged trials
         meta = utils.add_stages_to_meta(utils.add_stages_to_meta(out[3], 'parsed_11stage'), 'parsed_4stage')
+        if limit_to is not None and limit_to.lower() == 'ensure':
+            meta = meta.loc[ensure_delivery_boo, :]
+        if limit_to is not None and 'lick' in limit_to.lower():
+            meta = meta.loc[firstlickbout_boo, :]
         if no_disengaged:
             meta_bool = meta.hmm_engaged.values | meta.learning_state.isin(['naive']).values
             meta = meta.loc[meta_bool, :]

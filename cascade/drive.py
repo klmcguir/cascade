@@ -9,7 +9,7 @@ from scipy import stats
 import os
 
 
-def preferred_drive_mat(match_to='onsets'):
+def preferred_drive_mat(match_to='onsets', staging='parsed_11stage', FOV_data=False):
     """Wrapper function to get a driven matrix per stage, but only return drive 
     for that cells preferred cue defined by TCA.
 
@@ -17,6 +17,9 @@ def preferred_drive_mat(match_to='onsets'):
     ----------
     match_to : str, optional
         Which dataset o use for matching ('onsets' or 'offsets'), by default 'onsets'
+    FOV_data : bool
+        Optionally run calcualtions for LML5 dataset that does not rely on TCA groups
+        for preferred tuning.
 
     Returns
     -------
@@ -30,9 +33,12 @@ def preferred_drive_mat(match_to='onsets'):
         try and use something other than this. 
     """
 
+    if FOV_data:
+        return _preferred_drive_mat_FOV(match_to=match_to, staging=staging)
+
     # load tca reversal n=7 data
     tca_dict = load.core_tca_data(limit_to=None, match_to=match_to)
-    drive_mat = drive_mat_from_core_reversal_data(match_to=match_to)
+    drive_mat = drive_mat_from_core_reversal_data(match_to=match_to, staging=staging)
 
     # set groupings
     if match_to == 'onsets':
@@ -67,7 +73,13 @@ def preferred_drive_mat(match_to='onsets'):
     return flat_drive_mat
 
 
-def preferred_cue_ind(match_to='onsets'):
+def _preferred_drive_mat_FOV(match_to='onsets', staging='parsed_11stage'):
+
+    # TODO
+    raise NotImplementedError
+
+
+def preferred_cue_ind(match_to='onsets', FOV_data=False):
     """Wrapper function to get the preferred CUE index of a cells x stages (or trials) x CUES matrix.
 
     NOTE: indices refer to "unforced" cue order in mismatch_condition. The order assumes:
@@ -89,6 +101,9 @@ def preferred_cue_ind(match_to='onsets'):
         Needs groupings of components for offset cells rank 8 or onsets rank 9. Value error if you 
         try and use something other than this. 
     """
+
+    if FOV_data:
+        return _preferred_cue_ind_FOV(match_to=match_to)
 
     # load tca reversal n=7 data
     tca_dict = load.core_tca_data(limit_to=None, match_to=match_to)
@@ -127,6 +142,28 @@ def preferred_cue_ind(match_to='onsets'):
     return preferred_cue_level
 
 
+def _preferred_cue_ind_FOV(match_to='onsets'):
+    """ Helper function to deal with data that does not have a preferred group from TCA
+
+    array([[ 1., nan, nan],
+       [nan, nan,  1.],
+       [nan, nan,  1.],
+       ...,
+       [nan, nan,  1.],
+       [nan, nan,  1.],
+       [nan,  1., nan]])
+
+    Parameters
+    ----------
+    match_to : str, optional
+        Portion of response to analyze, by default 'onsets'
+    """
+
+    # TODO
+    raise NotImplementedError
+
+
+
 def preferred_drive_day_mat(match_to='onsets', reduce_to='stagedays'):
     """Wrapper function to get a driven matrix per day, but only return drive 
     for that cell's preferred cue defined by TCA.
@@ -148,7 +185,7 @@ def preferred_drive_day_mat(match_to='onsets', reduce_to='stagedays'):
     ValueError
         Needs groupings for offset cells rank 8. Will need joint tuning special cases. 
     """
-    
+
     # load tca reversal n=7 data
     tca_dict = load.core_tca_data(limit_to=None, match_to=match_to)
     drive_mat = drive_day_mat_from_core_reversal_data(match_to=match_to)
@@ -162,7 +199,7 @@ def preferred_drive_day_mat(match_to='onsets', reduce_to='stagedays'):
         cat_groups_pref_tuning = lookups.tuning_groups['rank8_offset']
     else:
         raise ValueError
-    
+
     flat_mat_list = []
     mouse_vec = tca_dict['mouse_vec']
     for mc, m in enumerate(pd.unique(mouse_vec)):
@@ -174,10 +211,10 @@ def preferred_drive_day_mat(match_to='onsets', reduce_to='stagedays'):
         for c, cue in enumerate(['becomes_unrewarded', 'remains_unrewarded', 'becomes_rewarded']):
             cue_cells = np.isin(mouse_cats, cat_groups_pref_tuning[cue])
             flat_drive_mat[cue_cells, :] = drive_mat[mc][cue_cells, :, c]
-        
+
         # deal with special cases of tuning
         cue_cells = np.isin(mouse_cats, cat_groups_pref_tuning['broad'])
-        flat_drive_mat[cue_cells, :] = np.nanmax(drive_mat[mc][cue_cells, :, :], axis=2) 
+        flat_drive_mat[cue_cells, :] = np.nanmax(drive_mat[mc][cue_cells, :, :], axis=2)
 
         # deal with special cases of tuning
         if any(['joint' in s for s in cat_groups_pref_tuning.keys()]):
@@ -195,12 +232,12 @@ def preferred_drive_day_mat(match_to='onsets', reduce_to='stagedays'):
             if joint_mat.ndim == 2:  # if you only have one cell that dim will drop
                 flat_drive_mat[cue_cells, :] = np.nanmax(joint_mat, axis=0)
             else:
-                flat_drive_mat[cue_cells, :] = np.nanmax(joint_mat, axis=2) 
+                flat_drive_mat[cue_cells, :] = np.nanmax(joint_mat, axis=2)
 
         # optionally reduce the expanded drive (trials long at this point)
         if reduce_to == 'stagedays':
             meta = load_dict['meta_list'][mc]
-                # get all unique stage ay combos in order 
+            # get all unique stage ay combos in order
             stage_day_df = (
                 meta
                 .groupby(['parsed_11stage', 'date'])
@@ -210,10 +247,10 @@ def preferred_drive_day_mat(match_to='onsets', reduce_to='stagedays'):
 
             # preallocate
             flat_drive_mat_reduced = np.zeros((flat_drive_mat.shape[0], stage_day_df.shape[0])) + np.nan
-    
+
             # use index from row iterator to get stage-day boolean
             for c, (ind, _) in enumerate(stage_day_df.iterrows()):
-                
+
                 # boolean
                 stage_boo = meta.parsed_11stage.isin([ind[0]]).values
                 day_boo = meta.reset_index().date.isin([ind[1]]).values
@@ -225,11 +262,11 @@ def preferred_drive_day_mat(match_to='onsets', reduce_to='stagedays'):
             raise ValueError
 
         flat_mat_list.append(flat_drive_mat)
-    
+
     return flat_mat_list
 
 
-def drive_mat_from_core_reversal_data(match_to='onsets'):
+def drive_mat_from_core_reversal_data(match_to='onsets', staging='parsed_11stage'):
     """ Wrapper function to run drivenness calc on the reversal data and return as a matrix. 
     
     Returns
@@ -239,23 +276,27 @@ def drive_mat_from_core_reversal_data(match_to='onsets'):
     """
 
     # load if the file already exists
-    save_path = os.path.join(lookups.coreroot, f'{match_to}_drive_mat_stack.npy')
+    # save_path = os.path.join(lookups.coreroot, f'{match_to}_drive_mat_stack.npy')
+    save_path = os.path.join(lookups.coreroot, f'{match_to}_{staging}_drive_mat_stack.npy')
     if os.path.isfile(save_path):
         drive_stack = np.load(save_path, allow_pickle=True)
         return drive_stack
 
     # load all of your raw reversal n=7 data
     load_dict = load.core_reversal_data(limit_to=None, match_to=match_to)
-    
+
     # calculate drivenness on each cell looping over mice
     drive_dfs = []
     for meta, ids, tensor in zip(load_dict['meta_list'], load_dict['id_list'], load_dict['tensor_list']):
         offset_spoof = np.ones(len(ids)) == (0 if match_to == 'onsets' else 1)
-        df = multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=offset_spoof, neg_log10_pv_thresh=4)
+        df = multi_stat_drive(
+            meta, ids, tensor, alternative='less', offset_bool=offset_spoof, neg_log10_pv_thresh=4,
+            staging=staging
+            )
         drive_dfs.append(df)
 
     # reshape dataframe into array cells x stages x cues
-    drive_stack = drive_stack_from_dfs(drive_dfs, load_dict)
+    drive_stack = drive_stack_from_dfs(drive_dfs, load_dict, staging=staging)
 
     # save your drive mat list
     try:
@@ -266,7 +307,49 @@ def drive_mat_from_core_reversal_data(match_to='onsets'):
     return drive_stack
 
 
-def drive_stack_from_dfs(drive_dfs, load_dict):
+def drive_mat_from_FOV_reversal_data(match_to='onsets', staging='parsed_11stage'):
+    """ Wrapper function to run drivenness calc on the reversal data and return as a matrix. 
+    FOV data are FOVs from LM or L5 POR.
+    
+    Returns
+    -------
+    numpy.ndarray
+        Boolean matrix cells x stages x cues, of a cell's drivenness for each stage. 
+    """
+
+    # load if the file already exists
+    # save_path = os.path.join(lookups.coreroot, f'{match_to}_drive_mat_stack.npy')
+    save_path = os.path.join(lookups.coreroot, f'{match_to}_{staging}_drive_mat_stack_FOV.npy')
+    if os.path.isfile(save_path):
+        drive_stack = np.load(save_path, allow_pickle=True)
+        return drive_stack
+
+    # load all of your raw reversal n=7 data
+    load_dict = load.core_FOV_data(limit_to=None, match_to=match_to)
+
+    # calculate drivenness on each cell looping over mice
+    drive_dfs = []
+    for meta, ids, tensor in zip(load_dict['meta_list'], load_dict['id_list'], load_dict['tensor_list']):
+        offset_spoof = np.ones(len(ids)) == (0 if match_to == 'onsets' else 1)
+        df = multi_stat_drive(
+            meta, ids, tensor, alternative='less', offset_bool=offset_spoof, neg_log10_pv_thresh=4,
+            staging=staging
+            )
+        drive_dfs.append(df)
+
+    # reshape dataframe into array cells x stages x cues
+    drive_stack = drive_stack_from_dfs(drive_dfs, load_dict, staging=staging)
+
+    # save your drive mat list
+    try:
+        np.save(save_path, drive_stack)
+    except:
+        print('File not saved: drive_day_mat_from_core_reversal_data().')
+
+    return drive_stack
+
+
+def drive_stack_from_dfs(drive_dfs, load_dict, staging='parsed_11stage'):
     """Reshape a list of drive dfs into a single matrix cells x stages x cues.
 
     Parameters
@@ -287,15 +370,24 @@ def drive_stack_from_dfs(drive_dfs, load_dict):
         for cue in cues:
             cue_lookup = lookups.lookup_mm_inv[utils.meta_mouse(m_df)]
             cue_df = m_df.loc[m_df.reset_index().initial_cue.isin([cue_lookup[cue]]).values, :]
-            cue_df_unfolded = cue_df.pivot_table(values='driven', index='cell_id', columns='parsed_11stage')
+            cue_df_unfolded = cue_df.pivot_table(values='driven', index='cell_id', columns=staging)
             # add "missing" stage columns to df
-            add_cols = [s for s in lookups.staging['parsed_11stage'] if s not in cue_df_unfolded.columns.values]
+            add_cols = [s for s in lookups.staging[staging] if s not in cue_df_unfolded.columns.values]
             if len(add_cols) > 0:
                 for col in add_cols:
                     cue_df_unfolded[col] = np.nan
-            cue_df_binary = cue_df_unfolded.loc[:, lookups.staging['parsed_11stage']].replace({True: 1, False: 0})
-            assert np.array_equal(cue_df_binary.reset_index().cell_id.values, ids)
-            cue_stack.append(cue_df_binary.values)
+            cue_df_binary = cue_df_unfolded.loc[:, lookups.staging[staging]].replace({True: 1, False: 0})
+            # assert np.array_equal(cue_df_binary.reset_index().cell_id.values, ids)
+            # match ids if any are missing (this has only happend in the FOV dataset)
+            if not np.array_equal(cue_df_binary.reset_index().cell_id.values, ids):
+                spoof_stack = np.zeros((len(ids), cue_df_binary.values.shape[1])) + np.nan
+                existing_ids = np.isin(ids, cue_df_binary.reset_index().cell_id.values)
+                # should be in the same order
+                assert(np.array_equal(cue_df_binary.reset_index().cell_id.values, ids[existing_ids]))
+                spoof_stack[existing_ids, :] = cue_df_binary.values
+                cue_stack.append(spoof_stack)
+            else:
+                cue_stack.append(cue_df_binary.values)
         cue_stack = np.dstack(cue_stack)
         drive_stack.append(cue_stack)
     drive_stack = np.vstack(drive_stack)
@@ -316,7 +408,7 @@ def drive_day_mat_from_core_reversal_data(match_to='onsets'):
     if os.path.isfile(save_path):
         drive_mat_load = np.load(save_path, allow_pickle=True)
         return drive_mat_load
-    
+
     # load all of your raw reversal n=7 data
     load_dict = load.core_reversal_data(limit_to=None, match_to=match_to)
 
@@ -325,12 +417,12 @@ def drive_day_mat_from_core_reversal_data(match_to='onsets'):
 
         # add reversal condition to be used as your cue
         meta = utils.add_reversal_mismatch_condition_to_meta(meta)
-        
+
         if match_to == 'onsets':
             offset_spoof = np.ones(tensor.shape[0]) == 0
-        elif match_to == 'offsets': 
+        elif match_to == 'offsets':
             offset_spoof = np.ones(tensor.shape[0]) == 1
-        
+
         df = multi_stat_drive_day(meta, ids, tensor, alternative='less', offset_bool=offset_spoof, neg_log10_pv_thresh=4)
 
         # Reshape a driven-ness matrix into cells x trials x cues
@@ -339,10 +431,10 @@ def drive_day_mat_from_core_reversal_data(match_to='onsets'):
         trial_date_vec = meta.reset_index().date.values
 
         for cuei, cue in enumerate(cues):
-            cue_df = pd.pivot_table(df.loc[df.mismatch_condition.isin([cue]), :], 
+            cue_df = pd.pivot_table(df.loc[df.mismatch_condition.isin([cue]), :],
                                     values='driven', index='cell_id', columns='date',
                                     aggfunc='any', fill_value=np.nan, dropna=False)
-            cue_df = cue_df.replace({False: 0, True:1})
+            cue_df = cue_df.replace({False: 0, True: 1})
             assert np.array_equal(cue_df.index.values, ids)
             for di, day in enumerate(pd.unique(trial_date_vec)): # don't sort pd.
                 day_vec = cue_df.loc[:, day]
@@ -645,7 +737,13 @@ def cell_driven_one_stage_of_two(meta, ids, drive_type='trial', staging='parsed_
     return pairwise_drive
 
 
-def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None, neg_log10_pv_thresh=4):
+def multi_stat_drive(meta,
+                     ids,
+                     tensor,
+                     alternative='less',
+                     offset_bool=None,
+                     neg_log10_pv_thresh=4,
+                     staging='parsed_11stage'):
     """
     Calculate drivenness on all trials for each stage for each cell. For ONSET/STIM cells it tests the whole
     stimulus window and a 500 ms window from 200 - 700 ms after stimulus onset with Bonferroni correction for
@@ -684,6 +782,10 @@ def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None, ne
     # assume data is the usual 15.5 hz 7 sec 108 frame vector
     assert tensor.shape[1] == 108
 
+    # check that staging is in meta
+    if staging not in meta.columns:
+        meta = utils.add_stages_to_meta(meta, staging)
+
     # get windows for additional comparisons --> 500 ms with a 200 ms delay to account for GECI tau
     stim_length = lookups.stim_length[mouse]
     time_vec = np.arange(-1, 6, 1 / 15.5)[:108]
@@ -706,7 +808,7 @@ def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None, ne
     # preallocate
     data = {
         'mouse': [],
-        'parsed_11stage': [],
+        staging: [],
         'initial_cue': [],
         'cell_id': [],
         'cell_n': [],
@@ -715,8 +817,8 @@ def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None, ne
         'neg_log10_pv': [],
         'driven': []
     }
-    for si, stage in enumerate(lookups.staging['parsed_11stage']):
-        stage_boo = meta.parsed_11stage.isin([stage]).values
+    for si, stage in enumerate(lookups.staging[staging]):
+        stage_boo = meta[staging].isin([stage]).values
 
         for icue in ['plus', 'minus', 'neutral']:
             cue_boo = meta.initial_condition.isin([icue]).values
@@ -776,7 +878,7 @@ def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None, ne
 
                 # build your dict for a dataframe
                 data['mouse'].append(mouse)
-                data['parsed_11stage'].append(stage)
+                data[staging].append(stage)
                 data['initial_cue'].append(icue)
                 data['cell_id'].append(ids[celli])
                 data['cell_n'].append(celli + 1)
@@ -785,7 +887,7 @@ def multi_stat_drive(meta, ids, tensor, alternative='less', offset_bool=None, ne
                 data['neg_log10_pv'].append(-np.log10(pv_epoch))
                 data['driven'].append(-np.log10(pv_epoch) >= neg_log10_pv_thresh)
 
-    df = pd.DataFrame(data=data).set_index(['mouse', 'parsed_11stage', 'initial_cue'])
+    df = pd.DataFrame(data=data).set_index(['mouse', staging, 'initial_cue'])
 
     return df
 

@@ -354,13 +354,21 @@ def groupday_tca(
     elif group_by.lower() == 'all3':
         tags = None
         use_dprime = False
+        # if mouse == 'OA27':
+        #     exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+        #                     'retinotopy', 'sated', 'learning_start',
+        #                     'reversal2_start', 'reversal2')
+        # else:
+        #     exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
+        #                     'retinotopy', 'sated', 'reversal2_start',
+        #                     'reversal2')
         if mouse == 'OA27':
-            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
-                            'retinotopy', 'sated', 'learning_start',
+            exclude_tags = ('orientation_mapping', 'contrast',
+                            'retinotopy', 'learning_start',
                             'reversal2_start', 'reversal2')
         else:
-            exclude_tags = ('disengaged', 'orientation_mapping', 'contrast',
-                            'retinotopy', 'sated', 'reversal2_start',
+            exclude_tags = ('orientation_mapping', 'contrast',
+                            'retinotopy', 'reversal2_start',
                             'reversal2')
 
     elif group_by.lower() == 'all_inc':

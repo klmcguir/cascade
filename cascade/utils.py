@@ -8,6 +8,78 @@ from . import lookups, bias, tca
 from copy import deepcopy
 
 
+def average_across_cats(tensor_stack, cell_cats, shared_cat=None, force_match_to=None):
+    """Helper function to generate averages and SEM for categories of cells. SEM over cells.
+
+    Parameters
+    ----------
+    tensor_stack : numpy.ndarray
+        Array of cells x times-&-stages x tuning/conditition/cue.
+    cell_cats : list
+        List of categores as integers that a cell belongs to. 
+    mouse_vec : numpy.ndarray or list
+        Vector as long as cell numbers, that specifies mouse identity. 
+    shared_cat : int or list
+        Category in cell_cats to use in all calculations. Must be negative to prevent it being incuded as
+        a stand alone category as well. i.e., a cell category of -2.
+
+    Returns
+    -------
+    Two numpy arrays. 
+        Numpy array of average traces and SEM.
+    """
+
+    # parse cell groupings
+    all_cats = pd.unique(cell_cats)
+    if force_match_to is not None:
+        if force_match_to == 'onsets':
+            all_cats = lookups.fixed_component_sort['rank9_onset']
+        elif force_match_to == 'offsets':
+            all_cats = lookups.fixed_component_sort['rank8_offset']
+        else:
+            raise ValueError
+    else:
+        if len(cell_cats) > 1400: # 1799 is full size but setting softer thresh for other datasets
+            all_cats = lookups.fixed_component_sort['rank9_onset']
+        elif len(cell_cats) <= 445: # will never be more than this
+            all_cats = lookups.fixed_component_sort['rank8_offset']
+        else:
+            raise ValueError('Unexpected data size. Which dataset is this?')
+
+    # optionally use a subset of cats in all calculations
+    if shared_cat is not None:
+        if not isinstance(shared_cat, list):
+            if isinstance(shared_cat, int):
+                shared_cat = [shared_cat]
+            else:
+                shared_cat = list(shared_cat)
+        assert all([s < 0 for s in shared_cat])
+
+    avg_ten = np.zeros((len(all_cats), tensor_stack.shape[1], tensor_stack.shape[2])) + np.nan
+    sem_ten = np.zeros((len(all_cats), tensor_stack.shape[1], tensor_stack.shape[2])) + np.nan
+
+    for cc, cat in enumerate(all_cats):
+
+        cat_boo = np.isin(cell_cats, cat) | np.isin(cell_cats, shared_cat)
+        cat_avg = np.nanmean(tensor_stack[cat_boo, :, :], axis=0)
+        avg_ten[cc, :, :] = cat_avg
+        sem_ten[cc, :, :] = np.nanstd(tensor_stack[cat_boo, :, :], axis=0) / np.sqrt(np.sum(~np.isnan(tensor_stack[cat_boo, :, :]), axis=0))
+
+    return avg_ten, sem_ten
+
+
+def mean_2s_from_unwrapped_tensor(mean_stack):
+    """ Helper function to take the mean respoonse
+    across a 2s stim or response window, from an unwrapped tensor.
+    Input organized: cells x (time x stage or trials) x cues or cue conditions.
+    """
+    cue_list = []
+    for i in range(mean_stack.shape[2]):
+        cue_list.append(np.nanmean(wrap_tensor(mean_stack[:, :, i])[:, 17:, :], axis=1)[:, :, None])
+
+    return np.dstack(cue_list)
+
+
 def simple_mean_per_day(meta, tensor, meta_bool=None,
                         filter_running=None, filter_licking=None, filter_hmm_engaged=False):
     """
@@ -163,7 +235,7 @@ def flat_balanced_mean_per_stage(meta, tensor, staging='parsed_11stage', meta_bo
                            filter_licking=filter_licking,
                            filter_hmm_engaged=filter_hmm_engaged)
 
-    # Take average across first two seconds post baseline 
+    # Take average across first two seconds post baseline
     assert tensor.shape[1] < 108
     flat_tensor = np.nanmean(tensor[:, 17:, :], axis=1)
     flat_tensor[flat_tensor <=0] = 0
@@ -1169,11 +1241,11 @@ def add_stages_to_meta(meta, staging, dp_by_run=True, simple=False, bin_scale=0.
         if 'parsed_11stage' not in meta.columns or force:
             meta = add_11stages_to_meta(meta, dp_by_run=dp_by_run, bin_scale=bin_scale)
     if 'parsed_4stage' in staging:
-         if 'parsed_4stage' not in meta.columns or force:
-             meta = add_4stages_to_meta(meta)
+        if 'parsed_4stage' not in meta.columns or force:
+            meta = add_4stages_to_meta(meta)
     if 'parsed_4stagev2' in staging:
-         if 'parsed_4stagev2' not in meta.columns or force:
-             meta = add_4stagesv2_to_meta(meta)
+        if 'parsed_4stagev2' not in meta.columns or force:
+            meta = add_4stagesv2_to_meta(meta)
 
     return meta
 
@@ -1281,9 +1353,9 @@ def add_4stages_to_meta(meta):
     -------
     meta
         Return the same DataFrame with a new column.
-    """ 
+    """
     assert 'parsed_11stage' in meta.columns, 'Add parsed_11stage binning to metadata and try again.'
-    
+
     new_stage_vec = np.zeros(len(meta)) + np.nan
     new_names = ['early_learning', 'late_learning', 'early_reversal', 'late_reversal']
     stage_sets = [
@@ -1315,9 +1387,9 @@ def add_4stagesv2_to_meta(meta):
     -------
     meta
         Return the same DataFrame with a new column.
-    """ 
+    """
     assert 'parsed_11stage' in meta.columns, 'Add parsed_11stage binning to metadata and try again.'
-    
+
     new_stage_vec = np.zeros(len(meta)) + np.nan
     new_names = ['early_learning', 'late_learning', 'early_reversal', 'late_reversal']
     stage_sets = [
@@ -2024,14 +2096,14 @@ def sort_and_rescale_factors(mod_ensemble, skip_cell_sort=False):
     my_rank_sorts, sort indexes to keep track of cell identity
 
     """
-    
+
     # copy so as not to change original model
     mod_ensemble = deepcopy(mod_ensemble)
-    
+
     # rescale your factor so that the full weight is carried on the cell_factor
     for k in mod_ensemble.results.keys():
         for i in range(len(mod_ensemble.results[k])):
-            
+
             # rescale
             factors = mod_ensemble.results[k][i].factors
             scaled_factors = rescale_factors(factors)
@@ -2039,31 +2111,31 @@ def sort_and_rescale_factors(mod_ensemble, skip_cell_sort=False):
             # overwrite your copy of your model with rescaled factors
             for cj, j in enumerate(scaled_factors):
                 mod_ensemble.results[k][i].factors[cj] = j
-        
+
     # resort factors so that they are grouped by tuning
     my_tune_sorts = []
     for k in mod_ensemble.results.keys():
         for i in range(len(mod_ensemble.results[k])):
-        
+
             factors = mod_ensemble.results[k][i].factors
             max_tune = np.argmax(factors[2], axis=0)
             sum_tune = np.nansum(factors[2], axis=0)  # sum == 1 if perfectly tuned, == 3 if broad
-            
+
             # move joint and broadly tuned components to end
             max_tune[sum_tune > 1.5] = max_tune[sum_tune > 1.5] + factors[2].shape[1]
             tune_sorting = np.argsort(max_tune)
             if i == 0:
                 my_tune_sorts.append(tune_sorting)  # use only top iterations
-            
+
             # apply tune sort
             for j in range(3):
                 mod_ensemble.results[k][i].factors[j] = mod_ensemble.results[k][i].factors[j][:, tune_sorting]
-    
-    
+
+
     # sort cells according to highest weight component, then order them highest to lowest within group
     my_rank_sorts = []
     for k in mod_ensemble.results.keys():
-        
+
         # rescale your factor so that the full weight is carried on the cell_factor
         factors = mod_ensemble.results[k][0].factors
 
@@ -2089,7 +2161,7 @@ def sort_and_rescale_factors(mod_ensemble, skip_cell_sort=False):
         inds_to_end = full_sort[no_weight_binary]
         full_sort = np.concatenate(
             (full_sort[np.invert(no_weight_binary)], inds_to_end), axis=0)
-        
+
         # save your sort
         my_rank_sorts.append(full_sort)
 
