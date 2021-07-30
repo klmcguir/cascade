@@ -414,7 +414,7 @@ def build_speed_mat_shuffle(mouse_vec,
 
     boot_tensor_stack_list = []
     rand_rng = np.random.default_rng()
-    for booti in range(boot_n):
+    for booti in tqdm(range(boot_n)):
         full_tensor_stack = []
         full_tensor_stack2 = []
         for meta, tensor in zip(load_dict['meta_list'], load_dict['tensor_list']):

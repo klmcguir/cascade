@@ -3,6 +3,7 @@ import pandas as pd
 from . import drive, utils, paths, lookups, load, categorize
 from sklearn.metrics import roc_auc_score
 from copy import deepcopy
+from tqdm import tqdm
 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -14,6 +15,343 @@ import os
 """
 TODO: function to get preferred tuning from component category vector 
 """
+
+
+def diff_shuffle_stage(match_to='onsets', boot_n=10000, return_matrix=True):
+    """Shuffle across stages, calculating the difference between a pair of stages
+
+    Parameters
+    ----------
+    match_to : str, optional
+        Use offsets or onsets (groups of cells), by default 'onsets'
+    return_matrix : bool, optional
+        Optionally return your unwrapped tensor matrix split across trial categories and tuning. 
+
+    Returns
+    -------
+    pandas.DataFrame
+        Indices for each cell. 
+    numpy.ndarray, optional
+        Matrix of all of your cell averages for each trial category and tuning condition. 
+
+    Raises
+    ------
+    NotImplementedError
+        When you ask for an index type that has not been set up yet.
+    """
+
+    # if the index file exists return the file 
+    save_path = os.path.join(lookups.coreroot, f'{match_to}_index_2s_df_normdiff{boot_n}.pkl')
+    matrix_path = os.path.join(lookups.coreroot, f'{match_to}_mat_normdiff{boot_n}.npy')
+    if os.path.isfile(save_path):
+        index_df = pd.read_pickle(save_path)
+        if return_matrix:
+            mat2ds = np.load(matrix_path)
+            return index_df, mat2ds
+        return index_df
+
+    # load tca reversal n=7 data
+    tca_dict = load.core_tca_data(limit_to=None, match_to=match_to)
+    mouse_vec = tca_dict['mouse_vec']
+    cell_vec = tca_dict['cell_vec']
+    cell_cats = tca_dict['cell_cats']
+
+    # set groupings
+    if match_to == 'onsets':
+        cat_groups_pref_tuning = lookups.tuning_groups['rank9_onset']
+        cmap = lookups.cmap_fixed_sort_rank9_onset
+        comp_names = lookups.comp_class_names['rank9_onset']
+    elif match_to == 'offsets':
+        cat_groups_pref_tuning = lookups.tuning_groups['rank8_offset']
+        cmap = lookups.cmap_fixed_sort_rank8_offset
+        comp_names = lookups.comp_class_names['rank8_offset']
+    else:
+        raise ValueError
+
+    # build your matrix
+    limit_to = match_to
+    tensor_stack = build_cue_mat(
+        mouse_vec,
+        cell_vec,
+        limit_tag=limit_to,
+        allstage=False,
+        norm_please=True,
+        no_disengaged=False,
+    )
+    np.save(matrix_path, tensor_stack)
+
+    df_shuff_list = []
+    df_shuff_list_cells = []
+    boot_n = 10000
+    for boot in tqdm(range(boot_n)):
+        boot_list = []
+        boot_list_cells = []
+        for mouse in np.unique(mouse_vec):
+
+            mboo = mouse_vec == mouse
+            ind1 = np.array(np.floor(np.random.rand(10)*10), int)
+            ind2 = np.array(np.floor(np.random.rand(10)*10), int)
+
+            # take mean per comp
+            mean_stack, sem_stack = utils.average_across_cats(
+                tensor_stack[mboo, :, :], cell_cats[mboo], shared_cat=None, force_match_to=match_to
+            )
+            mean_stack_2s = utils.mean_2s_from_unwrapped_tensor(mean_stack)
+            shuff_stack = mean_stack_2s[:, ind1,:][:, 9, :] - mean_stack_2s[:,ind2,:][:, 4, :]
+
+            # take mean over all cells
+            total_mean = np.nanmean(tensor_stack[mboo, :, :], axis=0)[None, :, :]
+            total_mean_2s = utils.mean_2s_from_unwrapped_tensor(total_mean)
+            shuff_total = (total_mean_2s[:, ind1,:][:, 9, :] - total_mean_2s[:, ind2,:][:, 4, :]).flatten()
+
+            for cuei, cue_name in enumerate(lookups.cue_names):
+                dfcells = pd.DataFrame(data={
+                    'mouse': [mouse],
+                    'component_name': ['All cells'],
+                    'component': [0],
+                    'delta_T5': [shuff_total[cuei]],
+                    'cue': [cue_name],
+                })
+                boot_list_cells.append(dfcells)
+
+                df00 = pd.DataFrame(data={
+                    'mouse': [mouse] * len(shuff_stack[:, cuei]),
+                    'component_name': comp_names,
+                    'component': np.arange(len(shuff_stack[:, cuei])) + 1,
+                    'delta_T5': shuff_stack[:, cuei],
+                    'cue': [cue_name] * len(shuff_stack[:, cuei]),
+                })
+                boot_list.append(df00)
+        df00 = pd.concat(boot_list, axis=0)
+        dfcells = pd.concat(boot_list_cells, axis=0)
+        df_shuff_list.append(df00.groupby(['cue', 'component', 'component_name']).mean())
+        df_shuff_list_cells.append(dfcells.groupby(['cue', 'component', 'component_name']).mean())
+    df_shuff_all2 = pd.concat(df_shuff_list, axis=0)
+    df_shuff_all3 = pd.concat(df_shuff_list_cells, axis=0)
+    combo_df = pd.concat([df_shuff_all2, df_shuff_all3], axis=0)
+    combo_df.to_pickle(save_path)
+
+    if return_matrix:
+        return combo_df, tensor_stack
+    return combo_df
+
+
+def ab_index_df_shuffle_simp(match_to='onsets', index_on='pre_speed', boot_n=10000, return_matrix=True):
+    """Generate a set of index calculations for a given index_on trial category.
+    NOTE: preferred index type as of now is simple 'a-b' (.../[max_over_all_stages])
+
+    Parameters
+    ----------
+    match_to : str, optional
+        Use offsets or onsets (groups of cells), by default 'onsets'
+    index_on : str, optional
+        Index category to use, by default 'speed'
+    return_matrix : bool, optional
+        Optionally return your unwrapped tensor matrix split across trial categories and tuning. 
+
+    Returns
+    -------
+    pandas.DataFrame
+        Indices for each cell. 
+    numpy.ndarray, optional
+        Matrix of all of your cell averages for each trial category and tuning condition. 
+
+    Raises
+    ------
+    NotImplementedError
+        When you ask for an index type that has not been set up yet.
+    """
+
+    # if the index file exists return the file 
+    save_path = os.path.join(lookups.coreroot, f'{match_to}_{index_on}_index_2s_df_simp{boot_n}.pkl')
+    matrix_path = os.path.join(lookups.coreroot, f'{match_to}_{index_on}_mat_simp{boot_n}.npy')
+    if os.path.isfile(save_path):
+        index_df = pd.read_pickle(save_path)
+        if return_matrix:
+            mat2ds = np.load(matrix_path)
+            return index_df, mat2ds
+        return index_df
+
+    # load tca data
+    on_ens = load.core_tca_data(match_to=match_to)
+
+    # laod drivenness metrics
+    pref_ind = drive.preferred_cue_ind(match_to=match_to)
+    driven = drive.preferred_drive_mat(match_to=match_to)
+
+    # parse the index you are going to calculate
+    if index_on == 'pre_speed':
+        meta_col = 'pre_speed'
+        meta_col_vals = ['placeholder']
+    elif index_on == 'th':
+        meta_col = 'th'
+        meta_col_vals = ['placeholder']
+    elif index_on == 'gonogo':
+        meta_col = 'trialerror'
+        meta_col_vals = [0, 3, 5]
+    elif index_on == 'disengaged': # engaged vs disengaged
+        meta_col = 'hmm_engaged'
+        meta_col_vals = [True]
+    else:
+        raise NotImplementedError # add in other possibilites above
+
+    # build a tensor of all your tuning conditions and user defined split on some condition
+    mat2ds = build_any_mat(on_ens['mouse_vec'],
+                           on_ens['cell_vec'],
+                           meta_col=meta_col,
+                           meta_col_vals=meta_col_vals,
+                           limit_tag=match_to,
+                           allstage=True,
+                           norm_please=False,  # will normalize post load
+                           no_disengaged=False if index_on.lower() == 'disengaged' else True,
+                           add_broad_joint_tuning=True,
+                           n_in_a_row=2,
+                           staging='parsed_11stage')
+    np.save(matrix_path, mat2ds)
+
+    # take mean across 2s stim or response window
+    mat_list = []
+    for i in range(mat2ds.shape[2]):
+        wrap = utils.wrap_tensor(mat2ds[:,:,i])
+        mean_per_stage = np.nanmean(wrap[:,17:,:], axis=1)
+        mat_list.append(mean_per_stage[:, :, None])
+    mean_stack = np.dstack(mat_list)
+    mean_stack.shape
+
+    # normalize to max
+    max_vec = np.nanmax(np.nanmax(mean_stack, axis=2), axis=1)
+    max_vec[max_vec <= 0] = np.nan
+    norm_stack = mean_stack/max_vec[:, None, None]
+    # norm_stack = mean_stack
+
+    # rectify data to make index more interpretable
+    rect_stack = deepcopy(norm_stack)
+    rect_stack[rect_stack < 0] = 0
+
+    # blank unpreferred stimuli
+    pref_stack = deepcopy(rect_stack)
+    total_pre = np.nansum(pref_ind, axis=1)
+    # no pref
+    pref_stack[total_pre == 0, :, :] = np.nan
+    # single tuning
+    for i in range(3):
+        slice_not_preferred = ~(pref_ind[:, i] == 1) & (total_pre == 1)
+        slice_preferred = (pref_ind[:, i] == 1) & (total_pre == 1)
+        pref_stack[slice_not_preferred, :, i] = np.nan
+        pref_stack[slice_not_preferred, :, i+6] = np.nan
+        pref_stack[slice_preferred, :, 3:6] = np.nan
+        pref_stack[slice_preferred, :, 9:12] = np.nan
+    # broad tuning
+    slice_not_preferred = ~(total_pre == 3)
+    pref_stack[slice_not_preferred, :, 3] = np.nan
+    pref_stack[slice_not_preferred, :, 3+6] = np.nan
+    for i in range(12):
+        if i == 3 or i == 3 + 6:
+            continue
+        pref_stack[~slice_not_preferred, :, i] = np.nan
+    # joint tuning --> 'joint-becomes_unrewarded-remains_unrewarded'
+    slice_not_preferred = ~(total_pre == 2)  & ((pref_ind[:, 0] == 1) & (pref_ind[:, 1] == 1))
+    slice_preferred = (total_pre == 2)  & ((pref_ind[:, 0] == 1) & (pref_ind[:, 1] == 1))
+    pref_stack[slice_not_preferred, :, 4] = np.nan
+    pref_stack[slice_not_preferred, :, 4+6] = np.nan
+    for i in range(12):
+        if i == 4 or i == 4 + 6:
+            continue
+        pref_stack[slice_preferred, :, i] = np.nan
+    # joint tuning --> 'joint-becomes_rewarded-remains_unrewarded'
+    slice_not_preferred = ~(total_pre == 2)  & ((pref_ind[:, 1] == 1) & (pref_ind[:, 2] == 1))
+    slice_preferred = (total_pre == 2)  & ((pref_ind[:, 1] == 1) & (pref_ind[:, 2] == 1))
+    pref_stack[slice_not_preferred, :, 5] = np.nan
+    pref_stack[slice_not_preferred, :, 5+6] = np.nan
+    for i in range(12):
+        if i == 5 or i == 5 + 6:
+            continue
+        pref_stack[slice_preferred, :, i] = np.nan
+    # max across depth can't be more than 2 for any cell for any stage (one per condition)
+    assert np.all(np.nanmax(np.sum(np.isfinite(pref_stack), axis=2), axis=1) <= 2)
+
+    # get peak stage index per cell
+    no_na = deepcopy(pref_stack)
+    no_na[np.isnan(no_na)] = -10
+    best_stage = np.nanargmax(np.nanmax(no_na[:,:,:], axis=2)[:, 1:], axis=1) + 1 # don't allow naive to be best
+
+    # smoosh cues together for fast and slow
+    pref_fast = np.nanmean(pref_stack[:,:,:6], axis=2)
+    pref_slow = np.nanmean(pref_stack[:,:,6:], axis=2)
+
+    # nan undriven stages for each cell
+    pref_fast[driven == 0] = np.nan
+    pref_slow[driven == 0] = np.nan
+
+    df_list = []
+    for iii in tqdm(range(boot_n)):
+        # randomize run/stat go/nogo for each stage
+        rand_mask = np.random.rand(pref_fast.shape[0], pref_fast.shape[1]) > 0.5
+        shuff_fast = deepcopy(pref_fast)
+        shuff_slow = deepcopy(pref_slow)
+        shuff_fast[rand_mask] = pref_slow[rand_mask]
+        shuff_slow[rand_mask] = pref_fast[rand_mask]
+
+        # take index for each driven stage tehn average index over stages
+        index_each_stage = np.nanmean(pref_fast - pref_slow / (shuff_fast + shuff_slow), axis=1)
+
+        # take mean across stages then index
+        a = np.nanmean(shuff_fast[:,1:], axis=1) # don't include naive
+        b = np.nanmean(shuff_slow[:,1:], axis=1)
+        index_avg_stage = a - b / (a + b)
+
+        # take diference since everything is normalized to peak
+        index_diff_stage = a - b
+        avg_a = deepcopy(a)
+        avg_b = deepcopy(b)
+
+        # take index using only the maximum driven stage per cell
+        a = np.zeros(len(best_stage)) + np.nan
+        b = np.zeros(len(best_stage)) + np.nan
+        for celli in range(len(best_stage)):
+            a[celli] = shuff_fast[celli, best_stage[celli]]
+            b[celli] = shuff_slow[celli, best_stage[celli]]
+        index_diff_best_stage = a - b
+        index_best_stage = a - b / (a + b)
+
+        # take index using only the maximum driven pre/post reversal per cell
+        a = np.zeros(len(best_stage)) + np.nan
+        b = np.zeros(len(best_stage)) + np.nan
+        for celli in range(len(best_stage)):
+            if best_stage[celli] <= 5:
+                a[celli] = np.nanmean(shuff_fast[celli, :6])
+                b[celli] = np.nanmean(shuff_slow[celli, :6])
+            elif best_stage[celli] > 5:
+                a[celli] = np.nanmean(shuff_fast[celli, 6:])
+                b[celli] = np.nanmean(shuff_slow[celli, 6:])
+        index_diff_best_half = a - b
+        index_best_half = a - b / (a + b)
+
+        data = {
+            'mouse': on_ens['mouse_vec'],
+            'cell_id': on_ens['cell_vec'],
+            'cell_cats': on_ens['cell_cats'],
+            'index_on': [index_on] * len(on_ens['cell_cats']),
+            'onsets_or_offsets': [match_to] * len(on_ens['cell_cats']),
+            f'a-b': index_diff_stage,
+            f'a-b/a+b': index_avg_stage,
+            f'a-b/a+b_eachstageavg': index_each_stage,
+            f'a-b_maxstage': index_diff_best_stage,
+            f'a-b/a+b_maxstage': index_best_stage,
+            f'a-b_maxhalf': index_diff_best_half,
+            f'a-b/a+b_maxhalf': index_best_half,
+            f'a': avg_a,
+            f'b': avg_b,
+        }
+        index_df = pd.DataFrame(data=data).set_index(['mouse', 'cell_id'])
+        df_list.append(index_df)
+    all_df = pd.concat(df_list, axis=0)
+    all_df.to_pickle(save_path)
+
+    if return_matrix:
+        return all_df, mat2ds
+    return all_df
+
 
 def ab_index_df(match_to='onsets', index_on='pre_speed', return_matrix=True):
     """Generate a set of index calculations for a given index_on trial category.
@@ -221,7 +559,7 @@ def ab_index_df(match_to='onsets', index_on='pre_speed', return_matrix=True):
     return index_df
 
 
-def ab_index_df_shuffle(match_to='onsets', index_on='pre_speed', return_matrix=True, boot_n=10):
+def ab_index_df_shuffle(match_to='onsets', index_on='pre_speed', return_matrix=False, boot_n=10000):
     """Generate a set of index calculations for a given index_on trial category.
     This is a SHUFFLE without replacement. To test how likely it would be to get a similar
     a-b index given totaly random trial inputs taken from the same pool of trials. 
@@ -294,7 +632,7 @@ def ab_index_df_shuffle(match_to='onsets', index_on='pre_speed', return_matrix=T
                            add_broad_joint_tuning=True,
                            staging='parsed_11stage',
                            boot_n=boot_n)
-    np.save(matrix_path, mat2ds_list, allow_pickle=True)
+    # np.save(matrix_path, mat2ds_list, allow_pickle=True)
 
     shuffle_list = []
     for booti, mat2ds in enumerate(mat2ds_list):

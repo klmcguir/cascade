@@ -1,4 +1,6 @@
 """ Functions for plotting modulation (mostly figire 3-5 related) """
+from numpy.lib.twodim_base import _trilu_indices_form_dispatcher
+from pandas.core import indexing
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
@@ -6,16 +8,34 @@ from matplotlib.collections import PatchCollection
 import warnings
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 from ..trialanalysis import build_any_mat, build_cue_mat
 from .. import load, utils, lookups, paths, sorters, selectivity
 from .plot_utils import heatmap_xticks
 import os
 from copy import deepcopy
+from matplotlib.colors import ListedColormap
+
+
+def make_some_plots():
+    """Helper function to generate a shortlist of plots from this module
+    """
+    # difference between learning stages T1R - T5L
+    plot_horbar_stagediff_T5lT1r(match_to='onsets', limit_to='onsets', norm_please=True)
+    plot_horbar_stagediff_T5lT1r(match_to='offsets', limit_to='offsets', norm_please=True)
+
+    # difference between learning stages T5R - T5L
+    plot_horbar_homeodiff(match_to='onsets', limit_to='onsets', norm_please=True)
+    plot_horbar_homeodiff(match_to='offsets', limit_to='offsets', norm_please=True)
+
+    # difference between learning stages T4L - T5L
+    plot_horbar_stagediff_T5lT4l(match_to='onsets', limit_to='onsets', norm_please=True)
+    plot_horbar_stagediff_T5lT4l(match_to='offsets', limit_to='offsets', norm_please=True)
 
 
 def make_all_plots():
-    """Helper function to generate a shortlist of plots from this module
+    """Helper function to generate a a more comprehensive shortlist of plots from this module
     """
 
     # difference between learning stages T1R - T5L
@@ -57,9 +77,12 @@ def make_all_plots():
 
 def plot_modulation_summary_bars(match_to='onsets',
                                  index_on='pre_speed',
-                                 with_pointplot=True,
+                                 with_pointplot=False,
                                  mouse_or_cells='mouse',
-                                 save_please=True):
+                                 save_please=True,
+                                 return_df=False,
+                                 add_ci=True,
+                                 add_stars=True):
 
     # plot label params
     yl_size = 14
@@ -125,13 +148,16 @@ def plot_modulation_summary_bars(match_to='onsets',
     single_sem = mouse_means.sem()
 
     # plot average across all whole population and per category
+    plt.rcParams["font.family"] = "Arial"
     fig = plt.figure(figsize=(6, 4))
     gs = fig.add_gridspec(100, 100)
     with sns.axes_style('whitegrid'):
+        plt.rcParams["font.family"] = "Arial"
         ax_mean = fig.add_subplot(gs[:, 0:15])
         ax_comps = fig.add_subplot(gs[:, 25:90], sharey=ax_mean)
 
     with sns.axes_style('whitegrid'):
+        plt.rcParams["font.family"] = "Arial"
         sns.barplot(x=[0.0], y=[single_mean['a-b']], ci=False, color='blue', zorder=10, ax=ax_mean)
         if mouse_or_cells == 'mouse':
             sns.stripplot(data=total_means.reset_index(),
@@ -154,6 +180,7 @@ def plot_modulation_summary_bars(match_to='onsets',
         ax_mean.set_xlim(-1, 1)
 
     with sns.axes_style('whitegrid'):
+        plt.rcParams["font.family"] = "Arial"
         sns.barplot(data=mmean.reset_index(),
                     x='cell_cats',
                     y='a-b',
@@ -205,16 +232,128 @@ def plot_modulation_summary_bars(match_to='onsets',
     ax_mean.set_xlabel('')
     ax_comps.set_xlabel('')
     ax_comps.set_ylabel('')
+
+    if add_ci:
+        if match_to == 'onsets':
+            comps_for_boot = 9
+        else:
+            comps_for_boot = 8
+        boots = int(np.floor(100000/comps_for_boot))
+        df_shuff_means = []
+        for booti in tqdm(range(boots)):
+            rand_sample = mouse_means['a-b'].groupby('mouse').sample(comps_for_boot, replace=True).to_frame()
+            try:
+                rand_sample['cat'] = mouse_means.reset_index().cell_cats.values
+            except:
+                # make vector manually assuming 7 mice
+                rand_sample['cat'] = np.array([lookups.fixed_component_sort[model_spec] * 7]).flatten()
+            shuff_df = rand_sample.loc[:, ['a-b', 'cat']].groupby('cat').mean()
+            df_shuff_means.append(shuff_df)
+        smeans = pd.concat(df_shuff_means, axis=0)
+        low = smeans.quantile(0.025).values
+        high = smeans.quantile(0.975).values
+        ax_comps.axhline(low, color='xkcd:medium gray', linestyle='--', linewidth=1, zorder=0)
+        ax_comps.axhline(high, color='xkcd:medium gray', linestyle='--', linewidth=1, zorder=0)
+
+    if add_stars:
+        true_mean = mouse_means.groupby(['cell_cats']).mean()['a-b']
+        sdf = selectivity.ab_index_df_shuffle_simp(match_to=match_to, index_on=index_on, return_matrix=False)
+        if match_to == 'onsets':
+            boot_vec = np.array([[s] * 1799 for s in range(10000)]).flatten()
+        else:
+            boot_vec = np.array([[s] * 445 for s in range(10000)]).flatten()
+        sdf['boots'] = boot_vec
+        mean_groups = sdf.groupby(['cell_cats', 'boots']).mean()
+        mean_all_cells = sdf.groupby(['boots']).mean()
+        bon_cor = len(mean_groups.reset_index().cell_cats.unique())
+
+        pv_list = []
+        pv_bon_list = []
+        for i, gr in true_mean.to_frame().iterrows():
+
+            this_comp = mean_groups.reset_index().cell_cats.isin([i]).values
+            mean_dist = mean_groups.loc[this_comp, 'a-b']
+
+            high = mean_dist.gt(true_mean[i]).sum()/len(mean_dist)
+            low = mean_dist.lt(true_mean[i]).sum()/len(mean_dist)
+            pv = np.min([high, low])*2 # two-tailed
+            pv_list.append(pv)
+            pv_bon_list.append(pv*bon_cor) # bon correct for comparisons within cue
+        true_mean = true_mean.to_frame()
+        true_mean['pv'] = pv_list
+        true_mean[f'pv_bon{bon_cor}'] = pv_bon_list
+
+        high = mean_all_cells['a-b'].gt(single_mean['a-b']).sum()/len(mean_all_cells['a-b'])
+        low = mean_all_cells['a-b'].lt(single_mean['a-b']).sum()/len(mean_all_cells['a-b'])
+        all_cell_pv = np.min([high, low])*2
+        all_cell_pv_bon = all_cell_pv*bon_cor
+
+        pos_star = False
+        neg_star = False
+        for ind, val in true_mean.iterrows():
+            xi = np.where(true_mean.reset_index().cell_cats.isin([ind]))[0][0]
+            yi1 = mouse_means['a-b'].max()
+            yi2 = mouse_means['a-b'].min()
+            if val[2] < 0.0001 and val[2] > 0:
+                star = '***'
+            elif val[2] < 0.001:
+                star = '**'
+            elif val[2] < 0.05:
+                star = '*'
+            else:
+                continue
+            if val['a-b'] >= 0:
+                yi = yi1 + 0.05
+                pos_star = True
+            else:
+                yi = yi2 - 0.05
+                neg_star = True
+            ax_comps.text(xi, yi, star, ha='center', size=14)
+
+        # for mean across cells
+        if all_cell_pv_bon < 0.05:
+            yi1 = mouse_means['a-b'].max()
+            yi2 = mouse_means['a-b'].min()
+            if all_cell_pv_bon < 0.0001 and all_cell_pv_bon > 0:
+                star = '***'
+            elif all_cell_pv_bon < 0.001:
+                star = '**'
+            elif all_cell_pv_bon < 0.05:
+                star = '*'
+            if single_mean['a-b'] >= 0:
+                yi = yi1 + 0.05
+                pos_star = True
+            else:
+                yi = yi2 - 0.05
+                neg_star = False
+            ax_mean.text(0, yi, star, ha='center', size=14)
+        if pos_star or neg_star:
+            if pos_star:
+                plt.ylim(top=yi1 + 0.1)
+            if neg_star: 
+                plt.ylim(bottom=yi2 - 0.1)
+
     if save_please:
         pointtag = '_withpoint' if with_pointplot else ''
         plt.savefig(os.path.join(save_folder, f'{match_to}_{index_on}_avg_sem_{mouse_or_cells}{pointtag}.png'),
                     bbox_inches='tight')
         plt.savefig(os.path.join(save_folder, f'{match_to}_{index_on}_avg_sem_{mouse_or_cells}{pointtag}.pdf'),
                     bbox_inches='tight')
-        plt.close('all')
+        # plt.close('all')
+    if return_df:
+        return mouse_means
+    if add_stars:
+        return true_mean, pd.DataFrame(data={'cell_cats': ['all cells'], 'pv': [all_cell_pv], 'bv_bon':[all_cell_pv_bon]})
 
 
-def plot_horbar_homeodiff(match_to='onsets', limit_to=None, norm_please=False, allstage=False, save_please=True, fix_xlim=True):
+def plot_horbar_homeodiff(match_to='onsets',
+                          limit_to=None,
+                          norm_please=True,
+                          allstage=False,
+                          save_please=True,
+                          fix_xlim=True,
+                          add_ci=True,
+                          add_stars=True):
     """Plot horizontal barplot of difference between T5 reversal and T5 learning.
 
     Parameters
@@ -282,11 +421,17 @@ def plot_horbar_homeodiff(match_to='onsets', limit_to=None, norm_please=False, a
     # loop over mice and make plot for each mouse
     df1_list = []
     df2_list = []
+    df_shuff_list = []
     for cuei, cue_name in enumerate(lookups.cue_names):
 
         for mouse in np.unique(mouse_vec):
 
             mboo = mouse_vec == mouse
+
+            # assert not allstage
+            # test = [np.arange(47) + 47 * np.floor(np.random.rand()*10) for si in range(10)]
+            # test = [np.arange(47) + 47 * np.floor(np.random.rand()*10) for si in range(10)]
+            # np.array(test).flatten()
 
             # take mean per comp
             mean_stack, sem_stack = utils.average_across_cats(
@@ -294,7 +439,11 @@ def plot_horbar_homeodiff(match_to='onsets', limit_to=None, norm_please=False, a
             )
             mean_stack_2s = utils.mean_2s_from_unwrapped_tensor(mean_stack)
             t1t1_diff = mean_stack_2s[:, 9, :] - mean_stack_2s[:, 4, :] # 9 x 3
-            #     for
+
+            # take mean over all cells
+            total_mean = np.nanmean(tensor_stack[mboo, :, :], axis=0)[None, :, :]
+            total_mean_2s = utils.mean_2s_from_unwrapped_tensor(total_mean)
+            t1t1_diff_total = (total_mean_2s[:, 9, :] - total_mean_2s[:, 4, :]).flatten()
 
             # take mean over all cells
             total_mean = np.nanmean(tensor_stack[mboo, :, :], axis=0)[None, :, :]
@@ -318,12 +467,29 @@ def plot_horbar_homeodiff(match_to='onsets', limit_to=None, norm_please=False, a
                 'cue': [cue_name],
             })
             df2_list.append(df2)
+
+            # boot_n = 10000
+            # for boot in tqdm(range(boot_n)):
+            #     shuff_stack = (mean_stack_2s[:, np.array(np.floor(np.random.rand(10)*10), int),:][:, 9, :]
+            #                    - mean_stack_2s[:,np.array(np.floor(np.random.rand(10)*10), int),:][:, 4, :])
+
+            #     df00 = pd.DataFrame(data={
+            #         'mouse': [mouse] * len(shuff_stack[:, cuei]),
+            #         'component_name': comp_names,
+            #         'component': np.arange(len(shuff_stack[:, cuei])) + 1,
+            #         'delta_T5': shuff_stack[:, cuei],
+            #         'cue': [cue_name] * len(shuff_stack[:, cuei]),
+            #     })
+            #     df_shuff_list.append(df00)
+
     df1_all = pd.concat(df1_list, axis=0)
     df2_all = pd.concat(df2_list, axis=0)
+    # df_shuff_all = pd.concat(df_shuff_list, axis=0)
     combo_df = pd.concat([df1_all, df2_all])
 
     # plot
     with sns.axes_style('whitegrid'):
+        plt.rcParams["font.family"] = "Arial"
         fig, ax = plt.subplots(1, 3, figsize=(12, 4), sharex=True, sharey=True)
     for ci, cuen, in enumerate(lookups.cue_names_forced):
         plt_df = combo_df.loc[combo_df.cue.isin([cuen])]
@@ -353,10 +519,84 @@ def plot_horbar_homeodiff(match_to='onsets', limit_to=None, norm_please=False, a
             ax[ci].set_xlabel('T5 reversal - T5 learning\n\u0394F/F (z-score)',size=14)
         ax[ci].set_ylabel('Component cluster', size=14)
         ax[ci].set_title(f'{cuen}\n', size=16, color=lookups.color_dict[cuen])
+
+        if add_ci:
+            if match_to == 'onsets':
+                comps_for_boot = 9
+            else:
+                comps_for_boot = 8
+            boots = int(np.floor(100000/comps_for_boot))
+            df_shuff_means = []
+            # remove "all cells" for bootstrapping
+            plt_df_boot = plt_df.loc[~plt_df.component.isin([0]), :]
+            for booti in tqdm(range(boots)): # will total 100,000 calcs
+                rand_sample = plt_df_boot.loc[:, ['mouse', 'delta_T5']].groupby('mouse').sample(comps_for_boot, replace=True)
+                rand_sample['cat'] = plt_df_boot.reset_index().component.values
+                shuff_df = rand_sample.loc[:, ['delta_T5', 'cat']].groupby('cat').mean()
+                df_shuff_means.append(shuff_df)
+            smeans = pd.concat(df_shuff_means, axis=0)
+            low = smeans.quantile(0.025).values
+            high = smeans.quantile(0.975).values
+            ax[ci].axvline(low, color='xkcd:medium gray', linestyle='--', linewidth=1, zorder=0)
+            ax[ci].axvline(high, color='xkcd:medium gray', linestyle='--', linewidth=1, zorder=0)
+
+    if add_stars:
+        true_mean = combo_df.groupby(['component', 'component_name', 'cue']).mean()['delta_T5']
+        sdf = selectivity.diff_shuffle_stage(match_to='onsets', return_matrix=False)
+        bon_cor = len(sdf.reset_index().component.unique())
+
+        pv_list = []
+        pv_bon_list = []
+        for i, gr in true_mean.to_frame().iterrows():
+
+            this_cue = sdf.reset_index().cue.isin([i[2]]).values
+            this_comp = sdf.reset_index().component.isin([i[0]]).values
+            mean_dist = sdf.loc[this_cue & this_comp]
+
+            high = mean_dist.gt(true_mean[i]).sum()/len(mean_dist)
+            low = mean_dist.lt(true_mean[i]).sum()/len(mean_dist)
+            pv = np.min([high.values, low.values])*2 # two-tailed
+            pv_list.append(pv)
+            pv_bon_list.append(pv*bon_cor) # bon correct for comparisons within cue
+        true_mean = true_mean.to_frame()
+        true_mean['pv'] = pv_list
+        true_mean[f'pv_bon{bon_cor}'] = pv_bon_list
+
+        for ind, val in true_mean.iterrows():
+            axi = np.where(np.isin(lookups.cue_names_forced, ind[2]))[0][0]
+            yi = ind[0]
+            if val[2] < 0.0001 and val[2] > 0:
+                star = '***'
+            elif val[2] < 0.001:
+                star = '**'
+            elif val[2] < 0.05:
+                star = '*'
+            else:
+                continue
+            if val.delta_T5 >= 0:
+                if match_to == 'onsets':
+                    xi = 0.525
+                else:
+                    xi = 0.625
+            else:
+                if match_to == 'onsets':
+                    xi = -0.525
+                else:
+                    xi = -0.825
+            ax[axi].text(xi, yi, star, ha='center', va='center', rotation=90, size=14)
+
+        if match_to == 'onsets':
+            plt.xlim([-0.58, 0.58])
+        else:
+            plt.xlim([-0.85, 0.65])
+
     ax[0].set_yticks(meany.reset_index().component.values)
     ax[0].set_yticklabels(meany.reset_index().component_name.to_list(), size=12)
     if fix_xlim:
-        plt.xlim([-0.5, 0.5])
+        if match_to == 'onsets':
+            plt.xlim([-0.58, 0.58])
+        else:
+            plt.xlim([-0.85, 0.65])
 
     if save_please:
         plt.savefig(os.path.join(save_folder, f'{match_to}_lim_{limit_to}_{norm_tag}_horbars{allstage_tag}.png'),
@@ -364,8 +604,18 @@ def plot_horbar_homeodiff(match_to='onsets', limit_to=None, norm_please=False, a
         plt.savefig(os.path.join(save_folder, f'{match_to}_lim_{limit_to}_{norm_tag}_horbars{allstage_tag}.pdf'),
                 bbox_inches='tight')
 
+    if add_stars:
+        return true_mean
 
-def plot_horbar_stagediff_T5lT1r(match_to='onsets', limit_to=None, norm_please=False, allstage=False, save_please=True, fix_xlim=True):
+
+def plot_horbar_stagediff_T5lT1r(match_to='onsets',
+                                 limit_to=None,
+                                 norm_please=False,
+                                 allstage=False,
+                                 save_please=True,
+                                 fix_xlim=True,
+                                 add_ci=True,
+                                 add_stars=True):
     """Plot horizontal barplot of difference between T5 reversal and T5 learning.
 
     Parameters
@@ -475,6 +725,7 @@ def plot_horbar_stagediff_T5lT1r(match_to='onsets', limit_to=None, norm_please=F
 
     # plot
     with sns.axes_style('whitegrid'):
+        plt.rcParams["font.family"] = "Arial"
         fig, ax = plt.subplots(1, 3, figsize=(12, 4), sharex=True, sharey=True)
     for ci, cuen, in enumerate(lookups.cue_names_forced):
         plt_df = combo_df.loc[combo_df.cue.isin([cuen])]
@@ -504,10 +755,79 @@ def plot_horbar_stagediff_T5lT1r(match_to='onsets', limit_to=None, norm_please=F
             ax[ci].set_xlabel('T1 reversal - T5 learning\n\u0394F/F (z-score)',size=14)
         ax[ci].set_ylabel('Component cluster', size=14)
         ax[ci].set_title(f'{cuen}\n', size=16, color=lookups.color_dict[cuen])
+
+        if add_ci:
+            if match_to == 'onsets':
+                comps_for_boot = 9
+            else:
+                comps_for_boot = 8
+            boots = int(np.floor(100000/comps_for_boot))
+            df_shuff_means = []
+            # remove "all cells" for bootstrapping
+            plt_df_boot = plt_df.loc[~plt_df.component.isin([0]), :]
+            for booti in tqdm(range(boots)): # will total 100,000 calcs
+                rand_sample = plt_df_boot.loc[:, ['mouse', 'delta_T5']].groupby('mouse').sample(comps_for_boot, replace=True)
+                rand_sample['cat'] = plt_df_boot.reset_index().component.values
+                shuff_df = rand_sample.loc[:, ['delta_T5', 'cat']].groupby('cat').mean()
+                df_shuff_means.append(shuff_df)
+            smeans = pd.concat(df_shuff_means, axis=0)
+            low = smeans.quantile(0.025).values
+            high = smeans.quantile(0.975).values
+            ax[ci].axvline(low, color='xkcd:medium gray', linestyle='--', linewidth=1, zorder=0)
+            ax[ci].axvline(high, color='xkcd:medium gray', linestyle='--', linewidth=1, zorder=0)
+
+    if add_stars:
+        true_mean = combo_df.groupby(['component', 'component_name', 'cue']).mean()['delta_T5']
+        sdf = selectivity.diff_shuffle_stage(match_to='onsets', return_matrix=False)
+        bon_cor = len(sdf.reset_index().component.unique())
+
+        pv_list = []
+        pv_bon_list = []
+        for i, gr in true_mean.to_frame().iterrows():
+
+            this_cue = sdf.reset_index().cue.isin([i[2]]).values
+            this_comp = sdf.reset_index().component.isin([i[0]]).values
+            mean_dist = sdf.loc[this_cue & this_comp]
+
+            high = mean_dist.gt(true_mean[i]).sum()/len(mean_dist)
+            low = mean_dist.lt(true_mean[i]).sum()/len(mean_dist)
+            pv = np.min([high.values, low.values])*2 # two-tailed
+            pv_list.append(pv)
+            pv_bon_list.append(pv*bon_cor) # bon correct for comparisons within cue
+        true_mean = true_mean.to_frame()
+        true_mean['pv'] = pv_list
+        true_mean[f'pv_bon{bon_cor}'] = pv_bon_list
+
+        for ind, val in true_mean.iterrows():
+            axi = np.where(np.isin(lookups.cue_names_forced, ind[2]))[0][0]
+            yi = ind[0]
+            if val[2] < 0.0001 and val[2] > 0:
+                star = '***'
+            elif val[2] < 0.001:
+                star = '**'
+            elif val[2] < 0.05:
+                star = '*'
+            else:
+                continue
+            if val.delta_T5 >= 0:
+                if match_to == 'onsets':
+                    xi = 0.525
+                else:
+                    xi = 0.625
+            else:
+                if match_to == 'onsets':
+                    xi = -0.525
+                else:
+                    xi = -0.825
+            ax[axi].text(xi, yi, star, ha='center', va='center', rotation=90, size=14)
+
     ax[0].set_yticks(meany.reset_index().component.values)
     ax[0].set_yticklabels(meany.reset_index().component_name.to_list(), size=12)
     if fix_xlim:
-        plt.xlim([-0.5, 0.5])
+        if match_to == 'onsets':
+            plt.xlim([-0.58, 0.58])
+        else:
+            plt.xlim([-0.85, 0.65])
 
     if save_please:
         plt.savefig(os.path.join(save_folder, f'{match_to}_lim_{limit_to}_{norm_tag}_horbars{allstage_tag}_T5lT1r.png'),
@@ -515,8 +835,18 @@ def plot_horbar_stagediff_T5lT1r(match_to='onsets', limit_to=None, norm_please=F
         plt.savefig(os.path.join(save_folder, f'{match_to}_lim_{limit_to}_{norm_tag}_horbars{allstage_tag}_T5lT1r.pdf'),
                 bbox_inches='tight')
 
+    if add_stars:
+        return true_mean
 
-def plot_horbar_stagediff_T5lT4l(match_to='onsets', limit_to=None, norm_please=False, allstage=False, save_please=True, fix_xlim=True):
+
+def plot_horbar_stagediff_T5lT4l(match_to='onsets',
+                                 limit_to=None,
+                                 norm_please=False,
+                                 allstage=False,
+                                 save_please=True,
+                                 fix_xlim=True,
+                                 add_ci=True,
+                                 add_stars=True):
     """Plot horizontal barplot of difference between T4 learning and T5 learning.
 
     Parameters
@@ -626,6 +956,7 @@ def plot_horbar_stagediff_T5lT4l(match_to='onsets', limit_to=None, norm_please=F
 
     # plot
     with sns.axes_style('whitegrid'):
+        plt.rcParams["font.family"] = "Arial"
         fig, ax = plt.subplots(1, 3, figsize=(12, 4), sharex=True, sharey=True)
     for ci, cuen, in enumerate(lookups.cue_names_forced):
         plt_df = combo_df.loc[combo_df.cue.isin([cuen])]
@@ -655,16 +986,88 @@ def plot_horbar_stagediff_T5lT4l(match_to='onsets', limit_to=None, norm_please=F
             ax[ci].set_xlabel('T4 learning - T5 learning\n\u0394F/F (z-score)',size=14)
         ax[ci].set_ylabel('Component cluster', size=14)
         ax[ci].set_title(f'{cuen}\n', size=16, color=lookups.color_dict[cuen])
+
+        if add_ci:
+            if match_to == 'onsets':
+                comps_for_boot = 9
+            else:
+                comps_for_boot = 8
+            boots = int(np.floor(100000/comps_for_boot))
+            df_shuff_means = []
+            # remove "all cells" for bootstrapping
+            plt_df_boot = plt_df.loc[~plt_df.component.isin([0]), :]
+            for booti in tqdm(range(boots)): # will total 100,000 calcs
+                rand_sample = plt_df_boot.loc[:, ['mouse', 'delta_T5']].groupby('mouse').sample(comps_for_boot, replace=True)
+                rand_sample['cat'] = plt_df_boot.reset_index().component.values
+                shuff_df = rand_sample.loc[:, ['delta_T5', 'cat']].groupby('cat').mean()
+                df_shuff_means.append(shuff_df)
+            smeans = pd.concat(df_shuff_means, axis=0)
+            low = smeans.quantile(0.025).values
+            high = smeans.quantile(0.975).values
+            ax[ci].axvline(low, color='xkcd:medium gray', linestyle='--', linewidth=1, zorder=0)
+            ax[ci].axvline(high, color='xkcd:medium gray', linestyle='--', linewidth=1, zorder=0)
+    
+    if add_stars:
+        true_mean = combo_df.groupby(['component', 'component_name', 'cue']).mean()['delta_T5']
+        sdf = selectivity.diff_shuffle_stage(match_to='onsets', return_matrix=False)
+        bon_cor = len(sdf.reset_index().component.unique())
+
+        pv_list = []
+        pv_bon_list = []
+        for i, gr in true_mean.to_frame().iterrows():
+
+            this_cue = sdf.reset_index().cue.isin([i[2]]).values
+            this_comp = sdf.reset_index().component.isin([i[0]]).values
+            mean_dist = sdf.loc[this_cue & this_comp]
+
+            high = mean_dist.gt(true_mean[i]).sum()/len(mean_dist)
+            low = mean_dist.lt(true_mean[i]).sum()/len(mean_dist)
+            pv = np.min([high.values, low.values])*2 # two-tailed
+            pv_list.append(pv)
+            pv_bon_list.append(pv*bon_cor) # bon correct for comparisons within cue
+        true_mean = true_mean.to_frame()
+        true_mean['pv'] = pv_list
+        true_mean[f'pv_bon{bon_cor}'] = pv_bon_list
+
+        for ind, val in true_mean.iterrows():
+            axi = np.where(np.isin(lookups.cue_names_forced, ind[2]))[0][0]
+            yi = ind[0]
+            if val[2] < 0.0001 and val[2] > 0:
+                star = '***'
+            elif val[2] < 0.001:
+                star = '**'
+            elif val[2] < 0.05:
+                star = '*'
+            else:
+                continue
+            if val.delta_T5 >= 0:
+                if match_to == 'onsets':
+                    xi = 0.525
+                else:
+                    xi = 0.625
+            else:
+                if match_to == 'onsets':
+                    xi = -0.525
+                else:
+                    xi = -0.825
+            ax[axi].text(xi, yi, star, ha='center', va='center', rotation=90, size=14)
+
     ax[0].set_yticks(meany.reset_index().component.values)
     ax[0].set_yticklabels(meany.reset_index().component_name.to_list(), size=12)
     if fix_xlim:
-        plt.xlim([-0.5, 0.5])
+        if match_to == 'onsets':
+            plt.xlim([-0.58, 0.58])
+        else:
+            plt.xlim([-0.85, 0.65])
 
     if save_please:
         plt.savefig(os.path.join(save_folder, f'{match_to}_lim_{limit_to}_{norm_tag}_horbars{allstage_tag}_T5lT4l.png'),
                 bbox_inches='tight')
         plt.savefig(os.path.join(save_folder, f'{match_to}_lim_{limit_to}_{norm_tag}_horbars{allstage_tag}_T5lT4l.pdf'),
                 bbox_inches='tight')
+
+    if add_stars:
+        return true_mean
 
 
 def plot_overlaid_stagetraces(match_to='onsets', limit_to=None, norm_please=False, allstage=False, save_please=True):
@@ -1094,6 +1497,7 @@ def plot_modulation_heatmaps(match_to='onsets',
     t_size = 26
     xl_size = 24
     yl_size = 24
+    plt.rcParams["font.family"] = "Arial"
 
     # build or load necessary matrices and index dfs
     df, mat = selectivity.ab_index_df(match_to=match_to, index_on=index_on, return_matrix=True)
@@ -1203,7 +1607,8 @@ def plot_modulation_heatmaps(match_to='onsets',
                             vmin=-0.5,
                             cmap='vlag',
                             cbar_ax=ax[4],
-                            cbar_kws={'label': clabel})
+                            cbar_kws={'label': clabel},
+                            rasterized=True)
             cbar = g.collections[0].colorbar
             cbar.set_label(clabel, size=yl_size)
             ticklabs = cbar.ax.get_yticklabels()
@@ -1215,7 +1620,8 @@ def plot_modulation_heatmaps(match_to='onsets',
                             vmax=vmax,
                             vmin=-0.5,
                             cmap='vlag',
-                            cbar=False)
+                            cbar=False,
+                            rasterized=True)
         g.set_facecolor('#c5c5c5')
         ax[ci].set_title(f'{cues[ci-1]}\n', size=t_size, color=lookups.color_dict[cues[ci-1]])
         stim_starts = [15.5 + 47 * s for s in np.arange(len(stages))]
@@ -1244,6 +1650,8 @@ def plot_modulation_heatmaps(match_to='onsets',
     if save_please:
         plt.savefig(os.path.join(save_folder, f'{match_to}_{index_on}_{group_or_comp_sort}_high_heatmap.png'),
                 bbox_inches='tight')
+        plt.savefig(os.path.join(save_folder, f'{match_to}_{index_on}_{group_or_comp_sort}_high_heatmap.pdf'),
+                bbox_inches='tight')
 
 
     # plot heatmap
@@ -1277,7 +1685,8 @@ def plot_modulation_heatmaps(match_to='onsets',
                             vmin=-0.5,
                             cmap='vlag',
                             cbar_ax=ax[4],
-                            cbar_kws={'label': clabel})
+                            cbar_kws={'label': clabel},
+                            rasterized=True)
             cbar = g.collections[0].colorbar
             cbar.set_label(clabel, size=yl_size)
             ticklabs = cbar.ax.get_yticklabels()
@@ -1289,7 +1698,8 @@ def plot_modulation_heatmaps(match_to='onsets',
                             vmax=vmax,
                             vmin=-0.5,
                             cmap='vlag',
-                            cbar=False)
+                            cbar=False,
+                            rasterized=True)
         g.set_facecolor('#c5c5c5')
         ax[ci].set_title(f'{cues[ci-1]}\n', size=t_size, color=lookups.color_dict[cues[ci-1]])
         stim_starts = [15.5 + 47 * s for s in np.arange(len(stages))]
@@ -1317,6 +1727,8 @@ def plot_modulation_heatmaps(match_to='onsets',
             ax[ci].set_yticks([])
     if save_please:
         plt.savefig(os.path.join(save_folder, f'{match_to}_{index_on}_{group_or_comp_sort}_low_heatmap.png'),
+                bbox_inches='tight')
+        plt.savefig(os.path.join(save_folder, f'{match_to}_{index_on}_{group_or_comp_sort}_low_heatmap.pdf'),
                 bbox_inches='tight')
 
     # plot heatmap
@@ -1350,7 +1762,8 @@ def plot_modulation_heatmaps(match_to='onsets',
                             vmin=-0.5,
                             cmap='vlag',
                             cbar_ax=ax[4],
-                            cbar_kws={'label': clabel})
+                            cbar_kws={'label': clabel},
+                            rasterized=True)
             cbar = g.collections[0].colorbar
             cbar.set_label(clabel, size=yl_size)
             ticklabs = cbar.ax.get_yticklabels()
@@ -1362,7 +1775,8 @@ def plot_modulation_heatmaps(match_to='onsets',
                             vmax=vmax,
                             vmin=-0.5,
                             cmap='vlag',
-                            cbar=False)
+                            cbar=False,
+                            rasterized=True)
         g.set_facecolor('#c5c5c5')
         ax[ci].set_title(f'{cues[ci-1]}\n', size=t_size, color=lookups.color_dict[cues[ci-1]])
         stim_starts = [15.5 + 47 * s for s in np.arange(len(stages))]
@@ -1390,6 +1804,8 @@ def plot_modulation_heatmaps(match_to='onsets',
             ax[ci].set_yticks([])
     if save_please:
         plt.savefig(os.path.join(save_folder, f'{match_to}_{index_on}_{group_or_comp_sort}_diff_heatmap.png'),
+                bbox_inches='tight')
+        plt.savefig(os.path.join(save_folder, f'{match_to}_{index_on}_{group_or_comp_sort}_diff_heatmap.pdf'),
                 bbox_inches='tight')
         plt.close('all')
 

@@ -49,7 +49,8 @@ color_dict = {
     'remains unrewarded': '#ffb327',
     'Initially rewarded': '#27ffa9',
     'Becomes rewarded': '#ff27be',
-    'Unrewarded': '#ffb327'
+    'Unrewarded': '#ffb327',
+    'Broad': '#ccc2ba',
 }
 
 # the cmap for 9 component onset TCA sorted for plotting
@@ -66,8 +67,9 @@ cmap_fixed_sort_rank9_onset = [(0.7019607843137254, 0.8705882352941177, 0.411764
 cmap_fixed_sort_rank8_offset = [(0.5529411764705883, 0.8274509803921568, 0.7803921568627451),
                                 (0.984313725490196, 0.5019607843137255, 0.4470588235294118),
                                 (0.9921568627450981, 0.7058823529411765, 0.3843137254901961),
-                                (1.0, 1.0, 0.7019607843137254),
                                 (0.7450980392156863, 0.7294117647058823, 0.8549019607843137),
+                                (1.0, 1.0, 0.7019607843137254),
+                                # (0.7450980392156863, 0.7294117647058823, 0.8549019607843137),
                                 (0.9882352941176471, 0.803921568627451, 0.8980392156862745),
                                 (0.7019607843137254, 0.8705882352941177, 0.4117647058823529),
                                 (0.5019607843137255, 0.6941176470588235, 0.8274509803921568)]
@@ -79,7 +81,8 @@ coreroot = '/twophoton_analysis/Data/analysis/core_dfs/'
 # fixed sorting for visualizations of TCA
 fixed_component_sort = {
     'rank9_onset': [6, 5, 0, 2, 1, 3, 4, 8, 7],
-    'rank8_offset': [0, 3, 5, 1, 2, 7, 6, 4],
+    # 'rank8_offset': [0, 3, 5, 1, 2, 7, 6, 4],
+    'rank8_offset': [0, 3, 5, 2, 1, 7, 6, 4],  # flipping nogo comps
     'rank9_onset_context': [6, 2, 4, 5, 1, 0, 3, 8, 7],
 }
 
@@ -103,6 +106,7 @@ tuning_groups = {
 # the decided upon names for the types of cues
 cue_names = ['Initially rewarded', 'Unrewarded', 'Becomes rewarded']
 cue_names_forced = ['Initially rewarded', 'Becomes rewarded', 'Unrewarded']
+cue_names_internal = [ 'becomes_unrewarded', 'becomes_rewarded', 'remains_unrewarded']
 
 comp_class_names = {
     'rank9_onset': [

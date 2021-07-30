@@ -79,6 +79,28 @@ def mean_2s_from_unwrapped_tensor(mean_stack):
 
     return np.dstack(cue_list)
 
+def mean_1sts_from_unwrapped_tensor(mean_stack):
+    """ Helper function to take the mean respoonse
+    across the first 1s of stim or response window, from an unwrapped tensor.
+    Input organized: cells x (time x stage or trials) x cues or cue conditions.
+    """
+    cue_list = []
+    for i in range(mean_stack.shape[2]):
+        cue_list.append(np.nanmean(wrap_tensor(mean_stack[:, :, i])[:, 17:-16, :], axis=1)[:, :, None])
+
+    return np.dstack(cue_list)
+
+def mean_2nds_from_unwrapped_tensor(mean_stack):
+    """ Helper function to take the mean respoonse
+    across the second 1s of stim or response window, from an unwrapped tensor.
+    Input organized: cells x (time x stage or trials) x cues or cue conditions.
+    """
+    cue_list = []
+    for i in range(mean_stack.shape[2]):
+        cue_list.append(np.nanmean(wrap_tensor(mean_stack[:, :, i])[:, -16:, :], axis=1)[:, :, None])
+
+    return np.dstack(cue_list)
+
 
 def simple_mean_per_day(meta, tensor, meta_bool=None,
                         filter_running=None, filter_licking=None, filter_hmm_engaged=False):

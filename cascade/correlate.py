@@ -209,7 +209,7 @@ def comp_corr_day(match_to='onsets', driven_only=False, do_diff=False, apply_nor
         save_tag = 'off'
         all_cats = lookups.fixed_component_sort['rank8_offset']
         offdict = load.core_reversal_data(limit_to='offsets', match_to='offsets')
-        meta_list = ondict['meta_list']
+        meta_list = offdict['meta_list']
         tensor_list = offdict['tensor_list']
         id_list = offdict['id_list']
     if driven_only:
